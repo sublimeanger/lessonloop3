@@ -182,16 +182,18 @@ describe('LL-CRM-P1-02 checkGuardianDeletion', () => {
 // Teacher removal
 // ---------------------------------------------------------------------------
 describe('LL-CRM-P1-02 checkTeacherRemoval', () => {
-  it('blocks when teacher has upcoming lessons', async () => {
+  it('warns when teacher has upcoming lessons (soft-removal allows it)', async () => {
     mockSelectResponse
       .mockReturnValueOnce({ data: [], error: null, count: 5 })  // 5 upcoming lessons
       .mockReturnValueOnce({ data: [], error: null, count: 0 }); // 0 assignments
 
     const result = await validation.checkTeacherRemoval('t1');
 
-    expect(result.canDelete).toBe(false);
-    expect(result.blocks[0].count).toBe(5);
-    expect(result.blocks[0].reason).toContain('upcoming lesson');
+    expect(result.canDelete).toBe(true);
+    expect(result.blocks).toHaveLength(0);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain('upcoming lesson');
+    expect(result.warnings[0]).toContain('5');
   });
 
   it('allows removal when no dependencies and warns about unassigned students', async () => {
@@ -213,7 +215,9 @@ describe('LL-CRM-P1-02 checkLocationDeletion', () => {
   it('blocks when location has scheduled lessons', async () => {
     mockSelectResponse
       .mockReturnValueOnce({ data: [], error: null, count: 7 }) // 7 future lessons at location
-      .mockReturnValueOnce({ data: [], error: null });           // no rooms at location
+      .mockReturnValueOnce({ data: [], error: null })           // no rooms at location
+      .mockReturnValueOnce({ count: 0, error: null })           // make_up_waitlist
+      .mockReturnValueOnce({ count: 0, error: null });          // enrolment_waitlist
 
     mockSingleResponse.mockReturnValueOnce({
       data: { is_primary: false },
@@ -230,7 +234,9 @@ describe('LL-CRM-P1-02 checkLocationDeletion', () => {
   it('warns when deleting primary location', async () => {
     mockSelectResponse
       .mockReturnValueOnce({ data: [], error: null, count: 0 }) // no lessons
-      .mockReturnValueOnce({ data: [], error: null });           // no rooms
+      .mockReturnValueOnce({ data: [], error: null })           // no rooms
+      .mockReturnValueOnce({ count: 0, error: null })           // make_up_waitlist
+      .mockReturnValueOnce({ count: 0, error: null });          // enrolment_waitlist
 
     mockSingleResponse.mockReturnValueOnce({
       data: { is_primary: true },
