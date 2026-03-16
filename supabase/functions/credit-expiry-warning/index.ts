@@ -115,7 +115,8 @@ Deno.serve(async (req) => {
         .single();
 
       const orgName = org?.name || "LessonLoop";
-      const currencySymbol = (org?.currency_code || "GBP") === "GBP" ? "£" : org?.currency_code || "£";
+      const cc = org?.currency_code || "GBP";
+      const currencySymbol = cc === "GBP" ? "£" : cc === "USD" ? "$" : cc === "EUR" ? "€" : `${cc} `;
       const creditValue = (credit.credit_value_minor / 100).toFixed(2);
       const expiryDate = new Date(credit.expires_at!).toLocaleDateString("en-GB", {
         weekday: "long",
