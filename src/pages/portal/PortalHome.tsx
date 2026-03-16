@@ -10,6 +10,7 @@ import { useParentEnrolmentWaitlist, useRespondToOffer as useRespondToEnrolmentO
 import { useParentContinuationPending } from '@/hooks/useTermContinuation';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { useParentCredits } from '@/hooks/useParentCredits';
+import { usePortalFeatures } from '@/hooks/usePortalFeatures';
 import { useParentChildInstruments } from '@/hooks/useParentInstruments';
 import { getInstrumentCategoryIcon } from '@/hooks/useInstruments';
 import { useQueryClient } from '@tanstack/react-query';
