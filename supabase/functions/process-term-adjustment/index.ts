@@ -861,11 +861,12 @@ async function handleConfirm(
     const rateFormatted = (adjustment.lesson_rate_minor / 100).toFixed(2);
 
     // Insert invoice item(s)
+    const currencySymbol = currencyCode === "GBP" ? "£" : currencyCode === "USD" ? "$" : currencyCode === "EUR" ? "€" : `${currencyCode} `;
     const itemDescription = isCreditNote
       ? adjustment.adjustment_type === "withdrawal"
-        ? `Term adjustment credit – ${studentName} withdrawal – ${adjustment.lessons_difference} lesson${adjustment.lessons_difference !== 1 ? "s" : ""} × £${rateFormatted}`
-        : `Term adjustment credit – ${studentName} day change – ${adjustment.lessons_difference} lesson${adjustment.lessons_difference !== 1 ? "s" : ""} difference × £${rateFormatted}`
-      : `Supplementary charge – ${studentName} day change – ${Math.abs(adjustment.lessons_difference)} additional lesson${Math.abs(adjustment.lessons_difference) !== 1 ? "s" : ""} × £${rateFormatted}`;
+        ? `Term adjustment credit – ${studentName} withdrawal – ${adjustment.lessons_difference} lesson${adjustment.lessons_difference !== 1 ? "s" : ""} × ${currencySymbol}${rateFormatted}`
+        : `Term adjustment credit – ${studentName} day change – ${adjustment.lessons_difference} lesson${adjustment.lessons_difference !== 1 ? "s" : ""} difference × ${currencySymbol}${rateFormatted}`
+      : `Supplementary charge – ${studentName} day change – ${Math.abs(adjustment.lessons_difference)} additional lesson${Math.abs(adjustment.lessons_difference) !== 1 ? "s" : ""} × ${currencySymbol}${rateFormatted}`;
 
     await client.from("invoice_items").insert({
       invoice_id: invoice.id,

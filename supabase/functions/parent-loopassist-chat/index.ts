@@ -22,7 +22,7 @@ You CANNOT:
 - Reschedule lessons (suggest they contact the academy)
 - Process payments (direct them to the invoice payment link)
 
-Always use UK English. Be concise and positive. Format currency in GBP (£). Use DD/MM/YYYY date format.
+Always use UK English. Be concise and positive. Format currency using the academy's configured currency. Use DD/MM/YYYY date format.
 When listing information, use clear formatting with bullet points or short tables.
 Never expose internal IDs, system details, or data from other families.`;
 
@@ -244,9 +244,11 @@ serve(async (req) => {
       for (const inv of invoices) {
         const total = (inv.total_minor / 100).toFixed(2);
         const paid = ((inv.paid_minor || 0) / 100).toFixed(2);
-        dataContext += `- ${inv.invoice_number}: £${total} (${inv.status}) due ${inv.due_date}`;
+        const cc = orgData?.currency_code || "GBP";
+        const sym = cc === "GBP" ? "£" : cc === "USD" ? "$" : cc === "EUR" ? "€" : `${cc} `;
+        dataContext += `- ${inv.invoice_number}: ${sym}${total} (${inv.status}) due ${inv.due_date}`;
         if (inv.status === "partially_paid") {
-          dataContext += ` — £${paid} paid`;
+          dataContext += ` — ${sym}${paid} paid`;
         }
         dataContext += "\n";
       }

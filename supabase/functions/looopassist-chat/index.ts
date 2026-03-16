@@ -883,7 +883,7 @@ async function executeToolCall(
         info.dates.forEach(d => { result += `  - ${d}\n`; });
         const overdue = overdueByStudent.get(studentId);
         if (overdue && overdue.length > 0) {
-          result += `  💰 ${overdue.length} overdue invoice(s): ${overdue.map(i => `${i.invoice_number} (£${(i.total_minor / 100).toFixed(2)})`).join(", ")}\n`;
+          result += `  💰 ${overdue.length} overdue invoice(s): ${overdue.map(i => `${i.invoice_number} (${fmtCurrency(i.total_minor)})`).join(", ")}\n`;
         } else {
           result += `  ✅ No overdue invoices\n`;
         }

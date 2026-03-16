@@ -104,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
     // 2. Fetch org
     const { data: org } = await supabaseService
       .from("organisations")
-      .select("name, logo_url, accent_color, terms_conditions_url, enrolment_offer_expiry_hours")
+      .select("name, logo_url, accent_color, terms_conditions_url, enrolment_offer_expiry_hours, currency_code")
       .eq("id", org_id)
       .single();
 
@@ -157,9 +157,13 @@ const handler = async (req: Request): Promise<Response> => {
           Math.ceil((termEnd.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000))
         );
         const totalFeePence = entry.offered_rate_minor * weeksRemaining;
-        termFeeDisplay = `Estimated term fee: £${(totalFeePence / 100).toFixed(2)} (${weeksRemaining} weeks × £${(entry.offered_rate_minor / 100).toFixed(2)})`;
+        const cc = org?.currency_code || "GBP";
+        const sym = cc === "GBP" ? "£" : cc === "USD" ? "$" : cc === "EUR" ? "€" : `${cc} `;
+        termFeeDisplay = `Estimated term fee: ${sym}${(totalFeePence / 100).toFixed(2)} (${weeksRemaining} weeks × ${sym}${(entry.offered_rate_minor / 100).toFixed(2)})`;
       } else {
-        termFeeDisplay = `Lesson rate: £${(entry.offered_rate_minor / 100).toFixed(2)} per lesson`;
+        const cc = org?.currency_code || "GBP";
+        const sym = cc === "GBP" ? "£" : cc === "USD" ? "$" : cc === "EUR" ? "€" : `${cc} `;
+        termFeeDisplay = `Lesson rate: ${sym}${(entry.offered_rate_minor / 100).toFixed(2)} per lesson`;
       }
     }
 

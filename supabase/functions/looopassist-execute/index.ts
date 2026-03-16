@@ -290,7 +290,7 @@ serve(async (req) => {
                 recipient_type: inv.guardians ? "guardian" : "student",
                 recipient_id: _g?.id || _s?.id,
                 subject: `Payment Reminder: Invoice ${inv.invoice_number}`,
-                body: `Dear ${name},\n\nThis is a friendly reminder that invoice ${inv.invoice_number} for £${(inv.total_minor / 100).toFixed(2)} is outstanding. The due date was ${inv.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
+                body: `Dear ${name},\n\nThis is a friendly reminder that invoice ${inv.invoice_number} for ${fmtCurrency(inv.total_minor)} is outstanding. The due date was ${inv.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
                 message_type: "invoice_reminder",
                 status: "queued",
                 related_id: inv.id,
