@@ -20,6 +20,25 @@ export interface LessonNote {
   updated_at: string;
 }
 
+/** Map the flat row returned by get_lesson_notes_for_staff RPC to LessonNote. */
+function mapRpcToLessonNote(row: any): LessonNote {
+  return {
+    id: row.id,
+    lesson_id: row.lesson_id,
+    student_id: row.student_id,
+    teacher_id: row.teacher_id,
+    org_id: row.org_id,
+    content_covered: row.content_covered,
+    homework: row.homework,
+    focus_areas: row.focus_areas,
+    engagement_rating: row.engagement_rating,
+    teacher_private_notes: row.teacher_private_notes,
+    parent_visible: row.parent_visible,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
 interface SaveLessonNoteInput {
   id?: string;
   lesson_id: string;
@@ -34,6 +53,8 @@ interface SaveLessonNoteInput {
 
 /**
  * Fetch structured lesson notes for a specific lesson.
+ * Uses get_lesson_notes_for_staff RPC for column-level privacy
+ * (teacher_private_notes scoped to own notes for non-admins).
  */
 export function useLessonNotes(lessonId: string | undefined) {
   const { currentOrg } = useOrg();
@@ -43,15 +64,13 @@ export function useLessonNotes(lessonId: string | undefined) {
     queryFn: async () => {
       if (!lessonId || !currentOrg) return [];
 
-      const { data, error } = await supabase
-        .from('lesson_notes')
-        .select('*')
-        .eq('lesson_id', lessonId)
-        .eq('org_id', currentOrg.id)
-        .order('created_at', { ascending: true });
+      const { data, error } = await supabase.rpc('get_lesson_notes_for_staff', {
+        p_org_id: currentOrg.id,
+        p_filters: { lesson_id: lessonId },
+      });
 
       if (error) throw error;
-      return (data || []) as LessonNote[];
+      return ((data || []) as any[]).map(mapRpcToLessonNote);
     },
     enabled: !!lessonId && !!currentOrg,
   });
@@ -59,56 +78,29 @@ export function useLessonNotes(lessonId: string | undefined) {
 
 /**
  * Fetch all structured lesson notes for a specific student (across all lessons).
- * Used on the StudentDetail notes tab.
+ * Uses get_lesson_notes_for_staff RPC which handles:
+ * - Column-level privacy for teacher_private_notes
+ * - Whole-lesson note inclusion via lesson participation check
  */
 export function useStudentLessonNotes(studentId: string | undefined) {
-  const { currentOrg, isOrgAdmin } = useOrg();
+  const { currentOrg } = useOrg();
 
   return useQuery({
     queryKey: ['student-lesson-notes', studentId, currentOrg?.id],
     queryFn: async () => {
       if (!studentId || !currentOrg) return [];
 
-      // Fetch lesson notes for this student (both whole-lesson and per-student notes)
-      const { data, error } = await supabase
-        .from('lesson_notes')
-        .select(`
-          *,
-          lesson:lessons(id, title, start_at, status)
-        `)
-        .eq('org_id', currentOrg.id)
-        .or(`student_id.eq.${studentId},student_id.is.null`)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const { data, error } = await supabase.rpc('get_lesson_notes_for_staff', {
+        p_org_id: currentOrg.id,
+        p_filters: {
+          student_id: studentId,
+          include_whole_lesson: 'true',
+          limit: '50',
+        },
+      });
 
       if (error) throw error;
-
-      // Filter to only lessons this student is in (for whole-lesson notes)
-      // We need to verify student participation for student_id=null notes
-      const noteData = data || [];
-      if (noteData.length === 0) return [];
-
-      // Get lesson IDs for null student_id notes to verify participation
-      const nullStudentNoteIds = noteData
-        .filter(n => n.student_id === null)
-        .map(n => n.lesson_id);
-
-      if (nullStudentNoteIds.length > 0) {
-        const { data: participations } = await supabase
-          .from('lesson_participants')
-          .select('lesson_id')
-          .eq('student_id', studentId)
-          .in('lesson_id', nullStudentNoteIds);
-
-        const participatingLessonIds = new Set(participations?.map(p => p.lesson_id) || []);
-
-        // Filter out whole-lesson notes where student isn't a participant
-        return noteData.filter(n =>
-          n.student_id === studentId || participatingLessonIds.has(n.lesson_id)
-        );
-      }
-
-      return noteData;
+      return ((data || []) as any[]).map(mapRpcToLessonNote);
     },
     enabled: !!studentId && !!currentOrg,
   });
