@@ -119,6 +119,7 @@ export default function PortalHome() {
   const { data: unreadCount } = useUnreadMessagesCount();
   const { data: waitlistEntries } = useParentWaitlistEntries();
   const { data: parentCredits } = useParentCredits();
+  const { resourcesEnabled } = usePortalFeatures();
   const { data: childInstruments } = useParentChildInstruments();
   const { data: enrolmentWaitlistEntries } = useParentEnrolmentWaitlist();
   const respondToEnrolmentOffer = useRespondToEnrolmentOffer();
