@@ -128,7 +128,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from("invoices")
       .select(`
         id, org_id, invoice_number, status, total_minor, due_date,
-        currency_code, paid_minor,
+        currency_code, paid_minor, payment_plan_enabled, installment_count,
         payer_guardian:guardians!payer_guardian_id(full_name, email),
         payer_student:students!payer_student_id(first_name, last_name, email)
       `)
@@ -192,6 +192,17 @@ const handler = async (req: Request): Promise<Response> => {
     const amount = formatMinorAmount(outstandingMinor, invoice.currency_code);
     const dueDate = formatDateUK(invoice.due_date);
 
+    // Fetch installments if payment plan is enabled
+    let installments: any[] = [];
+    if (invoice.payment_plan_enabled) {
+      const { data: instData } = await supabaseService
+        .from("invoice_installments")
+        .select("id, installment_number, amount_minor, due_date, status")
+        .eq("invoice_id", invoiceId)
+        .order("installment_number", { ascending: true });
+      installments = instData || [];
+    }
+
     // Fetch org details (name + payment preferences)
     const { data: org } = await supabaseService
       .from("organisations")
@@ -206,8 +217,11 @@ const handler = async (req: Request): Promise<Response> => {
       ? `${org.bank_reference_prefix}-${invoiceNumber}`
       : invoiceNumber;
 
-    // Build the portal link with invoice ID and action=pay to auto-open payment drawer
-    const portalLink = `${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&action=pay`;
+    // Build the portal link — for payment plans, link to first unpaid installment
+    const firstUnpaidInstallment = installments.find((i: any) => i.status === "pending" || i.status === "overdue");
+    const portalLink = firstUnpaidInstallment
+      ? `${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&installment=${firstUnpaidInstallment.id}&action=pay`
+      : `${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&action=pay`;
 
     const subject = isReminder
       ? `Payment Reminder: Invoice ${invoiceNumber}`
@@ -255,7 +269,48 @@ const handler = async (req: Request): Promise<Response> => {
       ${bankDetailsHtml}`
       : "";
 
-    const invoiceDetailsBlock = `
+    // Build installment schedule HTML if payment plan is active
+    const installmentScheduleHtml = installments.length > 0
+      ? `
+      <p style="margin: 12px 0 8px; font-weight: 600;">Payment plan: ${installments.length} installments</p>
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="border-bottom: 2px solid #ddd;">
+            <th style="text-align: left; padding: 6px 8px;">Installment</th>
+            <th style="text-align: left; padding: 6px 8px;">Amount</th>
+            <th style="text-align: left; padding: 6px 8px;">Due Date</th>
+            <th style="text-align: left; padding: 6px 8px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${installments.map((inst: any) => {
+            const instAmount = formatMinorAmount(inst.amount_minor, invoice.currency_code);
+            const instDue = formatDateUK(inst.due_date);
+            const isFirstUnpaid = firstUnpaidInstallment && inst.id === firstUnpaidInstallment.id;
+            const statusLabel = inst.status === "paid" ? "Paid" : inst.status === "overdue" ? "Overdue" : inst.status === "void" ? "Voided" : "Pending";
+            const statusColor = inst.status === "paid" ? "#16a34a" : inst.status === "overdue" ? "#dc2626" : "#666";
+            const payNow = isFirstUnpaid && onlinePaymentsEnabled
+              ? ` <a href="${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&installment=${inst.id}&action=pay" style="color: #2563eb; font-weight: 600; text-decoration: none;">[Pay Now]</a>`
+              : "";
+            return `<tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 6px 8px;">Installment ${inst.installment_number}</td>
+              <td style="padding: 6px 8px;">${escapeHtml(instAmount)}</td>
+              <td style="padding: 6px 8px;">${escapeHtml(instDue)}</td>
+              <td style="padding: 6px 8px; color: ${statusColor};">${statusLabel}${payNow}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>`
+      : "";
+
+    const invoiceDetailsBlock = installments.length > 0
+      ? `
+      <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${escapeHtml(invoiceNumber)}</p>
+        <p style="margin: 5px 0;"><strong>Total:</strong> ${escapeHtml(formatMinorAmount(invoice.total_minor, invoice.currency_code))}</p>
+        ${installmentScheduleHtml}
+      </div>`
+      : `
       <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${escapeHtml(invoiceNumber)}</p>
         <p style="margin: 5px 0;"><strong>Amount Due:</strong> ${escapeHtml(amount)}</p>
