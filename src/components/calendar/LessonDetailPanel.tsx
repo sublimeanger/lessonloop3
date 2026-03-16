@@ -66,7 +66,13 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   }, [open, lesson?.id]);
   
   const [savingAttendance, setSavingAttendance] = useState<string | null>(null);
+  const [localAttendance, setLocalAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [actionInProgress, setActionInProgress] = useState(false);
+
+  // Reset local optimistic attendance when lesson changes (new data from server)
+  useEffect(() => {
+    setLocalAttendance({});
+  }, [lesson?.id, lesson?.attendance]);
   
   // Recurring action dialog state
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
