@@ -2697,8 +2697,6 @@ export type Database = {
           redeemed_lesson_id: string | null
           student_id: string
           updated_at: string
-          voided_at: string | null
-          voided_by: string | null
         }
         Insert: {
           applied_to_invoice_id?: string | null
@@ -2716,8 +2714,6 @@ export type Database = {
           redeemed_lesson_id?: string | null
           student_id: string
           updated_at?: string
-          voided_at?: string | null
-          voided_by?: string | null
         }
         Update: {
           applied_to_invoice_id?: string | null
@@ -2735,8 +2731,6 @@ export type Database = {
           redeemed_lesson_id?: string | null
           student_id?: string
           updated_at?: string
-          voided_at?: string | null
-          voided_by?: string | null
         }
         Relationships: [
           {
@@ -5282,8 +5276,6 @@ export type Database = {
           redeemed_lesson_id: string | null
           student_id: string | null
           updated_at: string | null
-          voided_at: string | null
-          voided_by: string | null
         }
         Insert: {
           applied_to_invoice_id?: string | null
@@ -5302,8 +5294,6 @@ export type Database = {
           redeemed_lesson_id?: string | null
           student_id?: string | null
           updated_at?: string | null
-          voided_at?: string | null
-          voided_by?: string | null
         }
         Update: {
           applied_to_invoice_id?: string | null
@@ -5322,8 +5312,6 @@ export type Database = {
           redeemed_lesson_id?: string | null
           student_id?: string | null
           updated_at?: string | null
-          voided_at?: string | null
-          voided_by?: string | null
         }
         Relationships: [
           {

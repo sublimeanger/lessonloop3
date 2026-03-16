@@ -172,7 +172,7 @@ export function useMakeUpCredits(studentId?: string) {
   const voidCredit = useMutation({
     mutationFn: async (creditId: string) => {
       if (!currentOrg?.id) throw new Error('No org');
-      const { data, error } = await supabase.rpc('void_make_up_credit', {
+      const { data, error } = await (supabase.rpc as any)('void_make_up_credit', {
         _credit_id: creditId,
         _org_id: currentOrg.id,
       });

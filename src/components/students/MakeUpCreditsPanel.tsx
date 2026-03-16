@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Gift, Calendar, Clock, Ban, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Gift, Calendar, Clock, Ban, Plus, CheckCircle2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { formatCurrencyMinor } from '@/lib/utils';
 import { IssueCreditModal } from './IssueCreditModal';
 
@@ -20,10 +22,17 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
   const { credits, availableCredits, totalAvailableValue, isLoading, voidCredit } = useMakeUpCredits(studentId);
   const [issueModalOpen, setIssueModalOpen] = useState(false);
   const [voidConfirmId, setVoidConfirmId] = useState<string | null>(null);
+  const [showVoided, setShowVoided] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
 
-  const visibleCredits = useMemo(() => (credits || []).slice(0, visibleCount), [credits, visibleCount]);
-  const hasMore = (credits?.length || 0) > visibleCount;
+  const filteredCredits = useMemo(() => {
+    if (!credits) return [];
+    return showVoided ? credits : credits.filter(c => !c.voided_at);
+  }, [credits, showVoided]);
+
+  const visibleCredits = useMemo(() => filteredCredits.slice(0, visibleCount), [filteredCredits, visibleCount]);
+  const hasMore = filteredCredits.length > visibleCount;
+  const voidedCount = credits?.filter(c => c.voided_at).length || 0;
 
   const fmtCurrency = (minor: number) => formatCurrencyMinor(minor, currentOrg?.currency_code);
 
@@ -131,8 +140,18 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
             )}
           </div>
 
+          {/* Voided toggle */}
+          {voidedCount > 0 && (
+            <div className="flex items-center gap-2 mb-3">
+              <Switch id="show-voided" checked={showVoided} onCheckedChange={setShowVoided} />
+              <Label htmlFor="show-voided" className="text-sm text-muted-foreground cursor-pointer">
+                Show voided ({voidedCount})
+              </Label>
+            </div>
+          )}
+
           {/* Credits List */}
-          {(!credits || credits.length === 0) ? (
+          {filteredCredits.length === 0 && !showVoided && (!credits || credits.length === 0) ? (
             <div className="flex flex-col items-center text-center py-8 space-y-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                 <Gift className="h-6 w-6 text-muted-foreground" />
@@ -233,7 +252,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                   className="w-full"
                   onClick={() => setVisibleCount((c) => c + 10)}
                 >
-                  Show older credits ({(credits?.length || 0) - visibleCount} more)
+                  Show older credits ({filteredCredits.length - visibleCount} more)
                 </Button>
               )}
             </div>
