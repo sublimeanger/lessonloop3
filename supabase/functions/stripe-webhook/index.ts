@@ -813,7 +813,7 @@ async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
   // Process each refund in the charge
   const refunds = charge.refunds?.data || [];
   for (const refund of refunds) {
-    // Idempotent: skip if already recorded
+    // Idempotent: skip if already recorded by stripe_refund_id
     const { data: existing } = await supabase
       .from("refunds")
       .select("id")
@@ -825,6 +825,32 @@ async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
       continue;
     }
 
+    // REF-M1: Check for orphaned pending refund (created by edge function but
+    // DB update failed after Stripe succeeded). Match on payment_id + amount +
+    // status='pending' + stripe_refund_id IS NULL.
+    const { data: orphanedPending } = await supabase
+      .from("refunds")
+      .select("id")
+      .eq("payment_id", payment.id)
+      .eq("amount_minor", refund.amount)
+      .eq("status", "pending")
+      .is("stripe_refund_id", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (orphanedPending) {
+      // Update the orphaned row instead of inserting a duplicate
+      const refundStatus = refund.status === "succeeded" ? "succeeded" : refund.status === "failed" ? "failed" : "pending";
+      await supabase
+        .from("refunds")
+        .update({ stripe_refund_id: refund.id, status: refundStatus })
+        .eq("id", orphanedPending.id);
+      log(`Reconciled orphaned pending refund ${truncate(orphanedPending.id)} with Stripe refund ${truncate(refund.id)}`);
+      continue;
+    }
+
+    // REF-H4: Set refunded_by to NULL and indicate source in reason
+    const refundStatus = refund.status === "succeeded" ? "succeeded" : refund.status === "failed" ? "failed" : "pending";
     const { error: refundError } = await supabase
       .from("refunds")
       .insert({
@@ -833,8 +859,9 @@ async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
         org_id: payment.org_id,
         amount_minor: refund.amount,
         reason: refund.reason || "Refund via Stripe Dashboard",
-        status: refund.status === "succeeded" ? "succeeded" : refund.status === "failed" ? "failed" : "pending",
+        status: refundStatus,
         stripe_refund_id: refund.id,
+        refunded_by: null,
       });
 
     if (refundError) {
@@ -845,6 +872,22 @@ async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
       }
       continue;
     }
+
+    // REF-H1: Audit log entry for webhook-recorded refund
+    await supabase.from("audit_log").insert({
+      org_id: payment.org_id,
+      actor_user_id: null,
+      action: "refund_recorded",
+      entity_type: "invoice",
+      entity_id: payment.invoice_id,
+      after: {
+        payment_id: payment.id,
+        amount_minor: refund.amount,
+        stripe_refund_id: refund.id,
+        status: refundStatus,
+        source: "stripe_webhook",
+      },
+    });
 
     log(`Refund ${truncate(refund.id)} recorded: ${refund.amount} for payment ${truncate(payment.id)}`);
   }

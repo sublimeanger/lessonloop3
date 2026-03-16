@@ -110,6 +110,7 @@ export function RefundDialog({
       paymentId,
       refundType === 'partial' ? refundAmountMinor : undefined,
       reasonText || undefined,
+      currencyCode,
     );
 
     if (result.success) {

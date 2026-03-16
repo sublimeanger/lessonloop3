@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { log } from "../_shared/log.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 /**
  * Process a full or partial refund for a Stripe payment.
@@ -32,6 +33,12 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
+    // REF-M3: Rate limiting — 5 refunds per hour per user
+    const rlResult = await checkRateLimit(user.id, "stripe-process-refund");
+    if (!rlResult.allowed) {
+      return rateLimitResponse(corsHeaders, rlResult);
+    }
+
     const { paymentId, amount, reason } = await req.json();
     if (!paymentId) throw new Error("paymentId is required");
 
@@ -48,6 +55,18 @@ serve(async (req) => {
     if (payment.provider !== "stripe" || !payment.provider_reference) {
       throw new Error("Only Stripe payments can be refunded through this flow");
     }
+
+    // REF-H3: Check invoice status — block refunds on voided/draft/cancelled invoices
+    const { data: invoice } = await supabase
+      .from("invoices")
+      .select("status")
+      .eq("id", payment.invoice_id)
+      .single();
+
+    if (!invoice) throw new Error("Invoice not found");
+    if (invoice.status === "void") throw new Error("Cannot refund a voided invoice");
+    if (invoice.status === "cancelled") throw new Error("Cannot refund a cancelled invoice");
+    if (invoice.status === "draft") throw new Error("Cannot refund an unpaid invoice");
 
     // Verify permissions: owner/admin, or any role in solo_teacher org
     const { data: membership } = await supabase
@@ -91,7 +110,8 @@ serve(async (req) => {
       throw new Error("This payment has already been fully refunded");
     }
 
-    const refundAmount = amount ? Math.round(amount) : maxRefundable;
+    // REF-M2: Use != null to distinguish "no amount" (full) from zero (invalid)
+    const refundAmount = amount != null ? Math.round(amount) : maxRefundable;
 
     if (refundAmount <= 0) throw new Error("Refund amount must be greater than zero");
     if (refundAmount > maxRefundable) {
@@ -171,6 +191,24 @@ serve(async (req) => {
     }
 
     log(`Invoice recalculated after refund`);
+
+    // REF-H1: Audit log entry for admin-initiated refund
+    await supabase.from("audit_log").insert({
+      org_id: payment.org_id,
+      actor_user_id: user.id,
+      action: "refund_processed",
+      entity_type: "invoice",
+      entity_id: payment.invoice_id,
+      after: {
+        refund_id: refundRecord.id,
+        payment_id: paymentId,
+        amount_minor: refundAmount,
+        stripe_refund_id: stripeRefund.id,
+        status: finalStatus,
+        reason: reason || null,
+        source: "admin_initiated",
+      },
+    });
 
     // Trigger refund notification email (best-effort, non-blocking)
     try {

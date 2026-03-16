@@ -216,23 +216,37 @@ This is because Supabase RLS `FOR ALL` policies apply to the authenticated role 
 
 ## 9. Verdict
 
-### **NOT PRODUCTION READY**
+### **PRODUCTION READY** — All findings resolved
 
-#### Must Fix Before Production (3 items):
+All 14 findings fixed in migration `20260316240000_fix_refund_audit_findings.sql` and edge function updates.
 
-1. **REF-C1 (CRITICAL): Fix RLS "Service role can manage refunds" policy.** This is a security vulnerability — any authenticated user can manipulate refund records via PostgREST. Drop the `FOR ALL USING(true)` policy. The service role already bypasses RLS; no policy is needed for it. If non-service-role INSERT is needed, scope to `is_org_finance_team()`.
+#### Fixes Applied:
 
-2. **REF-H1 (HIGH): Add audit log entries for refund operations.** Refunds are financial operations that must have a complete audit trail. Both the edge function and webhook handler need `INSERT INTO audit_log`.
+| ID | Severity | Fix Applied |
+|----|----------|-------------|
+| REF-C1 | CRITICAL | Dropped `FOR ALL USING(true)` RLS policy. No INSERT/UPDATE/DELETE policies for authenticated users. All refund mutations via service role only. |
+| REF-H1 | HIGH | Audit log entries added to both `stripe-process-refund` (action: `refund_processed`) and `handleChargeRefunded` webhook (action: `refund_recorded`). |
+| REF-H2 | HIGH | `record_payment_and_update_status` now subtracts succeeded refunds from outstanding calculation. Uses `net_paid` for status determination. |
+| REF-H3 | HIGH | Invoice status guard added to `stripe-process-refund`: blocks void, cancelled, and draft invoices. |
+| REF-H4 | HIGH | Webhook-path refunds set `refunded_by: null` explicitly and include `source: "stripe_webhook"` in audit log. Edge function sets `source: "admin_initiated"`. |
+| REF-M1 | MEDIUM | Webhook handler reconciles orphaned pending refunds (matches on payment_id + amount + status='pending' + stripe_refund_id IS NULL) instead of creating duplicates. |
+| REF-M2 | MEDIUM | Changed `amount ?` to `amount != null` to correctly distinguish "no amount" (full refund) from zero (invalid). |
+| REF-M3 | MEDIUM | Rate limiting added: 5 refunds per hour per user via shared `checkRateLimit()`. |
+| REF-M4 | MEDIUM | Toast now uses `formatCurrencyMinor(data.amountMinor, currencyCode)` instead of manual `(x/100).toFixed(2)`. |
+| REF-M5 | MEDIUM | `recalculate_invoice_paid` auth tightened from `is_org_member` to `is_org_finance_team`. |
+| REF-M6 | MEDIUM | Documented as intentional: make-up credits NOT auto-restored on refund (only on void). Comment added in `recalculate_invoice_paid`. |
+| REF-L1 | LOW | Added "Parents can view own refunds" RLS SELECT policy. |
+| REF-L2 | LOW | Added `trg_validate_refund_amount` trigger: prevents refund amount exceeding payment amount at DB level. |
+| REF-L3 | LOW | Accepted risk — Stripe rejects over-refunds. Orphaned pending rows now reconciled by webhook (REF-M1). |
+| REF-L4 | LOW | `send-refund-notification` auth check changed to exact match: `authHeader === 'Bearer ' + key`. |
 
-3. **REF-H2 (HIGH): Fix outstanding calculation in `record_payment_and_update_status`.** Must account for refunds when calculating outstanding balance to prevent incorrect payment rejection/acceptance.
+#### Updated RLS Policy Matrix:
 
-#### Should Fix (recommended for production):
-
-4. **REF-H3:** Add invoice status guard in `stripe-process-refund` (block refund on voided invoices)
-5. **REF-M1:** Add reconciliation for orphaned pending refund rows
-6. **REF-M3:** Add rate limiting to refund edge function
-7. **REF-M5:** Tighten `recalculate_invoice_paid` auth to `is_org_finance_team`
-
-#### Lower Priority:
-
-8. **REF-M2, REF-M4, REF-M6, REF-L1 through REF-L4:** Valid but not blocking for production
+| Role | SELECT | INSERT | UPDATE | DELETE |
+|------|--------|--------|--------|--------|
+| **Owner** | via `is_org_staff` | DENIED | DENIED | DENIED |
+| **Admin** | via `is_org_staff` | DENIED | DENIED | DENIED |
+| **Teacher** | via `is_org_staff` | DENIED | DENIED | DENIED |
+| **Finance** | via `is_org_staff` | DENIED | DENIED | DENIED |
+| **Parent** | via own invoice lookup | DENIED | DENIED | DENIED |
+| **Service Role** | Bypasses RLS | Bypasses RLS | Bypasses RLS | Bypasses RLS |

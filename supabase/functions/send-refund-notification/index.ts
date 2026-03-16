@@ -25,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Verify service-role caller
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader || !authHeader.includes(supabaseServiceKey)) {
+    if (!authHeader || authHeader !== `Bearer ${supabaseServiceKey}`) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
