@@ -1,4 +1,4 @@
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { parseISO, isBefore, startOfToday } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
@@ -37,6 +37,8 @@ import {
 import type { Database } from '@/integrations/supabase/types';
 import { cn } from '@/lib/utils';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
+import { EntityLink } from '@/components/shared/EntityLink';
+
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
 
@@ -292,7 +294,11 @@ export default function InvoiceDetail() {
                   <div>
                     <div className="text-sm font-medium text-muted-foreground">{isCreditNote ? 'Credit To' : 'Bill To'}</div>
                     <div className="mt-1">
-                      <div className="font-medium">{payerName}</div>
+                      <div className="font-medium">
+                        {invoice.payer_student ? (
+                          <EntityLink type="student" id={invoice.payer_student.id}>{payerName}</EntityLink>
+                        ) : payerName}
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -321,9 +327,13 @@ export default function InvoiceDetail() {
                           <td className="py-3">
                             <div>{item.description}</div>
                             {item.linked_lesson && (
-                              <div className="text-xs text-muted-foreground">
+                              <Link
+                                to={`/calendar?date=${formatDateUK(parseISO(item.linked_lesson.start_at), 'yyyy-MM-dd')}`}
+                                className="text-xs text-primary/80 hover:text-primary hover:underline transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 {formatDateUK(parseISO(item.linked_lesson.start_at), 'dd MMM yyyy')} {formatTimeUK(parseISO(item.linked_lesson.start_at))}
-                              </div>
+                              </Link>
                             )}
                           </td>
                           <td className="py-3 text-right">{item.quantity}</td>

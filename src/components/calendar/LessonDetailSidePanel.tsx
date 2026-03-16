@@ -11,6 +11,9 @@ import { useUpdateAttendance } from '@/hooks/useRegisterData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { TeacherLink } from '@/components/shared/TeacherLink';
+import { LocationLink } from '@/components/shared/LocationLink';
 
 interface LessonDetailSidePanelProps {
   lesson: LessonWithDetails | null;
@@ -156,17 +159,17 @@ export function LessonDetailSidePanel({
                 >
                   {teacherInitials}
                 </span>
-                <span className="text-foreground">{teacherName}</span>
+                <TeacherLink teacherId={lesson.teacher_id} className="text-foreground">{teacherName}</TeacherLink>
               </div>
             </div>
 
             {lesson.location && (
               <div className="flex items-center gap-3">
                 <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-foreground">
+                <LocationLink locationId={lesson.location_id} className="text-sm text-foreground">
                   {lesson.location.name}{lesson.location.is_archived && <span className="text-muted-foreground"> (Archived)</span>}
                   {lesson.room && <span className="text-muted-foreground"> · {lesson.room.name}</span>}
-                </span>
+                </LocationLink>
               </div>
             )}
 
@@ -228,7 +231,7 @@ export function LessonDetailSidePanel({
                     return (
                       <div key={p.id} className="space-y-1.5">
                         <div className="font-medium text-sm text-foreground">
-                          {p.student.first_name} {p.student.last_name}
+                          <EntityLink type="student" id={p.student.id}>{p.student.first_name} {p.student.last_name}</EntityLink>
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {ATTENDANCE_OPTIONS.map((option) => (

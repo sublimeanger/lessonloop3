@@ -20,6 +20,7 @@ import {
   FileText
 } from 'lucide-react';
 import { LessonNotesForm } from '@/components/calendar/LessonNotesForm';
+import { EntityLink } from '@/components/shared/EntityLink';
 import { StudentNotesPopover } from '@/components/register/StudentNotesPopover';
 import { cn } from '@/lib/utils';
 import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from './AbsenceReasonPicker';
@@ -228,7 +229,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
               >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                      <div className="flex flex-wrap items-center gap-2">
-                       <span className="font-medium">{participant.student_name}</span>
+                       <EntityLink type="student" id={participant.student_id} className="font-medium">{participant.student_name}</EntityLink>
                         <StudentNotesPopover
                           studentId={participant.student_id}
                           studentName={participant.student_name}

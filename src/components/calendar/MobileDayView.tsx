@@ -4,6 +4,7 @@ import { LessonWithDetails } from './types';
 import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { Calendar as CalendarIcon, Check } from 'lucide-react';
+import { TeacherLink } from '@/components/shared/TeacherLink';
 import { useBulkSelection } from './BulkSelectionContext';
 
 function resolveColour(
@@ -166,7 +167,9 @@ export function MobileDayView({
                 </p>
                 {lesson.teacher?.full_name && (
                   <p className="text-micro text-muted-foreground/70 truncate mt-0.5">
-                    {lesson.teacher.full_name}
+                    <TeacherLink teacherId={lesson.teacher_id} className="text-micro text-muted-foreground/70">
+                      {lesson.teacher.full_name}
+                    </TeacherLink>
                   </p>
                 )}
                 {studentNames.length > 1 && (

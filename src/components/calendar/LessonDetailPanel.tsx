@@ -26,6 +26,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat, Video, ExternalLink, RefreshCw, ArrowRightLeft } from 'lucide-react';
 import { LessonNotesForm } from './LessonNotesForm';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { TeacherLink } from '@/components/shared/TeacherLink';
+import { LocationLink } from '@/components/shared/LocationLink';
 import { TermAdjustmentWizard } from '@/components/term-adjustments/TermAdjustmentWizard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -609,19 +612,19 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           {/* Teacher */}
           <div className="flex items-center gap-3 text-muted-foreground">
             <User className="h-4 w-4 flex-shrink-0" />
-            <span className="text-sm font-medium text-foreground">
+            <TeacherLink teacherId={lesson.teacher_id} className="text-sm font-medium">
               {lesson.teacher?.full_name || lesson.teacher?.email || 'Unknown'}
-            </span>
+            </TeacherLink>
           </div>
 
           {/* Location */}
           {lesson.location && (
             <div className="flex items-center gap-3 text-muted-foreground">
               <MapPin className="h-4 w-4 flex-shrink-0" />
-              <span className="text-sm font-medium text-foreground">
+              <LocationLink locationId={lesson.location_id} className="text-sm font-medium">
                 {lesson.location.name}{lesson.location.is_archived && <span className="text-muted-foreground"> (Archived)</span>}
                 {lesson.room && ` – ${lesson.room.name}`}
-              </span>
+              </LocationLink>
             </div>
           )}
 
@@ -673,7 +676,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             <div className="flex-1 text-sm">
               {lesson.participants?.map((p, i) => (
                 <span key={p.id} className="text-foreground">
-                  {p.student.first_name} {p.student.last_name}
+                  <EntityLink type="student" id={p.student.id}>
+                    {p.student.first_name} {p.student.last_name}
+                  </EntityLink>
                   {lesson.makeupStudentIds?.includes(p.student.id) && (() => {
                     const detail = lesson.makeupDetails?.[p.student.id];
                     const tooltipText = detail
@@ -713,7 +718,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
                 const currentStatus = getStudentAttendance(p.student.id);
                 return (
                   <div key={p.id} className="space-y-2">
-                    <div className="font-medium text-sm">{p.student.first_name} {p.student.last_name}</div>
+                    <div className="font-medium text-sm"><EntityLink type="student" id={p.student.id}>{p.student.first_name} {p.student.last_name}</EntityLink></div>
                     <div className="flex flex-wrap gap-1">
                       {ATTENDANCE_OPTIONS.map((option) => (
                         <Button

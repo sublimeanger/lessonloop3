@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Clock, User, MapPin, Repeat, Users, Edit2, Video, ExternalLink } from 'lucide-react';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { TeacherLink } from '@/components/shared/TeacherLink';
+import { LocationLink } from '@/components/shared/LocationLink';
 
 interface MobileLessonSheetProps {
   lesson: LessonWithDetails | null;
@@ -93,17 +96,17 @@ export function MobileLessonSheet({
                 >
                   {teacherInitials}
                 </span>
-                <span className="text-foreground">{teacherName}</span>
+                <TeacherLink teacherId={lesson.teacher_id} className="text-foreground">{teacherName}</TeacherLink>
               </div>
             </div>
 
             {lesson.location && (
               <div className="flex items-center gap-3">
                 <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-foreground">
+                <LocationLink locationId={lesson.location_id} className="text-sm text-foreground">
                   {lesson.location.name}
                   {lesson.room && <span className="text-muted-foreground"> · {lesson.room.name}</span>}
-                </span>
+                </LocationLink>
               </div>
             )}
 
@@ -118,8 +121,12 @@ export function MobileLessonSheet({
               <div className="flex items-start gap-3">
                 <Users className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 <div className="text-sm space-y-0.5">
-                  {studentNames.map((name, i) => (
-                    <div key={i} className="text-foreground">{name}</div>
+                 {studentNames.map((name, i) => (
+                    <div key={i} className="text-foreground">
+                      {lesson.participants?.[i] ? (
+                        <EntityLink type="student" id={lesson.participants[i].student.id}>{name}</EntityLink>
+                      ) : name}
+                    </div>
                   ))}
                 </div>
               </div>

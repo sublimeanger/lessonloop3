@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link } from 'react-router-dom';
+import { TeacherLink } from '@/components/shared/TeacherLink';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -251,7 +252,7 @@ function PayrollTeacherList({
                   {teacher.teacherName[0]}
                 </div>
                 <div className="text-left">
-                  <p className="font-medium">{teacher.teacherName}</p>
+                  <p className="font-medium"><TeacherLink teacherId={teacher.teacherId}>{teacher.teacherName}</TeacherLink></p>
                   <p className="text-sm text-muted-foreground">
                     {getPayRateLabel(teacher.payRateType, teacher.payRateValue)}
                   </p>
@@ -300,7 +301,9 @@ function PayrollTeacherList({
                       <TableRow key={lesson.id}>
                         <TableCell className="font-medium">{lesson.title}</TableCell>
                         <TableCell>
-                          {format(new Date(lesson.startAt), 'd MMM yyyy, HH:mm')}
+                          <Link to={`/calendar?date=${format(new Date(lesson.startAt), 'yyyy-MM-dd')}`} className="text-primary/80 hover:text-primary hover:underline transition-colors">
+                            {format(new Date(lesson.startAt), 'd MMM yyyy, HH:mm')}
+                          </Link>
                         </TableCell>
                         <TableCell className="text-right">{lesson.durationMins} min</TableCell>
                         <TableCell className="text-right font-medium">
