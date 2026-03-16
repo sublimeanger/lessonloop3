@@ -46,8 +46,10 @@ export interface MessageLogEntry {
 export interface SendMessageData {
   recipient_type: 'guardian' | 'student' | 'teacher';
   recipient_id: string;
-  recipient_email: string;
-  recipient_name: string;
+  /** @deprecated Server resolves email from DB; client value is ignored. */
+  recipient_email?: string;
+  /** @deprecated Server resolves name from DB; client value is ignored. */
+  recipient_name?: string;
   subject: string;
   body: string;
   related_id?: string; // e.g., student_id for context

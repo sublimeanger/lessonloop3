@@ -10,8 +10,10 @@ interface SendMessageRequest {
   sender_user_id: string;
   recipient_type: "guardian" | "student" | "teacher";
   recipient_id: string;
-  recipient_email: string;
-  recipient_name: string;
+  /** @deprecated Client-supplied email is ignored; resolved from DB instead. */
+  recipient_email?: string;
+  /** @deprecated Client-supplied name is ignored; resolved from DB instead. */
+  recipient_name?: string;
   subject: string;
   body: string;
   related_id?: string;
@@ -74,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
     const shouldSendEmail = data.send_email !== false;
 
     // Validate required fields
-    if (!data.org_id || !data.recipient_email || !data.subject || !data.body) {
+    if (!data.org_id || !data.recipient_id || !data.recipient_type || !data.subject || !data.body) {
       throw new Error("Missing required fields");
     }
 
@@ -105,6 +107,86 @@ const handler = async (req: Request): Promise<Response> => {
     // Always use authenticated user's ID as sender to prevent impersonation
     const senderId = user.id;
 
+    // Resolve recipient email and name from the database — never trust client input
+    let recipientEmail: string | null = null;
+    let recipientName: string | null = null;
+
+    if (data.recipient_type === "guardian") {
+      const { data: guardian, error: guardianError } = await supabase
+        .from("guardians")
+        .select("email, full_name, org_id")
+        .eq("id", data.recipient_id)
+        .single();
+      if (guardianError || !guardian) {
+        return new Response(
+          JSON.stringify({ error: "Recipient not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (guardian.org_id !== data.org_id) {
+        return new Response(
+          JSON.stringify({ error: "Recipient does not belong to this organisation" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      recipientEmail = guardian.email;
+      recipientName = guardian.full_name;
+    } else if (data.recipient_type === "student") {
+      const { data: student, error: studentError } = await supabase
+        .from("students")
+        .select("email, first_name, last_name, org_id")
+        .eq("id", data.recipient_id)
+        .single();
+      if (studentError || !student) {
+        return new Response(
+          JSON.stringify({ error: "Recipient not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (student.org_id !== data.org_id) {
+        return new Response(
+          JSON.stringify({ error: "Recipient does not belong to this organisation" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      recipientEmail = student.email;
+      recipientName = `${student.first_name} ${student.last_name}`.trim();
+    } else if (data.recipient_type === "teacher") {
+      const { data: teacher, error: teacherError } = await supabase
+        .from("teachers")
+        .select("display_name, user_id, org_id")
+        .eq("id", data.recipient_id)
+        .single();
+      if (teacherError || !teacher) {
+        return new Response(
+          JSON.stringify({ error: "Recipient not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (teacher.org_id !== data.org_id) {
+        return new Response(
+          JSON.stringify({ error: "Recipient does not belong to this organisation" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      recipientName = teacher.display_name;
+      // Get email from auth user
+      if (teacher.user_id) {
+        const { data: teacherUser } = await supabase.auth.admin.getUserById(teacher.user_id);
+        recipientEmail = teacherUser?.user?.email || null;
+      }
+    }
+
+    if (!recipientEmail) {
+      // No email on file — can still create in-app message but cannot send email
+      if (data.send_email !== false) {
+        return new Response(
+          JSON.stringify({ error: "Recipient has no email address on file" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Get org details for branding
     const { data: org } = await supabase
       .from("organisations")
@@ -125,8 +207,8 @@ const handler = async (req: Request): Promise<Response> => {
         sender_user_id: senderId,
         recipient_type: data.recipient_type,
         recipient_id: data.recipient_id,
-        recipient_email: data.recipient_email,
-        recipient_name: data.recipient_name,
+        recipient_email: recipientEmail,
+        recipient_name: recipientName,
         related_id: data.related_id || null,
         message_type: data.message_type || "manual",
         status: shouldSendEmail ? "pending" : "sent",
@@ -172,7 +254,7 @@ const handler = async (req: Request): Promise<Response> => {
           },
           body: JSON.stringify({
             from: `${orgName} <notifications@lessonloop.net>`,
-            to: [data.recipient_email],
+            to: [recipientEmail!],
             subject: data.subject,
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
