@@ -138,7 +138,7 @@ export function useInvoice(id: string | undefined) {
       const paymentIds = (payments || []).map((p: any) => p.id);
       let refunds: any[] = [];
       if (paymentIds.length > 0) {
-        const { data: refundData } = await supabase
+        const { data: refundData } = await (supabase as any)
           .from('refunds')
           .select('*')
           .in('payment_id', paymentIds)
@@ -150,6 +150,7 @@ export function useInvoice(id: string | undefined) {
         ...invoice,
         items: items || [],
         payments: payments || [],
+        refunds,
       } as InvoiceWithDetails;
     },
     enabled: !!id && !!currentOrg?.id,
