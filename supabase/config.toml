@@ -32,10 +32,19 @@ verify_jwt = false
 [functions.notify-makeup-offer]
 verify_jwt = false
 
+[functions.send-enrolment-offer]
+verify_jwt = false
+
 [functions.send-cancellation-notification]
 verify_jwt = false
 
 [functions.profile-ensure]
+verify_jwt = false
+
+# ── Waitlist email response: JWT verification DISABLED ─────────────
+# Called from unauthenticated email links (JWT token in query param).
+
+[functions.waitlist-respond]
 verify_jwt = false
 
 # ── Webhook/public functions: JWT verification DISABLED ──────────────
@@ -54,6 +63,12 @@ verify_jwt = false
 [functions.calendar-ical-feed]
 verify_jwt = false
 
+# ── pg_net webhook functions: JWT verification DISABLED ──────────────
+# Called by database triggers via pg_net with service role key.
+
+[functions.notify-makeup-match]
+verify_jwt = false
+
 # ── Cron/system functions: JWT verification DISABLED ─────────────────
 # These are called by scheduled jobs with x-cron-secret header auth.
 
@@ -64,6 +79,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.waitlist-expiry]
+verify_jwt = false
+
+[functions.enrolment-offer-expiry]
 verify_jwt = false
 
 [functions.invoice-overdue-check]

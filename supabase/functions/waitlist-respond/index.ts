@@ -110,35 +110,30 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // 3. Process action
-    const newStatus = action === "accept" ? "accepted" : "declined";
-    const { error: updateError } = await supabaseService
-      .from("enrolment_waitlist")
-      .update({
-        status: newStatus,
-        responded_at: new Date().toISOString(),
-      })
-      .eq("id", waitlistId)
-      .eq("org_id", orgId);
+    // 3. WL-H5 FIX: Use atomic RPC instead of plain UPDATE to prevent race conditions
+    const { error: rpcError } = await supabaseService.rpc(
+      "respond_to_enrolment_offer",
+      {
+        _entry_id: waitlistId,
+        _org_id: orgId,
+        _action: action,
+      }
+    );
 
-    if (updateError) {
-      console.error("Failed to update waitlist entry:", updateError);
+    if (rpcError) {
+      console.error("Failed to process response:", rpcError);
+      const isExpired = rpcError.message?.includes("expired");
+      if (isExpired) {
+        return new Response(
+          htmlPage("Offer Expired", "This offer has expired. Please contact the academy for more information.", false),
+          { status: 400, headers: { "Content-Type": "text/html" } }
+        );
+      }
       return new Response(
         htmlPage("Error", "Something went wrong. Please try again or contact the academy.", false),
         { status: 500, headers: { "Content-Type": "text/html" } }
       );
     }
-
-    // 4. Log activity
-    await supabaseService.from("enrolment_waitlist_activity").insert({
-      org_id: orgId,
-      waitlist_id: waitlistId,
-      activity_type: newStatus,
-      description:
-        action === "accept"
-          ? `${entry.contact_name} accepted the offer via email link`
-          : `${entry.contact_name} declined the offer via email link`,
-    });
 
     // 5. Return success page
     if (action === "accept") {

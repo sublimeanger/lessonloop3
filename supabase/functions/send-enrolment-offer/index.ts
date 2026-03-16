@@ -32,7 +32,15 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const jwtSecret = Deno.env.get("WAITLIST_JWT_SECRET") || supabaseServiceKey;
+    // WL-M1 FIX: Require WAITLIST_JWT_SECRET — never fall back to service role key
+    const jwtSecret = Deno.env.get("WAITLIST_JWT_SECRET");
+    if (!jwtSecret) {
+      console.error("WAITLIST_JWT_SECRET environment variable is not configured");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error: JWT secret not set" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
@@ -179,9 +187,10 @@ const handler = async (req: Request): Promise<Response> => {
       .setExpirationTime(Math.floor(expiresAt.getTime() / 1000))
       .sign(secret);
 
+    // WL-M2 FIX: URL-encode tokens to prevent potential injection
     const respondBaseUrl = `${supabaseUrl}/functions/v1/waitlist-respond`;
-    const acceptUrl = `${respondBaseUrl}?token=${acceptToken}&action=accept`;
-    const declineUrl = `${respondBaseUrl}?token=${declineToken}&action=decline`;
+    const acceptUrl = `${respondBaseUrl}?token=${encodeURIComponent(acceptToken)}&action=accept`;
+    const declineUrl = `${respondBaseUrl}?token=${encodeURIComponent(declineToken)}&action=decline`;
 
     const dayLabel = DAY_LABELS[entry.offered_slot_day] || entry.offered_slot_day || "";
     const timeLabel = entry.offered_slot_time || "";

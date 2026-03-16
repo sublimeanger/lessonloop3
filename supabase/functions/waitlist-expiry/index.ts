@@ -12,7 +12,6 @@ serve(async (req) => {
   );
 
   const now = new Date().toISOString();
-  const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
   // 1. Expire waiting/matched entries past expires_at
   const { data: expired, error: expireError } = await supabase
@@ -24,8 +23,31 @@ serve(async (req) => {
 
   if (expireError) console.error("Expire error:", expireError.message);
 
-  // 2. Return stale offered entries (no response in 48h) back to waiting
-  const { data: returned, error: returnError } = await supabase
+  // 2. WL-M5 FIX: Return stale offered entries back to waiting.
+  //    Use per-entry offer_expires_at (set by offer_makeup_slot RPC) when available.
+  //    Fall back to offered_at + 48h for legacy entries without offer_expires_at.
+  const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
+  // 2a. Entries WITH offer_expires_at — use the per-entry deadline
+  const { data: returnedByDeadline, error: deadlineError } = await supabase
+    .from("make_up_waitlist")
+    .update({
+      status: "waiting",
+      matched_lesson_id: null,
+      matched_at: null,
+      offered_at: null,
+      offer_expires_at: null,
+      updated_at: now,
+    })
+    .eq("status", "offered")
+    .not("offer_expires_at", "is", null)
+    .lt("offer_expires_at", now)
+    .select("id");
+
+  if (deadlineError) console.error("Deadline return-to-waiting error:", deadlineError.message);
+
+  // 2b. Legacy entries WITHOUT offer_expires_at — fallback to 48h from offered_at
+  const { data: returnedByFallback, error: fallbackError } = await supabase
     .from("make_up_waitlist")
     .update({
       status: "waiting",
@@ -35,13 +57,14 @@ serve(async (req) => {
       updated_at: now,
     })
     .eq("status", "offered")
+    .is("offer_expires_at", null)
     .lt("offered_at", fortyEightHoursAgo)
     .select("id");
 
-  if (returnError) console.error("Return-to-waiting error:", returnError.message);
+  if (fallbackError) console.error("Fallback return-to-waiting error:", fallbackError.message);
 
   const expiredCount = expired?.length || 0;
-  const returnedCount = returned?.length || 0;
+  const returnedCount = (returnedByDeadline?.length || 0) + (returnedByFallback?.length || 0);
 
   console.log(`Waitlist expiry: ${expiredCount} expired, ${returnedCount} returned to waiting`);
 

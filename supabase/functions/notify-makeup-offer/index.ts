@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
             Authorization: `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: "LessonLoop <notifications@lessonloop.app>",
+            from: "LessonLoop <notifications@lessonloop.net>",
             to: [guardian.email],
             subject,
             html,
