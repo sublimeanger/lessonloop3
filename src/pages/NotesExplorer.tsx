@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { subDays, startOfDay, endOfDay, format, parseISO } from 'date-fns';
 import { FileText, Download } from 'lucide-react';
 import { usePageMeta } from '@/hooks/usePageMeta';
