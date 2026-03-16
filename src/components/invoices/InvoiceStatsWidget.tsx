@@ -73,7 +73,7 @@ export function InvoiceStatsWidget({ onFilterStatus }: InvoiceStatsWidgetProps =
             key={stat.label}
             onClick={isClickable ? () => onFilterStatus?.(stat.filterStatus) : undefined}
             className={cn(
-              'flex items-start gap-3 rounded-xl border bg-card p-3 sm:p-4 transition-all',
+              'flex items-start gap-3 rounded-xl border bg-card p-3 sm:p-4 transition-all shadow-card min-h-[4.5rem]',
               isClickable && 'cursor-pointer hover:shadow-card-hover hover:border-primary/20 active:scale-[0.98]',
             )}
           >
