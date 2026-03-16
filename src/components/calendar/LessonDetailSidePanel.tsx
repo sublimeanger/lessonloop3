@@ -159,7 +159,7 @@ export function LessonDetailSidePanel({
                 >
                   {teacherInitials}
                 </span>
-                <span className="text-foreground">{teacherName}</span>
+                <TeacherLink teacherId={lesson.teacher_id} className="text-foreground">{teacherName}</TeacherLink>
               </div>
             </div>
 
