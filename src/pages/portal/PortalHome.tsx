@@ -41,6 +41,16 @@ import { PortalWelcomeDialog } from '@/components/portal/PortalWelcomeDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { parseISO, formatDistanceToNowStrict, isBefore, isToday, isTomorrow, isAfter, addMinutes } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
