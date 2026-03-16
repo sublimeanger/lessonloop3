@@ -10,10 +10,11 @@ import type { ExplorerNote } from '@/hooks/useNotesExplorer';
 interface NoteCardProps {
   note: ExplorerNote;
   isAdmin: boolean;
+  currentTeacherId?: string | null;
   timezone?: string;
 }
 
-export function NoteCard({ note, isAdmin, timezone }: NoteCardProps) {
+export function NoteCard({ note, isAdmin, currentTeacherId, timezone }: NoteCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const studentName = note.student_first_name
