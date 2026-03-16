@@ -1,4 +1,4 @@
-import { Bell, AlertTriangle } from 'lucide-react';
+import { Bell, AlertTriangle, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -11,14 +11,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUnreadInternalCount, useInternalMessages } from '@/hooks/useInternalMessages';
 import { usePendingRequestsCount } from '@/hooks/useAdminMessageRequests';
+import { useUnreadParentReplies, useUnreadPaymentNotifications } from '@/hooks/useStaffNotifications';
 
 export function NotificationBell() {
   const navigate = useNavigate();
   const { data: unreadInternal = 0 } = useUnreadInternalCount();
   const { data: pendingRequests = 0 } = usePendingRequestsCount();
+  const { data: unreadParentReplies = 0 } = useUnreadParentReplies();
+  const { data: unreadPayments = 0 } = useUnreadPaymentNotifications();
   const { data: inboxMessages } = useInternalMessages('inbox');
 
-  const totalCount = unreadInternal + pendingRequests;
+  const totalCount = unreadInternal + pendingRequests + unreadParentReplies + unreadPayments;
   const unreadMessages = (inboxMessages || [])
     .filter((m) => !m.read_at)
     .slice(0, 5);
@@ -46,8 +49,12 @@ export function NotificationBell() {
           {totalCount > 0 && (
             <p className="text-xs text-muted-foreground">
               {unreadInternal > 0 && `${unreadInternal} unread message${unreadInternal !== 1 ? 's' : ''}`}
-              {unreadInternal > 0 && pendingRequests > 0 && ' · '}
+              {unreadInternal > 0 && (pendingRequests > 0 || unreadParentReplies > 0 || unreadPayments > 0) && ' · '}
               {pendingRequests > 0 && `${pendingRequests} pending request${pendingRequests !== 1 ? 's' : ''}`}
+              {pendingRequests > 0 && (unreadParentReplies > 0 || unreadPayments > 0) && ' · '}
+              {unreadParentReplies > 0 && `${unreadParentReplies} parent repl${unreadParentReplies !== 1 ? 'ies' : 'y'}`}
+              {unreadParentReplies > 0 && unreadPayments > 0 && ' · '}
+              {unreadPayments > 0 && `${unreadPayments} payment${unreadPayments !== 1 ? 's' : ''}`}
             </p>
           )}
         </div>
@@ -79,10 +86,33 @@ export function NotificationBell() {
               </DropdownMenuItem>
             );
           })
-        ) : (
+        ) : totalCount === 0 ? (
           <div className="px-3 py-6 text-center text-sm text-muted-foreground">
             No unread messages
           </div>
+        ) : null}
+
+        {unreadPayments > 0 && (
+          <DropdownMenuItem
+            className="flex items-center gap-2 py-2.5 cursor-pointer"
+            onClick={() => navigate('/dashboard')}
+          >
+            <CreditCard className="h-3.5 w-3.5 text-green-600 shrink-0" />
+            <span className="text-sm">
+              {unreadPayments} new payment{unreadPayments !== 1 ? 's' : ''} received
+            </span>
+          </DropdownMenuItem>
+        )}
+
+        {unreadParentReplies > 0 && (
+          <DropdownMenuItem
+            className="flex items-center gap-2 py-2.5 cursor-pointer"
+            onClick={() => navigate('/messages')}
+          >
+            <span className="text-sm">
+              {unreadParentReplies} new parent repl{unreadParentReplies !== 1 ? 'ies' : 'y'}
+            </span>
+          </DropdownMenuItem>
         )}
 
         <DropdownMenuSeparator />

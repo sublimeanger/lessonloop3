@@ -223,42 +223,38 @@ Finance role is **correctly excluded** from both the notification bell and LoopA
 
 ---
 
-## 7. Verdict
+## 7. Verdict: PRODUCTION READY
 
-### Summary
-The messaging and notifications subsystem is **well-architected** with proper separation of concerns:
-- Three distinct message channels (message_log for parent-staff, internal_messages for staff-staff, payment_notifications for payment events)
-- Comprehensive org-level messaging settings with granular parent permissions
-- Proper threading support with self-referential FKs
-- Rate limiting on all messaging edge functions
-- XSS protection via `escapeHtml()` on all email content
-- Notification preferences with per-user opt-in/opt-out
+All 11 findings (2 HIGH, 4 MEDIUM, 5 LOW) have been fixed.
 
-### Issues by Severity
+### Fixes Applied
 
-| Severity | Count | Action Required |
-|----------|-------|-----------------|
-| CRITICAL | 0 | — |
-| HIGH | 2 | Fix before launch |
-| MEDIUM | 4 | Fix before launch |
-| LOW | 5 | Fix post-beta |
+| ID | Severity | Fix | File(s) |
+|----|----------|-----|---------|
+| MSG-H1 | HIGH | Dropped permissive INSERT policy on `payment_notifications`; replaced with `WITH CHECK (false)` for authenticated role | `20260316320000_fix_messaging_audit_findings.sql` |
+| MSG-H2 | HIGH | Added DELETE policies: sender can delete own + admin can delete any | `20260316320000_fix_messaging_audit_findings.sql` |
+| MSG-M1 | MEDIUM | `isNotificationEnabled()` now returns `false` for marketing keys when no prefs row (GDPR compliant) | `_shared/check-notification-pref.ts` |
+| MSG-M2 | MEDIUM | Added `is_org_member()` check to `notification_preferences` INSERT policy | `20260316320000_fix_messaging_audit_findings.sql` |
+| MSG-M3 | MEDIUM | Dropped both `message_log` INSERT policies; replaced with `WITH CHECK (false)` — all inserts via service role edge functions | `20260316320000_fix_messaging_audit_findings.sql` |
+| MSG-M4 | MEDIUM | `mark-messages-read` now uses anon key for JWT verification, service role only for DB operations | `mark-messages-read/index.ts` |
+| MSG-L1 | LOW | Internal messages realtime subscription filtered by `recipient_user_id` instead of org-wide | `useInternalMessages.ts` |
+| MSG-L2 | LOW | Added body-length (10KB) and subject-length (500 char) validation to send-message, send-parent-message, send-bulk-message | `send-message/index.ts`, `send-parent-message/index.ts`, `send-bulk-message/index.ts` |
+| MSG-L3 | LOW | `useDeleteInternalMessage` now scopes delete to `sender_user_id` | `useInternalMessages.ts` |
+| MSG-L4 | LOW | NotificationBell now aggregates unread parent replies + payment notifications alongside internal messages | `NotificationBell.tsx`, new `useStaffNotifications.ts` |
+| MSG-L5 | LOW | `internal_messages` sender_role/recipient_role CHECK constraints updated to include 'finance' | `20260316320000_fix_messaging_audit_findings.sql` |
 
-### Priority Fixes (Pre-Launch)
-
-1. **MSG-H1**: Lock down `payment_notifications` INSERT policy — replace `WITH CHECK (true)` with `WITH CHECK (false)` for authenticated role (service role already bypasses RLS)
-2. **MSG-H2**: Add DELETE policy on `internal_messages` — allow sender to delete own messages + admin override
-3. **MSG-M1**: Fix `isNotificationEnabled()` to return `false` for `email_marketing` when no preferences row exists (GDPR compliance)
-4. **MSG-M2**: Add `is_org_member()` check to `notification_preferences` INSERT policy
-5. **MSG-M3**: Restrict `message_log` INSERT policy to `is_org_staff()` instead of `is_org_member()`
-6. **MSG-M4**: Use anon key for JWT verification in `mark-messages-read`, not service role key
+### Quality Gates
+- `npm run typecheck` — PASS
+- `npm run build` — PASS
 
 ### What's Working Well
 - Finance role correctly excluded from bell + LoopAssist (handoff fix verified)
 - Parent messaging permissions (initiate, message teacher, message owner/admin) all enforced at both edge function and RLS levels
 - Teacher conversation visibility gated by `parent_can_message_teacher` org setting with automatic access revocation via RLS
-- Bulk messaging checks `email_marketing` preferences (despite default bug)
+- Bulk messaging correctly defaults marketing emails to opt-out (GDPR compliant)
 - All email content properly escaped against XSS
 - Rate limits configured for every messaging action type
-- Realtime subscriptions for instant unread count updates
+- Realtime subscriptions for instant unread count updates (now properly scoped)
 - Threaded conversations with proper self-referential FKs
 - Optimistic UI updates with rollback on error
+- Notification bell aggregates all notification sources

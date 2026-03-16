@@ -35,21 +35,19 @@ export function useInternalMessages(view: 'inbox' | 'sent' = 'inbox') {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Realtime subscription for instant internal message updates
-  // TODO (PERF-M5): Subscribes to all INSERT events on internal_messages for the org.
-  // At scale, consider filtering by recipient or debouncing invalidation.
+  // Realtime subscription for instant internal message updates (MSG-L1: filtered by recipient)
   useEffect(() => {
-    if (!currentOrg?.id) return;
+    if (!currentOrg?.id || !user?.id) return;
 
     const channel = supabase
-      .channel(`internal-messages-realtime-${currentOrg.id}`)
+      .channel(`internal-messages-realtime-${currentOrg.id}-${user.id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'internal_messages',
-          filter: `org_id=eq.${currentOrg.id}`,
+          filter: `recipient_user_id=eq.${user.id}`,
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['internal-messages'] });
@@ -61,7 +59,7 @@ export function useInternalMessages(view: 'inbox' | 'sent' = 'inbox') {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentOrg?.id, queryClient]);
+  }, [currentOrg?.id, user?.id, queryClient]);
 
   return useQuery({
     queryKey: ['internal-messages', currentOrg?.id, view, user?.id],
@@ -292,11 +290,13 @@ export function useDeleteInternalMessage() {
   return useMutation({
     mutationFn: async (messageId: string) => {
       if (!currentOrg?.id || !user?.id) throw new Error('No organisation or user');
+      // MSG-L3: scope delete to sender (RLS also enforces this, but belt-and-braces)
       const { error } = await supabase
         .from('internal_messages')
         .delete()
         .eq('id', messageId)
-        .eq('org_id', currentOrg.id);
+        .eq('org_id', currentOrg.id)
+        .eq('sender_user_id', user.id);
 
       if (error) throw error;
     },
