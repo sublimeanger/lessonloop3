@@ -55,6 +55,10 @@ export function InvoiceSettingsTab() {
     setReminderDays(
       (settingsData.overdue_reminder_days as number[] | null) || [7, 14, 30]
     );
+    const sd = settingsData as any;
+    setPlanThreshold(sd.default_plan_threshold_minor ? (sd.default_plan_threshold_minor / 100).toString() : '');
+    setPlanInstallments((sd.default_plan_installments || 3).toString());
+    setPlanFrequency(sd.default_plan_frequency || 'monthly');
     setHydrated(true);
   }
 
