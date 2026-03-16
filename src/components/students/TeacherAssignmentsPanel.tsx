@@ -98,7 +98,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
           )
         `)
         .eq('student_id', studentId)
-        .eq('lesson.org_id', currentOrg.id);
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
 
       // Deduplicate and count lessons per teacher
