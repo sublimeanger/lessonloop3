@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { STALE_REPORT, GC_REPORT } from '@/config/query-stale-times';
 
 export interface ExplorerNote {
@@ -44,8 +43,7 @@ export interface NotesStats {
 }
 
 export function useNotesExplorer(filters: NotesExplorerFilters, page: number = 0) {
-  const { currentOrg, isOrgAdmin, currentRole } = useOrg();
-  const { user } = useAuth();
+  const { currentOrg } = useOrg();
   const PAGE_SIZE = 50;
 
   return useQuery({
@@ -53,68 +51,29 @@ export function useNotesExplorer(filters: NotesExplorerFilters, page: number = 0
     queryFn: async (): Promise<{ notes: ExplorerNote[]; hasMore: boolean }> => {
       if (!currentOrg) return { notes: [], hasMore: false };
 
-      // Build the query using joins.
-      // lesson is !inner because we filter on lesson.start_at.
-      // teacher is a left join so notes without teacher_id still appear.
-      let query = supabase
-        .from('lesson_notes')
-        .select(`
-          *,
-          lesson:lessons!inner(id, title, start_at, status),
-          student:students(id, first_name, last_name),
-          teacher:teachers(id, display_name)
-        `)
-        .eq('org_id', currentOrg.id)
-        .gte('lesson.start_at', filters.startDate)
-        .lte('lesson.start_at', filters.endDate)
-        .order('created_at', { ascending: false })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-
-      if (filters.teacherId) {
-        query = query.eq('teacher_id', filters.teacherId);
+      // Use RPC for column-level privacy: teacher_private_notes is scoped
+      // server-side (teachers see only own, admins see all, parents see none).
+      const rpcFilters: Record<string, string> = {
+        start_date: filters.startDate,
+        end_date: filters.endDate,
+        limit: String(PAGE_SIZE + 1),
+        offset: String(page * PAGE_SIZE),
+      };
+      if (filters.teacherId) rpcFilters.teacher_id = filters.teacherId;
+      if (filters.studentId) rpcFilters.student_id = filters.studentId;
+      if (filters.visibilityFilter && filters.visibilityFilter !== 'all') {
+        rpcFilters.visibility = filters.visibilityFilter;
       }
 
-      if (filters.studentId) {
-        query = query.eq('student_id', filters.studentId);
-      }
-
-      if (filters.visibilityFilter === 'parent_visible') {
-        query = query.eq('parent_visible', true);
-      } else if (filters.visibilityFilter === 'private') {
-        query = query.eq('parent_visible', false);
-        // Teachers should only see their own private notes
-        if (currentRole === 'teacher' && filters.teacherId) {
-          query = query.eq('teacher_id', filters.teacherId);
-        }
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc('get_lesson_notes_for_staff', {
+        p_org_id: currentOrg.id,
+        p_filters: rpcFilters,
+      });
       if (error) throw error;
 
-      const raw = data || [];
-
-      // Map to flat structure
-      let notes: ExplorerNote[] = raw.map((row: any) => ({
-        id: row.id,
-        lesson_id: row.lesson_id,
-        student_id: row.student_id,
-        teacher_id: row.teacher_id,
-        org_id: row.org_id,
-        content_covered: row.content_covered,
-        homework: row.homework,
-        focus_areas: row.focus_areas,
-        engagement_rating: row.engagement_rating,
-        teacher_private_notes: row.teacher_private_notes,
-        parent_visible: row.parent_visible,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        lesson_title: row.lesson?.title || '',
-        lesson_start_at: row.lesson?.start_at || '',
-        lesson_status: row.lesson?.status || '',
-        student_first_name: row.student?.first_name || null,
-        student_last_name: row.student?.last_name || null,
-        teacher_display_name: row.teacher?.display_name || null,
-      }));
+      const raw = (data || []) as ExplorerNote[];
+      const hasMore = raw.length > PAGE_SIZE;
+      let notes = hasMore ? raw.slice(0, PAGE_SIZE) : raw;
 
       // Client-side text search
       if (filters.searchQuery) {
@@ -128,16 +87,7 @@ export function useNotesExplorer(filters: NotesExplorerFilters, page: number = 0
         );
       }
 
-      // Hide private notes from other teachers (non-admins)
-      if (!isOrgAdmin && user) {
-        notes = notes.map(n => {
-          // Need to check if this note belongs to the current user's teacher record
-          // For simplicity, we'll rely on RLS — but hide private notes visually if not the author
-          return n;
-        });
-      }
-
-      return { notes, hasMore: raw.length === PAGE_SIZE };
+      return { notes, hasMore };
     },
     enabled: !!currentOrg && !!filters.startDate && !!filters.endDate,
     staleTime: STALE_REPORT,
@@ -146,7 +96,7 @@ export function useNotesExplorer(filters: NotesExplorerFilters, page: number = 0
 }
 
 export function useNotesStats(filters: NotesExplorerFilters) {
-  const { currentOrg, currentRole } = useOrg();
+  const { currentOrg } = useOrg();
 
   return useQuery({
     queryKey: ['notes-stats', currentOrg?.id, filters.startDate, filters.endDate, filters.teacherId, filters.studentId, filters.visibilityFilter, filters.searchQuery],
