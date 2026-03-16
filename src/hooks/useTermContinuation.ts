@@ -721,34 +721,29 @@ export function useBulkProcessContinuation() {
 
       const parts: string[] = [];
       if (data.extendedCount > 0) {
-        parts.push(`${data.extendedCount} student${data.extendedCount !== 1 ? 's' : ''} extended`);
+        parts.push(`${data.extendedCount} student${data.extendedCount !== 1 ? 's' : ''} continued`);
+      }
+      if (data.lessonsCreated > 0) {
+        parts.push(`${data.lessonsCreated} lesson${data.lessonsCreated !== 1 ? 's' : ''} created for next term`);
       }
       if (data.withdrawnCount > 0) {
         parts.push(`${data.withdrawnCount} withdrawal${data.withdrawnCount !== 1 ? 's' : ''} processed`);
       }
 
-      // FIX 1: Show conflict warnings
+      // Show conflict warnings separately
       if (data.conflictWarnings && data.conflictWarnings.length > 0) {
         const unique = [...new Set(data.conflictWarnings)];
         toast({
           title: 'Schedule conflicts detected',
           description: unique.slice(0, 3).join('; ') + (unique.length > 3 ? `… and ${unique.length - 3} more` : ''),
-          variant: 'warning' as any,
+          variant: 'destructive',
         });
       }
 
       toast({
         title: 'Processing complete',
-        description: parts.join(', ') || `${data.processedCount} responses processed`,
+        description: parts.join(' — ') || `${data.processedCount} responses processed`,
       });
-
-      if (data.extendedCount > 0) {
-        toast({
-          title: 'Lessons extended',
-          description: `Recurrence dates extended and lesson rows materialised for ${data.extendedCount} student(s). Verify in calendar.`,
-          variant: 'default',
-        });
-      }
     },
     onError: (error) => {
       toast({

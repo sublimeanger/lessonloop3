@@ -79,6 +79,8 @@ const STATUS_BADGE: Record<
   reminding: { label: 'Reminding', variant: 'default' },
   deadline_passed: { label: 'Deadline Passed', variant: 'outline' },
   completed: { label: 'Completed', variant: 'secondary' },
+  failed: { label: 'Failed', variant: 'destructive' },
+  partial: { label: 'Partial', variant: 'outline' },
 };
 
 export default function Continuation() {
