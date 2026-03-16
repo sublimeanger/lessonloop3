@@ -241,6 +241,30 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
 
       <TabsContent value="invoices">
         <SectionErrorBoundary name="Invoices">
+          {isOrgAdmin && (
+            <Card className="mb-4">
+              <CardContent className="pt-4 pb-3">
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
+                  <Label htmlFor="plan-pref" className="text-sm font-medium whitespace-nowrap">
+                    Payment plan preference
+                  </Label>
+                  <Select value={planPref} onValueChange={handlePlanPrefChange} disabled={savingPref}>
+                    <SelectTrigger id="plan-pref" className="w-full sm:w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Use default</SelectItem>
+                      <SelectItem value="always">Always offer plan</SelectItem>
+                      <SelectItem value="never">Never offer plan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">
+                    Controls whether billing runs auto-split invoices for this student
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Invoices</CardTitle>
