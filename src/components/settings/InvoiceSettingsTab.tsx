@@ -6,11 +6,19 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Plus, X } from 'lucide-react';
+import { currencySymbol } from '@/lib/utils';
 
 const COMMON_REMINDER_PRESETS = [7, 14, 21, 30, 60, 90];
 
