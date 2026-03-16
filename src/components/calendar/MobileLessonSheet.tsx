@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Clock, User, MapPin, Repeat, Users, Edit2, Video, ExternalLink } from 'lucide-react';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { TeacherLink } from '@/components/shared/TeacherLink';
+import { LocationLink } from '@/components/shared/LocationLink';
 
 interface MobileLessonSheetProps {
   lesson: LessonWithDetails | null;
