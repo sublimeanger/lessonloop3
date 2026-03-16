@@ -3,8 +3,6 @@ import { cn } from '@/lib/utils';
 import { format, parseISO, subDays, addDays, startOfDay, differenceInMinutes, differenceInHours, isBefore } from 'date-fns';
 import { useCalendarSync } from '@/hooks/useCalendarSync';
 import { useZoomSync } from '@/hooks/useZoomSync';
-import { useQuery } from '@tanstack/react-query';
-import { STALE_STABLE } from '@/config/query-stale-times';
 import { LessonWithDetails, AttendanceStatus } from './types';
 import { RecurringActionDialog, RecurringActionMode } from './RecurringActionDialog';
 import { useOrg } from '@/contexts/OrgContext';
