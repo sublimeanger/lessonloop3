@@ -111,6 +111,9 @@ export default function PortalSchedule() {
   });
   const createRequest = useCreateMessageRequest();
 
+  // Fetch structured lesson notes visible to parents
+  const { data: parentNotes } = useParentLessonNotes(selectedChildId || undefined, currentOrg?.id);
+
   // Reschedule policy
   const reschedulePolicy = currentOrg?.parent_reschedule_policy || 'request_only';
   const canReschedule = reschedulePolicy !== 'admin_locked';
