@@ -348,7 +348,6 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
               type="submit"
               className="min-h-11 w-full sm:min-h-9 sm:w-auto"
               disabled={files.length === 0 || !allTitlesValid || isUploading || quotaExceeded}
-              onClick={handleSubmit}
             >
               {isUploading && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

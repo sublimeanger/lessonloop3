@@ -19,9 +19,10 @@ interface ResourcePreviewModalProps {
   title: string;
 }
 
-function isPreviewable(fileType: string): 'image' | 'pdf' | 'none' {
+function isPreviewable(fileType: string): 'image' | 'pdf' | 'video' | 'none' {
   if (fileType.startsWith('image/')) return 'image';
   if (fileType === 'application/pdf') return 'pdf';
+  if (fileType.startsWith('video/')) return 'video';
   return 'none';
 }
 
@@ -76,7 +77,7 @@ export function ResourcePreviewModal({
   const dialogSize =
     previewType === 'pdf'
       ? 'h-screen w-screen max-w-none rounded-none border-0 p-3 sm:h-[85vh] sm:max-w-[900px] sm:rounded-lg sm:border sm:p-6'
-      : previewType === 'image'
+      : previewType === 'image' || previewType === 'video'
         ? 'h-screen w-screen max-w-none rounded-none border-0 p-3 sm:max-h-[90vh] sm:max-w-[90vw] sm:rounded-lg sm:border sm:p-6'
         : 'h-screen w-screen max-w-none rounded-none border-0 p-3 sm:max-w-[450px] sm:rounded-lg sm:border sm:p-6';
 
@@ -104,6 +105,14 @@ export function ResourcePreviewModal({
               title={title}
               className="h-full w-full rounded-md border"
             />
+          ) : previewType === 'video' && signedUrl ? (
+            <video
+              src={signedUrl}
+              controls
+              className="max-h-[calc(100vh-11rem)] max-w-full rounded-md sm:max-h-[75vh]"
+            >
+              Your browser does not support video playback.
+            </video>
           ) : (
             <div className="text-center space-y-3 py-8">
               <Eye className="h-10 w-10 mx-auto text-muted-foreground/50" />

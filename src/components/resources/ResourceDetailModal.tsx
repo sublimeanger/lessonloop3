@@ -372,7 +372,7 @@ export function ResourceDetailModal({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 opacity-0 group-hover/share:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                            className="h-8 w-8 opacity-100 sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover/share:opacity-100 transition-opacity text-destructive hover:text-destructive"
                             onClick={() =>
                               removeShareMutation.mutate({
                                 resourceId: resource.id,
