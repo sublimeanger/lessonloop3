@@ -617,13 +617,14 @@ export function useDashboardStats() {
       const invoiceStats = invoiceStatsRaw as {
         total_outstanding: number;
         overdue: number;
+        overdue_count: number;
         paid_total: number;
       } | null;
 
       const todayLessons = todayLessonsData?.length || 0;
       const activeStudents = activeStudentsCount || 0;
       const outstandingAmount = (invoiceStats?.total_outstanding ?? 0) / 100;
-      const overdueCount = invoiceStats?.overdue ?? 0;
+      const overdueCount = invoiceStats?.overdue_count ?? 0;
       
       let hoursThisWeek = 0;
       let lessonsThisWeek = 0;

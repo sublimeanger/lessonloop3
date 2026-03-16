@@ -48,6 +48,9 @@ export function FinanceDashboard({ firstName }: FinanceDashboardProps) {
               firstName={firstName}
               currencyCode={currentOrg?.currency_code}
               outstandingAmount={stats?.outstandingAmount}
+              hasStudents={(stats?.activeStudents ?? 0) > 0}
+              hasLessons={(stats?.totalLessons ?? 0) > 0}
+              timezone={currentOrg?.timezone}
             />
           </SectionErrorBoundary>
         </motion.div>
