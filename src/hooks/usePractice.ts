@@ -492,6 +492,7 @@ export function useAddPracticeFeedback() {
 // Mutation to update an assignment
 export function useUpdateAssignment() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
 
   return useMutation({
     mutationFn: async ({ id, ...data }: {
@@ -503,10 +504,12 @@ export function useUpdateAssignment() {
       end_date?: string | null;
       status?: string;
     }) => {
+      if (!currentOrg?.id) throw new Error('No organisation context');
       const { error } = await supabase
         .from('practice_assignments')
         .update(data as any)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -519,13 +522,16 @@ export function useUpdateAssignment() {
 // Mutation to delete an assignment
 export function useDeleteAssignment() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!currentOrg?.id) throw new Error('No organisation context');
       const { error } = await supabase
         .from('practice_assignments')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: () => {
