@@ -22,11 +22,13 @@ jobs:
       - run: npm ci
       
       - run: npm run lint
-      
-      - run: npm run test
-      
+
+      - run: npm run typecheck
+
       - run: npm run build
         env:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: placeholder
           VITE_SUPABASE_PROJECT_ID: placeholder
+
+      - run: npm run test

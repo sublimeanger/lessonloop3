@@ -53,7 +53,7 @@ Key Features
 * Payroll — teacher earnings, rate calculation, open slot exclusion, CSV export
 Development
 Prerequisites
-* Node.js 18+
+* Node.js 20+
 * Supabase CLI
 * Stripe CLI (for webhook testing)
 Setup
