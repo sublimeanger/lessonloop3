@@ -212,7 +212,7 @@ function calculatePayroll(
         case 'percentage': {
           const lessonRevenue = invoiceItemsMap.get(lesson.id);
           if (lessonRevenue !== undefined) {
-            calculatedPay = (teacherInfo.payRateValue / 100) * (lessonRevenue / 100);
+            calculatedPay = Math.round((teacherInfo.payRateValue / 100) * lessonRevenue);
           } else {
             calculatedPay = 0;
             hasWarning = true;
