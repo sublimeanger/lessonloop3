@@ -71,6 +71,8 @@ export default function PortalHome() {
   const { portalLink } = usePortalLink();
   const [searchParams, setSearchParams] = useSearchParams();
   const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [declineConfirmId, setDeclineConfirmId] = useState<string | null>(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const makeupHandled = useRef(false);
