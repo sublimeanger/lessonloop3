@@ -105,7 +105,7 @@ export function LessonDetailSidePanel({
   const statusInfo = lesson ? STATUS_STYLES[lesson.status] || STATUS_STYLES.scheduled : STATUS_STYLES.scheduled;
   const teacherName = lesson?.teacher?.full_name || lesson?.teacher?.email || 'Unknown';
   const teacherInitials = teacherName.split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
-  const recurrenceLabel = lesson?.recurrence_id ? 'Recurring lesson' : null;
+  const isRecurring = !!lesson?.recurrence_id;
   const isCancelled = lesson?.status === 'cancelled';
 
   return (
