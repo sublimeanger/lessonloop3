@@ -99,7 +99,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="min-h-[44px] min-w-[44px]"
                   onClick={clearMessages}
                   title="Clear chat"
                 >
