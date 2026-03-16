@@ -27,6 +27,8 @@ import { parseISO, isAfter, isBefore, startOfToday, differenceInHours, startOfWe
 import { formatInTimeZone } from 'date-fns-tz';
 import { useParentLessons, useCreateMessageRequest, useGuardianId } from '@/hooks/useParentPortal';
 import { useOrg } from '@/contexts/OrgContext';
+import { useParentLessonNotes } from '@/hooks/useLessonNotes';
+import { LessonNoteCard } from '@/components/portal/LessonNoteCard';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { RescheduleSlotPicker } from '@/components/portal/RescheduleSlotPicker';
 import { useToast } from '@/hooks/use-toast';
