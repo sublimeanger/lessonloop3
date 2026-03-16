@@ -245,9 +245,9 @@ function PayrollTeacherList({
           onOpenChange={() => toggleTeacher(teacher.teacherId)}
         >
           <div className="rounded-xl border bg-card">
-            <CollapsibleTrigger className="flex w-full items-center justify-between p-4 hover:bg-muted/50">
+            <CollapsibleTrigger className="flex w-full flex-col gap-3 p-4 hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
                   {teacher.teacherName[0]}
                 </div>
                 <div className="text-left">
@@ -263,23 +263,23 @@ function PayrollTeacherList({
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Lessons</p>
+              <div className="flex items-center justify-between gap-4 pl-14 sm:gap-6 sm:pl-0">
+                <div className="text-left sm:text-right">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Lessons</p>
                   <p className="font-medium">{teacher.completedLessons}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Hours</p>
+                <div className="text-left sm:text-right">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Hours</p>
                   <p className="font-medium">{teacher.totalHours}</p>
                 </div>
-                <div className="text-right min-w-[100px]">
-                  <p className="text-sm text-muted-foreground">Gross Owed</p>
+                <div className="text-left sm:text-right sm:min-w-[100px]">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Gross Owed</p>
                   <p className="font-bold text-primary">{fmtCurrency(teacher.grossOwed)}</p>
                 </div>
                 {expandedTeachers.has(teacher.teacherId) ? (
-                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground" />
                 ) : (
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
                 )}
               </div>
             </CollapsibleTrigger>
