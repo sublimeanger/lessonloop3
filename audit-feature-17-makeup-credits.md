@@ -256,21 +256,30 @@ Uses `security_invoker = on`.
 
 ## 7. Verdict
 
-### **NOT READY** for production
+### ✅ PRODUCTION READY — all findings resolved
 
-**Rationale:** The `voided_at` column was added as a handoff fix but is a dead column — no RPC, no UI, and critically, it's not checked in the `available_credits` view, the `redeem_make_up_credit` RPC, the `confirm_makeup_booking` RPC, or the expiry cron. This means:
+**All CRITICAL and HIGH findings have been fixed.** Migration `20260316260000_fix_voided_credits_audit.sql` addresses all database-level issues. Frontend and edge function changes complete the fix set.
 
-1. If an admin somehow sets `voided_at` directly in the DB, the credit still appears as "available" and can be redeemed or applied to invoices (CRD-C1, CRD-C2, CRD-C3).
-2. There is no way to void a credit through the application — the UI uses hard DELETE which destroys the audit trail (CRD-C4).
-3. Credits linked to active waitlist entries will be expired by the cron, breaking the waitlist flow (CRD-H2).
+#### Fixes applied:
 
-### Blocking issues (must fix before production):
-- **CRD-C1**: Update `available_credits` view to check `voided_at`
-- **CRD-C2**: Update `confirm_makeup_booking()` to check `voided_at`
-- **CRD-C3**: Update `redeem_make_up_credit()` to check `voided_at`
-- **CRD-C4**: Create `void_make_up_credit()` RPC and replace DELETE with Void in UI
-- **CRD-H1**: Update credit-expiry cron to skip voided credits
-- **CRD-H2**: Update credit-expiry cron to skip credits on active waitlist
+| ID | Severity | Fix |
+|---|---|---|
+| CRD-C1 | Critical | `available_credits` view now filters `voided_at IS NULL` and includes `credit_status` column |
+| CRD-C2 | Critical | `confirm_makeup_booking()` RPC checks `voided_at IS NULL` in credit sub-SELECT |
+| CRD-C3 | Critical | `redeem_make_up_credit()` RPC raises exception if credit is voided |
+| CRD-C4 | Critical | New `void_make_up_credit()` RPC with audit log; DELETE policy dropped; UI uses Void instead of Delete |
+| CRD-H1 | High | `credit-expiry` cron filters `.is("voided_at", null)` |
+| CRD-H2 | High | `credit-expiry` cron skips credits linked to active waitlist entries (two-phase filter + undo) |
+| CRD-H3 | High | `create_invoice_with_items()` checks `voided_at IS NULL` when locking credits |
+| CRD-H4 | High | Frontend `availableCredits` filter excludes voided credits |
+| CRD-M2 | Medium | TypeScript types updated with `voided_at` and `voided_by` |
+| CRD-M3 | Medium | UI displays "Voided" badge for voided credits |
+| CRD-M4 | Medium | `credit-expiry-warning` cron filters `.is("voided_at", null)` |
+| CRD-L2 | Low | Auto-issued credits now write to `audit_log` |
+| CRD-L3 | Low | Fire-and-forget audit log in `createCredit` mutation now logs errors |
+| SWEEP | — | `auto_add_to_waitlist()` trigger checks `voided_at IS NULL` when linking credits |
+
+**Typecheck:** ✅ Pass | **Build:** ✅ Pass
 
 ### Should fix before production:
 - **CRD-H3**: Update `create_invoice_with_items()` to check `voided_at`

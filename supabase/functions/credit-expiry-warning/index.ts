@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
     `)
     .is("redeemed_at", null)
     .is("expired_at", null)
+    .is("voided_at", null)
     .not("expires_at", "is", null)
     .gte("expires_at", now)
     .lte("expires_at", threeDaysFromNow);
