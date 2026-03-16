@@ -1722,14 +1722,14 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
         });
       }
       if (status === 401) {
-        console.error("Anthropic API key invalid");
-        return new Response(JSON.stringify({ error: "AI service configuration error" }), {
+        console.error("[looopassist-chat] Anthropic API key rejected (401). Verify ANTHROPIC_API_KEY secret is valid and not expired.");
+        return new Response(JSON.stringify({ error: "AI service configuration error. Please contact support." }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const errorText = response ? await response.text() : "No response";
-      console.error("Anthropic API error:", status, errorText);
+      console.error("[looopassist-chat] Anthropic API error:", status, errorText);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -306,8 +306,15 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (response.status === 401) {
+        console.error("[parent-loopassist-chat] Anthropic API key rejected (401). Verify ANTHROPIC_API_KEY secret is valid and not expired.");
+        return new Response(JSON.stringify({ error: "AI service configuration error. Please contact support." }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const errorText = await response.text();
-      console.error("Anthropic API error:", response.status, errorText);
+      console.error("[parent-loopassist-chat] Anthropic API error:", response.status, errorText);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
