@@ -11,6 +11,7 @@ import { NotesStatsBar } from '@/components/notes/NotesStatsBar';
 import { NoteCard } from '@/components/notes/NoteCard';
 import { useNotesExplorer, useNotesStats, type NotesExplorerFilters, type ExplorerNote } from '@/hooks/useNotesExplorer';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useOrgTimezone } from '@/hooks/useOrgTimezone';
 import { useTeachers } from '@/hooks/useTeachers';
 import { formatDateUK, sanitiseCSVCell } from '@/lib/utils';
