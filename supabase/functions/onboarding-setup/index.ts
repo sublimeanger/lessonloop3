@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
     }
 
     // Validate timezone if provided — must be a well-known IANA format
-    const VALID_TZ_PATTERN = /^[A-Za-z]+\/[A-Za-z_\/\-]+$/;
+    const VALID_TZ_PATTERN = /^[A-Za-z]+\/[A-Za-z_/-]+$/;
     if (body.timezone && !VALID_TZ_PATTERN.test(body.timezone)) {
       return new Response(
         JSON.stringify({ error: 'Invalid timezone. Must be an IANA timezone (e.g. Europe/London).' }),
