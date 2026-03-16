@@ -101,13 +101,6 @@ serve(async (req) => {
     // Process refund via Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Determine if this is a Connect payment
-    const { data: orgConnect } = await supabase
-      .from("organisations")
-      .select("stripe_connect_account_id")
-      .eq("id", payment.org_id)
-      .single();
-
     // Insert a pending refund row BEFORE calling Stripe API
     const { data: refundRecord, error: refundInsertError } = await supabase
       .from("refunds")
@@ -138,15 +131,13 @@ serve(async (req) => {
       reason: "requested_by_customer",
     };
 
+    // PAY-H3 FIX: Always refund on the platform account.
+    // LessonLoop uses destination charges (transfer_data.destination) for Connect,
+    // so refunds must be issued on the platform — NOT on the connected account.
+    // Stripe automatically reverses the transfer to the connected account.
     let stripeRefund: Stripe.Refund;
     try {
-      if (orgConnect?.stripe_connect_account_id) {
-        stripeRefund = await stripe.refunds.create(refundParams, {
-          stripeAccount: orgConnect.stripe_connect_account_id,
-        });
-      } else {
-        stripeRefund = await stripe.refunds.create(refundParams);
-      }
+      stripeRefund = await stripe.refunds.create(refundParams);
     } catch (stripeErr) {
       // Stripe rejected the refund — mark DB row as failed
       await supabase.from("refunds").update({ status: "failed" }).eq("id", refundRecord.id);
