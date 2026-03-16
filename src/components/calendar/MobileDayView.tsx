@@ -4,6 +4,7 @@ import { LessonWithDetails } from './types';
 import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { Calendar as CalendarIcon, Check } from 'lucide-react';
+import { TeacherLink } from '@/components/shared/TeacherLink';
 import { useBulkSelection } from './BulkSelectionContext';
 
 function resolveColour(
