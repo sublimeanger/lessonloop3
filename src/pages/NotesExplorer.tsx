@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { subDays, startOfDay, endOfDay, format, parseISO } from 'date-fns';
 import { FileText, Download } from 'lucide-react';
 import { usePageMeta } from '@/hooks/usePageMeta';
@@ -11,6 +12,7 @@ import { NotesStatsBar } from '@/components/notes/NotesStatsBar';
 import { NoteCard } from '@/components/notes/NoteCard';
 import { useNotesExplorer, useNotesStats, type NotesExplorerFilters, type ExplorerNote } from '@/hooks/useNotesExplorer';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useOrgTimezone } from '@/hooks/useOrgTimezone';
 import { useTeachers } from '@/hooks/useTeachers';
 import { formatDateUK, sanitiseCSVCell } from '@/lib/utils';
@@ -26,8 +28,18 @@ export default function NotesExplorer() {
   usePageMeta('Lesson Notes Explorer | LessonLoop', 'Review all lesson notes across students and dates');
 
   const { currentOrg, isOrgAdmin, currentRole } = useOrg();
+  const { user } = useAuth();
   const { timezone, formatDate, formatTime } = useOrgTimezone();
   const isTeacherRole = currentRole === 'teacher';
+
+  // Resolve current user's teacher ID for private note visibility
+  const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isTeacherRole || !user || !currentOrg) return;
+    supabase
+      .rpc('get_teacher_id_for_user', { _user_id: user.id, _org_id: currentOrg.id })
+      .then(({ data: teacherId }) => { if (teacherId) setCurrentTeacherId(teacherId); });
+  }, [isTeacherRole, user, currentOrg]);
 
   const [filters, setFilters] = useState<NotesExplorerFilters>(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
@@ -196,6 +208,7 @@ export default function NotesExplorer() {
                       key={note.id}
                       note={note}
                       isAdmin={isOrgAdmin}
+                      currentTeacherId={currentTeacherId}
                       timezone={timezone as string}
                     />
                   ))}

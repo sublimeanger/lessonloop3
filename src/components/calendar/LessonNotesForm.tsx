@@ -11,6 +11,16 @@ import {
 } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { FileText, ChevronDown, Loader2, Save, Lock, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EngagementRating } from './EngagementRating';
@@ -65,6 +75,7 @@ export function LessonNotesForm({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [perStudentMode, setPerStudentMode] = useState(false);
   const [activeStudentTab, setActiveStudentTab] = useState<string>('lesson');
+  const [confirmSaveKey, setConfirmSaveKey] = useState<string | null>(null);
 
   // Form state: 'lesson' key for whole-lesson, student IDs for per-student
   const [forms, setForms] = useState<Record<string, NoteFormState>>({
@@ -143,22 +154,9 @@ export function LessonNotesForm({
     }));
   }, []);
 
-  const handleSave = useCallback(async (key: string) => {
+  const executeSave = useCallback(async (key: string) => {
     const form = forms[key];
     if (!form) return;
-
-    // Don't save if all fields are empty
-    const hasContent = form.contentCovered || form.homework || form.focusAreas ||
-      form.engagementRating || form.teacherPrivateNotes;
-    if (!hasContent) return;
-
-    // FIX 6: Warn when parent_visible is on and private notes exist
-    if (form.parentVisible && form.teacherPrivateNotes) {
-      const confirmed = window.confirm(
-        'This note will be visible to parents immediately. Private notes are hidden but the note content will be shared. Continue?'
-      );
-      if (!confirmed) return;
-    }
 
     await saveMutation.mutateAsync({
       id: form.id,
@@ -172,6 +170,23 @@ export function LessonNotesForm({
       parent_visible: form.parentVisible,
     });
   }, [forms, lessonId, saveMutation]);
+
+  const handleSave = useCallback(async (key: string) => {
+    const form = forms[key];
+    if (!form) return;
+
+    const hasContent = form.contentCovered || form.homework || form.focusAreas ||
+      form.engagementRating || form.teacherPrivateNotes;
+    if (!hasContent) return;
+
+    // Warn when parent_visible is on and private notes exist
+    if (form.parentVisible && form.teacherPrivateNotes) {
+      setConfirmSaveKey(key);
+      return;
+    }
+
+    await executeSave(key);
+  }, [forms, executeSave]);
 
   const handleSaveAll = useCallback(async () => {
     if (perStudentMode) {
@@ -281,6 +296,7 @@ export function LessonNotesForm({
   }
 
   return (
+    <>
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
         <button
@@ -366,5 +382,28 @@ export function LessonNotesForm({
         </div>
       </CollapsibleContent>
     </Collapsible>
+
+    <AlertDialog open={!!confirmSaveKey} onOpenChange={(open) => { if (!open) setConfirmSaveKey(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Share note with parents?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This note is marked as visible to parents. The main content (what was covered, homework, focus areas) will be shared immediately. Private notes remain hidden from parents.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              if (confirmSaveKey) await executeSave(confirmSaveKey);
+              setConfirmSaveKey(null);
+            }}
+          >
+            Save &amp; Share
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
