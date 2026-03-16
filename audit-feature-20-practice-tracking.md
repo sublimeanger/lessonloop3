@@ -139,29 +139,27 @@
 
 ## 5. Verdict
 
-### Overall: PASS with caveats
+### Overall: PRODUCTION READY
 
-The practice tracking feature has a solid architecture with proper RLS separation between staff and parents, cross-org isolation, and a well-designed streak system with milestone notifications.
+All HIGH and MEDIUM findings have been resolved. LOW findings F5, F6, F8 also fixed.
 
-### Must Fix (before production)
+### Resolution Summary
 
-| # | Issue | Risk |
-|---|-------|------|
-| **F1** | Backdated-log recalculation regression | Streak counts will be wrong when parents log practice for previous days (common use case). The webhook migration (`20260303180000`) must be updated to include the backdated recalculation logic from `20260222225228`. |
+| # | Severity | Status | Fix (migration `20260316310000`) |
+|---|----------|--------|----------------------------------|
+| **F1** | HIGH | FIXED | Restored backdated-log recalculation from `20260222225228`, merged with pg_net webhook from `20260303180000`. Extracted `_notify_streak_milestone()` helper to DRY milestone logic across both code paths. |
+| **F2** | MEDIUM | FIXED | Added `student_id` ↔ `org_id` validation at top of `update_practice_streak()`. Looks up `students.org_id` and raises exception on mismatch. |
+| **F3** | MEDIUM | FIXED | Dropped all INSERT/UPDATE RLS policies on `practice_streaks`. Only the `SECURITY DEFINER` trigger can write. No authenticated user can directly insert/update streak records via PostgREST. |
+| **F4** | MEDIUM | FIXED | `reset_stale_streaks()` now uses `NOW() AT TIME ZONE COALESCE(o.timezone, 'Europe/London')` per-org instead of a flat `CURRENT_DATE - 2` grace window. Streak trigger uses org timezone for date comparison context. |
+| **F5** | LOW | FIXED | Added DELETE policies on `practice_logs`: staff can delete any in org, parents can delete own children's logs. |
+| **F6** | LOW | FIXED | Added FK constraint `practice_assignments.teacher_user_id → auth.users(id) ON DELETE SET NULL`. |
+| **F7** | LOW | DEFERRED | Client-side deduplication race condition — low risk, no DB constraint added to avoid blocking legitimate same-day multi-session logging. |
+| **F8** | LOW | FIXED | Added `.eq('org_id', currentOrg.id)` to `useUpdateAssignment` and `useDeleteAssignment` mutations in `src/hooks/usePractice.ts`. |
 
-### Should Fix (soon)
+### Files Changed
+- `supabase/migrations/20260316310000_fix_practice_tracking_audit.sql` — all DB fixes (F1–F6)
+- `src/hooks/usePractice.ts` — frontend org_id scoping (F8)
 
-| # | Issue | Risk |
-|---|-------|------|
-| **F2** | `student_id`/`org_id` mismatch in trigger | Low probability but could create cross-org streak records. Add a check that `student_id` belongs to `org_id`. |
-| **F4** | Timezone-naive streaks | Users in extreme timezones (UTC+12/UTC-12) may see incorrect streak behavior. Consider storing user timezone on org or student and using it for date calculations. |
-| **F3/Note** | `practice_streaks` INSERT open to any org member | Parents could fabricate streak records via direct INSERT. Consider restricting to staff-only or removing client write policies (trigger handles all writes). |
-
-### Nice to Have
-
-| # | Issue |
-|---|-------|
-| **F5** | Add admin DELETE policy on `practice_logs` for error correction |
-| **F6** | Add FK on `teacher_user_id` → `auth.users(id)` |
-| **F7** | Add DB-level dedup constraint (e.g., unique on `student_id, practice_date, duration_minutes, created_at` truncated to minute) |
-| **F8** | Add `org_id` scoping to `useUpdateAssignment` and `useDeleteAssignment` mutations |
+### Verification
+- `npm run typecheck` — PASS
+- `npm run build` — PASS
