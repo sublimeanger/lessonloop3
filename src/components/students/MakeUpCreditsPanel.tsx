@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Gift, Calendar, Clock, Trash2, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Gift, Calendar, Clock, Ban, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { formatCurrencyMinor } from '@/lib/utils';
 import { IssueCreditModal } from './IssueCreditModal';
 
@@ -17,9 +17,9 @@ interface MakeUpCreditsPanelProps {
 
 export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPanelProps) {
   const { currentOrg } = useOrg();
-  const { credits, availableCredits, totalAvailableValue, isLoading, deleteCredit } = useMakeUpCredits(studentId);
+  const { credits, availableCredits, totalAvailableValue, isLoading, voidCredit } = useMakeUpCredits(studentId);
   const [issueModalOpen, setIssueModalOpen] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [voidConfirmId, setVoidConfirmId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(10);
 
   const visibleCredits = useMemo(() => (credits || []).slice(0, visibleCount), [credits, visibleCount]);
@@ -29,7 +29,11 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
 
   const maxCredits = (currentOrg as any)?.max_credits_per_term ?? null;
 
+  // CRD-M3 FIX: handle voided_at in credit status
   const getCreditStatus = (credit: MakeUpCredit): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } => {
+    if (credit.voided_at) {
+      return { label: 'Voided', variant: 'destructive' };
+    }
     if (credit.redeemed_at) {
       return { label: 'Redeemed', variant: 'secondary' };
     }
@@ -43,7 +47,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
   };
 
   const isExpiringSoon = (credit: MakeUpCredit): boolean => {
-    if (!credit.expires_at || credit.redeemed_at || credit.expired_at || credit.applied_to_invoice_id) return false;
+    if (!credit.expires_at || credit.redeemed_at || credit.expired_at || credit.voided_at || credit.applied_to_invoice_id) return false;
     const daysLeft = differenceInDays(parseISO(credit.expires_at), new Date());
     return daysLeft >= 0 && daysLeft <= 7;
   };
@@ -52,10 +56,11 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
     return !!(credit.expired_at || (credit.expires_at && new Date(credit.expires_at) < new Date()));
   };
 
-  const handleDelete = async () => {
-    if (deleteConfirmId) {
-      await deleteCredit.mutateAsync(deleteConfirmId);
-      setDeleteConfirmId(null);
+  // CRD-C4 FIX: use void instead of delete
+  const handleVoid = async () => {
+    if (voidConfirmId) {
+      await voidCredit.mutateAsync(voidConfirmId);
+      setVoidConfirmId(null);
     }
   };
 
@@ -152,8 +157,8 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                 const daysLeft = credit.expires_at ? differenceInDays(parseISO(credit.expires_at), new Date()) : null;
 
                 return (
-                  <div 
-                    key={credit.id} 
+                  <div
+                    key={credit.id}
                     className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between ${
                       expired ? 'opacity-50 bg-muted/30' : ''
                     } ${expiringSoon ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/10' : ''}`}
@@ -171,27 +176,27 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                           </Badge>
                         )}
                       </div>
-                      
+
                       <div className="text-sm text-muted-foreground space-y-0.5">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5" />
                           Issued {format(parseISO(credit.issued_at), 'dd MMM yyyy')}
                         </div>
-                        
+
                         {credit.issued_for_lesson && (
                           <div className="text-xs">
                             For: {credit.issued_for_lesson.title} on{' '}
                             {format(parseISO(credit.issued_for_lesson.start_at), 'dd MMM')}
                           </div>
                         )}
-                        
+
                         {credit.expires_at && !expired && (
                           <div className={`flex items-center gap-1.5 ${expiringSoon ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
                             <Clock className="h-3.5 w-3.5" />
                             Expires {format(parseISO(credit.expires_at), 'dd MMM yyyy')}
                           </div>
                         )}
-                        
+
                         {credit.redeemed_at && credit.redeemed_lesson && (
                           <div className="flex items-center gap-1.5 text-success">
                             <CheckCircle2 className="h-3.5 w-3.5 text-success" />
@@ -199,21 +204,23 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                             {format(parseISO(credit.redeemed_lesson.start_at), 'dd MMM')}
                           </div>
                         )}
-                        
+
                         {credit.notes && (
                           <div className="italic mt-1">{credit.notes}</div>
                         )}
                       </div>
                     </div>
-                    
-                    {!credit.redeemed_at && !credit.applied_to_invoice_id && !expired && (
+
+                    {/* CRD-C4 FIX: Void button instead of Delete — only for unredeemed, non-voided credits */}
+                    {!credit.redeemed_at && !credit.applied_to_invoice_id && !credit.voided_at && !expired && (
                       <Button
                         variant="ghost"
                         size="icon-sm"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeleteConfirmId(credit.id)}
+                        onClick={() => setVoidConfirmId(credit.id)}
+                        title="Void credit"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Ban className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
@@ -241,14 +248,16 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
         studentName={studentName}
       />
 
-      <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
+      <AlertDialog open={!!voidConfirmId} onOpenChange={() => setVoidConfirmId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Credit</AlertDialogTitle>
+            <AlertDialogTitle>Void Credit</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this make-up credit? This cannot be undone.
+              Are you sure you want to void this make-up credit? The credit will be
+              marked as voided and any linked waitlist entries will be cancelled. This
+              preserves the audit trail (the credit record is not deleted).
               {(() => {
-                const credit = credits?.find(c => c.id === deleteConfirmId);
+                const credit = credits?.find(c => c.id === voidConfirmId);
                 return credit ? ` This credit is worth ${fmtCurrency(credit.credit_value_minor)}.` : '';
               })()}
             </AlertDialogDescription>
@@ -256,11 +265,11 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleteCredit.isPending}
+              onClick={handleVoid}
+              disabled={voidCredit.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteCredit.isPending ? 'Deleting…' : 'Delete'}
+              {voidCredit.isPending ? 'Voiding…' : 'Void Credit'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

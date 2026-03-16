@@ -20,6 +20,8 @@ export interface MakeUpCredit {
   credit_value_minor: number;
   notes: string | null;
   created_by: string | null;
+  voided_at: string | null;
+  voided_by: string | null;
   created_at: string;
   updated_at: string;
   // Joined data
@@ -83,9 +85,11 @@ export function useMakeUpCredits(studentId?: string) {
 
   // Get available (unredeemed, non-expired, not applied to invoice) credits
   // Matches the logic in the available_credits database view
+  // CRD-H4 FIX: also exclude voided credits
   const availableCredits = credits?.filter(c =>
     !c.redeemed_at &&
     !c.expired_at &&
+    !c.voided_at &&
     !c.applied_to_invoice_id &&
     (!c.expires_at || new Date(c.expires_at) > new Date())
   ) || [];
@@ -128,7 +132,7 @@ export function useMakeUpCredits(studentId?: string) {
             issued_for_lesson_id: input.issued_for_lesson_id,
           } as any,
         })
-        .then(() => {});
+        .then(({ error: auditErr }) => { if (auditErr) console.error('Audit log error:', auditErr); });
 
       return data;
     },
@@ -164,24 +168,25 @@ export function useMakeUpCredits(studentId?: string) {
     },
   });
 
-  // Delete a credit (admin only)
-  const deleteCredit = useMutation({
+  // Void a credit (admin only — preserves audit trail, CRD-C4 FIX)
+  const voidCredit = useMutation({
     mutationFn: async (creditId: string) => {
       if (!currentOrg?.id) throw new Error('No org');
-      const { error } = await supabase
-        .from('make_up_credits')
-        .delete()
-        .eq('id', creditId)
-        .eq('org_id', currentOrg.id);
+      const { data, error } = await supabase.rpc('void_make_up_credit', {
+        _credit_id: creditId,
+        _org_id: currentOrg.id,
+      });
 
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
-      toast({ title: 'Credit deleted' });
+      queryClient.invalidateQueries({ queryKey: ['make_up_waitlist'] });
+      toast({ title: 'Credit voided' });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error deleting credit', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error voiding credit', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -218,7 +223,7 @@ export function useMakeUpCredits(studentId?: string) {
     refetch,
     createCredit,
     redeemCredit,
-    deleteCredit,
+    voidCredit,
     checkCreditEligibility,
   };
 }
