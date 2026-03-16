@@ -208,6 +208,10 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
       endDate: format(endOfMonth(lastMonth), 'yyyy-MM-dd'),
       termId: '',
       billingMode: 'delivered' as BillingMode,
+      planEnabled: false,
+      planThreshold: (currentOrg as any)?.default_plan_threshold_minor || 0,
+      planInstallments: (currentOrg as any)?.default_plan_installments || 3,
+      planFrequency: ((currentOrg as any)?.default_plan_frequency || 'monthly') as string,
     });
     onOpenChange(false);
   };
