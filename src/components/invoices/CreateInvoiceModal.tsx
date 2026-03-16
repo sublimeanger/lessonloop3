@@ -111,20 +111,6 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     }
   }, [dueDate]);
 
-  // Compute total in minor units for plan preview
-  const items = watch('items');
-  const computedTotalMinor = useMemo(() => {
-    if (tab === 'lessons') {
-      // Can't easily compute lesson total here, show 0
-      return 0;
-    }
-    const subtotal = (items || []).reduce(
-      (sum, item) => sum + Math.round((item.unitPrice || 0) * 100) * (item.quantity || 0),
-      0,
-    );
-    return Math.max(0, subtotal - totalSelectedCredit);
-  }, [items, totalSelectedCredit, tab]);
-
   // Fetch available credits for the selected payer
   const { data: availableCredits = [] } = useAvailableCreditsForPayer(payerType, payerId);
 
@@ -134,6 +120,17 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
       .filter((c) => selectedCredits.has(c.id))
       .reduce((sum, c) => sum + c.credit_value_minor, 0);
   }, [availableCredits, selectedCredits]);
+
+  // Compute total in minor units for plan preview
+  const items = watch('items');
+  const computedTotalMinor = useMemo(() => {
+    if (tab === 'lessons') return 0;
+    const subtotal = (items || []).reduce(
+      (sum, item) => sum + Math.round((item.unitPrice || 0) * 100) * (item.quantity || 0),
+      0,
+    );
+    return Math.max(0, subtotal - totalSelectedCredit);
+  }, [items, totalSelectedCredit, tab]);
 
   // Reset selected credits when payer changes
   useEffect(() => {
