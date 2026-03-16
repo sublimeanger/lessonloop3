@@ -125,7 +125,7 @@ export function NotesFilterBar({ filters, onFiltersChange, teachers, isTeacherRo
           value={filters.teacherId || 'all'}
           onValueChange={(v) => onFiltersChange({ ...filters, teacherId: v === 'all' ? null : v })}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="All Teachers" />
           </SelectTrigger>
           <SelectContent>
