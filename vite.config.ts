@@ -18,26 +18,12 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MB
-        navigateFallbackDenylist: [/^\/~oauth/],
-        runtimeCaching: [
-          {
-            urlPattern: /\/rest\/v1\/lessons/,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "lessons-api",
-              networkTimeoutSeconds: 30,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60, // 1 hour
-              },
-            },
-          },
-        ],
-      },
-      manifest: false, // Using public/manifest.json
+      // Live app was vulnerable to stale service-worker caches serving deleted
+      // hashed chunks after deploys, which can produce a blank white screen.
+      // selfDestroying ships a cleanup worker that unregisters itself and clears
+      // old caches on clients once the new frontend is published.
+      selfDestroying: true,
+      manifest: false,
     }),
   ].filter(Boolean),
   build: {
