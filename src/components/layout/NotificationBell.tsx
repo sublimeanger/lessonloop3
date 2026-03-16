@@ -1,4 +1,4 @@
-import { Bell } from 'lucide-react';
+import { Bell, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -53,25 +53,32 @@ export function NotificationBell() {
         </div>
 
         {unreadMessages.length > 0 ? (
-          unreadMessages.map((msg) => (
-            <DropdownMenuItem
-              key={msg.id}
-              className="flex flex-col items-start gap-0.5 py-2.5 cursor-pointer"
-              onClick={() => navigate('/messages?tab=internal')}
-            >
-              <div className="flex items-center gap-2 w-full">
-                <span className="text-sm font-medium truncate flex-1">
-                  {msg.sender_profile?.full_name || 'Unknown'}
+          unreadMessages.map((msg) => {
+            const isWithdrawal = /withdraw/i.test(msg.subject || '');
+            const targetRoute = isWithdrawal ? '/continuation' : '/messages?tab=internal';
+            return (
+              <DropdownMenuItem
+                key={msg.id}
+                className={`flex flex-col items-start gap-0.5 py-2.5 cursor-pointer ${
+                  isWithdrawal ? 'bg-destructive/5 border-l-2 border-destructive' : ''
+                }`}
+                onClick={() => navigate(targetRoute)}
+              >
+                <div className="flex items-center gap-2 w-full">
+                  {isWithdrawal && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                  <span className="text-sm font-medium truncate flex-1">
+                    {msg.sender_profile?.full_name || 'Unknown'}
+                  </span>
+                  <span className="text-micro text-muted-foreground flex-shrink-0">
+                    {format(new Date(msg.created_at), 'dd MMM, HH:mm')}
+                  </span>
+                </div>
+                <span className={`text-xs truncate w-full ${isWithdrawal ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {msg.subject}
                 </span>
-                <span className="text-micro text-muted-foreground flex-shrink-0">
-                  {format(new Date(msg.created_at), 'dd MMM, HH:mm')}
-                </span>
-              </div>
-              <span className="text-xs text-muted-foreground truncate w-full">
-                {msg.subject}
-              </span>
-            </DropdownMenuItem>
-          ))
+              </DropdownMenuItem>
+            );
+          })
         ) : (
           <div className="px-3 py-6 text-center text-sm text-muted-foreground">
             No unread messages
