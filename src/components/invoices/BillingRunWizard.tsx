@@ -159,7 +159,10 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
         generate_invoices: true,
         billing_mode: config.billingMode,
         term_id: config.termId || undefined,
-      });
+        plan_threshold_minor: config.planEnabled ? config.planThreshold : undefined,
+        plan_installments: config.planEnabled ? config.planInstallments : undefined,
+        plan_frequency: config.planEnabled ? config.planFrequency : undefined,
+      } as any);
 
       setBillingResult({
         billingRunId: result.id,

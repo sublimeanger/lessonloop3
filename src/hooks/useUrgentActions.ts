@@ -134,6 +134,26 @@ export function useUrgentActions() {
           }
         }
 
+        // Fetch overdue installments (for admins and finance)
+        if (isAdmin || isFinance) {
+          const { count: overdueInstallmentCount } = await (supabase as any)
+            .from('invoice_installments')
+            .select('id', { count: 'exact', head: true })
+            .eq('org_id', currentOrg.id)
+            .eq('status', 'overdue');
+
+          if (overdueInstallmentCount && overdueInstallmentCount > 0) {
+            urgentActions.push({
+              id: 'overdue-installments',
+              type: 'overdue_installments' as any,
+              count: overdueInstallmentCount,
+              label: overdueInstallmentCount === 1 ? 'overdue installment' : 'overdue installments',
+              href: '/invoices?tab=plans',
+              severity: 'warning',
+            });
+          }
+        }
+
         // Fetch unreviewed practice logs (for teachers)
         if (isAdmin || isTeacher) {
           let query: any = supabase
