@@ -11,7 +11,20 @@ import {
 } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { FileText, ChevronDown, Loader2, Save, Lock, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { EngagementRating } from './EngagementRating';
+import { useLessonNotes, useSaveLessonNote } from '@/hooks/useLessonNotes';
 import { cn } from '@/lib/utils';
 import { EngagementRating } from './EngagementRating';
 import { useLessonNotes, useSaveLessonNote } from '@/hooks/useLessonNotes';

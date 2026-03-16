@@ -38,7 +38,7 @@ export default function NotesExplorer() {
     if (!isTeacherRole || !user || !currentOrg) return;
     supabase
       .rpc('get_teacher_id_for_user', { _user_id: user.id, _org_id: currentOrg.id })
-      .then(({ data }) => { if (data) setCurrentTeacherId(data); });
+      .then(({ data: teacherId }) => { if (teacherId) setCurrentTeacherId(teacherId); });
   }, [isTeacherRole, user, currentOrg]);
 
   const [filters, setFilters] = useState<NotesExplorerFilters>(DEFAULT_FILTERS);
