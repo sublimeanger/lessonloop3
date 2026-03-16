@@ -25,7 +25,7 @@ export default function PayrollReport() {
   const { currentOrg, currentRole } = useOrg();
   const { toast } = useToast();
   const { data: terms } = useTerms();
-  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin' || currentRole === 'finance';
   
   // Default to last month
   const lastMonth = subMonths(new Date(), 1);
@@ -307,7 +307,7 @@ function PayrollTeacherList({
                           {lesson.hasWarning ? (
                             <span className="text-warning text-xs flex items-center justify-end gap-1">
                               <AlertTriangle className="h-3 w-3" />
-                              £0 — no invoice linked yet
+                              {fmtCurrency(0)} — no invoice linked yet
                             </span>
                           ) : (
                             fmtCurrency(lesson.calculatedPay)

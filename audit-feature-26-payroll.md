@@ -85,29 +85,25 @@
 
 ## 4. Verdict
 
-**NOT PRODUCTION READY** — 1 critical, 2 high findings.
+### PRODUCTION READY
 
-### Must Fix Before Production
+All findings resolved. Typecheck and build pass.
 
-1. **PAY-01 (CRITICAL):** Remove the `/ 100` division on `pay_rate_value` at `usePayroll.ts:157`. The database stores values in major units (numeric 10,2), not minor units. This bug makes every payroll calculation 100x too low. A teacher with a £25/lesson rate would show as £0.25.
+### Fixes Applied
 
-2. **PAY-02 (HIGH):** Either:
-   - (a) Remove `teacher` from the payroll route's `allowedRoles` and let teachers access their data via a separate "My Pay" view, OR
-   - (b) Add `teacher` to the RPC's role check (restricting to `WHERE t.id = teacher's own teacher_id`) so teachers see their own pay data correctly.
+| ID | Fix | Commit |
+|----|-----|--------|
+| PAY-01 | Removed erroneous `/ 100` on `pay_rate_value` at `usePayroll.ts:157`. DB stores major units; no conversion needed. | fix(payroll) |
+| PAY-02 | Updated `get_teachers_with_pay` RPC to allow teacher role (returns only their own record via `user_id` match). Migration `20260316330000`. | fix(payroll) |
+| PAY-03 | Already resolved — `teachers_with_pay` view was dropped in migration `20260315220010` (TCH-07). RPC is the canonical access path and includes finance. | Prior commit |
+| PAY-04 | Replaced hardcoded `£0` with `fmtCurrency(0)` at `Payroll.tsx:310`. | fix(payroll) |
+| PAY-05 | Added chunked batching (500) for `invoice_items` `.in()` query to stay within PostgREST limits. | fix(payroll) |
+| PAY-06 | Resolved by PAY-02 — teachers now get valid data from RPC, so the existing `data.teachers.length > 0` guard on export is sufficient. | fix(payroll) |
+| PAY-07 | Removed duplicate `if (lessonsError) throw lessonsError` at line 97. | fix(payroll) |
+| PAY-09 | Updated `isAdmin` in `Payroll.tsx:29` to include `finance` role. | fix(payroll) |
 
-3. **PAY-03 (HIGH):** Align `teachers_with_pay` view CASE condition to include `finance` role alongside `is_org_admin()`, or deprecate the view entirely in favour of the RPC. Any future code using the view would deny finance users.
+### Remaining Acceptable Items
 
-### Should Fix
-
-4. **PAY-04:** Replace hardcoded `£0` with `fmtCurrency(0)` at `Payroll.tsx:310`.
-5. **PAY-05:** Add batch chunking for large lesson sets in `invoice_items` lookup.
-6. **PAY-06:** Conditionally render export/print buttons only when user has actual pay data.
-
-### Acceptable As-Is
-
-- PAY-07 through PAY-11 are low/info severity and do not block production.
-- CSV injection protection is solid.
-- Open slot exclusion from payroll is correctly implemented.
-- Timezone handling uses org timezone throughout — correct.
-- Group lessons correctly pay teacher once per lesson, not per student.
-- Feature gating is appropriate.
+- **PAY-08 (LOW):** Client-side calculation is display-only with no write-back — acceptable for MVP.
+- **PAY-10 (INFO):** CSV injection protection verified solid.
+- **PAY-11 (INFO):** Feature gating correctly excludes solo/trial plans.
