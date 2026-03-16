@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { EntityLink } from '@/components/shared/EntityLink';
 import { format, subWeeks } from 'date-fns';
 import {
   Dialog,
