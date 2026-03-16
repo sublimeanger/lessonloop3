@@ -136,13 +136,12 @@ export function useOfferMakeUp() {
   return useMutation({
     mutationFn: async (waitlistId: string) => {
       if (!currentOrg?.id) throw new Error('No org');
-      const { data, error } = await supabase
-        .from('make_up_waitlist')
-        .update({ status: 'offered', offered_at: new Date().toISOString() })
-        .eq('id', waitlistId)
-        .eq('org_id', currentOrg.id)
-        .select()
-        .single();
+
+      // WL-H3 FIX: Use atomic RPC instead of plain UPDATE
+      const { data, error } = await supabase.rpc('offer_makeup_slot', {
+        _waitlist_id: waitlistId,
+        _org_id: currentOrg.id,
+      });
 
       if (error) throw error;
 
@@ -173,13 +172,12 @@ export function useDismissMatch() {
   return useMutation({
     mutationFn: async (waitlistId: string) => {
       if (!currentOrg?.id) throw new Error('No org');
-      const { data, error } = await supabase
-        .from('make_up_waitlist')
-        .update({ status: 'waiting', matched_lesson_id: null, matched_at: null })
-        .eq('id', waitlistId)
-        .eq('org_id', currentOrg.id)
-        .select()
-        .single();
+
+      // WL-H4 FIX: Use atomic RPC instead of plain UPDATE
+      const { data, error } = await supabase.rpc('dismiss_makeup_match', {
+        _waitlist_id: waitlistId,
+        _org_id: currentOrg.id,
+      });
 
       if (error) throw error;
       return data;

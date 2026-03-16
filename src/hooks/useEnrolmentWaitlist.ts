@@ -389,75 +389,46 @@ export function useAddToEnrolmentWaitlist() {
       if (!currentOrg) throw new Error('No organisation selected');
       if (!user) throw new Error('Not authenticated');
 
-      // Calculate next position for this instrument
-      const { data: maxEntry } = await db
-        .from('enrolment_waitlist')
-        .select('position')
-        .eq('org_id', currentOrg.id)
-        .eq('instrument_name', input.instrument_name)
-        .eq('status', 'waiting')
-        .order('position', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const nextPosition = (maxEntry?.position ?? 0) + 1;
-
-      const { data: entry, error } = await db
-        .from('enrolment_waitlist')
-        .insert({
-          org_id: currentOrg.id,
-          lead_id: input.lead_id || null,
-          contact_name: input.contact_name,
-          contact_email: input.contact_email || null,
-          contact_phone: input.contact_phone || null,
-          guardian_id: input.guardian_id || null,
-          child_first_name: input.child_first_name,
-          child_last_name: input.child_last_name || null,
-          child_age: input.child_age ?? null,
-          instrument_id: input.instrument_id || null,
-          instrument_name: input.instrument_name,
-          preferred_teacher_id: input.preferred_teacher_id || null,
-          preferred_location_id: input.preferred_location_id || null,
-          preferred_days: input.preferred_days || null,
-          preferred_time_earliest: input.preferred_time_earliest || null,
-          preferred_time_latest: input.preferred_time_latest || null,
-          experience_level: input.experience_level || null,
-          lesson_duration_mins: input.lesson_duration_mins ?? 30,
-          position: nextPosition,
-          status: 'waiting',
-          notes: input.notes || null,
-          priority: input.priority || 'normal',
-          source: input.source || 'manual',
-          created_by: user.id,
-        })
-        .select()
-        .single();
+      // WL-M4 FIX: Use atomic RPC for position calculation
+      const { data: result, error } = await db.rpc('add_to_enrolment_waitlist', {
+        _org_id: currentOrg.id,
+        _contact_name: input.contact_name,
+        _child_first_name: input.child_first_name,
+        _instrument_name: input.instrument_name,
+        _contact_email: input.contact_email || null,
+        _contact_phone: input.contact_phone || null,
+        _child_last_name: input.child_last_name || null,
+        _child_age: input.child_age ?? null,
+        _instrument_id: input.instrument_id || null,
+        _preferred_teacher_id: input.preferred_teacher_id || null,
+        _preferred_location_id: input.preferred_location_id || null,
+        _preferred_days: input.preferred_days || null,
+        _preferred_time_earliest: input.preferred_time_earliest || null,
+        _preferred_time_latest: input.preferred_time_latest || null,
+        _experience_level: input.experience_level || null,
+        _lesson_duration_mins: input.lesson_duration_mins ?? 30,
+        _notes: input.notes || null,
+        _priority: input.priority || 'normal',
+        _source: input.source || 'manual',
+        _lead_id: input.lead_id || null,
+        _guardian_id: input.guardian_id || null,
+      });
 
       if (error) throw error;
 
-      // Log 'created' activity
-      await db.from('enrolment_waitlist_activity').insert({
-        org_id: currentOrg.id,
-        waitlist_id: entry.id,
-        activity_type: 'created',
-        description: `${input.child_first_name} added to waiting list for ${input.instrument_name}`,
-        metadata: { source: input.source || 'manual', position: nextPosition },
-        created_by: user.id,
-      });
-
-      // If linked to a lead, log lead activity
-      if (input.lead_id) {
+      // If linked to a lead, log lead activity (non-critical, outside RPC)
+      if (input.lead_id && result?.id) {
         await db.from('lead_activities').insert({
           lead_id: input.lead_id,
           org_id: currentOrg.id,
           activity_type: 'waitlist_added',
           description: `Added to enrolment waiting list for ${input.instrument_name}`,
-          metadata: { waitlist_id: entry.id },
+          metadata: { waitlist_id: result.id },
           created_by: user.id,
         });
       }
 
-      return entry;
+      return result;
     },
     onSuccess: () => {
       invalidateWaitlistQueries(queryClient, currentOrg!.id);
@@ -571,7 +542,6 @@ export function useOfferSlot() {
  */
 export function useRespondToOffer() {
   const { currentOrg } = useOrg();
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -579,33 +549,15 @@ export function useRespondToOffer() {
     mutationFn: async ({ waitlist_id, action }: { waitlist_id: string; action: 'accept' | 'decline' }) => {
       if (!currentOrg) throw new Error('No organisation selected');
 
-      const newStatus = action === 'accept' ? 'accepted' : 'declined';
-
-      const { data: entry, error } = await db
-        .from('enrolment_waitlist')
-        .update({
-          status: newStatus,
-          responded_at: new Date().toISOString(),
-        })
-        .eq('id', waitlist_id)
-        .eq('org_id', currentOrg.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Log activity
-      await db.from('enrolment_waitlist_activity').insert({
-        org_id: currentOrg.id,
-        waitlist_id,
-        activity_type: newStatus,
-        description: action === 'accept'
-          ? 'Offer accepted by family'
-          : 'Offer declined by family',
-        created_by: user?.id || null,
+      // WL-H5 FIX: Use atomic RPC instead of plain UPDATE
+      const { data, error } = await db.rpc('respond_to_enrolment_offer', {
+        _entry_id: waitlist_id,
+        _org_id: currentOrg.id,
+        _action: action,
       });
 
-      return entry;
+      if (error) throw error;
+      return data;
     },
     onSuccess: (_data, variables) => {
       invalidateWaitlistQueries(queryClient, currentOrg!.id);
@@ -673,7 +625,6 @@ export function useConvertWaitlistToStudent() {
  */
 export function useWithdrawFromWaitlist() {
   const { currentOrg } = useOrg();
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -681,52 +632,14 @@ export function useWithdrawFromWaitlist() {
     mutationFn: async (waitlist_id: string) => {
       if (!currentOrg) throw new Error('No organisation selected');
 
-      // Get the entry to know its position and instrument
-      const { data: entry, error: fetchError } = await db
-        .from('enrolment_waitlist')
-        .select('position, instrument_name')
-        .eq('id', waitlist_id)
-        .eq('org_id', currentOrg.id)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Update status to withdrawn
-      const { error } = await db
-        .from('enrolment_waitlist')
-        .update({ status: 'withdrawn' })
-        .eq('id', waitlist_id)
-        .eq('org_id', currentOrg.id);
+      // WL-H6 FIX: Use atomic RPC instead of sequential client-side operations
+      const { data, error } = await db.rpc('withdraw_from_enrolment_waitlist', {
+        _entry_id: waitlist_id,
+        _org_id: currentOrg.id,
+      });
 
       if (error) throw error;
-
-      // Reposition remaining waiting entries for the same instrument
-      const { data: remaining } = await db
-        .from('enrolment_waitlist')
-        .select('id, position')
-        .eq('org_id', currentOrg.id)
-        .eq('instrument_name', entry.instrument_name)
-        .eq('status', 'waiting')
-        .gt('position', entry.position)
-        .order('position', { ascending: true });
-
-      if (remaining?.length) {
-        for (const r of remaining) {
-          await db
-            .from('enrolment_waitlist')
-            .update({ position: r.position - 1 })
-            .eq('id', r.id);
-        }
-      }
-
-      // Log activity
-      await db.from('enrolment_waitlist_activity').insert({
-        org_id: currentOrg.id,
-        waitlist_id,
-        activity_type: 'withdrawn',
-        description: 'Withdrawn from waiting list',
-        created_by: user?.id || null,
-      });
+      return data;
     },
     onSuccess: () => {
       invalidateWaitlistQueries(queryClient, currentOrg!.id);
