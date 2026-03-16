@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { format, addDays, differenceInMinutes } from 'date-fns';
+import { useGenerateInstallments } from '@/hooks/useInvoiceInstallments';
+import { PaymentPlanToggle } from '@/components/invoices/PaymentPlanToggle';
 import {
   Dialog,
   DialogContent,
@@ -59,6 +61,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   const createInvoice = useCreateInvoice();
   const { data: rateCards = [] } = useRateCards();
   const { isOnline, guardOffline } = useOnlineStatus();
+  const generateInstallments = useGenerateInstallments();
   const [tab, setTab] = useState<'manual' | 'lessons'>('manual');
   const [lessonDateRange, setLessonDateRange] = useState({
     from: format(addDays(new Date(), -30), 'yyyy-MM-dd'),
@@ -66,6 +69,12 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   });
   const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
   const [selectedCredits, setSelectedCredits] = useState<Set<string>>(new Set());
+
+  // Payment plan state
+  const [planEnabled, setPlanEnabled] = useState(false);
+  const [planCount, setPlanCount] = useState(3);
+  const [planFrequency, setPlanFrequency] = useState<'monthly' | 'fortnightly'>('monthly');
+  const [planStartDate, setPlanStartDate] = useState('');
 
   const { data: unbilledLessons = [] } = useUnbilledLessons(lessonDateRange);
 
@@ -93,6 +102,14 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
   const payerType = watch('payerType');
   const payerId = watch('payerId');
+  const dueDate = watch('dueDate');
+
+  // Sync plan start date with due date when not manually set
+  useEffect(() => {
+    if (dueDate && !planStartDate) {
+      setPlanStartDate(dueDate);
+    }
+  }, [dueDate]);
 
   // Fetch available credits for the selected payer
   const { data: availableCredits = [] } = useAvailableCreditsForPayer(payerType, payerId);
@@ -103,6 +120,17 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
       .filter((c) => selectedCredits.has(c.id))
       .reduce((sum, c) => sum + c.credit_value_minor, 0);
   }, [availableCredits, selectedCredits]);
+
+  // Compute total in minor units for plan preview
+  const items = watch('items');
+  const computedTotalMinor = useMemo(() => {
+    if (tab === 'lessons') return 0;
+    const subtotal = (items || []).reduce(
+      (sum, item) => sum + Math.round((item.unitPrice || 0) * 100) * (item.quantity || 0),
+      0,
+    );
+    return Math.max(0, subtotal - totalSelectedCredit);
+  }, [items, totalSelectedCredit, tab]);
 
   // Reset selected credits when payer changes
   useEffect(() => {
@@ -163,9 +191,10 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     }
 
     const creditIdsToApply = Array.from(selectedCredits);
+    let newInvoiceId: string | null = null;
     
     if (tab === 'manual') {
-      await createInvoice.mutateAsync({
+      const result = await createInvoice.mutateAsync({
         due_date: data.dueDate,
         payer_guardian_id: data.payerType === 'guardian' ? data.payerId : undefined,
         payer_student_id: data.payerType === 'student' ? data.payerId : undefined,
@@ -177,27 +206,24 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
           unit_price_minor: Math.round(item.unitPrice * 100),
         })),
       });
+      newInvoiceId = result?.id || null;
     } else {
       // Create from lessons
       const selectedLessonData = unbilledLessons.filter((l) => selectedLessons.has(l.id));
       if (selectedLessonData.length === 0) return;
 
-      await createInvoice.mutateAsync({
+      const result = await createInvoice.mutateAsync({
         due_date: data.dueDate,
         payer_guardian_id: data.payerType === 'guardian' ? data.payerId : undefined,
         payer_student_id: data.payerType === 'student' ? data.payerId : undefined,
         notes: data.notes,
         credit_ids: creditIdsToApply.length > 0 ? creditIdsToApply : undefined,
         items: selectedLessonData.map((lesson) => {
-          // Calculate lesson duration in minutes
           const durationMins = differenceInMinutes(
             new Date(lesson.end_at),
             new Date(lesson.start_at)
           );
-          // Use rate cards to find correct price
           const unitPriceMinor = findRateForDuration(durationMins, rateCards);
-          
-          // Get student ID from first participant if available
           const firstParticipant = lesson.lesson_participants?.[0];
           const studentId = firstParticipant?.student?.id;
 
@@ -210,6 +236,22 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
           };
         }),
       });
+      newInvoiceId = result?.id || null;
+    }
+
+    // Generate installments if payment plan is enabled
+    if (planEnabled && newInvoiceId && planCount >= 2) {
+      try {
+        await generateInstallments.mutateAsync({
+          invoiceId: newInvoiceId,
+          count: planCount,
+          frequency: planFrequency,
+          startDate: planStartDate || undefined,
+        });
+      } catch (err) {
+        // Invoice was created but plan failed — toast already shown by hook
+        console.warn('Payment plan generation failed:', err);
+      }
     }
 
     handleOpenChange(false);
@@ -249,6 +291,10 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
       setSelectedLessons(new Set());
       setSelectedCredits(new Set());
       setTab('manual');
+      setPlanEnabled(false);
+      setPlanCount(3);
+      setPlanFrequency('monthly');
+      setPlanStartDate('');
     }
     onOpenChange(isOpen);
   };
@@ -529,6 +575,20 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                 )}
               </div>
             )}
+
+            {/* Payment Plan Toggle */}
+            <PaymentPlanToggle
+              enabled={planEnabled}
+              onEnabledChange={setPlanEnabled}
+              count={planCount}
+              onCountChange={setPlanCount}
+              frequency={planFrequency}
+              onFrequencyChange={setPlanFrequency}
+              startDate={planStartDate}
+              onStartDateChange={setPlanStartDate}
+              totalMinor={computedTotalMinor}
+              currency={currency}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes (Optional)</Label>

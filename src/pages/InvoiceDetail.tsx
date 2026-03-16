@@ -527,7 +527,7 @@ export default function InvoiceDetail() {
           </Card>
 
           {/* Payment Plan Timeline */}
-          {!isParent && invoice.payment_plan_enabled && invoice.status !== 'void' && (
+          {invoice.payment_plan_enabled && invoice.status !== 'void' && (
             <InstallmentTimeline
               invoice={invoice}
               onEditPlan={() => setPaymentPlanOpen(true)}

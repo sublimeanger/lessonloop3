@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { format, startOfMonth, endOfMonth, subMonths, differenceInMinutes } from 'date-fns';
 import {
   Dialog,
@@ -64,6 +65,10 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
     endDate: format(endOfMonth(lastMonth), 'yyyy-MM-dd'),
     termId: '' as string,
     billingMode: 'delivered' as BillingMode,
+    planEnabled: false,
+    planThreshold: (currentOrg as any)?.default_plan_threshold_minor || 0,
+    planInstallments: (currentOrg as any)?.default_plan_installments || 3,
+    planFrequency: ((currentOrg as any)?.default_plan_frequency || 'monthly') as string,
   });
 
   const { data: unbilledLessons = [], isLoading: loadingLessons } = useUnbilledLessons(
@@ -155,7 +160,10 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
         generate_invoices: true,
         billing_mode: config.billingMode,
         term_id: config.termId || undefined,
-      });
+        plan_threshold_minor: config.planEnabled ? config.planThreshold : undefined,
+        plan_installments: config.planEnabled ? config.planInstallments : undefined,
+        plan_frequency: config.planEnabled ? config.planFrequency : undefined,
+      } as any);
 
       setBillingResult({
         billingRunId: result.id,
@@ -201,6 +209,10 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
       endDate: format(endOfMonth(lastMonth), 'yyyy-MM-dd'),
       termId: '',
       billingMode: 'delivered' as BillingMode,
+      planEnabled: false,
+      planThreshold: (currentOrg as any)?.default_plan_threshold_minor || 0,
+      planInstallments: (currentOrg as any)?.default_plan_installments || 3,
+      planFrequency: ((currentOrg as any)?.default_plan_frequency || 'monthly') as string,
     });
     onOpenChange(false);
   };
@@ -318,6 +330,56 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                 </div>
               </div>
             ) : null}
+
+            {/* Payment Plans */}
+            <div className="rounded-lg border p-3 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={config.planEnabled}
+                  onCheckedChange={(v) => setConfig((c) => ({ ...c, planEnabled: !!v }))}
+                />
+                <span className="text-sm font-medium">Enable payment plans for this run</span>
+              </label>
+              {config.planEnabled && (
+                <div className="grid gap-3 sm:grid-cols-3 pl-6">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Auto-split invoices over ({currencySymbol(currency)})</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={config.planThreshold ? (config.planThreshold / 100).toFixed(0) : ''}
+                      onChange={(e) => setConfig((c) => ({ ...c, planThreshold: Math.round(parseFloat(e.target.value || '0') * 100) }))}
+                      placeholder="e.g. 200"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Installments</Label>
+                    <Select value={config.planInstallments.toString()} onValueChange={(v) => setConfig((c) => ({ ...c, planInstallments: parseInt(v) }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[2, 3, 4, 6].map((n) => (
+                          <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Frequency</Label>
+                    <Select value={config.planFrequency} onValueChange={(v) => setConfig((c) => ({ ...c, planFrequency: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground sm:col-span-3">
+                    Student-level preferences (always/never split) are respected automatically.
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* Rate Cards Status */}
             <div className="rounded-lg border p-3">

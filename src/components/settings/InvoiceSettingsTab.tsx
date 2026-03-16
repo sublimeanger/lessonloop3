@@ -6,11 +6,19 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Plus, X } from 'lucide-react';
+import { currencySymbol } from '@/lib/utils';
 
 const COMMON_REMINDER_PRESETS = [7, 14, 21, 30, 60, 90];
 
@@ -25,13 +33,13 @@ export function InvoiceSettingsTab() {
   const { data: settingsData } = useQuery({
     queryKey,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('organisations')
-        .select('vat_enabled, vat_rate, vat_registration_number, default_payment_terms_days, overdue_reminder_days')
+        .select('vat_enabled, vat_rate, vat_registration_number, default_payment_terms_days, overdue_reminder_days, default_plan_threshold_minor, default_plan_installments, default_plan_frequency')
         .eq('id', currentOrg!.id)
         .single();
       if (error) throw error;
-      return data;
+      return data as any;
     },
     enabled: !!currentOrg?.id,
   });
@@ -43,6 +51,9 @@ export function InvoiceSettingsTab() {
   const [reminderDays, setReminderDays] = useState<number[]>([7, 14, 30]);
   const [customDay, setCustomDay] = useState('');
   const [hydrated, setHydrated] = useState(false);
+  const [planThreshold, setPlanThreshold] = useState('');
+  const [planInstallments, setPlanInstallments] = useState('3');
+  const [planFrequency, setPlanFrequency] = useState('monthly');
 
   if (settingsData && !hydrated) {
     setVatRegistered(settingsData.vat_enabled || false);
@@ -52,6 +63,10 @@ export function InvoiceSettingsTab() {
     setReminderDays(
       (settingsData.overdue_reminder_days as number[] | null) || [7, 14, 30]
     );
+    const sd = settingsData as any;
+    setPlanThreshold(sd.default_plan_threshold_minor ? (sd.default_plan_threshold_minor / 100).toString() : '');
+    setPlanInstallments((sd.default_plan_installments || 3).toString());
+    setPlanFrequency(sd.default_plan_frequency || 'monthly');
     setHydrated(true);
   }
 
@@ -83,7 +98,10 @@ export function InvoiceSettingsTab() {
           vat_registration_number: vatRegistered ? vatNumber : null,
           default_payment_terms_days: paymentTermsDays,
           overdue_reminder_days: reminderDays,
-        })
+          default_plan_threshold_minor: planThreshold ? Math.round(parseFloat(planThreshold) * 100) : null,
+          default_plan_installments: parseInt(planInstallments) || 3,
+          default_plan_frequency: planFrequency,
+        } as any)
         .eq('id', currentOrg!.id);
       if (error) throw error;
     },
@@ -245,6 +263,55 @@ export function InvoiceSettingsTab() {
             </div>
           )}
         </div>
+        <Separator />
+
+        {/* Default Payment Plan */}
+        <div className="space-y-3">
+          <div>
+            <Label className="text-base">Default Payment Plan</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Pre-fill payment plan settings for billing runs and manual invoices.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="planThreshold">Auto-offer for invoices over ({currencySymbol(currentOrg?.currency_code || 'GBP')})</Label>
+              <Input
+                id="planThreshold"
+                type="number"
+                min={0}
+                step="1"
+                placeholder="Leave blank for no auto"
+                value={planThreshold}
+                onChange={(e) => setPlanThreshold(e.target.value)}
+                disabled={!canEdit}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Default Installments</Label>
+              <Select value={planInstallments} onValueChange={setPlanInstallments} disabled={!canEdit}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[2, 3, 4, 6, 8, 10, 12].map((n) => (
+                    <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Default Frequency</Label>
+              <Select value={planFrequency} onValueChange={setPlanFrequency} disabled={!canEdit}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
 
         {canEdit && (
           <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>

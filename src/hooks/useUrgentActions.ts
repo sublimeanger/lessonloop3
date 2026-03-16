@@ -8,7 +8,7 @@ import { fromZonedTime } from 'date-fns-tz';
 
 export interface UrgentAction {
   id: string;
-  type: 'unmarked_lessons' | 'overdue_invoices' | 'pending_requests' | 'unreviewed_practice' | 'continuation_withdrawals';
+  type: 'unmarked_lessons' | 'overdue_invoices' | 'pending_requests' | 'unreviewed_practice' | 'continuation_withdrawals' | 'overdue_installments';
   count: number;
   label: string;
   href: string;
@@ -129,6 +129,26 @@ export function useUrgentActions() {
               count: withdrawalCount,
               label: withdrawalCount === 1 ? 'student withdrawing' : 'students withdrawing',
               href: '/continuation',
+              severity: 'warning',
+            });
+          }
+        }
+
+        // Fetch overdue installments (for admins and finance)
+        if (isAdmin || isFinance) {
+          const { count: overdueInstallmentCount } = await (supabase as any)
+            .from('invoice_installments')
+            .select('id', { count: 'exact', head: true })
+            .eq('org_id', currentOrg.id)
+            .eq('status', 'overdue');
+
+          if (overdueInstallmentCount && overdueInstallmentCount > 0) {
+            urgentActions.push({
+              id: 'overdue-installments',
+              type: 'overdue_installments' as any,
+              count: overdueInstallmentCount,
+              label: overdueInstallmentCount === 1 ? 'overdue installment' : 'overdue installments',
+              href: '/invoices?tab=plans',
               severity: 'warning',
             });
           }
