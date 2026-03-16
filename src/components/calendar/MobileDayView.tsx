@@ -172,8 +172,6 @@ export function MobileDayView({
                     </TeacherLink>
                   </p>
                 )}
-                  </p>
-                )}
                 {studentNames.length > 1 && (
                   <p className="text-micro text-muted-foreground/70 truncate mt-0.5">
                     +{studentNames.length - 1} more student{studentNames.length > 2 ? 's' : ''}
