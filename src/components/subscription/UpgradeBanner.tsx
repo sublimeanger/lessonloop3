@@ -230,7 +230,7 @@ export function UpgradeBanner({
             </Button>
           )}
           {dismissible && (
-            <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground">
+            <button onClick={handleDismiss} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0">
               <X className="h-4 w-4" />
             </button>
           )}

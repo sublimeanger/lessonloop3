@@ -443,6 +443,24 @@ export function BillingTab() {
             </div>
           </div>
 
+          {/* Cancelled — Resubscribe prompt */}
+          {status === 'cancelled' && (
+            <div className="p-4 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/30">
+              <p className="text-sm text-muted-foreground mb-3">
+                Your subscription has been cancelled. Choose a plan below to reactivate your account.
+              </p>
+              {!platform.isNative && (
+                <Button asChild size="sm">
+                  <a href="#plans-section">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    View Plans
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </a>
+                </Button>
+              )}
+            </div>
+          )}
+
           {/* Usage Stats */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="p-4 rounded-lg border">
@@ -545,8 +563,8 @@ export function BillingTab() {
 
       {/* Plan Selection */}
       {canManageBilling && !platform.isNative && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
+        <div id="plans-section" className="space-y-6 scroll-mt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold">Choose Your Plan</h2>
               <p className="text-sm text-muted-foreground">
@@ -1030,7 +1048,8 @@ function BillingHistoryCard({ orgId }: { orgId: string }) {
           <p className="text-sm text-muted-foreground py-4">No invoices yet.</p>
         ) : (
           <div className="space-y-2">
-            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-3 py-2 text-xs font-medium text-muted-foreground">
+            {/* Desktop header */}
+            <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-3 py-2 text-xs font-medium text-muted-foreground">
               <span>Date</span>
               <span>Amount</span>
               <span>Status</span>
@@ -1039,30 +1058,34 @@ function BillingHistoryCard({ orgId }: { orgId: string }) {
             {data.map((inv) => (
               <div
                 key={inv.id}
-                className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center px-3 py-2.5 rounded-lg border"
+                className="flex flex-col gap-2 sm:grid sm:grid-cols-[1fr_auto_auto_auto] sm:gap-4 sm:items-center px-3 py-3 sm:py-2.5 rounded-lg border"
               >
-                <span className="text-sm">
-                  {format(new Date(inv.date * 1000), 'dd MMM yyyy')}
-                </span>
-                <span className="text-sm font-medium">
-                  {formatAmount(inv.amount, inv.currency)}
-                </span>
-                {getStatusBadge(inv.status)}
-                <div className="flex gap-1">
-                  {inv.hosted_url && (
-                    <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" asChild>
-                      <a href={inv.hosted_url} target="_blank" rel="noopener noreferrer" title="View invoice">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    </Button>
-                  )}
-                  {inv.pdf_url && (
-                    <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" asChild>
-                      <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer" title="Download PDF">
-                        <FileText className="h-3.5 w-3.5" />
-                      </a>
-                    </Button>
-                  )}
+                <div className="flex items-center justify-between sm:contents">
+                  <span className="text-sm">
+                    {format(new Date(inv.date * 1000), 'dd MMM yyyy')}
+                  </span>
+                  <span className="text-sm font-medium">
+                    {formatAmount(inv.amount, inv.currency)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between sm:contents">
+                  {getStatusBadge(inv.status)}
+                  <div className="flex gap-1">
+                    {inv.hosted_url && (
+                      <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px] sm:h-8 sm:w-8" asChild>
+                        <a href={inv.hosted_url} target="_blank" rel="noopener noreferrer" title="View invoice">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      </Button>
+                    )}
+                    {inv.pdf_url && (
+                      <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px] sm:h-8 sm:w-8" asChild>
+                        <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer" title="Download PDF">
+                          <FileText className="h-3.5 w-3.5" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
