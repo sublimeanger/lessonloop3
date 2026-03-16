@@ -3472,9 +3472,6 @@ export type Database = {
           default_exam_board_id: string | null
           default_lesson_length_mins: number
           default_payment_terms_days: number | null
-          default_plan_frequency: string
-          default_plan_installments: number
-          default_plan_threshold_minor: number | null
           enrolment_offer_expiry_hours: number | null
           id: string
           invoice_footer_note: string | null
@@ -3540,9 +3537,6 @@ export type Database = {
           default_exam_board_id?: string | null
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
-          default_plan_frequency?: string
-          default_plan_installments?: number
-          default_plan_threshold_minor?: number | null
           enrolment_offer_expiry_hours?: number | null
           id?: string
           invoice_footer_note?: string | null
@@ -3608,9 +3602,6 @@ export type Database = {
           default_exam_board_id?: string | null
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
-          default_plan_frequency?: string
-          default_plan_installments?: number
-          default_plan_threshold_minor?: number | null
           enrolment_offer_expiry_hours?: number | null
           id?: string
           invoice_footer_note?: string | null
@@ -4900,7 +4891,6 @@ export type Database = {
           last_name: string
           notes: string | null
           org_id: string
-          payment_plan_preference: string
           phone: string | null
           status: Database["public"]["Enums"]["student_status"]
           updated_at: string
@@ -4919,7 +4909,6 @@ export type Database = {
           last_name: string
           notes?: string | null
           org_id: string
-          payment_plan_preference?: string
           phone?: string | null
           status?: Database["public"]["Enums"]["student_status"]
           updated_at?: string
@@ -4938,7 +4927,6 @@ export type Database = {
           last_name?: string
           notes?: string | null
           org_id?: string
-          payment_plan_preference?: string
           phone?: string | null
           status?: Database["public"]["Enums"]["student_status"]
           updated_at?: string
@@ -5551,10 +5539,6 @@ export type Database = {
         Args: { _lesson_id: string; _user_id: string }
         Returns: boolean
       }
-      cancel_payment_plan: {
-        Args: { p_invoice_id: string }
-        Returns: undefined
-      }
       check_rate_limit: {
         Args: {
           _action_type: string
@@ -5766,14 +5750,6 @@ export type Database = {
         Args: { _org_id: string }
         Returns: number
       }
-      record_installment_payment: {
-        Args: {
-          p_installment_id: string
-          p_amount_minor: number
-          p_stripe_payment_intent_id?: string
-        }
-        Returns: Json
-      }
       record_payment_and_update_status: {
         Args: {
           _amount_minor: number
@@ -5804,27 +5780,6 @@ export type Database = {
       teacher_has_thread_access: {
         Args: { _org_id: string; _teacher_user_id: string; _thread_id: string }
         Returns: boolean
-      }
-      update_payment_plan: {
-        Args: {
-          p_invoice_id: string
-          p_installments: number
-          p_frequency?: string
-        }
-        Returns: {
-          amount_minor: number
-          created_at: string | null
-          due_date: string
-          id: string
-          installment_number: number
-          invoice_id: string
-          org_id: string
-          paid_at: string | null
-          payment_id: string | null
-          status: string
-          stripe_payment_intent_id: string | null
-          updated_at: string | null
-        }[]
       }
       void_invoice: {
         Args: { _invoice_id: string; _org_id: string }
