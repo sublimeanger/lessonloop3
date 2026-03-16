@@ -75,6 +75,7 @@ export function LessonNotesForm({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [perStudentMode, setPerStudentMode] = useState(false);
   const [activeStudentTab, setActiveStudentTab] = useState<string>('lesson');
+  const [confirmSaveKey, setConfirmSaveKey] = useState<string | null>(null);
 
   // Form state: 'lesson' key for whole-lesson, student IDs for per-student
   const [forms, setForms] = useState<Record<string, NoteFormState>>({
