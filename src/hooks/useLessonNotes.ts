@@ -64,7 +64,7 @@ export function useLessonNotes(lessonId: string | undefined) {
     queryFn: async () => {
       if (!lessonId || !currentOrg) return [];
 
-      const { data, error } = await supabase.rpc('get_lesson_notes_for_staff', {
+      const { data, error } = await (supabase.rpc as any)('get_lesson_notes_for_staff', {
         p_org_id: currentOrg.id,
         p_filters: { lesson_id: lessonId },
       });
@@ -90,7 +90,7 @@ export function useStudentLessonNotes(studentId: string | undefined) {
     queryFn: async () => {
       if (!studentId || !currentOrg) return [];
 
-      const { data, error } = await supabase.rpc('get_lesson_notes_for_staff', {
+      const { data, error } = await (supabase.rpc as any)('get_lesson_notes_for_staff', {
         p_org_id: currentOrg.id,
         p_filters: {
           student_id: studentId,
@@ -103,6 +103,28 @@ export function useStudentLessonNotes(studentId: string | undefined) {
       return ((data || []) as any[]).map(mapRpcToLessonNote);
     },
     enabled: !!studentId && !!currentOrg,
+  });
+}
+
+/**
+ * Fetch lesson notes visible to parents for a specific student.
+ * Uses get_parent_lesson_notes RPC which excludes teacher_private_notes server-side.
+ */
+export function useParentLessonNotes(studentId: string | undefined, orgId: string | undefined) {
+  return useQuery({
+    queryKey: ['parent-lesson-notes', studentId, orgId],
+    queryFn: async () => {
+      if (!studentId || !orgId) return [];
+
+      const { data, error } = await (supabase.rpc as any)('get_parent_lesson_notes', {
+        p_student_id: studentId,
+        p_org_id: orgId,
+      });
+
+      if (error) throw error;
+      return ((data || []) as any[]).map(mapRpcToLessonNote);
+    },
+    enabled: !!studentId && !!orgId,
   });
 }
 

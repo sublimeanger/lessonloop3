@@ -27,6 +27,8 @@ import { parseISO, isAfter, isBefore, startOfToday, differenceInHours, startOfWe
 import { formatInTimeZone } from 'date-fns-tz';
 import { useParentLessons, useCreateMessageRequest, useGuardianId } from '@/hooks/useParentPortal';
 import { useOrg } from '@/contexts/OrgContext';
+import { useParentLessonNotes } from '@/hooks/useLessonNotes';
+import { LessonNoteCard } from '@/components/portal/LessonNoteCard';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { RescheduleSlotPicker } from '@/components/portal/RescheduleSlotPicker';
 import { useToast } from '@/hooks/use-toast';
@@ -108,6 +110,9 @@ export default function PortalSchedule() {
     studentId: selectedChildId || undefined,
   });
   const createRequest = useCreateMessageRequest();
+
+  // Fetch structured lesson notes visible to parents
+  const { data: parentNotes } = useParentLessonNotes(selectedChildId || undefined, currentOrg?.id);
 
   // Reschedule policy
   const reschedulePolicy = currentOrg?.parent_reschedule_policy || 'request_only';
@@ -331,7 +336,29 @@ export default function PortalSchedule() {
                 </div>
               )}
 
-              {/* Recap Link */}
+              {/* Structured lesson notes (from lesson_notes table, parent-safe RPC) */}
+              {(() => {
+                const notesForLesson = (parentNotes || []).filter(n => n.lesson_id === lesson.id && n.parent_visible);
+                if (notesForLesson.length === 0) return null;
+                return (
+                  <div className="mt-3 pt-3 border-t space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+                      <FileText className="h-3.5 w-3.5" /> Detailed Notes
+                    </div>
+                    {notesForLesson.map(n => (
+                      <div key={n.id} className="bg-primary/5 rounded-md p-3">
+                        <LessonNoteCard
+                          contentCovered={n.content_covered}
+                          homework={n.homework}
+                          focusAreas={n.focus_areas}
+                          engagementRating={null}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
               {lesson.recap_url && (
                 <div className="mt-3 pt-3 border-t">
                   <a

@@ -138,7 +138,7 @@ export function useOfferMakeUp() {
       if (!currentOrg?.id) throw new Error('No org');
 
       // WL-H3 FIX: Use atomic RPC instead of plain UPDATE
-      const { data, error } = await supabase.rpc('offer_makeup_slot', {
+      const { data, error } = await (supabase.rpc as any)('offer_makeup_slot', {
         _waitlist_id: waitlistId,
         _org_id: currentOrg.id,
       });
@@ -174,7 +174,7 @@ export function useDismissMatch() {
       if (!currentOrg?.id) throw new Error('No org');
 
       // WL-H4 FIX: Use atomic RPC instead of plain UPDATE
-      const { data, error } = await supabase.rpc('dismiss_makeup_match', {
+      const { data, error } = await (supabase.rpc as any)('dismiss_makeup_match', {
         _waitlist_id: waitlistId,
         _org_id: currentOrg.id,
       });

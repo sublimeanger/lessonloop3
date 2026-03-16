@@ -65,7 +65,7 @@ export function useNotesExplorer(filters: NotesExplorerFilters, page: number = 0
         rpcFilters.visibility = filters.visibilityFilter;
       }
 
-      const { data, error } = await supabase.rpc('get_lesson_notes_for_staff', {
+      const { data, error } = await (supabase.rpc as any)('get_lesson_notes_for_staff', {
         p_org_id: currentOrg.id,
         p_filters: rpcFilters,
       });
@@ -103,42 +103,26 @@ export function useNotesStats(filters: NotesExplorerFilters) {
     queryFn: async (): Promise<NotesStats> => {
       if (!currentOrg) return { totalNotes: 0, uniqueStudents: 0, averageEngagement: null, notesWithoutHomework: 0 };
 
-      let query = supabase
-        .from('lesson_notes')
-        .select(`
-          id,
-          student_id,
-          engagement_rating,
-          homework,
-          content_covered,
-          focus_areas,
-          teacher_id,
-          parent_visible,
-          student:students(first_name, last_name),
-          lesson:lessons!inner(start_at)
-        `)
-        .eq('org_id', currentOrg.id)
-        .gte('lesson.start_at', filters.startDate)
-        .lte('lesson.start_at', filters.endDate);
-
-      if (filters.teacherId) {
-        query = query.eq('teacher_id', filters.teacherId);
+      // Use the same RPC as the explorer for consistency & privacy
+      const rpcFilters: Record<string, string> = {
+        start_date: filters.startDate,
+        end_date: filters.endDate,
+        limit: '1000',
+        offset: '0',
+      };
+      if (filters.teacherId) rpcFilters.teacher_id = filters.teacherId;
+      if (filters.studentId) rpcFilters.student_id = filters.studentId;
+      if (filters.visibilityFilter && filters.visibilityFilter !== 'all') {
+        rpcFilters.visibility = filters.visibilityFilter;
       }
 
-      if (filters.studentId) {
-        query = query.eq('student_id', filters.studentId);
-      }
-
-      if (filters.visibilityFilter === 'parent_visible') {
-        query = query.eq('parent_visible', true);
-      } else if (filters.visibilityFilter === 'private') {
-        query = query.eq('parent_visible', false);
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await (supabase.rpc as any)('get_lesson_notes_for_staff', {
+        p_org_id: currentOrg.id,
+        p_filters: rpcFilters,
+      });
       if (error) throw error;
 
-      let rows = data || [];
+      let rows = (data || []) as any[];
 
       // Client-side text search to match explorer
       if (filters.searchQuery) {
@@ -147,8 +131,8 @@ export function useNotesStats(filters: NotesExplorerFilters) {
           (r.content_covered?.toLowerCase().includes(q)) ||
           (r.homework?.toLowerCase().includes(q)) ||
           (r.focus_areas?.toLowerCase().includes(q)) ||
-          (r.student?.first_name?.toLowerCase().includes(q)) ||
-          (r.student?.last_name?.toLowerCase().includes(q))
+          (r.student_first_name?.toLowerCase().includes(q)) ||
+          (r.student_last_name?.toLowerCase().includes(q))
         );
       }
 
