@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrencyMinor } from '@/lib/utils';
 
 interface RefundResult {
   success: boolean;
@@ -22,6 +23,7 @@ export function useRefund() {
     paymentId: string,
     amount?: number,
     reason?: string,
+    currencyCode: string = 'GBP',
   ): Promise<RefundResult> => {
     setIsProcessing(true);
     setError(null);
@@ -49,7 +51,7 @@ export function useRefund() {
 
       toast({
         title: 'Refund processed',
-        description: `Refund of ${data.amountMinor ? `${(data.amountMinor / 100).toFixed(2)}` : ''} has been processed successfully.`,
+        description: `Refund of ${data.amountMinor ? formatCurrencyMinor(data.amountMinor, currencyCode) : ''} has been processed successfully.`,
       });
 
       return { success: true, ...data };
