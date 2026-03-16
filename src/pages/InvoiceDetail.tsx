@@ -407,41 +407,65 @@ export default function InvoiceDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {invoice.payments.map((payment: any) => (
-                    <div
-                      key={payment.id}
-                      className="flex items-center justify-between rounded-xl border p-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-success" />
-                        <div>
-                          <div className="font-medium">
-                            {formatCurrencyMinor(payment.amount_minor, currency)}
+                  {invoice.payments.map((payment: any) => {
+                    const paymentRefunds = (invoice as any).refunds?.filter((r: any) => r.payment_id === payment.id && r.status === 'succeeded') || [];
+                    const totalRefundedForPayment = paymentRefunds.reduce((sum: number, r: any) => sum + r.amount_minor, 0);
+                    
+                    return (
+                      <div key={payment.id} className="space-y-2">
+                        <div className="flex items-center justify-between rounded-xl border p-3">
+                          <div className="flex items-center gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-success" />
+                            <div>
+                              <div className="font-medium">
+                                {formatCurrencyMinor(payment.amount_minor, currency)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatDateUK(parseISO(payment.paid_at), 'dd MMM yyyy')} {formatTimeUK(parseISO(payment.paid_at))} •{' '}
+                                {payment.method.replace('_', ' ')}
+                                {payment.provider_reference && ` • ${payment.provider_reference}`}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDateUK(parseISO(payment.paid_at), 'dd MMM yyyy')} {formatTimeUK(parseISO(payment.paid_at))} •{' '}
-                            {payment.method.replace('_', ' ')}
-                            {payment.provider_reference && ` • ${payment.provider_reference}`}
-                          </div>
+                          {/* Refund button — only for Stripe payments, visible to billing admins */}
+                          {!isParent && canManageBilling && payment.provider === 'stripe' && payment.provider_reference && totalRefundedForPayment < payment.amount_minor && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground hover:text-destructive h-8 gap-1.5"
+                              onClick={() => {
+                                setRefundPayment({ ...payment, _alreadyRefunded: totalRefundedForPayment });
+                                setRefundDialogOpen(true);
+                              }}
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">Refund</span>
+                            </Button>
+                          )}
                         </div>
+                        {/* Show refund entries under the payment */}
+                        {paymentRefunds.map((refund: any) => (
+                          <div key={refund.id} className="flex items-center justify-between rounded-xl border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/20 p-3 ml-6">
+                            <div className="flex items-center gap-3">
+                              <RotateCcw className="h-4 w-4 text-amber-500" />
+                              <div>
+                                <div className="font-medium text-sm">
+                                  Refund: {formatCurrencyMinor(refund.amount_minor, currency)}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatDateUK(parseISO(refund.created_at), 'dd MMM yyyy')}
+                                  {refund.reason && ` • ${refund.reason}`}
+                                </div>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                              Refunded
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
-                      {/* Refund button — only for Stripe payments, visible to billing admins */}
-                      {!isParent && canManageBilling && payment.provider === 'stripe' && payment.provider_reference && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-destructive h-8 gap-1.5"
-                          onClick={() => {
-                            setRefundPayment(payment);
-                            setRefundDialogOpen(true);
-                          }}
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Refund</span>
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -627,6 +651,7 @@ export default function InvoiceDetail() {
         }}
         paymentId={refundPayment?.id || null}
         paymentAmount={refundPayment?.amount_minor || 0}
+        alreadyRefunded={refundPayment?._alreadyRefunded || 0}
         method={refundPayment?.method}
         paidAt={refundPayment?.paid_at}
         invoiceNumber={invoice.invoice_number}

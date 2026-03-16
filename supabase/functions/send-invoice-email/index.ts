@@ -171,8 +171,10 @@ const handler = async (req: Request): Promise<Response> => {
     const orgId = invoice.org_id;
 
     // Resolve recipient from DB
-    const payer = invoice.payer_guardian as { full_name: string; email: string } | null;
-    const payerStudent = invoice.payer_student as { first_name: string; last_name: string; email: string } | null;
+    const payerRaw = invoice.payer_guardian as unknown;
+    const payer = (Array.isArray(payerRaw) ? payerRaw[0] : payerRaw) as { full_name: string; email: string } | null;
+    const payerStudentRaw = invoice.payer_student as unknown;
+    const payerStudent = (Array.isArray(payerStudentRaw) ? payerStudentRaw[0] : payerStudentRaw) as { first_name: string; last_name: string; email: string } | null;
 
     const recipientEmail = payer?.email || payerStudent?.email || null;
     const recipientName = payer?.full_name ||
