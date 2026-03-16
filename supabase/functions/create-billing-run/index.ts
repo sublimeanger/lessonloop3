@@ -18,6 +18,11 @@ interface BillingRunRequest {
   fallback_rate_minor?: number;
   billing_mode?: "delivered" | "upfront";
   term_id?: string;
+  // payment plan fields
+  plan_enabled?: boolean;
+  plan_threshold_minor?: number;
+  plan_installments?: number;
+  plan_frequency?: string;
   // retry fields
   billing_run_id?: string;
   failed_payer_ids?: string[];
@@ -200,11 +205,21 @@ async function handleCreate(
     );
   }
 
-  // Get org settings
+  // Resolve payment plan settings
+  const planEnabled = body.plan_enabled === true;
+  const planFrequency = body.plan_frequency || "monthly";
+  if (planEnabled && body.plan_frequency && !["monthly", "fortnightly", "custom"].includes(body.plan_frequency)) {
+    return new Response(
+      JSON.stringify({ error: "Invalid plan_frequency: must be monthly, fortnightly, or custom" }),
+      { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Get org settings (including payment plan defaults)
   const { data: org, error: orgError } = await client
     .from("organisations")
     .select(
-      "vat_enabled, vat_rate, currency_code, subscription_status, trial_ends_at, timezone"
+      "vat_enabled, vat_rate, currency_code, subscription_status, trial_ends_at, timezone, default_plan_threshold_minor, default_plan_installments, default_plan_frequency"
     )
     .eq("id", orgId)
     .single();
@@ -283,7 +298,13 @@ async function handleCreate(
       body.generate_invoices !== false,
       body.term_id || null,
       null, // no payer filter
-      billingRun.id // BIL-H2: pass billing_run_id for FK
+      billingRun.id, // BIL-H2: pass billing_run_id for FK
+      {
+        planEnabled,
+        planThresholdMinor: body.plan_threshold_minor ?? org.default_plan_threshold_minor ?? null,
+        planInstallments: body.plan_installments ?? org.default_plan_installments ?? 3,
+        planFrequency: (body.plan_frequency ?? org.default_plan_frequency ?? "monthly") as string,
+      }
     );
 
     // Determine status
@@ -440,10 +461,17 @@ async function handleRetry(
   );
 }
 
+interface PlanOptions {
+  planEnabled: boolean;
+  planThresholdMinor: number | null;
+  planInstallments: number;
+  planFrequency: string;
+}
+
 async function executeBillingLogic(
   client: any,
   orgId: string,
-  org: { vat_enabled: boolean; vat_rate: number; currency_code: string; timezone?: string },
+  org: { vat_enabled: boolean; vat_rate: number; currency_code: string; timezone?: string; default_plan_threshold_minor?: number | null; default_plan_installments?: number; default_plan_frequency?: string },
   startDate: string,
   endDate: string,
   billingMode: string,
@@ -451,7 +479,8 @@ async function executeBillingLogic(
   generateInvoices: boolean,
   termId: string | null,
   retryPayerIds: Set<string> | null,
-  billingRunId: string // BIL-H2: link invoices to billing run
+  billingRunId: string, // BIL-H2: link invoices to billing run
+  planOptions?: PlanOptions
 ) {
   // Fetch rate cards
   const { data: rateCards } = await client
@@ -745,6 +774,65 @@ async function executeBillingLogic(
                 payerId: payer.payerId,
                 error: 'Failed to create invoice items',
               });
+            }
+          }
+        }
+
+        // ── Payment plan creation for eligible invoices ──
+        if (planOptions?.planEnabled && invoiceIds.length > 0) {
+          // Fetch student-level preferences for payer's students
+          const studentIds = new Set<string>();
+          for (const { payer } of payerItemsMap) {
+            for (const { studentId } of payer.lessons) {
+              studentIds.add(studentId);
+            }
+          }
+
+          const { data: studentPrefs } = studentIds.size > 0
+            ? await client
+                .from("students")
+                .select("id, payment_plan_preference")
+                .in("id", [...studentIds])
+            : { data: [] };
+
+          const prefMap = new Map<string, string>(
+            (studentPrefs || []).map((s: any) => [s.id, s.payment_plan_preference || "default"])
+          );
+
+          const threshold = planOptions.planThresholdMinor;
+          const instCount = planOptions.planInstallments;
+          const freq = planOptions.planFrequency;
+
+          for (let i = 0; i < invoiceIds.length; i++) {
+            const invoiceTotal = payerItemsMap[i].total;
+            const payerStudentIds = payerItemsMap[i].payer.lessons.map((l: any) => l.studentId);
+
+            // Check student-level overrides: if ANY student is 'never', skip plan
+            // If ANY student is 'always', force plan regardless of threshold
+            let forcePlan = false;
+            let blockPlan = false;
+            for (const sid of payerStudentIds) {
+              const pref = prefMap.get(sid) || "default";
+              if (pref === "always") forcePlan = true;
+              if (pref === "never") blockPlan = true;
+            }
+
+            // 'never' takes precedence over 'always'
+            if (blockPlan) continue;
+
+            const meetsThreshold = threshold != null ? invoiceTotal > threshold : true;
+            if (!forcePlan && !meetsThreshold) continue;
+
+            // Create payment plan via generate_installments RPC
+            const { error: planError } = await client.rpc("generate_installments", {
+              _invoice_id: invoiceIds[i],
+              _org_id: orgId,
+              _count: instCount,
+              _frequency: freq,
+            });
+
+            if (planError) {
+              console.error(`[BillingRun] Failed to create payment plan for invoice ${invoiceIds[i]}:`, planError);
             }
           }
         }
