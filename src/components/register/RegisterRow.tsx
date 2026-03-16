@@ -229,7 +229,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
               >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                      <div className="flex flex-wrap items-center gap-2">
-                       <span className="font-medium">{participant.student_name}</span>
+                       <EntityLink type="student" id={participant.student_id} className="font-medium">{participant.student_name}</EntityLink>
                         <StudentNotesPopover
                           studentId={participant.student_id}
                           studentName={participant.student_name}

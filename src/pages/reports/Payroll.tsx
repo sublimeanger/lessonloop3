@@ -301,7 +301,10 @@ function PayrollTeacherList({
                       <TableRow key={lesson.id}>
                         <TableCell className="font-medium">{lesson.title}</TableCell>
                         <TableCell>
-                          {format(new Date(lesson.startAt), 'd MMM yyyy, HH:mm')}
+                          <Link to={`/calendar?date=${format(new Date(lesson.startAt), 'yyyy-MM-dd')}`} className="text-primary/80 hover:text-primary hover:underline transition-colors">
+                            {format(new Date(lesson.startAt), 'd MMM yyyy, HH:mm')}
+                          </Link>
+                        </TableCell>
                         </TableCell>
                         <TableCell className="text-right">{lesson.durationMins} min</TableCell>
                         <TableCell className="text-right font-medium">

@@ -327,9 +327,13 @@ export default function InvoiceDetail() {
                           <td className="py-3">
                             <div>{item.description}</div>
                             {item.linked_lesson && (
-                              <div className="text-xs text-muted-foreground">
+                              <Link
+                                to={`/calendar?date=${formatDateUK(parseISO(item.linked_lesson.start_at), 'yyyy-MM-dd')}`}
+                                className="text-xs text-primary/80 hover:text-primary hover:underline transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 {formatDateUK(parseISO(item.linked_lesson.start_at), 'dd MMM yyyy')} {formatTimeUK(parseISO(item.linked_lesson.start_at))}
-                              </div>
+                              </Link>
                             )}
                           </td>
                           <td className="py-3 text-right">{item.quantity}</td>

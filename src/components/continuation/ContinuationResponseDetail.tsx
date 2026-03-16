@@ -77,7 +77,9 @@ export function ContinuationResponseDetail({
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>
-            {student ? `${student.first_name} ${student.last_name}` : 'Student'}
+            {student ? (
+              <EntityLink type="student" id={student.id}>{student.first_name} {student.last_name}</EntityLink>
+            ) : 'Student'}
           </SheetTitle>
         </SheetHeader>
 
