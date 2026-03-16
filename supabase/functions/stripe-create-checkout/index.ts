@@ -77,6 +77,48 @@ serve(async (req) => {
       throw new Error("Invoice not found");
     }
 
+    // Verify caller is authorized: must be the invoice's payer OR an org member
+    let isAuthorizedPayer = false;
+
+    // Check if caller is the invoice's payer (guardian linked to auth user)
+    if (invoice.payer_guardian_id) {
+      const { data: guardianLink } = await supabase
+        .from("guardians")
+        .select("id")
+        .eq("id", invoice.payer_guardian_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (guardianLink) isAuthorizedPayer = true;
+    }
+
+    // Check if caller is the payer student (student linked to auth user)
+    if (!isAuthorizedPayer && invoice.payer_student_id) {
+      const { data: studentLink } = await supabase
+        .from("students")
+        .select("id")
+        .eq("id", invoice.payer_student_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (studentLink) isAuthorizedPayer = true;
+    }
+
+    // Check if caller is an admin/owner/finance member of the invoice's org
+    if (!isAuthorizedPayer) {
+      const { data: orgMembership } = await supabase
+        .from("org_memberships")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("org_id", invoice.org_id)
+        .eq("status", "active")
+        .in("role", ["owner", "admin", "finance"])
+        .maybeSingle();
+      if (orgMembership) isAuthorizedPayer = true;
+    }
+
+    if (!isAuthorizedPayer) {
+      throw new Error("Not authorized to pay this invoice");
+    }
+
     // Check invoice is payable
     if (!["sent", "overdue"].includes(invoice.status)) {
       throw new Error(`Invoice cannot be paid (status: ${invoice.status})`);
