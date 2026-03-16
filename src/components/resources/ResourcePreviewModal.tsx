@@ -105,6 +105,14 @@ export function ResourcePreviewModal({
               title={title}
               className="h-full w-full rounded-md border"
             />
+          ) : previewType === 'video' && signedUrl ? (
+            <video
+              src={signedUrl}
+              controls
+              className="max-h-[calc(100vh-11rem)] max-w-full rounded-md sm:max-h-[75vh]"
+            >
+              Your browser does not support video playback.
+            </video>
           ) : (
             <div className="text-center space-y-3 py-8">
               <Eye className="h-10 w-10 mx-auto text-muted-foreground/50" />
