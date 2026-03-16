@@ -156,11 +156,12 @@ export function useAgeingReport(issueDateFrom?: string, issueDateTo?: string) {
       }
 
       // Fetch outstanding invoices (sent or overdue)
+      // Include paid_minor to correctly calculate remaining balance (DR-H2 fix)
       // issue_date is a DATE column — no timezone conversion needed for the query itself
       let query = supabase
         .from('invoices')
         .select(`
-          id, invoice_number, due_date, total_minor, status,
+          id, invoice_number, due_date, total_minor, paid_minor, status,
           payer_guardian:guardians!invoices_payer_guardian_id_fkey(full_name),
           payer_student:students!invoices_payer_student_id_fkey(first_name, last_name)
         `)
@@ -197,11 +198,16 @@ export function useAgeingReport(issueDateFrom?: string, issueDateTo?: string) {
       let totalOverdue = 0;
 
       for (const inv of invoices || []) {
+        // DR-H2 fix: subtract paid_minor to get actual remaining balance.
+        // Must stay in sync with get_invoice_stats which uses the same formula.
+        const remainingMinor = (inv.total_minor || 0) - (inv.paid_minor || 0);
+        if (remainingMinor <= 0) continue; // Fully paid but status not yet updated
+
         const dueDate = new Date(inv.due_date);
         dueDate.setHours(0, 0, 0, 0);
         const daysOverdue = Math.max(0, differenceInDays(today, dueDate));
-        
-        const payerName = inv.payer_guardian?.full_name 
+
+        const payerName = inv.payer_guardian?.full_name
           || (inv.payer_student ? `${inv.payer_student.first_name} ${inv.payer_student.last_name}` : 'Unknown');
 
         const invoiceData = {
@@ -209,22 +215,22 @@ export function useAgeingReport(issueDateFrom?: string, issueDateTo?: string) {
           invoiceNumber: inv.invoice_number,
           payerName,
           dueDate: inv.due_date,
-          totalMinor: inv.total_minor,
+          totalMinor: remainingMinor,
           daysOverdue,
         };
 
-        totalOutstanding += inv.total_minor / 100;
+        totalOutstanding += remainingMinor / 100;
         if (daysOverdue > 0) {
-          totalOverdue += inv.total_minor / 100;
+          totalOverdue += remainingMinor / 100;
         }
 
         // Find matching bucket
         for (const bucket of buckets) {
-          const inRange = daysOverdue >= bucket.minDays && 
+          const inRange = daysOverdue >= bucket.minDays &&
             (bucket.maxDays === null || daysOverdue <= bucket.maxDays);
           if (inRange) {
             bucket.invoices.push(invoiceData);
-            bucket.totalAmount += inv.total_minor / 100;
+            bucket.totalAmount += remainingMinor / 100;
             bucket.count += 1;
             break;
           }
@@ -555,14 +561,17 @@ export function useDashboardStats() {
         return { todayLessons: 0, activeStudents: 0, outstandingAmount: 0, overdueCount: 0, hoursThisWeek: 0, revenueMTD: 0, lessonsThisWeek: 0, totalLessons: 0 };
       }
 
-      const today = new Date();
       const orgTimezone = currentOrg.timezone || 'Europe/London';
-      const todayStr = format(today, 'yyyy-MM-dd');
-      const mondayStart = getStartOfWeek(today, { weekStartsOn: 1 });
+      // DR-M6 fix: compute all date boundaries in org timezone so that
+      // "today", "this week", and "this month" align with the academy's
+      // local calendar, not the browser's timezone.
+      const nowInOrgTz = toZonedTime(new Date(), orgTimezone);
+      const todayStr = format(nowInOrgTz, 'yyyy-MM-dd');
+      const mondayStart = getStartOfWeek(nowInOrgTz, { weekStartsOn: 1 });
       const weekStartStr = format(mondayStart, 'yyyy-MM-dd');
       const weekEndStr = format(new Date(mondayStart.getTime() + 6 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
-      const monthStart = format(startOfMonth(today), 'yyyy-MM-dd');
-      const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd');
+      const monthStart = format(startOfMonth(nowInOrgTz), 'yyyy-MM-dd');
+      const monthEnd = format(endOfMonth(nowInOrgTz), 'yyyy-MM-dd');
 
       // Timezone-aware date ranges
       const todayStart = fromZonedTime(new Date(`${todayStr}T00:00:00`), orgTimezone).toISOString();

@@ -73,26 +73,30 @@ export function useTeacherDashboardStats() {
         { data: upcomingData },
       ] = await Promise.all([
         // Today's lessons for this teacher
+        // DR-M3 fix: include completed lessons (not just scheduled) so the
+        // count doesn't drop mid-day as the teacher marks attendance.
         supabase
           .from('lessons')
           .select('id')
           .eq('org_id', currentOrg.id)
           .eq('teacher_id', myTeacherId)
-          .eq('status', 'scheduled')
+          .neq('status', 'cancelled')
           .gte('start_at', todayStartUtc)
           .lte('start_at', todayEndUtc),
-        // Get students assigned to this teacher
+        // DR-M4 fix: join to students table and only count active students
         supabase
           .from('student_teacher_assignments')
-          .select('student_id')
+          .select('student_id, students!inner(status)')
           .eq('org_id', currentOrg.id)
-          .eq('teacher_id', myTeacherId),
-        // Get this week's lessons for hours calculation
+          .eq('teacher_id', myTeacherId)
+          .eq('students.status', 'active'),
+        // DR-M5 fix: exclude cancelled lessons from weekly hours
         supabase
           .from('lessons')
           .select('start_at, end_at')
           .eq('org_id', currentOrg.id)
           .eq('teacher_id', myTeacherId)
+          .neq('status', 'cancelled')
           .gte('start_at', weekStartUtc)
           .lte('start_at', weekEndUtc),
         // This month's completed lessons
