@@ -311,13 +311,11 @@ export function ComposeMessageModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
-            onClick={handleSend}
-            disabled={!hasValidRecipient || !subject.trim() || !body.trim() || sendMessage.isPending || !isOnline}
-            className="gap-2"
+            className="min-h-11 w-full sm:min-h-9 sm:w-auto gap-2"
           >
             {sendMessage.isPending ? (
               <>
