@@ -373,25 +373,25 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
 
         <DialogFooter className="flex gap-2">
           {step > 1 && (
-            <Button variant="outline" onClick={() => setStep(s => s - 1)} disabled={generateMutation.isPending}>
+            <Button variant="outline" className="min-h-11 sm:min-h-9" onClick={() => setStep(s => s - 1)} disabled={generateMutation.isPending}>
               Back
             </Button>
           )}
           <div className="flex-1" />
           {step === 1 && (
-            <Button onClick={goToStep2} disabled={slotCount <= 0}>
+            <Button className="min-h-11 sm:min-h-9" onClick={goToStep2} disabled={slotCount <= 0}>
               Next
             </Button>
           )}
           {step === 2 && (
-            <Button onClick={goToStep3} disabled={!teacherId || isCheckingConflicts}>
+            <Button className="min-h-11 sm:min-h-9" onClick={goToStep3} disabled={!teacherId || isCheckingConflicts}>
               {isCheckingConflicts ? (
                 <><Loader2 className="h-4 w-4 animate-spin mr-2" />Checking conflicts…</>
               ) : 'Preview Slots'}
             </Button>
           )}
           {step === 3 && (
-            <Button onClick={handleGenerate} disabled={activeSlotCount === 0 || generateMutation.isPending}>
+            <Button className="min-h-11 sm:min-h-9" onClick={handleGenerate} disabled={activeSlotCount === 0 || generateMutation.isPending}>
               {generateMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />

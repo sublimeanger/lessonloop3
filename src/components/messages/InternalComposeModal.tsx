@@ -137,14 +137,14 @@ export function InternalComposeModal({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
+            className="min-h-11 w-full sm:min-h-9 sm:w-auto gap-2"
             onClick={handleSend}
             disabled={!recipientId || !subject.trim() || !body.trim() || sendMessage.isPending || !isOnline}
-            className="gap-2"
           >
             {sendMessage.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

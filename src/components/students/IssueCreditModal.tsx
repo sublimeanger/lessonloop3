@@ -142,10 +142,11 @@ export function IssueCreditModal({
         </div>
 
         <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={onClose}>
             Cancel
           </Button>
-          <Button 
+          <Button
+            className="min-h-11 w-full sm:min-h-9 sm:w-auto"
             onClick={handleSubmit} 
             disabled={!isValid || createCredit.isPending}
           >
