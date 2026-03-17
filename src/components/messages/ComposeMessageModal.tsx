@@ -316,6 +316,8 @@ export function ComposeMessageModal({
           </Button>
           <Button
             className="min-h-11 w-full sm:min-h-9 sm:w-auto gap-2"
+            onClick={handleSend}
+            disabled={!hasValidRecipient || !subject.trim() || !body.trim() || sendMessage.isPending || !isOnline}
           >
             {sendMessage.isPending ? (
               <>
