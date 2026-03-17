@@ -150,10 +150,10 @@ export function InviteMemberDialog({ open, onOpenChange, onInviteSent }: InviteM
           </div>
         </div>
         <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleInvite} disabled={isSending || !email.trim()}>
+          <Button className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={handleInvite} disabled={isSending || !email.trim()}>
             {isSending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

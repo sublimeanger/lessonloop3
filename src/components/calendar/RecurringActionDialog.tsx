@@ -88,7 +88,7 @@ export function RecurringActionDialog({ open, onClose, onSelect, action }: Recur
         </div>
 
         <DialogFooter className="border-t border-border px-6 py-4 bg-muted/30">
-          <Button variant="ghost" onClick={onClose} className="w-full sm:w-auto">
+          <Button variant="ghost" onClick={onClose} className="min-h-11 w-full sm:min-h-9 sm:w-auto">
             Cancel
           </Button>
         </DialogFooter>

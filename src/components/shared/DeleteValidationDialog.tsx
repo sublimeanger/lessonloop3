@@ -58,7 +58,7 @@ export function DeleteValidationDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-lg p-0 sm:max-w-lg">
+      <AlertDialogContent className="max-w-lg sm:max-w-lg">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             {hasBlocks ? (
