@@ -169,7 +169,7 @@ export default function Messages() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-muted/50 rounded-full p-1 h-auto">
+        <TabsList className="bg-muted/50 rounded-full p-1 h-auto overflow-x-auto max-w-full">
           <TabsTrigger value="sent" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 text-sm">Conversations</TabsTrigger>
           {isStaff && (
             <TabsTrigger value="internal" className="gap-2 rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 text-sm">
