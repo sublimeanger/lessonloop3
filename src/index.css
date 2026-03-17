@@ -30,6 +30,29 @@ body.capacitor {
 
   /* No callout on long press */
   -webkit-touch-callout: none;
+
+  /* Eliminate 300ms tap delay on iOS */
+  touch-action: manipulation;
+}
+
+/* Eliminate tap delay on all interactive elements */
+body.capacitor button,
+body.capacitor a,
+body.capacitor [role="button"],
+body.capacitor input,
+body.capacitor select,
+body.capacitor textarea,
+body.capacitor [tabindex] {
+  touch-action: manipulation;
+}
+
+/* Native-feel press states for buttons & tappable elements */
+body.capacitor button:active,
+body.capacitor a:active,
+body.capacitor [role="button"]:active,
+body.capacitor [data-interactive]:active {
+  opacity: 0.7;
+  transition: opacity 0.1s ease;
 }
 
 /* Re-enable text selection on inputs and text areas */
