@@ -45,12 +45,12 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   if (pathChanged) prevPathRef.current = location.pathname;
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="flex min-h-screen w-full flex-col overflow-x-hidden">
       <TrialExpiredBanner show={trialModalDismissed} />
       <Header />
       <div className="flex flex-1">
         <AppSidebar />
-        <main className={`flex-1 overflow-auto px-4 py-4 md:px-6 md:py-5 lg:px-8 lg:py-6 ${showBottomNav ? 'pb-24' : ''}`}>
+        <main className={`flex-1 overflow-auto overflow-x-hidden px-4 py-4 md:px-6 md:py-5 lg:px-8 lg:py-6 ${showBottomNav ? 'pb-24' : ''}`}>
           <AutoBreadcrumbs />
           <SectionErrorBoundary name="Page" key={location.pathname}>
             <Suspense fallback={<PageTransitionFallback />}>

@@ -311,7 +311,8 @@ export default function InvoiceDetail() {
 
                 <Separator />
 
-                <div className="overflow-x-auto">
+                {/* Desktop table */}
+                <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full min-w-[520px]">
                     <thead>
                       <tr className="border-b text-left text-sm text-muted-foreground">
@@ -347,6 +348,28 @@ export default function InvoiceDetail() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile card layout */}
+                <div className="sm:hidden space-y-3">
+                  {invoice.items?.map((item: any) => (
+                    <div key={item.id} className="rounded-xl border p-3 space-y-1.5">
+                      <div className="font-medium text-sm">{item.description}</div>
+                      {item.linked_lesson && (
+                        <Link
+                          to={`/calendar?date=${formatDateUK(parseISO(item.linked_lesson.start_at), 'yyyy-MM-dd')}`}
+                          className="text-xs text-primary/80 hover:text-primary hover:underline transition-colors block"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {formatDateUK(parseISO(item.linked_lesson.start_at), 'dd MMM yyyy')} {formatTimeUK(parseISO(item.linked_lesson.start_at))}
+                        </Link>
+                      )}
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{item.quantity} × {formatCurrencyMinor(item.unit_price_minor, currency)}</span>
+                        <span className="font-medium text-foreground">{formatCurrencyMinor(item.amount_minor, currency)}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 <div className="flex justify-end">
