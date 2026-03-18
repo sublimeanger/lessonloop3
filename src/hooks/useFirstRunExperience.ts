@@ -231,6 +231,7 @@ export function useFirstRunExperience(): FirstRunState & {
 
   const completeFirstRun = useCallback(async () => {
     if (!user) return;
+    setIsDismissed(true);
     try {
       await supabase
         .from('profiles')
