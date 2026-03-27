@@ -1,163 +1,232 @@
 
 
-# Additional Audit Phases Plan
+# Calendar Deep Audit — Comprehensive Test Plan
 
-Based on thorough codebase review, here are 6 additional phases covering the gaps you identified. Each phase lists the exact files to audit and the specific concerns to investigate.
+## Scope
 
----
-
-## Phase 12: Subscription Enforcement & Feature Gating
-
-**Files to audit:**
-- `src/hooks/useSubscription.ts` — client-side plan derivation
-- `src/hooks/useFeatureGate.ts` — feature matrix and access checks
-- `src/hooks/useUsageCounts.ts` — student/teacher limit checks
-- `src/components/subscription/FeatureGate.tsx` — UI gating components
-- `supabase/functions/stripe-webhook/index.ts` — plan sync from Stripe
-- `supabase/functions/_shared/plan-config.ts` — server-side limits
-- DB functions: `check_teacher_limit()`, `check_subscription_active()`, `is_org_active()`, `is_org_write_allowed()`, `protect_subscription_fields()`
-- `src/test/subscription/PlanGating.test.ts`
-
-**Concerns:**
-- SUB-H1 (from Phase 10): No server-side student limit trigger — is it still missing?
-- Can a cancelled/expired org bypass `check_subscription_active` for any table?
-- Do `CANCELLED_LIMITS` actually get applied on the DB rows, or only client-side?
-- Is `protect_subscription_fields()` trigger attached to the right table with the right timing?
-- Feature matrix gaps: are there features accessible without proper gating?
-- Grace period logic: is `PAST_DUE_GRACE_DAYS` consistent between frontend and backend?
-- Can a user downgrade and retain access to higher-plan features until cache expires?
+Full UX and functionality audit of the calendar module across all views, interactions, and roles. This is a browser-based testing sweep at both desktop (1296px) and mobile (390px) viewports, covering every interaction path.
 
 ---
 
-## Phase 13: Term Management & Practice/Resources
+## Test Sessions (executed sequentially via browser tools)
 
-**Files to audit:**
-- `src/hooks/useTerms.ts` — CRUD operations
-- `src/components/settings/TermManagementCard.tsx` — overlap validation
-- `supabase/functions/process-term-adjustment/index.ts` — term adjustment wizard
-- `src/hooks/usePractice.ts` — practice log mutations
-- `src/hooks/useResources.ts` — resource upload/share/delete
-- DB function: `update_practice_streak()` trigger
-- `supabase/functions/streak-notification/index.ts`
-- `supabase/functions/credit-expiry/index.ts`, `credit-expiry-warning/index.ts`
+### Session 1: Navigation & View Switching (Desktop)
 
-**Concerns:**
-- Term overlap validation: is it server-side or client-only?
-- `process-term-adjustment`: does it validate term ownership, lesson counts, and credit note amounts atomically?
-- Practice streak trigger: edge cases with backdated logs, timezone boundaries, same-day duplicates
-- Resource uploads: is file type validated server-side or just client-side? Can you upload a `.exe` disguised as `.pdf`?
-- Storage quota: enforced at DB/storage level or just client-side check?
-- Streak notifications: authenticated? Rate limited?
+1. Load `/calendar` — verify skeleton appears, then resolves without layout shift
+2. Click each view toggle: Day → Stacked → Week → Agenda — confirm each renders correctly
+3. Verify Today button navigates to current date
+4. Click Prev/Next arrows — confirm date updates in WeekContextStrip and URL params sync (`?date=`, `?view=`)
+5. Click a day in the WeekContextStrip — confirm Day view navigates to that date
+6. Verify keyboard shortcuts: ← → (navigate), T (today), N (new lesson), S/W/A (views)
+7. Verify month label in WeekContextStrip updates correctly when week spans two months
+8. Test deep link: load `/calendar?date=2026-04-15&view=agenda` — confirm correct date and view
+
+### Session 2: Day View Interactions (Desktop)
+
+1. Click an empty time slot — verify QuickCreatePopover opens at correct time
+2. Drag across time slots to create a range — verify QuickCreatePopover opens with correct start/end times
+3. Verify lesson cards show: time, student name, teacher colour bar, status badges (cancelled, completed, open slot)
+4. Click a lesson card — verify LessonDetailSidePanel opens (on lg+ screens)
+5. Verify side panel shows: time, duration, teacher, location, room, students, attendance buttons, notes, recurrence info
+6. Mark attendance from side panel — verify optimistic update and toast
+7. Drag a lesson to a new time — verify optimistic move (pulsing animation) and confirm toast
+8. Resize a lesson (drag bottom edge) — verify minimum 15min snap and end time updates
+9. Verify "now" indicator line appears at correct position on today
+10. Verify auto-scroll to current hour on initial load
+
+### Session 3: Week Time Grid View (Desktop)
+
+1. Switch to Week view — verify 7-day columns render with day headers
+2. Verify weekend columns show correctly (muted if no lessons)
+3. Click a slot — verify QuickCreatePopover at correct day/time
+4. Drag a lesson across days — verify it moves to the new day/time
+5. Verify overlap layout: 2+ lessons at same time show side-by-side (max 4 columns + overflow pill)
+6. Click overflow pill — verify popover shows hidden lessons
+7. Verify closure dates display (shaded column or indicator)
+8. Verify lesson cards show compact info (truncated names for narrow columns)
+9. Drag-resize a lesson vertically — confirm it extends properly
+10. Verify hour labels in gutter are correct and aligned
+
+### Session 4: Stacked & Agenda Views (Desktop)
+
+1. Stacked view: verify 7-day columns with stacked card layout
+2. Stacked view: verify colour bars per teacher, time labels, student names
+3. Stacked view: verify compact toggle reduces card size
+4. Stacked view: click a day header — verify slot creation opens
+5. Stacked view: verify collapse/expand for days with 6+ lessons
+6. Agenda view: verify 14-day forward list grouped by day
+7. Agenda view: verify "Group by teacher" toggle groups lessons under teacher headings
+8. Agenda view: verify lesson cards show full details (time, student, teacher, location)
+9. Agenda view: click a lesson — verify detail panel opens
+10. Both views: verify empty days show appropriately (no day header in agenda, empty column in stacked)
+
+### Session 5: Lesson Creation Flow
+
+1. Click "New Lesson" button — verify LessonModal opens (Dialog on desktop, Drawer on mobile)
+2. Fill out: teacher, student, date, time, duration — verify all selects work
+3. Test student selector: search, multi-select for group lessons, clear
+4. Test date picker inside modal — verify calendar popover opens
+5. Test time picker — verify 15-minute intervals
+6. Test duration picker — verify preset options and custom
+7. Test location/room selection — verify rooms filter by selected location
+8. Test lesson type switching: individual → group → paired → ensemble
+9. Toggle "Recurring" — verify recurrence section appears (day checkboxes, end date)
+10. Set recurring on Mon+Wed until end date — verify preview count
+11. Create a lesson — verify success toast, calendar refetches, modal closes
+12. Edit an existing lesson — verify all fields pre-populated
+13. Edit a recurring lesson — verify RecurringActionDialog ("This only" / "This and future")
+14. Test conflict detection: create a lesson overlapping an existing one — verify warning/error alerts
+15. Test online lesson toggle and Zoom connection integration
+16. Test notes (private + shared) and recap URL fields
+
+### Session 6: QuickCreate Popover
+
+1. Click empty slot — verify QuickCreate popover shows start time
+2. Verify student combobox search works
+3. Verify teacher auto-selects if user is teacher role
+4. Verify duration presets (30, 45, 60 min) toggle correctly
+5. Click "Full editor" — verify LessonModal opens with time pre-filled
+6. Create via QuickCreate — verify success toast, lesson appears on calendar
+7. Test conflict detection within QuickCreate
+
+### Session 7: Lesson Detail Panel (Desktop Side Panel)
+
+1. Click lesson — verify side panel slides in from right
+2. Verify all metadata: time, duration, teacher, location, room, status badge
+3. Verify student list with attendance buttons (Present, Absent, Late, Cancelled)
+4. Click attendance — verify optimistic update, button state change
+5. Click Edit — verify modal opens with lesson data
+6. Verify RecurrenceInfo: series summary, clickable date list
+7. Click a recurrence date — verify calendar navigates to that date
+8. Verify notes section (private + shared) with inline edit
+9. Close panel — verify it slides out smoothly
+10. Open different lesson — verify panel content updates
+
+### Session 8: Lesson Detail Panel (Sheet, Tablet/Mobile)
+
+1. Resize viewport to tablet (768px) — click lesson — verify Sheet opens (not side panel)
+2. Verify all the same info as desktop side panel
+3. Verify attendance marking works
+4. Verify edit, delete, cancel actions
+5. Verify the delete confirmation AlertDialog
+6. Cancel a lesson — verify recurring prompt if applicable
+7. Delete a lesson — verify confirmation, toast, calendar refresh
+
+### Session 9: Mobile Layout (390px)
+
+1. Set viewport to 390px — load calendar
+2. Verify sticky header: date, Today button, Zap dropdown, prev/next week arrows
+3. Verify WeekContextStrip renders 7 days with dots
+4. Verify MobileDayView: lesson cards as list with teacher colour bars
+5. Tap a lesson — verify MobileLessonSheet (Drawer) opens from bottom
+6. Verify sheet shows: time, duration, teacher avatar, students, status, location
+7. Tap "Edit" in sheet — verify LessonModal opens as Drawer
+8. Tap "View Details" — verify LessonDetailPanel Sheet opens
+9. Verify FAB (+) position: not overlapping bottom nav or content
+10. Tap FAB — verify LessonModal opens with 9am default time for current date
+11. Long-press a lesson card — verify bulk selection mode activates
+12. Verify filter bar scrolls horizontally on mobile
+13. Verify no horizontal overflow on the page
+14. Swipe left/right on WeekContextStrip — verify week navigation
+
+### Session 10: Filters
+
+1. Click teacher filter pill — verify dropdown with teacher names and colour dots
+2. Select a teacher — verify lessons filter, URL updates (`?teacher=`)
+3. Verify lesson count badges on filter pills
+4. Click location filter — verify locations list
+5. Select location — verify lessons filter and rooms filter updates accordingly
+6. Click room filter — verify only rooms for selected location show
+7. Click instrument filter — verify instruments list
+8. Toggle "Hide cancelled" — verify cancelled lessons disappear
+9. Clear all filters — verify all lessons return
+10. Verify filter state persists across view switches (Day → Week → back)
+11. Verify filter state persists across date navigation
+
+### Session 11: Bulk Actions
+
+1. Open Zap dropdown → "Select Lessons" — verify bulk selection mode activates
+2. Click lessons to select — verify checkboxes/rings appear, count in BulkSelectBar
+3. Click "Select All" — verify all visible lessons selected
+4. Click "Clear" — verify selections removed
+5. Click "Edit Selected" — verify BulkEditDialog opens with teacher/location/room/status/type selects
+6. Make a bulk change — verify progress bar, success toast, calendar refresh
+7. Click "Cancel Selected" — verify bulk cancel with confirmation
+8. Press Escape — verify selection mode exits
+9. Change filters while in selection mode — verify selections clear
+10. Change date while in selection mode — verify selections clear
+11. Verify teachers can only select their own lessons
+
+### Session 12: Slot Generator Wizard
+
+1. Open Zap dropdown → "Generate Open Slots" (admin only)
+2. Verify Step 1: date range, time range, duration, break config
+3. Verify slot count preview updates as settings change
+4. Verify Step 2: teacher selection, location, room
+5. Verify Step 3: preview timeline of slots
+6. Generate slots — verify success, calendar navigates to first slot date
+7. Verify generated slots show with dashed border and "Open" badge
+8. Verify slot generator is hidden for non-admin roles
+
+### Session 13: Mark Day Complete
+
+1. Navigate to a past day with scheduled lessons
+2. Verify "Mark Day Complete" button appears with count
+3. Click — verify AlertDialog shows lesson list
+4. Confirm — verify lessons status changes to completed, attendance records created
+5. Verify toast with count
+6. Navigate to a day with no past scheduled lessons — verify button is hidden
+
+### Session 14: Edge Cases & Error States
+
+1. Empty calendar (no lessons at all) — verify EmptyState with CTA
+2. 500+ lessons cap — verify warning Alert and filter suggestion
+3. Offline state — verify New Lesson button disabled, drag disabled, toast on interaction attempt
+4. Load with invalid date param (`?date=invalid`) — verify graceful fallback to today
+5. Very long lesson title — verify truncation in all views
+6. Lesson with no teacher — verify "Unassigned" display
+7. Lesson with no students — verify title fallback
+8. Lesson with many students (10+) — verify "+N" truncation
+9. Lesson spanning midnight — verify correct rendering
+10. Very short lesson (15min) — verify card is still clickable
+
+### Session 15: Parent Role
+
+1. Switch to parent account — load calendar
+2. Verify title shows "Schedule" not "Calendar"
+3. Verify no "New Lesson" button, no FAB, no Zap dropdown
+4. Verify lesson click opens detail but no edit/delete actions
+5. Verify no drag-to-reschedule
+6. Verify no bulk selection
+7. Verify no slot generator access
+8. Verify slot click does nothing
+
+### Session 16: Performance & Polish
+
+1. Rapid date navigation (click Next 10 times quickly) — verify no stale data flash, abort controller cancels previous requests
+2. Switch views rapidly — verify no render errors
+3. Open/close modals rapidly — verify no stale state
+4. Verify teacher colour consistency across all views
+5. Verify loading skeleton matches final layout (no CLS)
+6. Verify contextual hint appears for first-time users
+7. Verify LoopAssist banner shows for unmarked lessons
+8. Verify calendar data refetch interval (60s) works
+9. Verify compact mode toggle persists across page refreshes (localStorage)
 
 ---
 
-## Phase 14: LoopAssist AI (Staff Chat + Execute)
+## Execution Approach
 
-**Files to audit:**
-- `supabase/functions/looopassist-chat/index.ts` (1907 lines) — full review
-- `supabase/functions/looopassist-execute/index.ts` (1391 lines) — full review
-- `src/hooks/useLoopAssist.ts` (552 lines) — client-side hook
-- `src/components/loopassist/ActionCard.tsx` — proposal parsing
-- `src/lib/action-registry.ts` — valid action types
-- `supabase/functions/parent-loopassist-chat/index.ts` — parent variant
-- `src/hooks/useParentLoopAssist.ts` — parent client hook
-- `supabase/functions/_shared/rate-limit.ts` — LoopAssist daily cap
+Each session will be executed one at a time via browser tools. After each session, I will document:
+- Bugs found (with severity: critical/major/minor)
+- UX issues (with recommendation)
+- Code fixes applied
 
-**Concerns:**
-- **Prompt injection**: sanitisation covers known patterns, but does the regex miss Unicode homoglyphs, RTL overrides, or base64-encoded payloads?
-- **Tool call security**: `executeToolCall` returns raw `error.message` from DB queries — internal schema leakage
-- **IDOR via tools**: `search_students`, `get_student_detail`, etc. pass `orgId` but is it always the verified org from the membership check, or could a crafted tool input override it?
-- **Action execution scope**: `bulk_complete_lessons` has a `.limit(100)` but no org_id check on the update itself (relies on select filter) — is the update safe if IDs leak?
-- **Billing run via AI**: `executeGenerateBillingRun` creates invoices with `org_id` but bypasses `create_invoice_with_items` RPC — does it skip any validations?
-- **Dead code**: line 992-993 in execute has `(lessons || []).length > 0 ? null : null` — dead reference
-- **Parent chat**: uses Anthropic directly with `ANTHROPIC_API_KEY` — leaks `e.message` on error (line 351), no message sanitisation of user input
-- **Model selection**: Pro orgs get Sonnet, others Haiku — is there a cost ceiling?
-- **Context hash**: SHA-256 truncated to 16 hex chars — collision risk acceptable?
-- **Tool result size**: no cap on tool result string length — could a 10K result blow the context window
-- **Concurrent proposals**: can a user confirm the same proposal twice in a race condition? (line 378 uses `eq("status", "proposed")` but no `FOR UPDATE`)
+I will fix issues as they are discovered and provide a grouped summary at the end.
 
 ---
 
-## Phase 15: Public Pages & Marketing Security
+## Priority Order
 
-**Files to audit:**
-- `supabase/functions/marketing-chat/index.ts` — public AI endpoint
-- `supabase/functions/booking-submit/index.ts` — public booking form
-- `supabase/functions/booking-get-slots/index.ts` — public slot query
-- `supabase/functions/send-contact-message/index.ts` — contact form
-- `supabase/functions/send-parent-enquiry/index.ts` — parent enquiry
-- `supabase/functions/invite-get/index.ts` — public invite retrieval
-- `src/components/marketing/MarketingChatWidget.tsx` — client-side chat
-
-**Concerns:**
-- All unauthenticated — are rate limits correctly configured and fail-closed?
-- `marketing-chat`: message array not sanitised — can inject system/assistant messages?
-- `booking-submit`: HTML injection in email templates (EF-L1 from Phase 11 — still open?)
-- `booking-get-slots`: does it leak teacher names, room details, or org internals?
-- `invite-get`: does it expose membership details or org info to unauthenticated users?
-- `send-contact-message` / `send-parent-enquiry`: email injection via headers? SMTP injection?
-- CORS configuration on public endpoints: wildcard or restricted?
-
----
-
-## Phase 16: Performance at Scale
-
-**Files to audit:**
-- All hooks with unbounded queries (no `.limit()` or pagination)
-- `src/hooks/useReports.ts` (734 lines) — multiple aggregation queries
-- `src/hooks/useDataExport.ts` — export truncation (RPT-M5)
-- `supabase/functions/looopassist-chat/index.ts` — 9 parallel aggregate queries on every message
-- `supabase/functions/create-billing-run/index.ts` — batch processing
-- `supabase/functions/gdpr-export/index.ts` — 5 unbounded SELECTs
-- DB indexes: verify critical queries have covering indexes
-- Realtime subscriptions: are any too broad?
-
-**Concerns:**
-- 1000-row default limit: which queries will silently lose data?
-- N+1 patterns: execute functions loop with individual updates (`bulk_complete_lessons`, `send_bulk_reminders`)
-- LoopAssist context building: 9 parallel queries per message — acceptable for 100+ concurrent users?
-- `useTeacherPerformance`: waterfall sequential queries (RPT-M6)
-- Calendar queries: do they have date-windowed indexes?
-- Realtime: `useRealtimePortalPayments` subscribes to all org payments — too broad for large orgs?
-- Billing run: no batch insert for invoice items — creates them one-by-one per payer
-- Missing indexes on `attendance_records`, `practice_logs`, `message_log` for common query patterns
-
----
-
-## Phase 17: Mobile & Capacitor
-
-**Files to audit:**
-- `src/lib/platform.ts` — platform detection
-- `src/lib/native/init.ts` — native initialisation
-- `src/lib/native/statusBar.ts`, `keyboard.ts`, `deepLinks.ts`
-- `capacitor.config.ts` — app configuration
-- `src/App.tsx` — `NativeInitializer` component
-- `src/components/layout/PortalLayout.tsx` — mobile layout
-- `src/components/layout/PortalBottomNav.tsx` — bottom navigation
-- `src/hooks/use-mobile.ts` — responsive breakpoint detection
-- PWA config in `vite.config.ts`
-
-**Concerns:**
-- Deep link handling: does `initDeepLinks` validate URLs before navigating? Could a malicious deep link navigate to an admin route?
-- Push notifications: is the token registration endpoint authenticated? Can tokens be registered for another user?
-- `capacitor.config.ts` — is `cleartext: true` safe for production? (allows HTTP)
-- Status bar configuration: does it handle notch/safe area on all devices?
-- Keyboard handling: does it prevent content from being hidden behind the keyboard?
-- Offline behaviour: what happens when Supabase queries fail on mobile? Is there any caching or queue?
-- Back button: does Android back button handle navigation correctly across all routes?
-- Session persistence: does the auth session survive app backgrounding/killing?
-- PWA service worker: does `navigateFallbackDenylist` include `/~oauth`?
-
----
-
-## Execution Order (recommended)
-
-1. **Phase 14 (LoopAssist AI)** — largest attack surface, 3300+ lines of edge function code, tool execution with write access
-2. **Phase 12 (Subscription)** — revenue protection, known open issue (SUB-H1)
-3. **Phase 15 (Public Pages)** — unauthenticated endpoints, highest external exposure
-4. **Phase 16 (Performance)** — data loss risks from silent truncation
-5. **Phase 13 (Terms/Practice/Resources)** — moderate risk, some issues already flagged
-6. **Phase 17 (Mobile)** — lowest immediate risk but needed before app store submission
-
-Each phase follows the same pattern as Phases 1-11: read the files, run the test suite, log findings by severity, and list what passed.
+Sessions 1-3 first (core navigation + primary views), then Sessions 5-6 (creation flows), then Session 9 (mobile), then remaining sessions. This ensures the highest-traffic paths are audited first.
 
