@@ -169,6 +169,38 @@ export function UploadStep({ isLoading, handleFileUpload, sourceSoftware, setSou
           </label>
         </div>
 
+        {/* Template download + file info */}
+        <div className="flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => {
+              const headers = [
+                "First Name", "Last Name", "Email", "Phone", "Date of Birth",
+                "Instrument", "Guardian Name", "Guardian Email", "Guardian Phone",
+                "Lesson Day", "Lesson Time", "Notes"
+              ];
+              const sampleRow = [
+                "Emma", "Watson", "emma@example.com", "07700900123", "15/03/2012",
+                "Piano", "Jane Watson", "jane@example.com", "07700900456",
+                "Monday", "15:30", "Grade 3, preparing for exam"
+              ];
+              const csv = headers.join(",") + "\n" + sampleRow.join(",") + "\n";
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "lessonloop-import-template.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="text-primary hover:underline font-medium"
+          >
+            Download template CSV
+          </button>
+          <span>•</span>
+          <span>Accepts .csv files up to 10MB (max 5,000 rows)</span>
+        </div>
+
         {/* AI info box */}
         <div className="rounded-xl border bg-muted/30 p-4 sm:p-5">
           <div className="flex gap-3">

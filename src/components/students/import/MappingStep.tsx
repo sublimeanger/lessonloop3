@@ -31,6 +31,8 @@ interface MappingStepProps {
   updateMapping: (csvHeader: string, targetField: string | null) => void;
   getAvailableFields: (currentHeader: string) => TargetField[];
   detectedSource?: string | null;
+  sourceSoftware?: string;
+  setSourceSoftware?: (v: string) => void;
   onNext: () => void;
   onBack: () => void;
 }
