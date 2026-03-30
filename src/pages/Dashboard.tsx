@@ -28,6 +28,7 @@ import {
   CalendarSyncBanner,
   ContinuationWidget,
 } from '@/components/dashboard';
+import { UpcomingWeekWidget } from '@/components/dashboard/UpcomingWeekWidget';
 import { FinanceDashboard } from '@/components/dashboard/FinanceDashboard';
 import {
   Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
