@@ -617,7 +617,7 @@ export default function PortalSchedule() {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-3 mt-3">
                   {pastLessons.map((lesson) => (
-                    <LessonCard key={lesson.id} lesson={lesson} isPast={true} />
+                    <LessonCard key={lesson.id} lesson={lesson} isPast={true} isExpanded={expandedLessonId === lesson.id} onToggle={() => setExpandedLessonId(prev => prev === lesson.id ? null : lesson.id)} />
                   ))}
                 </CollapsibleContent>
               </Collapsible>
