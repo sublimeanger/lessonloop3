@@ -373,7 +373,8 @@ export function useParentInvoices(options?: { status?: string }) {
           payment_plan_enabled,
           installment_count,
           payer_guardian:guardians(full_name),
-          payer_student:students(first_name, last_name)
+          payer_student:students(first_name, last_name),
+          invoice_items(description, quantity, unit_price_minor, amount_minor)
         `)
         .eq('org_id', currentOrg.id)
         .in('status', ['sent', 'paid', 'overdue', 'void'])

@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle, Building2, FileDown } from 'lucide-react';
+import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle, Building2, FileDown, ChevronDown } from 'lucide-react';
 import { format, parseISO, isBefore, startOfToday } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,6 +46,7 @@ export default function PortalInvoices() {
   const { invoicesEnabled } = usePortalFeatures();
   const { currentOrg } = useOrg();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
@@ -385,6 +386,8 @@ export default function PortalInvoices() {
                         isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
                         isHighlighted={invoice.id === highlightedInvoiceId}
                         showPayButton={onlinePaymentsEnabled}
+                        isExpanded={expandedInvoiceId === invoice.id}
+                        onToggle={() => setExpandedInvoiceId(prev => prev === invoice.id ? null : invoice.id)}
                       />
                     )
                   ))}
@@ -422,6 +425,8 @@ export default function PortalInvoices() {
                       isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
                       isHighlighted={invoice.id === highlightedInvoiceId}
                       showPayButton={onlinePaymentsEnabled}
+                      isExpanded={expandedInvoiceId === invoice.id}
+                      onToggle={() => setExpandedInvoiceId(prev => prev === invoice.id ? null : invoice.id)}
                     />
                   )
                 ))}
@@ -465,6 +470,7 @@ interface InvoiceCardProps {
     paid_minor?: number | null;
     payer_guardian?: { full_name: string } | null;
     payer_student?: { first_name: string; last_name: string } | null;
+    invoice_items?: { description: string; quantity: number; unit_price_minor: number; amount_minor: number }[] | null;
   };
   currencyCode: string;
   getStatusBadge: (status: string, dueDate: string) => JSX.Element;
@@ -472,20 +478,24 @@ interface InvoiceCardProps {
   isPaying: boolean;
   isHighlighted?: boolean;
   showPayButton?: boolean;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
-function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, isHighlighted, showPayButton = true }: InvoiceCardProps) {
+function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, isHighlighted, showPayButton = true, isExpanded, onToggle }: InvoiceCardProps) {
   const remainingMinor = invoice.total_minor - (invoice.paid_minor || 0);
   const isPayable = ['sent', 'overdue'].includes(invoice.status) && showPayButton && remainingMinor > 0;
   const isPaid = invoice.status === 'paid';
   const { downloadPdf, isLoading: isPdfLoading } = useInvoicePdf();
+  const hasLineItems = invoice.invoice_items && invoice.invoice_items.length > 0;
 
   const accentColor = isPaid ? 'bg-success' : invoice.status === 'void' ? 'bg-muted-foreground/30' : 'bg-warning';
 
   return (
     <Card 
       id={`invoice-${invoice.id}`}
-      className={cn('rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 overflow-hidden relative', isHighlighted && 'ring-2 ring-primary ring-offset-2 animate-pulse')}
+      className={cn('rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 overflow-hidden relative cursor-pointer', isHighlighted && 'ring-2 ring-primary ring-offset-2 animate-pulse')}
+      onClick={() => onToggle?.()}
     >
       <div className={cn('absolute inset-y-0 left-0 w-1 rounded-l-2xl', accentColor)} />
       <CardContent className="p-4 pl-5">
@@ -519,8 +529,37 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
           </div>
         </div>
 
+        {/* Expandable line items */}
+        {hasLineItems && (
+          <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform duration-200', isExpanded && 'rotate-180')} />
+            <span>{isExpanded ? 'Hide details' : 'Tap for details'}</span>
+          </div>
+        )}
+
+        {isExpanded && hasLineItems && (
+          <div className="mt-3 pt-3 border-t animate-in fade-in-0 slide-in-from-top-2 duration-200">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Line Items</p>
+            <div className="space-y-1.5">
+              {invoice.invoice_items!.map((item, i) => (
+                <div key={i} className="flex items-start justify-between gap-2 text-sm">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-foreground">{item.description}</span>
+                    {item.quantity > 1 && (
+                      <span className="text-muted-foreground ml-1">× {item.quantity}</span>
+                    )}
+                  </div>
+                  <span className="tabular-nums text-muted-foreground shrink-0">
+                    {formatCurrencyMinor(item.amount_minor, currencyCode)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Actions row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3 pt-3 border-t">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="ghost"
             size="sm"

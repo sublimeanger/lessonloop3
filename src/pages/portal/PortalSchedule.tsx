@@ -1,5 +1,5 @@
 import { usePageMeta } from '@/hooks/usePageMeta';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { useSearchParams } from 'react-router-dom';
@@ -60,6 +60,7 @@ export default function PortalSchedule() {
   const [calSyncOpen, setCalSyncOpen] = useState(false);
   const [icalUrl, setIcalUrl] = useState<string | null>(null);
   const [isGeneratingUrl, setIsGeneratingUrl] = useState(false);
+  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
 
   // Reschedule slot picker state
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
@@ -250,13 +251,17 @@ export default function PortalSchedule() {
   };
 
   // --- Lesson Card ---
-  const LessonCard = ({ lesson, isPast }: { lesson: Lesson; isPast?: boolean }) => {
+  const LessonCard = ({ lesson, isPast, isExpanded, onToggle }: { lesson: Lesson; isPast?: boolean; isExpanded?: boolean; onToggle?: () => void }) => {
     const isCancelled = lesson.status === 'cancelled';
+    const hasExpandableContent = (isPast && lesson.students.some(s => s.attendance_status)) || lesson.notes_shared || (parentNotes || []).some(n => n.lesson_id === lesson.id && n.parent_visible) || lesson.recap_url;
 
     const accentColor = isCancelled ? 'bg-destructive' : isPast ? 'bg-muted-foreground/30' : 'bg-primary';
     
     return (
-      <Card className={cn('overflow-hidden rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 relative', isCancelled && 'opacity-60')}>
+      <Card
+        className={cn('overflow-hidden rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 relative', isCancelled && 'opacity-60', hasExpandableContent && 'cursor-pointer')}
+        onClick={() => hasExpandableContent && onToggle?.()}
+      >
         {/* Left accent bar */}
         <div className={cn('absolute inset-y-0 left-0 w-[3px] rounded-l-2xl', accentColor)} />
         <CardContent className="p-4 pl-5">
@@ -311,67 +316,80 @@ export default function PortalSchedule() {
                 )}
               </div>
 
-              {/* Attendance */}
-              {isPast && lesson.students.some(s => s.attendance_status) && (
-                <div className="mt-3 pt-3 border-t">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Attendance</p>
-                  <div className="flex flex-wrap gap-2">
-                    {lesson.students.map((student) => (
-                      <div key={student.id} className="flex items-center gap-1.5">
-                        <span className="text-sm">{student.first_name}:</span>
-                        {getAttendanceBadge(student.attendance_status)}
+              {/* Expandable detail section */}
+              {hasExpandableContent && (
+                <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                  <ChevronDown className={cn('h-3.5 w-3.5 transition-transform duration-200', isExpanded && 'rotate-180')} />
+                  <span>{isExpanded ? 'Hide details' : 'Tap for details'}</span>
+                </div>
+              )}
+
+              {isExpanded && (
+                <div className="animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                  {/* Attendance */}
+                  {isPast && lesson.students.some(s => s.attendance_status) && (
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Attendance</p>
+                      <div className="flex flex-wrap gap-2">
+                        {lesson.students.map((student) => (
+                          <div key={student.id} className="flex items-center gap-1.5">
+                            <span className="text-sm">{student.first_name}:</span>
+                            {getAttendanceBadge(student.attendance_status)}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Shared notes */}
-              {lesson.notes_shared && (
-                <div className="mt-3 pt-3 border-t">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-                    <FileText className="h-3.5 w-3.5" /> Lesson Notes
-                  </div>
-                  <p className="text-sm bg-muted/50 p-2.5 rounded-md whitespace-pre-wrap">{lesson.notes_shared}</p>
-                </div>
-              )}
-
-              {/* Structured lesson notes (from lesson_notes table, parent-safe RPC) */}
-              {(() => {
-                const notesForLesson = (parentNotes || []).filter(n => n.lesson_id === lesson.id && n.parent_visible);
-                if (notesForLesson.length === 0) return null;
-                return (
-                  <div className="mt-3 pt-3 border-t space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-                      <FileText className="h-3.5 w-3.5" /> Detailed Notes
                     </div>
-                    {notesForLesson.map(n => (
-                      <div key={n.id} className="bg-primary/5 rounded-md p-3">
-                        <LessonNoteCard
-                          contentCovered={n.content_covered}
-                          homework={n.homework}
-                          focusAreas={n.focus_areas}
-                          engagementRating={null}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
+                  )}
 
-              {lesson.recap_url && (
-                <div className="mt-3 pt-3 border-t">
-                  <a
-                    href={lesson.recap_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
-                    style={{ minHeight: 44 }}
-                  >
-                    <Video className="h-4 w-4 shrink-0" />
-                    Watch Recap
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  </a>
+                  {/* Shared notes */}
+                  {lesson.notes_shared && (
+                    <div className="mt-3 pt-3 border-t">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+                        <FileText className="h-3.5 w-3.5" /> Lesson Notes
+                      </div>
+                      <p className="text-sm bg-muted/50 p-2.5 rounded-md whitespace-pre-wrap">{lesson.notes_shared}</p>
+                    </div>
+                  )}
+
+                  {/* Structured lesson notes */}
+                  {(() => {
+                    const notesForLesson = (parentNotes || []).filter(n => n.lesson_id === lesson.id && n.parent_visible);
+                    if (notesForLesson.length === 0) return null;
+                    return (
+                      <div className="mt-3 pt-3 border-t space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+                          <FileText className="h-3.5 w-3.5" /> Detailed Notes
+                        </div>
+                        {notesForLesson.map(n => (
+                          <div key={n.id} className="bg-primary/5 rounded-md p-3">
+                            <LessonNoteCard
+                              contentCovered={n.content_covered}
+                              homework={n.homework}
+                              focusAreas={n.focus_areas}
+                              engagementRating={null}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {lesson.recap_url && (
+                    <div className="mt-3 pt-3 border-t">
+                      <a
+                        href={lesson.recap_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
+                        style={{ minHeight: 44 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Video className="h-4 w-4 shrink-0" />
+                        Watch Recap
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -379,7 +397,7 @@ export default function PortalSchedule() {
             {lesson.status === 'scheduled' && !isPast && (
               <>
                 {/* Mobile: single "more" menu */}
-                <div className="sm:hidden">
+                <div className="sm:hidden" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9" aria-label="Lesson actions">
@@ -408,7 +426,7 @@ export default function PortalSchedule() {
                 </div>
 
                 {/* Desktop: separate buttons */}
-                <div className="hidden sm:flex flex-col gap-1">
+                <div className="hidden sm:flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="gap-1" aria-label="Add to calendar">
@@ -522,7 +540,7 @@ export default function PortalSchedule() {
             {thisWeekLessons.length > 0 ? (
               <div className="space-y-3">
                 {thisWeekLessons.map((lesson) => (
-                  <LessonCard key={lesson.id} lesson={lesson} isPast={false} />
+                  <LessonCard key={lesson.id} lesson={lesson} isPast={false} isExpanded={expandedLessonId === lesson.id} onToggle={() => setExpandedLessonId(prev => prev === lesson.id ? null : lesson.id)} />
                 ))}
               </div>
             ) : (
@@ -540,7 +558,7 @@ export default function PortalSchedule() {
               <h2 className="text-base font-bold mb-3 text-muted-foreground flex items-center gap-2">{group.label}<span className="flex-1 h-px bg-border ml-2" /></h2>
               <div className="space-y-3">
                 {group.lessons.map((lesson) => (
-                  <LessonCard key={lesson.id} lesson={lesson} isPast={false} />
+                  <LessonCard key={lesson.id} lesson={lesson} isPast={false} isExpanded={expandedLessonId === lesson.id} onToggle={() => setExpandedLessonId(prev => prev === lesson.id ? null : lesson.id)} />
                 ))}
               </div>
             </div>
@@ -599,7 +617,7 @@ export default function PortalSchedule() {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-3 mt-3">
                   {pastLessons.map((lesson) => (
-                    <LessonCard key={lesson.id} lesson={lesson} isPast={true} />
+                    <LessonCard key={lesson.id} lesson={lesson} isPast={true} isExpanded={expandedLessonId === lesson.id} onToggle={() => setExpandedLessonId(prev => prev === lesson.id ? null : lesson.id)} />
                   ))}
                 </CollapsibleContent>
               </Collapsible>

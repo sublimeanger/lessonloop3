@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { GoogleIcon } from '@/components/icons/GoogleIcon';
 import { AppleIcon } from '@/components/icons/AppleIcon';
 import { lovable } from '@/integrations/lovable';
-import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
+import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH, getPasswordScore } from '@/components/auth/PasswordStrengthIndicator';
 import { supabase } from '@/integrations/supabase/client';
 import { usePageMeta } from '@/hooks/usePageMeta';
 
@@ -108,6 +108,15 @@ export default function Signup() {
       toast({
         title: 'Password too short',
         description: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (getPasswordScore(password) < 2) {
+      toast({
+        title: 'Password too weak',
+        description: 'Add uppercase letters, numbers, or special characters to strengthen your password.',
         variant: 'destructive',
       });
       return;
