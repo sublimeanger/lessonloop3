@@ -693,6 +693,9 @@ export default function InvoiceDetail() {
         paidAt={refundPayment?.paid_at}
         invoiceNumber={invoice.invoice_number}
         currencyCode={currency}
+        isManual={refundPayment?._isManual || false}
+        invoiceId={invoice.id}
+        orgId={currentOrg?.id}
       />
 
       {/* Parent Embedded Payment Drawer */}
