@@ -59,6 +59,10 @@ export function DayTimelineView({
   const orgStartHour = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
   const orgEndHour = currentOrg?.schedule_end_hour ?? DEFAULT_END_HOUR;
 
+  // Fetch closure dates for this day
+  const { data: closures } = useClosureDates(currentDate, currentDate);
+  const closure = closures?.find((c) => isSameDay(c.date, currentDate));
+
   // Filter lessons to current day
   const dayLessons = useMemo(
     () => lessons.filter((l) => isSameDay(parseISO(l.start_at), currentDate)),
