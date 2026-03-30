@@ -474,3 +474,27 @@ html {
 .animate-slide-bar {
   animation: slide-bar 1.2s ease-in-out infinite;
 }
+
+/* ─── Landscape mobile optimisations ──────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Compact bottom nav */
+  .portal-bottom-nav,
+  [data-portal-nav] {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+
+  /* Reduce hero padding */
+  .gradient-hero-light {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  /* Ensure main content scrolls */
+  main,
+  [role="main"] {
+    overflow-y: auto;
+    max-height: 100vh;
+    max-height: 100dvh;
+  }
+}
