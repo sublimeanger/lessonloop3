@@ -28,6 +28,26 @@ interface UploadStepProps {
 export function UploadStep({ isLoading, handleFileUpload, sourceSoftware, setSourceSoftware }: UploadStepProps) {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const validateAndUpload = useCallback((file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 10MB. Please split your CSV into smaller files.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  }, [toast]);
+
+  const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && validateAndUpload(file)) {
+      handleFileUpload(e);
+    }
+  }, [handleFileUpload, validateAndUpload]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
