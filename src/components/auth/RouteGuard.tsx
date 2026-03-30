@@ -56,7 +56,7 @@ export function RouteGuard({
   redirectTo = '/login',
 }: RouteGuardProps) {
   const { user, profile, isInitialised, signOut } = useAuth();
-  const { currentRole, hasInitialised: orgInitialised } = useOrg();
+  const { currentRole, hasInitialised: orgInitialised, refreshOrganisations } = useOrg();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -83,6 +83,41 @@ export function RouteGuard({
       setProfileGraceDone(false);
     }
   }, [isInitialised, user, profile]);
+
+  // Role grace period: when orgInitialised fires but currentRole is null,
+  // the membership may still be propagating after invite acceptance.
+  // Wait up to 5s and retry org fetch before redirecting to /portal/home.
+  const roleGraceRef = useRef(false);
+  const [roleGraceDone, setRoleGraceDone] = useState(false);
+  const roleRetryDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (orgInitialised && user && !currentRole && !roleGraceRef.current) {
+      roleGraceRef.current = true;
+      roleRetryDoneRef.current = false;
+      logger.debug('[RouteGuard] Role null after org init — waiting for membership propagation');
+      const timer = setTimeout(() => {
+        logger.debug('[RouteGuard] Role grace period expired');
+        setRoleGraceDone(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+    // If role arrives during grace, cancel it
+    if (currentRole && roleGraceRef.current) {
+      roleGraceRef.current = false;
+      setRoleGraceDone(false);
+      roleRetryDoneRef.current = false;
+    }
+  }, [orgInitialised, user, currentRole]);
+
+  // When role grace expires, retry org fetch once before giving up
+  useEffect(() => {
+    if (roleGraceDone && !currentRole && !roleRetryDoneRef.current) {
+      roleRetryDoneRef.current = true;
+      logger.debug('[RouteGuard] Role grace expired — retrying org fetch');
+      refreshOrganisations();
+    }
+  }, [roleGraceDone, currentRole, refreshOrganisations]);
 
   const handleForceRedirect = () => {
     // If we have a user but profile load failed, go to onboarding
