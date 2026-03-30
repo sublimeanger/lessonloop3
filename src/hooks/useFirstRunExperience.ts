@@ -32,6 +32,14 @@ interface FirstRunState {
 // Define steps for each org type
 const SOLO_STEPS: FirstRunStep[] = [
   {
+    id: 'add-location',
+    title: "Add your teaching location",
+    description: "Where do you teach? Set up your location so you can schedule lessons.",
+    cta: 'Add Location',
+    href: '/locations',
+    icon: 'building',
+  },
+  {
     id: 'add-student',
     title: "Add your first student",
     description: "Let's get your roster started with your first student.",
@@ -152,6 +160,7 @@ function getPathFromOrgType(orgType: OrgType): FirstRunPath {
 
 function deriveCurrentStep(orgType: OrgType, steps: FirstRunStep[], has: { students: boolean; lessons: boolean; locations: boolean; teachers: boolean }): FirstRunStep | null {
   if (orgType === 'solo_teacher') {
+    if (!has.locations) return steps.find(s => s.id === 'add-location') || null;
     if (!has.students) return steps.find(s => s.id === 'add-student') || null;
     if (!has.lessons) return steps.find(s => s.id === 'schedule-lesson') || null;
   } else if (orgType === 'studio') {
