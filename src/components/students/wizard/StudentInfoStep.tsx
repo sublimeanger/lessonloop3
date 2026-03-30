@@ -37,6 +37,7 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
   const { data: examBoards } = useExamBoards();
   const { data: gradeLevels } = useGradeLevels();
   const defaultApplied = useRef(false);
+  const [addInstrumentOpen, setAddInstrumentOpen] = useState(false);
 
   const update = (field: keyof StudentInfoData, value: string) => {
     onChange({ ...data, [field]: value });
