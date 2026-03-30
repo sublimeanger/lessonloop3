@@ -51,6 +51,15 @@ const reports: Report[] = [
     roles: ['owner', 'admin', 'teacher'],
   },
   {
+    id: 'attendance',
+    title: 'Attendance',
+    description: 'Track attendance rates by student, teacher, and period',
+    icon: UserCheck,
+    href: '/reports/attendance',
+    status: 'available',
+    roles: ['owner', 'admin', 'teacher'],
+  },
+  {
     id: 'cancellations',
     title: 'Cancellation Rate',
     description: 'Track cancellations and identify patterns',
