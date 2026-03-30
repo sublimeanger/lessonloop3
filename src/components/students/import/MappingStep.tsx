@@ -225,7 +225,12 @@ export function MappingStep({
                               <Scissors className="h-3 w-3 mr-1" />Split
                             </Badge>
                           </TooltipTrigger>
-                          <TooltipContent><p>Full name will be split into first + last name</p></TooltipContent>
+                          <TooltipContent className="max-w-[16rem]">
+                            <p>Full name will be split into first + last name.</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              For names like "Park Ji-Sung" or "José María García", consider mapping first and last name separately.
+                            </p>
+                          </TooltipContent>
                         </Tooltip>
                       )}
                       {mapping.transform?.startsWith("combine_guardian") && (
