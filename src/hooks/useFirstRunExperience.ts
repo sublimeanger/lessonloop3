@@ -160,6 +160,7 @@ function getPathFromOrgType(orgType: OrgType): FirstRunPath {
 
 function deriveCurrentStep(orgType: OrgType, steps: FirstRunStep[], has: { students: boolean; lessons: boolean; locations: boolean; teachers: boolean }): FirstRunStep | null {
   if (orgType === 'solo_teacher') {
+    if (!has.locations) return steps.find(s => s.id === 'add-location') || null;
     if (!has.students) return steps.find(s => s.id === 'add-student') || null;
     if (!has.lessons) return steps.find(s => s.id === 'schedule-lesson') || null;
   } else if (orgType === 'studio') {
