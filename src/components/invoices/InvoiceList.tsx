@@ -176,6 +176,15 @@ function InvoiceActions({
             </DropdownMenuItem>
           </>
         )}
+        {invoice.status === 'paid' && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate(`/invoices/${invoice.id}?action=refund`)} disabled={busy}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Refund
+            </DropdownMenuItem>
+          </>
+        )}
         {invoice.status !== 'void' && invoice.status !== 'paid' && (
           <>
             <DropdownMenuSeparator />
