@@ -558,7 +558,7 @@ export default function PortalSchedule() {
               <h2 className="text-base font-bold mb-3 text-muted-foreground flex items-center gap-2">{group.label}<span className="flex-1 h-px bg-border ml-2" /></h2>
               <div className="space-y-3">
                 {group.lessons.map((lesson) => (
-                  <LessonCard key={lesson.id} lesson={lesson} isPast={false} />
+                  <LessonCard key={lesson.id} lesson={lesson} isPast={false} isExpanded={expandedLessonId === lesson.id} onToggle={() => setExpandedLessonId(prev => prev === lesson.id ? null : lesson.id)} />
                 ))}
               </div>
             </div>
