@@ -934,26 +934,24 @@ serve(async (req) => {
 
         // 1c. Match grade_level to grade_levels table and set on student_instruments
         if (row.grade_level?.trim() && row.instrument?.trim()) {
-          const { data: gradeLevels } = await supabase
-            .from("grade_levels")
-            .select("id, name")
-            .order("sort_order", { ascending: true });
-
-          if (gradeLevels) {
-            const gradeName = row.grade_level.trim().toLowerCase();
-            const matchedGrade = gradeLevels.find((g: any) =>
-              g.name.toLowerCase() === gradeName ||
-              g.name.toLowerCase().includes(gradeName) ||
-              gradeName.includes(g.name.toLowerCase())
-            );
-            if (matchedGrade) {
-              // Update the student_instruments record we just created
-              await supabase
-                .from("student_instruments")
-                .update({ current_grade_id: matchedGrade.id })
-                .eq("student_id", student.id)
-                .eq("org_id", orgId);
+          const gradeName = row.grade_level.trim().toLowerCase();
+          // Exact match first
+          let matchedGradeId = gradeLevelByName.get(gradeName);
+          // Fuzzy match if no exact
+          if (!matchedGradeId) {
+            for (const [name, id] of gradeLevelByName.entries()) {
+              if (name.includes(gradeName) || gradeName.includes(name)) {
+                matchedGradeId = id;
+                break;
+              }
             }
+          }
+          if (matchedGradeId) {
+            await supabase
+              .from("student_instruments")
+              .update({ current_grade_id: matchedGradeId })
+              .eq("student_id", student.id)
+              .eq("org_id", orgId);
           }
         }
 
