@@ -8,7 +8,7 @@ import { ReportGridSkeleton } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import { useFeatureGate, Feature } from '@/hooks/useFeatureGate';
-import { Banknote, Clock, TrendingUp, ChevronRight, Calendar, XCircle, MapPin, Lock, Sparkles, FileBarChart, Users } from 'lucide-react';
+import { Banknote, Clock, TrendingUp, ChevronRight, Calendar, XCircle, MapPin, Lock, Sparkles, FileBarChart, Users, UserCheck } from 'lucide-react';
 
 interface Report {
   id: string;
@@ -47,6 +47,15 @@ const reports: Report[] = [
     description: 'Analyse lessons by teacher and location',
     icon: Calendar,
     href: '/reports/lessons',
+    status: 'available',
+    roles: ['owner', 'admin', 'teacher'],
+  },
+  {
+    id: 'attendance',
+    title: 'Attendance',
+    description: 'Track attendance rates by student, teacher, and period',
+    icon: UserCheck,
+    href: '/reports/attendance',
     status: 'available',
     roles: ['owner', 'admin', 'teacher'],
   },
