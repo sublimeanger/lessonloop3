@@ -382,6 +382,7 @@ export function useStudentsImport() {
     executeImport,
     downloadFailedRows,
     resetImport,
+    undoImport,
 
     // Derived
     transformedRows,
