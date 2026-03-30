@@ -217,7 +217,7 @@ export function useUrgentActions() {
       }
     },
     enabled: !!currentOrg && !!user,
-    // Uses default SEMI_STABLE (2 min)
+    staleTime: 0, // Always refetch when invalidated by realtime
     refetchInterval: 120_000,
   });
 
