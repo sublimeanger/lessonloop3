@@ -1107,7 +1107,7 @@ serve(async (req) => {
                 days_of_week: [dayOfWeek],
                 interval_weeks: 1,
                 start_date: lessonDate.toISOString().split("T")[0],
-                timezone: "Europe/London",
+                timezone: org?.timezone || "Europe/London",
               })
               .select("id")
               .single();
