@@ -71,13 +71,13 @@ export function UploadStep({ isLoading, handleFileUpload, sourceSoftware, setSou
     e.stopPropagation();
     setIsDragging(false);
     const file = e.dataTransfer?.files?.[0];
-    if (file && inputRef.current) {
+    if (file && validateAndUpload(file) && inputRef.current) {
       const dt = new DataTransfer();
       dt.items.add(file);
       inputRef.current.files = dt.files;
       inputRef.current.dispatchEvent(new Event("change", { bubbles: true }));
     }
-  }, []);
+  }, [validateAndUpload]);
 
   return (
     <Card className="overflow-hidden">
