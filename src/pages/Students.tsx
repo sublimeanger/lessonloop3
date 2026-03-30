@@ -21,7 +21,7 @@ import type { PrimaryInstrumentInfo } from '@/hooks/usePrimaryInstruments';
 import { getInstrumentCategoryIcon } from '@/hooks/useInstruments';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Users, Upload, Lock, Loader2, X, Download } from 'lucide-react';
+import { Plus, Search, Users, Upload, Lock, Loader2, X, Download, Mail } from 'lucide-react';
 import { useDataExport } from '@/hooks/useDataExport';
 import { cn } from '@/lib/utils';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
@@ -225,6 +225,43 @@ export default function Students() {
   const [confirmToggle, setConfirmToggle] = useState<StudentListItem | null>(null);
   const [sortBy, setSortBy] = useState<'last_name' | 'first_name' | 'created_at'>('last_name');
 
+  // Batch invite state
+  const [batchInviteOpen, setBatchInviteOpen] = useState(false);
+  const [isBatchInviting, setIsBatchInviting] = useState(false);
+  const [uninvitedCount, setUninvitedCount] = useState<number | null>(null);
+
+  const openBatchInviteDialog = async () => {
+    if (!currentOrg) return;
+    const { count } = await supabase
+      .from('guardians')
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', currentOrg.id)
+      .not('email', 'is', null)
+      .is('user_id', null);
+    setUninvitedCount(count ?? 0);
+    setBatchInviteOpen(true);
+  };
+
+  const handleBatchInviteAll = async () => {
+    if (!currentOrg) return;
+    setIsBatchInviting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-invite-guardians', {
+        body: { org_id: currentOrg.id },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Invites sent',
+        description: `${data.invited} portal invite${data.invited !== 1 ? 's' : ''} sent.`,
+      });
+      setBatchInviteOpen(false);
+    } catch (error: any) {
+      toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsBatchInviting(false);
+    }
+  };
+
   const statusCounts = useMemo(() => ({
     all: students.length,
     active: students.filter((s) => s.status === 'active').length,
@@ -279,6 +316,10 @@ export default function Students() {
         actions={
           isAdmin ? (
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-1.5" onClick={openBatchInviteDialog}>
+                <Mail className="h-4 w-4" />
+                <span className="hidden sm:inline">Portal Invites</span>
+              </Button>
               <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-1.5" onClick={exportStudents} disabled={isLoading || students.length === 0}>
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">Export</span>
@@ -424,6 +465,34 @@ export default function Students() {
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
               ) : (
                 confirmToggle?.status === 'active' ? 'Deactivate' : 'Reactivate'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={batchInviteOpen} onOpenChange={setBatchInviteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send portal invites</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will send a portal invite email to all guardians who have an
+              email address but haven't been invited yet. They'll be able to view
+              schedules, pay invoices, and track practice.
+              {uninvitedCount !== null && (
+                <span className="block mt-2 font-medium text-foreground">
+                  {uninvitedCount} guardian{uninvitedCount !== 1 ? 's' : ''} will receive invites.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBatchInviteAll} disabled={isBatchInviting || uninvitedCount === 0}>
+              {isBatchInviting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
+              ) : (
+                'Send Invites'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
