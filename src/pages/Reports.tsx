@@ -8,7 +8,7 @@ import { ReportGridSkeleton } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import { useFeatureGate, Feature } from '@/hooks/useFeatureGate';
-import { Banknote, Clock, TrendingUp, ChevronRight, Calendar, XCircle, MapPin, Lock, Sparkles, FileBarChart, Users } from 'lucide-react';
+import { Banknote, Clock, TrendingUp, ChevronRight, Calendar, XCircle, MapPin, Lock, Sparkles, FileBarChart, Users, UserCheck } from 'lucide-react';
 
 interface Report {
   id: string;
