@@ -1,14 +1,19 @@
-import { CheckCircle2, AlertCircle, Download, Users, ArrowRight, BookOpen, Link2 } from "lucide-react";
+import { CheckCircle2, AlertCircle, Download, Users, ArrowRight, BookOpen, Link2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { ImportResult } from "@/hooks/useStudentsImport";
 
 interface CompleteStepProps {
-  importResult: ImportResult;
+  importResult: ImportResult & { importBatchId?: string };
   downloadFailedRows: () => void;
   onImportMore: () => void;
   onViewStudents: () => void;
+  onUndoImport?: (batchId: string) => void;
 }
 
 export function CompleteStep({ importResult, downloadFailedRows, onImportMore, onViewStudents }: CompleteStepProps) {
