@@ -10,7 +10,9 @@ import {
   useInstruments, useExamBoards, useGradeLevels,
   getGradesForBoard, groupInstrumentsByCategory, getInstrumentCategoryIcon,
 } from '@/hooks/useInstruments';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { AddInstrumentDialog } from './AddInstrumentDialog';
 
 export interface StudentInfoData {
   firstName: string;
