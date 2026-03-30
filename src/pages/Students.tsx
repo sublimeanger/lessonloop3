@@ -21,7 +21,7 @@ import type { PrimaryInstrumentInfo } from '@/hooks/usePrimaryInstruments';
 import { getInstrumentCategoryIcon } from '@/hooks/useInstruments';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Users, Upload, Lock, Loader2, X, Download } from 'lucide-react';
+import { Plus, Search, Users, Upload, Lock, Loader2, X, Download, Mail } from 'lucide-react';
 import { useDataExport } from '@/hooks/useDataExport';
 import { cn } from '@/lib/utils';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';

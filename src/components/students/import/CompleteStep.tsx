@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { CheckCircle2, AlertCircle, Download, Users, ArrowRight, BookOpen, Link2, RotateCcw, AlertTriangle, ShieldAlert, Database } from "lucide-react";
+import { useState, useMemo } from "react";
+import { CheckCircle2, Download, Users, ArrowRight, BookOpen, Link2, RotateCcw, AlertTriangle, ShieldAlert, Database, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -7,6 +7,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrg } from "@/contexts/OrgContext";
+import { useToast } from "@/hooks/use-toast";
 import type { ImportResult } from "@/hooks/useStudentsImport";
 
 interface CompleteStepProps {
@@ -18,11 +21,18 @@ interface CompleteStepProps {
 }
 
 export function CompleteStep({ importResult, downloadFailedRows, onImportMore, onViewStudents, onUndoImport }: CompleteStepProps) {
+  const { currentOrg } = useOrg();
+  const { toast } = useToast();
   const hasFailedRows = importResult.details.some(d => d.status === "error" || d.status === "skipped");
   const teachersCreated = (importResult as any).teachersCreated ?? 0;
   const locationsCreated = (importResult as any).locationsCreated ?? 0;
   const rateCardsCreated = (importResult as any).rateCardsCreated ?? 0;
   const hasExtras = teachersCreated > 0 || locationsCreated > 0 || rateCardsCreated > 0;
+
+  // Batch invite state
+  const [isBatchInviting, setIsBatchInviting] = useState(false);
+  const [batchInviteResult, setBatchInviteResult] = useState<{ invited: number; skipped: number; failed: number } | null>(null);
+  const [dismissedInviteCta, setDismissedInviteCta] = useState(false);
 
   const categorisedErrors = useMemo(() => {
     const categories = {
@@ -53,6 +63,29 @@ export function CompleteStep({ importResult, downloadFailedRows, onImportMore, o
   );
 
   const hasErrors = categorisedErrors.data.length > 0 || categorisedErrors.schema.length > 0 || categorisedErrors.permission.length > 0;
+
+  const handleBatchInvite = async () => {
+    if (!currentOrg) return;
+    setIsBatchInviting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-invite-guardians', {
+        body: {
+          org_id: currentOrg.id,
+          import_batch_id: importResult.importBatchId,
+        },
+      });
+      if (error) throw error;
+      setBatchInviteResult(data);
+      toast({
+        title: 'Invites sent',
+        description: `${data.invited} portal invite${data.invited !== 1 ? 's' : ''} sent to guardians.`,
+      });
+    } catch (error: any) {
+      toast({ title: 'Failed to send invites', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsBatchInviting(false);
+    }
+  };
 
   return (
     <Card className="overflow-hidden">
@@ -102,6 +135,50 @@ export function CompleteStep({ importResult, downloadFailedRows, onImportMore, o
               rateCardsCreated > 0 && `${rateCardsCreated} rate card${rateCardsCreated !== 1 ? "s" : ""}`,
             ].filter(Boolean).join(", ")}
           </p>
+        )}
+
+        {/* Guardian invite CTA */}
+        {importResult.guardiansCreated > 0 && !dismissedInviteCta && !batchInviteResult && (
+          <Card className="border-primary/20 bg-primary/5 max-w-xl mx-auto mb-6">
+            <CardContent className="py-5">
+              <div className="flex items-start gap-4">
+                <div className="rounded-full bg-primary/10 p-2.5 shrink-0">
+                  <Mail className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-medium mb-1">Invite guardians to the parent portal?</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {importResult.guardiansCreated} guardian{importResult.guardiansCreated !== 1 ? 's' : ''} were
+                    created with email addresses. Send them portal invites so they can view
+                    schedules, pay invoices, and track practice.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleBatchInvite} disabled={isBatchInviting}>
+                      {isBatchInviting ? (
+                        <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Sending invites...</>
+                      ) : (
+                        <><Mail className="h-4 w-4 mr-1.5" /> Send Portal Invites</>
+                      )}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setDismissedInviteCta(true)}>
+                      Not now
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Batch invite result */}
+        {batchInviteResult && (
+          <div className="max-w-xl mx-auto mb-6">
+            <p className="text-sm text-muted-foreground text-center">
+              ✓ {batchInviteResult.invited} invite{batchInviteResult.invited !== 1 ? 's' : ''} sent
+              {batchInviteResult.skipped > 0 && `, ${batchInviteResult.skipped} already invited`}
+              {batchInviteResult.failed > 0 && `, ${batchInviteResult.failed} failed`}
+            </p>
+          </div>
         )}
 
         {/* Categorised errors */}
