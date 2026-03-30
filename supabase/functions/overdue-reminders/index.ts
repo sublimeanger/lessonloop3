@@ -53,7 +53,7 @@ serve(async (req) => {
     const { data: overdueInvoices, error: invoicesError } = await supabase
       .from("invoices")
       .select(`
-        id, invoice_number, total_minor, currency_code, due_date, org_id, payment_plan_enabled,
+        id, invoice_number, total_minor, paid_minor, currency_code, due_date, org_id, payment_plan_enabled,
         organisation:organisations!inner(name, overdue_reminder_days),
         payer_guardian:guardians(id, full_name, email, user_id),
         payer_student:students(id, first_name, last_name)
@@ -232,6 +232,7 @@ interface OverdueInvoice {
   id: string;
   invoice_number: string;
   total_minor: number;
+  paid_minor: number | null;
   currency_code: string;
   due_date: string;
   org_id: string;
@@ -254,7 +255,8 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
   if (await shouldSkipGuardian(supabase, invoice.org_id, guardian, invoice.id, "overdue_reminder", today)) return "skip";
 
   const orgName = org?.name || "LessonLoop";
-  const amount = formatCurrency(invoice.total_minor, invoice.currency_code);
+  const remainingMinor = invoice.total_minor - (invoice.paid_minor || 0);
+  const amount = formatCurrency(remainingMinor, invoice.currency_code);
   const portalLink = `${FRONTEND_URL}/portal/invoices?invoice=${invoice.id}`;
   const urgencyLevel = daysOverdue >= 30 ? "urgent" : daysOverdue >= 14 ? "important" : "friendly";
 
@@ -276,7 +278,7 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
       <p>Invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> is now <strong>${daysOverdue} days overdue</strong>.</p>
       <div style="background: ${bgColor}; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${accentColor};">
         <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${escapeHtml(invoice.invoice_number)}</p>
-        <p style="margin: 5px 0;"><strong>Amount Due:</strong> ${escapeHtml(amount)}</p>
+        <p style="margin: 5px 0;"><strong>Remaining Balance:</strong> ${escapeHtml(amount)}</p>
         <p style="margin: 5px 0;"><strong>Original Due Date:</strong> ${formatDateGB(invoice.due_date)}</p>
         <p style="margin: 5px 0; color: ${urgencyLevel === "urgent" ? "#dc2626" : "#666"};"><strong>Days Overdue:</strong> ${daysOverdue}</p>
       </div>
