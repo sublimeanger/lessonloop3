@@ -106,6 +106,10 @@ export function useStudentsImport() {
         throw new Error("CSV file is empty or invalid");
       }
 
+      if (csvRows.length > 5000) {
+        throw new Error(`Your CSV has ${csvRows.length.toLocaleString()} rows. Maximum is 5,000 per import. Please split your file.`);
+      }
+
       setHeaders(csvHeaders);
       setRows(csvRows);
 

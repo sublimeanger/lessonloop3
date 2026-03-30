@@ -134,8 +134,8 @@ export function UploadStep({ isLoading, handleFileUpload, sourceSoftware, setSou
           <input
             ref={inputRef}
             type="file"
-            accept=".csv"
-            onChange={handleFileUpload}
+            accept=".csv,text/csv"
+            onChange={onFileChange}
             className="hidden"
             id="csv-upload"
             disabled={isLoading}
@@ -162,6 +162,9 @@ export function UploadStep({ isLoading, handleFileUpload, sourceSoftware, setSou
             </p>
             <p className="text-body text-muted-foreground max-w-md mx-auto">
               Supports students, guardians, student-guardian links, instruments, and recurring lessons
+            </p>
+            <p className="text-caption text-muted-foreground mt-2">
+              Accepts .csv files up to 10MB (max 5,000 rows)
             </p>
           </label>
         </div>
