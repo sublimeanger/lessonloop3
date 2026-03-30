@@ -269,7 +269,7 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
   const logoUrl = org?.logo_url || null;
   const remainingMinor = invoice.total_minor - (invoice.paid_minor || 0);
   const amount = formatCurrency(remainingMinor, invoice.currency_code);
-  const portalLink = `${FRONTEND_URL}/portal/invoices?invoice=${invoice.id}`;
+  const portalLink = `${FRONTEND_URL}/portal/invoices?invoice=${invoice.id}&action=pay`;
   const urgencyLevel = daysOverdue >= 30 ? "urgent" : daysOverdue >= 14 ? "important" : "friendly";
 
   const subject = urgencyLevel === "urgent"
@@ -291,7 +291,11 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
       <p>Invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> is now <strong>${daysOverdue} days overdue</strong>.</p>
       <div style="background: ${bgColor}; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${accentColor};">
         <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${escapeHtml(invoice.invoice_number)}</p>
-        <p style="margin: 5px 0;"><strong>Remaining Balance:</strong> ${escapeHtml(amount)}</p>
+        ${(invoice.paid_minor || 0) > 0
+          ? `<p style="margin: 5px 0;"><strong>Total:</strong> ${escapeHtml(formatCurrency(invoice.total_minor, invoice.currency_code))}</p>
+        <p style="margin: 5px 0;"><strong>Paid:</strong> ${escapeHtml(formatCurrency(invoice.paid_minor || 0, invoice.currency_code))}</p>
+        <p style="margin: 5px 0; font-weight: 600;"><strong>Remaining:</strong> ${escapeHtml(amount)}</p>`
+          : `<p style="margin: 5px 0;"><strong>Amount Due:</strong> ${escapeHtml(amount)}</p>`}
         <p style="margin: 5px 0;"><strong>Original Due Date:</strong> ${formatDateGB(invoice.due_date)}</p>
         <p style="margin: 5px 0; color: ${urgencyLevel === "urgent" ? "#dc2626" : "#666"};"><strong>Days Overdue:</strong> ${daysOverdue}</p>
       </div>

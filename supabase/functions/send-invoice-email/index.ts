@@ -324,7 +324,11 @@ const handler = async (req: Request): Promise<Response> => {
       : `
       <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${escapeHtml(invoiceNumber)}</p>
-        <p style="margin: 5px 0;"><strong>Amount Due:</strong> ${escapeHtml(amount)}</p>
+        ${(invoice.paid_minor || 0) > 0
+          ? `<p style="margin: 5px 0;"><strong>Total:</strong> ${escapeHtml(formatMinorAmount(invoice.total_minor, invoice.currency_code))}</p>
+        <p style="margin: 5px 0;"><strong>Paid:</strong> ${escapeHtml(formatMinorAmount(invoice.paid_minor || 0, invoice.currency_code))}</p>
+        <p style="margin: 5px 0; font-weight: 600;"><strong>Remaining:</strong> ${escapeHtml(amount)}</p>`
+          : `<p style="margin: 5px 0;"><strong>Amount Due:</strong> ${escapeHtml(amount)}</p>`}
         <p style="margin: 5px 0;"><strong>Due Date:</strong> ${escapeHtml(dueDate)}</p>
       </div>`;
 
