@@ -3,6 +3,9 @@ import { Loader2, FileSpreadsheet, Wand2, Upload, Sparkles } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const SOURCE_OPTIONS = [
   { value: "auto", label: "Auto-detect", description: "Let LoopAssist figure it out" },
