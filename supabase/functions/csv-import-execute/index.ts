@@ -685,6 +685,31 @@ serve(async (req) => {
       rateCardByDuration.set(r.duration_minutes, r.id);
     });
     
+    // Pre-fetch existing guardians for dedup
+    const { data: existingGuardians } = await supabase
+      .from("guardians")
+      .select("id, email, full_name")
+      .eq("org_id", orgId);
+
+    const guardianByEmail = new Map<string, string>();
+    const guardianByName = new Map<string, string>();
+
+    existingGuardians?.forEach((g: any) => {
+      if (g.email) guardianByEmail.set(g.email.toLowerCase().trim(), g.id);
+      if (g.full_name) guardianByName.set(g.full_name.toLowerCase().trim(), g.id);
+    });
+
+    // Pre-fetch grade levels
+    const { data: allGradeLevels } = await supabase
+      .from("grade_levels")
+      .select("id, name")
+      .order("sort_order", { ascending: true });
+
+    const gradeLevelByName = new Map<string, string>();
+    allGradeLevels?.forEach((g: any) => {
+      gradeLevelByName.set(g.name.toLowerCase(), g.id);
+    });
+
     // Helper: Find or create location (with optional address enrichment)
     async function findOrCreateLocation(
       name: string,
@@ -942,17 +967,17 @@ serve(async (req) => {
           if (row.guardian_email) guardianData.email = row.guardian_email.trim();
           if (row.guardian_phone) guardianData.phone = row.guardian_phone.trim();
 
-          // Check if guardian with same email exists
+          // Check if guardian with same email or name exists (pre-fetched maps)
           if (guardianData.email) {
-            const { data: existingGuardian } = await supabase
-              .from("guardians")
-              .select("id")
-              .eq("org_id", orgId)
-              .eq("email", guardianData.email)
-              .maybeSingle();
-
-            if (existingGuardian) {
-              guardianId = existingGuardian.id;
+            const existingId = guardianByEmail.get(guardianData.email.toLowerCase().trim());
+            if (existingId) {
+              guardianId = existingId;
+            }
+          }
+          if (!guardianId && row.guardian_name) {
+            const existingId = guardianByName.get(row.guardian_name.toLowerCase().trim());
+            if (existingId) {
+              guardianId = existingId;
             }
           }
 
@@ -967,6 +992,8 @@ serve(async (req) => {
               result.errors.push(`Row ${rowIdx + 1}: Guardian creation failed - ${guardianError.message}`);
             } else {
               guardianId = guardian.id;
+              if (guardianData.email) guardianByEmail.set(guardianData.email.toLowerCase().trim(), guardian.id);
+              guardianByName.set(guardianData.full_name.toLowerCase().trim(), guardian.id);
               result.guardiansCreated++;
             }
           }
@@ -1005,17 +1032,17 @@ serve(async (req) => {
           if (row.guardian2_email) guardian2Data.email = row.guardian2_email.trim();
           if (row.guardian2_phone) guardian2Data.phone = row.guardian2_phone.trim();
 
-          // Check if guardian with same email exists
+          // Check if guardian with same email or name exists (pre-fetched maps)
           if (guardian2Data.email) {
-            const { data: existingGuardian2 } = await supabase
-              .from("guardians")
-              .select("id")
-              .eq("org_id", orgId)
-              .eq("email", guardian2Data.email)
-              .maybeSingle();
-
-            if (existingGuardian2) {
-              guardian2Id = existingGuardian2.id;
+            const existingId = guardianByEmail.get(guardian2Data.email.toLowerCase().trim());
+            if (existingId) {
+              guardian2Id = existingId;
+            }
+          }
+          if (!guardian2Id && row.guardian2_name) {
+            const existingId = guardianByName.get(row.guardian2_name.toLowerCase().trim());
+            if (existingId) {
+              guardian2Id = existingId;
             }
           }
 
@@ -1030,6 +1057,8 @@ serve(async (req) => {
               result.errors.push(`Row ${rowIdx + 1}: Second guardian creation failed - ${guardian2Error.message}`);
             } else {
               guardian2Id = guardian2.id;
+              if (guardian2Data.email) guardianByEmail.set(guardian2Data.email.toLowerCase().trim(), guardian2.id);
+              guardianByName.set(guardian2Data.full_name.toLowerCase().trim(), guardian2.id);
               result.guardiansCreated++;
             }
           }
