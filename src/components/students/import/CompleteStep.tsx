@@ -16,7 +16,7 @@ interface CompleteStepProps {
   onUndoImport?: (batchId: string) => void;
 }
 
-export function CompleteStep({ importResult, downloadFailedRows, onImportMore, onViewStudents }: CompleteStepProps) {
+export function CompleteStep({ importResult, downloadFailedRows, onImportMore, onViewStudents, onUndoImport }: CompleteStepProps) {
   const hasErrors = importResult.errors.length > 0;
   const hasFailedRows = importResult.details.some(d => d.status === "error" || d.status === "skipped");
   const teachersCreated = (importResult as any).teachersCreated ?? 0;
