@@ -31,6 +31,8 @@ interface MappingStepProps {
   updateMapping: (csvHeader: string, targetField: string | null) => void;
   getAvailableFields: (currentHeader: string) => TargetField[];
   detectedSource?: string | null;
+  sourceSoftware?: string;
+  setSourceSoftware?: (v: string) => void;
   onNext: () => void;
   onBack: () => void;
 }
@@ -74,7 +76,8 @@ export function MappingStep({
   rows, mappings, warnings, isLoading, requiredFieldsMapped, canProceedWithImport,
   willExceedLimit, remainingCapacity, counts, limits,
   teachers, selectedTeacher, setSelectedTeacher, importLessons, setImportLessons,
-  updateMapping, getAvailableFields, detectedSource, onNext, onBack,
+  updateMapping, getAvailableFields, detectedSource, sourceSoftware, setSourceSoftware,
+  onNext, onBack,
 }: MappingStepProps) {
   const hasGuardian2 = mappings.some(m => m.target_field?.startsWith("guardian2"));
   const mappedCount = mappings.filter(m => m.target_field).length;
@@ -111,6 +114,27 @@ export function MappingStep({
                 </p>
               </div>
             </div>
+          )}
+
+          {sourceSoftware && sourceSoftware !== "auto" && detectedSource &&
+           detectedSource !== sourceSoftware && SOURCE_LABELS[detectedSource] && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Source mismatch</AlertTitle>
+              <AlertDescription>
+                You selected {SOURCE_LABELS[sourceSoftware] || sourceSoftware} but
+                the file looks like it's from {SOURCE_LABELS[detectedSource]}.
+                Would you like to{" "}
+                <button
+                  type="button"
+                  className="text-primary underline font-medium"
+                  onClick={() => setSourceSoftware?.("auto")}
+                >
+                  switch to auto-detect
+                </button>
+                ?
+              </AlertDescription>
+            </Alert>
           )}
 
           {warnings.length > 0 && (
@@ -201,7 +225,12 @@ export function MappingStep({
                               <Scissors className="h-3 w-3 mr-1" />Split
                             </Badge>
                           </TooltipTrigger>
-                          <TooltipContent><p>Full name will be split into first + last name</p></TooltipContent>
+                          <TooltipContent className="max-w-[16rem]">
+                            <p>Full name will be split into first + last name.</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              For names like "Park Ji-Sung" or "José María García", consider mapping first and last name separately.
+                            </p>
+                          </TooltipContent>
                         </Tooltip>
                       )}
                       {mapping.transform?.startsWith("combine_guardian") && (

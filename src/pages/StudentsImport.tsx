@@ -122,6 +122,8 @@ export default function StudentsImport() {
               updateMapping={hook.updateMapping}
               getAvailableFields={hook.getAvailableFields}
               detectedSource={hook.detectedSource}
+              sourceSoftware={hook.sourceSoftware}
+              setSourceSoftware={hook.setSourceSoftware}
               onNext={hook.executeDryRun}
               onBack={() => hook.setStep("upload")}
             />
