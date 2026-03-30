@@ -3,6 +3,9 @@ import { Loader2, FileSpreadsheet, Wand2, Upload, Sparkles } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const SOURCE_OPTIONS = [
   { value: "auto", label: "Auto-detect", description: "Let LoopAssist figure it out" },
@@ -25,6 +28,26 @@ interface UploadStepProps {
 export function UploadStep({ isLoading, handleFileUpload, sourceSoftware, setSourceSoftware }: UploadStepProps) {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const validateAndUpload = useCallback((file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 10MB. Please split your CSV into smaller files.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  }, [toast]);
+
+  const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && validateAndUpload(file)) {
+      handleFileUpload(e);
+    }
+  }, [handleFileUpload, validateAndUpload]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -48,13 +71,13 @@ export function UploadStep({ isLoading, handleFileUpload, sourceSoftware, setSou
     e.stopPropagation();
     setIsDragging(false);
     const file = e.dataTransfer?.files?.[0];
-    if (file && inputRef.current) {
+    if (file && validateAndUpload(file) && inputRef.current) {
       const dt = new DataTransfer();
       dt.items.add(file);
       inputRef.current.files = dt.files;
       inputRef.current.dispatchEvent(new Event("change", { bubbles: true }));
     }
-  }, []);
+  }, [validateAndUpload]);
 
   return (
     <Card className="overflow-hidden">
@@ -111,8 +134,8 @@ export function UploadStep({ isLoading, handleFileUpload, sourceSoftware, setSou
           <input
             ref={inputRef}
             type="file"
-            accept=".csv"
-            onChange={handleFileUpload}
+            accept=".csv,text/csv"
+            onChange={onFileChange}
             className="hidden"
             id="csv-upload"
             disabled={isLoading}
@@ -139,6 +162,9 @@ export function UploadStep({ isLoading, handleFileUpload, sourceSoftware, setSou
             </p>
             <p className="text-body text-muted-foreground max-w-md mx-auto">
               Supports students, guardians, student-guardian links, instruments, and recurring lessons
+            </p>
+            <p className="text-caption text-muted-foreground mt-2">
+              Accepts .csv files up to 10MB (max 5,000 rows)
             </p>
           </label>
         </div>
