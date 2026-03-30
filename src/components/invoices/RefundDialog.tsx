@@ -296,7 +296,9 @@ export function RefundDialog({
               <div>
                 <p className="font-medium text-sm">Confirm refund</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  This will refund {formatCurrencyMinor(refundAmountMinor, currencyCode)} to the parent's payment method. This action cannot be undone.
+                  {isManual
+                    ? `This will record a refund of ${formatCurrencyMinor(refundAmountMinor, currencyCode)}. This action cannot be undone.`
+                    : `This will refund ${formatCurrencyMinor(refundAmountMinor, currencyCode)} to the parent's payment method. This action cannot be undone.`}
                 </p>
               </div>
             </div>
