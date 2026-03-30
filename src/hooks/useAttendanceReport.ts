@@ -136,7 +136,8 @@ export function useAttendanceReport(
         .in('lesson_id', lessonIds);
 
       if (statusFilter && statusFilter !== 'all') {
-        const statusMap: Record<string, string[]> = {
+        type AttStatus = 'present' | 'absent' | 'late' | 'cancelled_by_teacher' | 'cancelled_by_student';
+        const statusMap: Record<string, AttStatus[]> = {
           present: ['present'],
           absent: ['absent'],
           late: ['late'],
