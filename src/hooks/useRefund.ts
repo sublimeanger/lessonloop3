@@ -92,7 +92,7 @@ export function useRefund() {
 
       if (paymentErr || !payment) throw new Error('Payment not found');
 
-      const { data: existingRefunds } = await supabase
+      const { data: existingRefunds } = await (supabase as any)
         .from('refunds')
         .select('amount_minor')
         .eq('payment_id', paymentId)
@@ -107,8 +107,10 @@ export function useRefund() {
       if (refundAmount <= 0) throw new Error('Refund amount must be greater than zero');
       if (refundAmount > maxRefundable) throw new Error(`Maximum refundable amount is ${maxRefundable}`);
 
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+
       // Insert refund record directly
-      const { data: refundRecord, error: insertErr } = await supabase
+      const { data: refundRecord, error: insertErr } = await (supabase as any)
         .from('refunds')
         .insert({
           payment_id: paymentId,
@@ -116,9 +118,9 @@ export function useRefund() {
           org_id: orgId,
           amount_minor: refundAmount,
           reason: reason || null,
-          status: 'succeeded' as any,
+          status: 'succeeded',
           stripe_refund_id: null,
-          refunded_by: (await supabase.auth.getUser()).data.user?.id,
+          refunded_by: userId,
         })
         .select('id')
         .single();
@@ -126,7 +128,7 @@ export function useRefund() {
       if (insertErr) throw new Error('Failed to create refund record');
 
       // Recalculate invoice paid_minor
-      const { error: recalcErr } = await supabase.rpc('recalculate_invoice_paid', {
+      const { error: recalcErr } = await (supabase as any).rpc('recalculate_invoice_paid', {
         _invoice_id: invoiceId,
       });
 

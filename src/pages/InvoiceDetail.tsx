@@ -720,6 +720,11 @@ export default function InvoiceDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Void Invoice</AlertDialogTitle>
             <AlertDialogDescription>
+              {totalPaid > 0 && (
+                <span className="block mb-2 text-amber-600 dark:text-amber-400 font-medium">
+                  ⚠️ This invoice has {formatCurrencyMinor(totalPaid, currency)} in recorded payments. Consider processing a refund before voiding.
+                </span>
+              )}
               Are you sure you want to void invoice {invoice.invoice_number}? This action cannot be undone.
               {invoice.credit_applied_minor > 0 && (
                 <> Any applied make-up credits ({formatCurrencyMinor(invoice.credit_applied_minor, currency)}) will be restored to the student's balance.</>
@@ -733,7 +738,7 @@ export default function InvoiceDetail() {
               disabled={updateStatus.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {updateStatus.isPending ? 'Voiding...' : 'Void Invoice'}
+              {updateStatus.isPending ? 'Voiding...' : totalPaid > 0 ? 'Void Anyway' : 'Void Invoice'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

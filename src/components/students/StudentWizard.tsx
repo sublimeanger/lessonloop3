@@ -508,7 +508,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
         </ul>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => setDuplicateWarning({ show: false, matches: [] })}>Cancel</Button>
-          <Button onClick={() => { setDuplicateWarning({ show: false, matches: [] }); setSkipDuplicateCheck(true); setTimeout(() => handleCreate(), 0); }}>Continue Anyway</Button>
+          <Button disabled={isSaving} onClick={() => { setDuplicateWarning({ show: false, matches: [] }); setSkipDuplicateCheck(true); setTimeout(() => handleCreate(), 0); }}>Continue Anyway</Button>
         </div>
       </DialogContent>
     </Dialog>
