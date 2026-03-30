@@ -540,7 +540,7 @@ export default function PortalSchedule() {
             {thisWeekLessons.length > 0 ? (
               <div className="space-y-3">
                 {thisWeekLessons.map((lesson) => (
-                  <LessonCard key={lesson.id} lesson={lesson} isPast={false} />
+                  <LessonCard key={lesson.id} lesson={lesson} isPast={false} isExpanded={expandedLessonId === lesson.id} onToggle={() => setExpandedLessonId(prev => prev === lesson.id ? null : lesson.id)} />
                 ))}
               </div>
             ) : (
