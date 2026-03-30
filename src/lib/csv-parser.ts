@@ -75,12 +75,44 @@ export interface ParsedCSV {
 export function parseCSV(content: string): ParsedCSV {
   // Strip BOM from entire content
   const clean = content.replace(/^\uFEFF/, '');
-  const lines = clean.split(/\r?\n/).filter(line => line.trim());
-  if (lines.length === 0) return { headers: [], rows: [] };
 
-  const rawHeaders = parseRow(lines[0]);
-  const headers = rawHeaders.map(normaliseHeader);
-  const rows = lines.slice(1).map(parseRow);
+  // State-machine row splitter that respects quoted fields with newlines
+  const rawRows: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < clean.length; i++) {
+    const char = clean[i];
+
+    if (char === '"') {
+      if (inQuotes && i + 1 < clean.length && clean[i + 1] === '"') {
+        // Escaped quote "" — include both and skip next
+        current += '""';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+        current += char;
+      }
+    } else if (!inQuotes && (char === '\n' || (char === '\r' && clean[i + 1] === '\n'))) {
+      // End of row (not inside quotes)
+      if (char === '\r') i++; // skip \r in \r\n
+      if (current.trim()) rawRows.push(current);
+      current = '';
+    } else if (!inQuotes && char === '\r') {
+      // Bare \r (old Mac format)
+      if (current.trim()) rawRows.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  // Don't forget the last row (file may not end with newline)
+  if (current.trim()) rawRows.push(current);
+
+  if (rawRows.length === 0) return { headers: [], rows: [] };
+
+  const headers = parseRow(rawRows[0]).map(normaliseHeader);
+  const rows = rawRows.slice(1).map(parseRow);
 
   return { headers, rows };
 }
