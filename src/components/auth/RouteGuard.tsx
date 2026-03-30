@@ -183,8 +183,13 @@ export function RouteGuard({
     }
     
     if (!currentRole) {
-      // No org role found — user might be a parent (no staff membership)
-      // Redirect to portal instead of /dashboard to avoid infinite loop
+      // Role is null — membership may still be propagating after invite acceptance.
+      // Wait for grace period before redirecting to avoid white screen.
+      if (!roleGraceDone) {
+        return <AuthLoading onLogout={signOut} onForceRedirect={handleForceRedirect} />;
+      }
+      // Grace expired and retry done — user genuinely has no staff membership
+      logger.warn('[RouteGuard] Role still null after grace period - redirecting to /portal/home');
       return <Navigate to="/portal/home" replace />;
     }
     

@@ -80,6 +80,7 @@ const soloOwnerGroups: NavGroup[] = [
     label: 'Teaching',
     items: [
       { title: 'Students', url: '/students', icon: Users },
+      { title: 'Teachers', url: '/teachers', icon: GraduationCap },
       { title: 'Register', url: '/register', icon: ClipboardList },
       { title: 'Practice', url: '/practice', icon: Music },
       { title: 'Resources', url: '/resources', icon: FolderOpen },
