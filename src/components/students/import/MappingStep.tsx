@@ -76,7 +76,8 @@ export function MappingStep({
   rows, mappings, warnings, isLoading, requiredFieldsMapped, canProceedWithImport,
   willExceedLimit, remainingCapacity, counts, limits,
   teachers, selectedTeacher, setSelectedTeacher, importLessons, setImportLessons,
-  updateMapping, getAvailableFields, detectedSource, onNext, onBack,
+  updateMapping, getAvailableFields, detectedSource, sourceSoftware, setSourceSoftware,
+  onNext, onBack,
 }: MappingStepProps) {
   const hasGuardian2 = mappings.some(m => m.target_field?.startsWith("guardian2"));
   const mappedCount = mappings.filter(m => m.target_field).length;
