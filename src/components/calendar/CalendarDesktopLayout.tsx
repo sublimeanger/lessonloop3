@@ -169,10 +169,10 @@ export function CalendarDesktopLayout({
           <div className="flex items-center gap-1 shrink-0">
             {!isParent && <MarkDayCompleteButton currentDate={currentDate} lessons={lessons} onComplete={refetch} />}
             <ToggleGroup type="single" value={view} onValueChange={(v) => { if (v && ['day', 'stacked', 'week', 'agenda'].includes(v)) setView(v as CalendarView); }} data-tour="calendar-view-toggle">
-              <ToggleGroupItem value="day" aria-label="Day view" className="h-8 w-8 p-0"><Calendar className="h-3.5 w-3.5" /></ToggleGroupItem>
-              <ToggleGroupItem value="stacked" aria-label="Stacked view" className="h-8 w-8 p-0"><Columns3 className="h-3.5 w-3.5" /></ToggleGroupItem>
-              <ToggleGroupItem value="week" aria-label="Time grid view" className="h-8 w-8 p-0"><LayoutGrid className="h-3.5 w-3.5" /></ToggleGroupItem>
-              <ToggleGroupItem value="agenda" aria-label="Agenda view" className="h-8 w-8 p-0"><List className="h-3.5 w-3.5" /></ToggleGroupItem>
+              <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="day" aria-label="Day view" className="h-8 w-8 p-0"><Calendar className="h-3.5 w-3.5" /></ToggleGroupItem></TooltipTrigger><TooltipContent side="bottom" className="text-xs">Day view</TooltipContent></Tooltip>
+              <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="stacked" aria-label="Stacked view" className="h-8 w-8 p-0"><Columns3 className="h-3.5 w-3.5" /></ToggleGroupItem></TooltipTrigger><TooltipContent side="bottom" className="text-xs">Stacked view</TooltipContent></Tooltip>
+              <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="week" aria-label="Week view" className="h-8 w-8 p-0"><LayoutGrid className="h-3.5 w-3.5" /></ToggleGroupItem></TooltipTrigger><TooltipContent side="bottom" className="text-xs">Week view</TooltipContent></Tooltip>
+              <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="agenda" aria-label="Agenda view" className="h-8 w-8 p-0"><List className="h-3.5 w-3.5" /></ToggleGroupItem></TooltipTrigger><TooltipContent side="bottom" className="text-xs">Agenda view</TooltipContent></Tooltip>
             </ToggleGroup>
 
             <div className="h-4 w-px bg-border mx-0.5" />
