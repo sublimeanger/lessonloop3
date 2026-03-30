@@ -285,6 +285,28 @@ export function useUpdateAttendance() {
         );
 
       if (error) throw error;
+
+      // Auto-complete the lesson once every participant has an attendance record
+      const { data: participants } = await supabase
+        .from('lesson_participants')
+        .select('student_id')
+        .eq('lesson_id', lessonId);
+      const { data: records } = await supabase
+        .from('attendance_records')
+        .select('student_id')
+        .eq('lesson_id', lessonId);
+
+      const participantIds = new Set((participants || []).map(p => p.student_id));
+      const recordedIds = new Set((records || []).map(r => r.student_id));
+      const allMarked = participantIds.size > 0 && [...participantIds].every(id => recordedIds.has(id));
+
+      if (allMarked) {
+        await supabase
+          .from('lessons')
+          .update({ status: 'completed' })
+          .eq('id', lessonId)
+          .eq('status', 'scheduled');
+      }
     },
     onMutate: async ({ lessonId, studentId, status, absenceReason }) => {
       await queryClient.cancelQueries({ queryKey: ['register-lessons'] });
