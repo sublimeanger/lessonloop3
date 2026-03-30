@@ -789,6 +789,9 @@ serve(async (req) => {
       return null;
     }
 
+    // Generate a unique batch ID for this import (enables undo)
+    const importBatchId = crypto.randomUUID();
+
     const result: ImportResult = {
       studentsCreated: 0,
       guardiansCreated: 0,
@@ -857,6 +860,7 @@ serve(async (req) => {
           first_name: row.first_name.trim(),
           last_name: row.last_name.trim(),
           status: row.status?.toLowerCase() === "inactive" ? "inactive" : "active",
+          import_batch_id: importBatchId,
         };
         
         if (row.email) studentData.email = row.email.trim();
@@ -1223,6 +1227,7 @@ serve(async (req) => {
       action: "csv_import",
       actor_user_id: user.id,
       after: {
+        import_batch_id: importBatchId,
         students_created: result.studentsCreated,
         guardians_created: result.guardiansCreated,
         links_created: result.linksCreated,
@@ -1235,7 +1240,7 @@ serve(async (req) => {
       },
     });
 
-    return new Response(JSON.stringify(result), {
+    return new Response(JSON.stringify({ ...result, importBatchId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
