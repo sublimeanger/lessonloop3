@@ -3,8 +3,7 @@ import { logger } from '@/lib/logger';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { subDays, format } from 'date-fns';
-import { fromZonedTime } from 'date-fns-tz';
+import { format } from 'date-fns';
 
 export interface UrgentAction {
   id: string;
