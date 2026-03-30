@@ -164,7 +164,13 @@ These patterns were established during the audit. All future code must follow th
 - **Connect:** destination charges. Refunds go through platform account (not connected account)
 - **Subscriptions:** 5 tiers. Webhook handles subscription.updated, payment_failed, subscription.deleted
 - **Customer search:** uses parameterised `customers.list()` (not string interpolation)
+## QA Verification Notes (March 2026)
+### Email Verification (BUG_A_1_2_001)
+Email confirmation is controlled via the **Supabase dashboard** (Authentication → Settings → Email Auth), not in config.toml. The code in `RouteGuard.tsx:150` correctly checks `user.email_confirmed_at` and redirects unverified users to `/verify-email`. If "Confirm email" is OFF in the dashboard, `email_confirmed_at` is auto-set at signup — users skip verification by design. **Decision needed:** flip the toggle ON for production if email verification is required.
+### Settings Tab Visibility for Finance (BUG_D_27_5_024)
+Finance role can access `/settings` — this is **intentional** (`routes.ts:157`). All 14 admin-only tabs (Organisation, Branding, Members, etc.) are filtered out by `SettingsNav.tsx:107` via `isOrgAdmin` check (owner/admin only). Finance users only see: Profile, Notifications, Help & Tours, Availability, Calendar Sync, Zoom. The QA test expectation should be updated accordingly.
 ## Remaining Post-Beta Items
+- [ ] Enable email confirmations in Supabase dashboard (if required for production)
 - [ ] Enable leaked password protection in Supabase dashboard
 - [ ] Marketing site prerender rebuild (broken icons from failed pagespeed attempt)
 - [ ] 21 `.toLocaleDateString()` instances → use org-timezone-aware formatter
