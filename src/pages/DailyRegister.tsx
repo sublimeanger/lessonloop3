@@ -36,6 +36,8 @@ import { UnmarkedBacklogView } from '@/components/register/UnmarkedBacklogView';
 
 export default function DailyRegister() {
   usePageMeta('Daily Register | LessonLoop', 'Take attendance for daily lessons');
+  const [searchParams] = useSearchParams();
+  const isBacklogView = searchParams.get('view') === 'unmarked';
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { user } = useAuth();
   const { currentRole, currentOrg } = useOrg();
