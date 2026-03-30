@@ -64,6 +64,7 @@ export type Step = "upload" | "mapping" | "preview" | "importing" | "complete";
 export function useStudentsImport() {
   const navigate = useNavigate();
   const { currentOrg } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { counts, limits } = useUsageCounts();
 
