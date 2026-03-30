@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle, Building2, FileDown } from 'lucide-react';
+import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle, Building2, FileDown, ChevronDown } from 'lucide-react';
 import { format, parseISO, isBefore, startOfToday } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
