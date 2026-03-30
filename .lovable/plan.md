@@ -1,67 +1,82 @@
 
 
-# P0 Critical Fix: Admin White Screen + Solo-to-Academy Scaling
+# P1: Invoice/Refund/Void UI Fixes — 4 Bugs
 
-## Bug 1: RouteGuard redirects staff to /portal/home during org membership propagation
+## Bug 1: Refund button missing for manual payments
 
-**Root cause**: When `orgInitialised` is true but `currentRole` is still null (membership not yet propagated after invite acceptance), RouteGuard immediately redirects to `/portal/home`, which rejects non-parent roles → white screen.
+**Root cause**: Line 464 of `InvoiceDetail.tsx` requires `payment.provider === 'stripe' && payment.provider_reference`. Manual payments never match.
 
-**Changes:**
+**Fix**: The edge function `stripe-process-refund` explicitly rejects non-Stripe payments (line 55-57). So we need a separate "Record Refund" flow for manual payments that directly inserts a refund record.
 
-### 1. `src/components/auth/RouteGuard.tsx` — Add role grace period
+### Changes:
 
-Add a `roleGraceRef` / `roleGraceDone` pattern (matching the existing `profileGraceRef` at lines 66-85):
+**`src/pages/InvoiceDetail.tsx`** (~line 464):
+- Change the refund button condition: show for ANY payment where `totalRefundedForPayment < payment.amount_minor`
+- For Stripe payments (`payment.provider === 'stripe' && payment.provider_reference`): use existing RefundDialog (calls `stripe-process-refund`)
+- For manual payments: use same RefundDialog but pass a new `isManual` prop
 
-- When `orgInitialised === true` AND `currentRole === null`, start a 5-second grace timer
-- During grace, call `refreshOrganisations()` from `useOrg()` to retry fetching memberships
-- Show `<AuthLoading>` during the grace period
-- Only after grace expires AND role is still null, redirect to `/portal/home`
-- If `currentRole` arrives during grace, cancel the timer and proceed normally
+**`src/components/invoices/RefundDialog.tsx`**:
+- Add `isManual?: boolean` prop
+- When `isManual` is true, the confirm step text changes from "refund to parent's payment method" to "record this refund"
+- When `isManual`, `handleConfirm` calls a new `processManualRefund` function instead of `processRefund`
 
-Affects lines 144-154. Import `refreshOrganisations` from the existing `useOrg()` hook (already exposed in context).
-
-### 2. `src/pages/AcceptInvite.tsx` — Increase retry timing
-
-Two locations (lines 149-154 and lines 255-259): change retry loop from `3 attempts × 500ms` to `5 attempts × 1000ms`, giving 5 seconds total for edge function DB writes to propagate. Also add `refreshOrganisations()` call after the profile retry loop to ensure OrgContext picks up the new membership before navigation.
+**`src/hooks/useRefund.ts`**:
+- Add a `processManualRefund` function that directly inserts into the `refunds` table via Supabase client (provider='manual', status='succeeded'), then calls the `recalculate_invoice_paid` RPC, then invalidates queries
+- Export it alongside `processRefund`
 
 ---
 
-## Bug 2: Solo teachers cannot add a second teacher
+## Bug 2: Void partially-paid invoice without warning
 
-**Root cause**: Solo nav hides Teachers page; invite dialog only shows admin/teacher/finance but solo orgs need an explicit path to discover this.
+**Root cause**: Void dialog at line 711 doesn't check `totalPaid`.
 
-**Changes:**
+### Changes:
 
-### 3. `src/components/layout/AppSidebar.tsx` — Add Teachers link to solo nav
+**`src/pages/InvoiceDetail.tsx`** (~line 711-730):
+- In the `AlertDialogDescription`, add a warning when `totalPaid > 0`:
+  - "⚠️ This invoice has {formatCurrencyMinor(totalPaid, currency)} in recorded payments. Consider processing a refund before voiding."
+- Change the action button text to "Void Anyway" when `totalPaid > 0`
 
-Add a "Teachers" item to the `soloOwnerGroups` "Teaching" group (line 81 area):
-```
-{ title: 'Teachers', url: '/teachers', icon: GraduationCap }
-```
-This gives solo owners a path to the Teachers page where they can add staff. The `/teachers` route already allows `['owner', 'admin']` roles.
+---
 
-### 4. `src/components/settings/InviteMemberDialog.tsx` — Confirm teacher role is available
+## Bug 3: "From Lessons" invoice creation fails
 
-The invite dialog already includes "teacher" as a role option (line 130: `<SelectItem value="teacher">Teacher</SelectItem>`). No change needed here — this is already correct.
+**Root cause analysis**: The `findRateForDuration` function has a fallback of `3000` (£30) when no rate cards exist, so NaN isn't the issue. Looking at the code flow, the `onSubmit` at line 173 wraps `createInvoice.mutateAsync` without try/catch — if it throws, the error propagates silently.
 
-### 5. Org type transition (backend concern — note only)
+More likely issues:
+- The `From Lessons` path passes `linked_lesson_id` and `student_id` in items, but the `create_invoice_with_items` RPC only accepts `description`, `quantity`, `unit_price_minor` fields in the items JSONB — it does handle `linked_lesson_id` and `student_id` (line in the RPC). So the schema should work.
+- Possible: lessons have no participants → `studentId` is undefined → RPC may fail on the UUID cast
 
-When a solo_teacher org adds their first non-owner teacher, `org_type` should transition to `studio`. This is a backend/edge-function concern. The frontend will automatically show the full nav once `orgType !== 'solo_teacher'` (line 207 in AppSidebar.tsx). Flag this for backend team if not already handled.
+### Changes:
+
+**`src/components/invoices/CreateInvoiceModal.tsx`**:
+- Wrap the `onSubmit` handler in try/catch with a toast on error (currently missing — the `mutateAsync` throws but nothing catches it for the lessons path)
+- Add validation: if any lesson has no participants, show a warning toast and skip those lessons
+- Add validation: if no rate cards exist AND tab is 'lessons', show an info message "No rate cards configured — using default rate of £30"
+
+---
+
+## Bug 4: Double-click creates duplicate students
+
+**Root cause**: `StudentWizard.tsx` line 475 already has `disabled={isSaving}` on the Create button, and `isSaving` is set to `true` at the start of `handleCreate`. However, `handleCreate` is `async` and called from form `onSubmit` — the `setIsSaving(true)` call at the top of `handleCreate` may not disable the button fast enough if the duplicate check query takes time.
+
+### Changes:
+
+**`src/components/students/StudentWizard.tsx`**:
+- The button at line 475 already has `disabled={isSaving}` — verify `isSaving` is set at the very start of `handleCreate` before any async operations
+- Look at line 149: `handleCreate` starts with `if (!currentOrg) return;` then duplicate check. Add `if (isSaving) return;` as the first line to guard against re-entry
+- Also add `setIsSaving(true)` immediately before the duplicate check, and ensure `setIsSaving(false)` in finally block
+- For the "Continue Anyway" button in the duplicate dialog (line 510), add `disabled={isSaving}` as well
 
 ---
 
 ## Files Modified
 
-| File | Change |
-|------|--------|
-| `src/components/auth/RouteGuard.tsx` | Add roleGrace timer + refreshOrganisations retry |
-| `src/pages/AcceptInvite.tsx` | Increase retry to 5×1000ms, add org refresh |
-| `src/components/layout/AppSidebar.tsx` | Add Teachers nav item to soloOwnerGroups |
-
-## What This Does NOT Change
-
-- No changes to OrgContext.tsx (refreshOrganisations already exposed)
-- No changes to InviteMemberDialog (teacher role already available)
-- No changes to route config (teachers route already allows owner/admin)
-- Solo nav simplification preserved — only Teachers link added
+| File | Bug |
+|------|-----|
+| `src/pages/InvoiceDetail.tsx` | #1 (refund button), #2 (void warning) |
+| `src/components/invoices/RefundDialog.tsx` | #1 (manual refund support) |
+| `src/hooks/useRefund.ts` | #1 (manual refund function) |
+| `src/components/invoices/CreateInvoiceModal.tsx` | #3 (error handling + validation) |
+| `src/components/students/StudentWizard.tsx` | #4 (double-click guard) |
 
