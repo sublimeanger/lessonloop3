@@ -63,7 +63,7 @@ export function useUrgentActions() {
               type: 'unmarked_lessons',
               count: unmarkedCount,
               label: unmarkedCount === 1 ? 'unmarked lesson' : 'unmarked lessons',
-              href: '/register',
+              href: '/register?view=unmarked',
               severity: 'warning',
             });
           }
