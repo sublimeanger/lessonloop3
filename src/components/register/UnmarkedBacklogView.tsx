@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMarkLessonComplete } from '@/hooks/useRegisterData';
-import { RegisterRow, type RegisterLesson } from '@/hooks/useRegisterData';
+import type { RegisterLesson } from '@/hooks/useRegisterData';
 import { RegisterRow as RegisterRowComponent } from '@/components/register/RegisterRow';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
