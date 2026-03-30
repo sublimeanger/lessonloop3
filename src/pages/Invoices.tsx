@@ -45,7 +45,17 @@ export default function Invoices() {
   useRealtimeInvoices();
   const { exportInvoices } = useDataExport();
   const isParent = currentRole === 'parent';
-  const [filters, setFilters] = useState<InvoiceFilters>({});
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read initial filters & tab from URL
+  const initialStatus = searchParams.get('status');
+  const initialDuePast = searchParams.get('due') === 'past';
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') ?? 'invoices');
+
+  const [filters, setFilters] = useState<InvoiceFilters>(() => ({
+    ...(initialStatus && initialStatus !== 'all' ? { status: initialStatus as any } : {}),
+    ...(initialDuePast ? { dueDateTo: new Date().toISOString().slice(0, 10) } : {}),
+  }));
   const [currentPage, setCurrentPage] = useState(1);
   const { data: invoiceResult, isLoading, isError, refetch } = useInvoices({ ...filters, page: currentPage });
   const invoices = invoiceResult?.data ?? [];
@@ -54,6 +64,27 @@ export default function Invoices() {
   const handleFiltersChange = (newFilters: InvoiceFilters) => {
     setFilters(newFilters);
     setCurrentPage(1);
+    // Sync URL
+    const newParams = new URLSearchParams();
+    if (newFilters.status && newFilters.status !== 'all') {
+      newParams.set('status', newFilters.status);
+    }
+    if (activeTab !== 'invoices') {
+      newParams.set('tab', activeTab);
+    }
+    setSearchParams(newParams, { replace: true });
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    const newParams = new URLSearchParams();
+    if (tab !== 'invoices') {
+      newParams.set('tab', tab);
+    }
+    if (filters.status && filters.status !== 'all') {
+      newParams.set('status', filters.status as string);
+    }
+    setSearchParams(newParams, { replace: true });
   };
   const updateStatus = useUpdateInvoiceStatus();
 
