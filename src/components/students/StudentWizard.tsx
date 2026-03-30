@@ -147,6 +147,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   };
   
   const handleCreate = async () => {
+    if (isSaving) return; // Guard against re-entry from double-click
     if (!currentOrg) return;
     
     // Duplicate detection
