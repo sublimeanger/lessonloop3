@@ -1,63 +1,68 @@
 
 
-# P2: Parent Portal Interactivity Fixes — 4 Bugs
+# Attendance Report — Build Plan
 
-## Bug 1: Lesson cards feel unclickable
+## Summary
+Add an Attendance report page with filters, summary cards, trend chart, sortable student table, and CSV export. Uses client-side queries against `attendance_records` joined with `lessons` and `students`.
 
-**Current state**: `PortalSchedule.tsx` LessonCard (line 253) already shows teacher, location, attendance, and notes inline. Cards have `hover:shadow-elevated` but no expand/collapse interaction.
+## Files to Modify
 
-**Fix in `src/pages/portal/PortalSchedule.tsx`**:
-- Add `expandedLessonId` state to PortalSchedule component
-- Make LessonCard accept `isExpanded` and `onToggle` props
-- Add `cursor-pointer` and `hover:bg-accent/5` to the Card
-- On click, toggle expanded state
-- Move attendance (lines 315-327) and notes (lines 329-337) into a collapsible section that only renders when expanded
-- Keep the top section (title, time, location, teacher, students) always visible
-- Add a subtle `ChevronDown`/`ChevronUp` indicator
+### 1. `src/pages/Reports.tsx`
+- Import `UserCheck` from lucide-react
+- Add attendance entry after 'lessons' in the `reports` array
 
-## Bug 2: Invoice cards lack line item details
+### 2. `src/config/routes.ts`
+- Add lazy import: `const AttendanceReport = lazy(() => import('@/pages/reports/AttendanceReport'))`
+- Add route after cancellations line (~146): `{ path: '/reports/attendance', component: AttendanceReport, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher'], label: 'Attendance Report' }`
 
-**Current state**: `useParentInvoices` query (line 364) does NOT fetch `invoice_items`. InvoiceCard shows number, date, total, status, PDF, and Pay buttons only.
+## Files to Create
 
-**Fix**:
-- **`src/hooks/useParentPortal.ts`** (~line 364): Add `invoice_items(description, quantity, unit_price_minor, amount_minor)` to the select
-- **`src/pages/portal/PortalInvoices.tsx`**: 
-  - Add `expandedInvoiceId` state
-  - Make InvoiceCard clickable (not on action buttons — use `e.stopPropagation()` on PDF/Pay buttons)
-  - When expanded, show line items list below the existing content: description, qty × unit price, line total
-  - Add `cursor-pointer` to the card wrapper
-  - Update `InvoiceCardProps` to include `invoice_items` array, `isExpanded`, `onToggle`
+### 3. `src/hooks/useAttendanceReport.ts`
+Data hook using TanStack Query. Fetches from `attendance_records` table filtered by org + date range. Joins student names from `students` table and teacher info from `lessons`.
 
-## Bug 3: Welcome message doesn't show child's name
+**Query approach** (no RPC — attendance_records has RLS):
+- Fetch `attendance_records` where `org_id = orgId`, `recorded_at` in date range
+- Fetch `lessons` for those lesson_ids to get teacher info
+- Fetch `students` for those student_ids to get names
+- Use `fetchAllPages` pattern for >1000 rows
 
-**Current state**: Line 329 says `Hi {firstName}! 👋` and line 332 says `Here's what's happening with your family's lessons.`
+**Client-side aggregation**:
+- Per-student: total, present, absent, late, teacher_cancelled, student_cancelled counts, attendance rate %
+- Summary: overall rates
+- Trend: weekly/monthly buckets with rates over time
 
-**Fix in `src/pages/portal/PortalHome.tsx`**:
-- Derive selected child's first name from `filteredChildren` (already computed at line 259)
-- Update subtitle (line 332):
-  - If a child is selected: `Here's how {childFirstName} is doing.`
-  - If no child selected (all children): `Here's what's happening with your family's lessons.` (keep as-is)
+**Teacher filtering**: For teacher role, filter lessons by `teacher_user_id` = current user.
 
-## Bug 4: Weak password accepted during signup
+**CSV export**: `exportAttendanceToCSV()` following the `downloadCSV` pattern from useReports.ts.
 
-**Current state**: `Signup.tsx` line 107 only checks `password.length < PASSWORD_MIN_LENGTH` (8 chars). `getPasswordScore` returns 0-4 based on length, case mix, numbers/symbols. A password like `abcdefgh` gets score 1 ("Weak") but passes validation.
+### 4. `src/pages/reports/AttendanceReport.tsx`
+Full report page matching existing report styling (same as Revenue/Cancellations pattern).
 
-**Fix in `src/pages/Signup.tsx`**:
-- Import `getPasswordScore` from `PasswordStrengthIndicator`
-- After the length check (line 107-114), add a score check:
-  ```
-  if (getPasswordScore(password) < 2) → toast "Password too weak — add uppercase letters, numbers, or special characters"
-  ```
-- Score ≥ 2 means "Fair" or better (requires length ≥ 8 AND at least one of: mixed case or number/symbol)
-- `abcdefgh` → score 1 (blocked). `Abcd1234` → score 3 (allowed).
+**Layout**:
+- `AppLayout` + `PageHeader` with breadcrumbs + Print/Export CSV buttons
+- `DateRangeFilter` (default last 30 days) with term presets
+- Teacher filter dropdown (admin/owner only)
+- Status filter: All / Present / Absent / Late / Cancelled
 
-## Files Modified
+**Summary cards** (row of 4):
+- Total Lessons | Attendance Rate % | Absence Rate % | Cancellation Rate %
 
-| File | Bug |
-|------|-----|
-| `src/pages/portal/PortalSchedule.tsx` | #1 (expandable lesson cards) |
-| `src/hooks/useParentPortal.ts` | #2 (fetch invoice_items) |
-| `src/pages/portal/PortalInvoices.tsx` | #2 (expandable invoice cards) |
-| `src/pages/portal/PortalHome.tsx` | #3 (child name in greeting) |
-| `src/pages/Signup.tsx` | #4 (block weak passwords) |
+**Chart** (recharts BarChart):
+- Weekly/monthly buckets, attendance rate % and absence rate % as two bars
+- Auto-selects weekly if range ≤ 90 days, monthly otherwise
+
+**Table** (using `useSortableTable` + `SortableTableHead`):
+- Columns: Student Name | Total | Present | Absent | Late | Teacher Cancelled | Student Cancelled | Rate %
+- Teacher Name column for admin/owner
+- Rows link to `/students/:id`
+- `ReportPagination` for paging
+
+**States**: Loading (`ReportSkeleton`), empty (`EmptyState`), error, data with fade transition during refetch.
+
+## Technical Details
+
+- Attendance rate = `present / (total - teacher_cancelled) * 100`
+- Date range → UTC via `fromZonedTime` using org timezone
+- Attendance status enum values: `present`, `absent`, `late`, `cancelled_by_teacher`, `cancelled_by_student`
+- No database migration needed — all data queryable via existing tables with RLS
 
