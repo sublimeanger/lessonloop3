@@ -423,10 +423,10 @@ export function RefundDialog({
         <DrawerHeader className="px-0">
           <DrawerTitle className="flex items-center gap-2">
             <RotateCcw className="h-5 w-5 text-primary" />
-            Process Refund
+            {isManual ? 'Record Refund' : 'Process Refund'}
           </DrawerTitle>
           <DrawerDescription>
-            Refund a payment back to the parent
+            {isManual ? 'Record a manual refund for this payment' : 'Refund a payment back to the parent'}
           </DrawerDescription>
         </DrawerHeader>
         {content}
