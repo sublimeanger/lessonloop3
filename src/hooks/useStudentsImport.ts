@@ -349,6 +349,31 @@ export function useStudentsImport() {
     setDetectedSource(null);
   }, []);
 
+  const undoImport = useCallback(async (batchId: string) => {
+    if (!currentOrg) return;
+    try {
+      const { data, error } = await (supabase.rpc as any)('undo_student_import', {
+        _org_id: currentOrg.id,
+        _batch_id: batchId,
+        _user_id: user?.id,
+      });
+      if (error) throw error;
+      const result = data as any;
+      toast({
+        title: "Import undone",
+        description: `Removed ${result?.studentsRemoved ?? 0} students and ${result?.lessonsRemoved ?? 0} lessons.`,
+      });
+      resetImport();
+      navigate('/students');
+    } catch (error: any) {
+      toast({
+        title: "Undo failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  }, [currentOrg, user, toast, navigate, resetImport]);
+
   return {
     // Navigation
     navigate,
