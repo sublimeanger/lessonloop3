@@ -685,6 +685,31 @@ serve(async (req) => {
       rateCardByDuration.set(r.duration_minutes, r.id);
     });
     
+    // Pre-fetch existing guardians for dedup
+    const { data: existingGuardians } = await supabase
+      .from("guardians")
+      .select("id, email, full_name")
+      .eq("org_id", orgId);
+
+    const guardianByEmail = new Map<string, string>();
+    const guardianByName = new Map<string, string>();
+
+    existingGuardians?.forEach((g: any) => {
+      if (g.email) guardianByEmail.set(g.email.toLowerCase().trim(), g.id);
+      if (g.full_name) guardianByName.set(g.full_name.toLowerCase().trim(), g.id);
+    });
+
+    // Pre-fetch grade levels
+    const { data: allGradeLevels } = await supabase
+      .from("grade_levels")
+      .select("id, name")
+      .order("sort_order", { ascending: true });
+
+    const gradeLevelByName = new Map<string, string>();
+    allGradeLevels?.forEach((g: any) => {
+      gradeLevelByName.set(g.name.toLowerCase(), g.id);
+    });
+
     // Helper: Find or create location (with optional address enrichment)
     async function findOrCreateLocation(
       name: string,
@@ -764,6 +789,9 @@ serve(async (req) => {
       return null;
     }
 
+    // Generate a unique batch ID for this import (enables undo)
+    const importBatchId = crypto.randomUUID();
+
     const result: ImportResult = {
       studentsCreated: 0,
       guardiansCreated: 0,
@@ -775,6 +803,9 @@ serve(async (req) => {
       errors: [],
       details: [],
     };
+
+    // Collect teacher assignments for batch insert after the main loop
+    const teacherAssignmentsBatch: any[] = [];
 
     // Process each row
     for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
@@ -829,6 +860,7 @@ serve(async (req) => {
           first_name: row.first_name.trim(),
           last_name: row.last_name.trim(),
           status: row.status?.toLowerCase() === "inactive" ? "inactive" : "active",
+          import_batch_id: importBatchId,
         };
         
         if (row.email) studentData.email = row.email.trim();
@@ -909,26 +941,24 @@ serve(async (req) => {
 
         // 1c. Match grade_level to grade_levels table and set on student_instruments
         if (row.grade_level?.trim() && row.instrument?.trim()) {
-          const { data: gradeLevels } = await supabase
-            .from("grade_levels")
-            .select("id, name")
-            .order("sort_order", { ascending: true });
-
-          if (gradeLevels) {
-            const gradeName = row.grade_level.trim().toLowerCase();
-            const matchedGrade = gradeLevels.find((g: any) =>
-              g.name.toLowerCase() === gradeName ||
-              g.name.toLowerCase().includes(gradeName) ||
-              gradeName.includes(g.name.toLowerCase())
-            );
-            if (matchedGrade) {
-              // Update the student_instruments record we just created
-              await supabase
-                .from("student_instruments")
-                .update({ current_grade_id: matchedGrade.id })
-                .eq("student_id", student.id)
-                .eq("org_id", orgId);
+          const gradeName = row.grade_level.trim().toLowerCase();
+          // Exact match first
+          let matchedGradeId = gradeLevelByName.get(gradeName);
+          // Fuzzy match if no exact
+          if (!matchedGradeId) {
+            for (const [name, id] of gradeLevelByName.entries()) {
+              if (name.includes(gradeName) || gradeName.includes(name)) {
+                matchedGradeId = id;
+                break;
+              }
             }
+          }
+          if (matchedGradeId) {
+            await supabase
+              .from("student_instruments")
+              .update({ current_grade_id: matchedGradeId })
+              .eq("student_id", student.id)
+              .eq("org_id", orgId);
           }
         }
 
@@ -942,17 +972,17 @@ serve(async (req) => {
           if (row.guardian_email) guardianData.email = row.guardian_email.trim();
           if (row.guardian_phone) guardianData.phone = row.guardian_phone.trim();
 
-          // Check if guardian with same email exists
+          // Check if guardian with same email or name exists (pre-fetched maps)
           if (guardianData.email) {
-            const { data: existingGuardian } = await supabase
-              .from("guardians")
-              .select("id")
-              .eq("org_id", orgId)
-              .eq("email", guardianData.email)
-              .maybeSingle();
-
-            if (existingGuardian) {
-              guardianId = existingGuardian.id;
+            const existingId = guardianByEmail.get(guardianData.email.toLowerCase().trim());
+            if (existingId) {
+              guardianId = existingId;
+            }
+          }
+          if (!guardianId && row.guardian_name) {
+            const existingId = guardianByName.get(row.guardian_name.toLowerCase().trim());
+            if (existingId) {
+              guardianId = existingId;
             }
           }
 
@@ -967,6 +997,8 @@ serve(async (req) => {
               result.errors.push(`Row ${rowIdx + 1}: Guardian creation failed - ${guardianError.message}`);
             } else {
               guardianId = guardian.id;
+              if (guardianData.email) guardianByEmail.set(guardianData.email.toLowerCase().trim(), guardian.id);
+              guardianByName.set(guardianData.full_name.toLowerCase().trim(), guardian.id);
               result.guardiansCreated++;
             }
           }
@@ -1005,17 +1037,17 @@ serve(async (req) => {
           if (row.guardian2_email) guardian2Data.email = row.guardian2_email.trim();
           if (row.guardian2_phone) guardian2Data.phone = row.guardian2_phone.trim();
 
-          // Check if guardian with same email exists
+          // Check if guardian with same email or name exists (pre-fetched maps)
           if (guardian2Data.email) {
-            const { data: existingGuardian2 } = await supabase
-              .from("guardians")
-              .select("id")
-              .eq("org_id", orgId)
-              .eq("email", guardian2Data.email)
-              .maybeSingle();
-
-            if (existingGuardian2) {
-              guardian2Id = existingGuardian2.id;
+            const existingId = guardianByEmail.get(guardian2Data.email.toLowerCase().trim());
+            if (existingId) {
+              guardian2Id = existingId;
+            }
+          }
+          if (!guardian2Id && row.guardian2_name) {
+            const existingId = guardianByName.get(row.guardian2_name.toLowerCase().trim());
+            if (existingId) {
+              guardian2Id = existingId;
             }
           }
 
@@ -1030,6 +1062,8 @@ serve(async (req) => {
               result.errors.push(`Row ${rowIdx + 1}: Second guardian creation failed - ${guardian2Error.message}`);
             } else {
               guardian2Id = guardian2.id;
+              if (guardian2Data.email) guardianByEmail.set(guardian2Data.email.toLowerCase().trim(), guardian2.id);
+              guardianByName.set(guardian2Data.full_name.toLowerCase().trim(), guardian2.id);
               result.guardiansCreated++;
             }
           }
@@ -1057,19 +1091,13 @@ serve(async (req) => {
           }
         }
 
-        // 4. Create teacher assignment if we have a resolved teacher (use new teacher_id column)
+        // 4. Collect teacher assignment for batch insert after the loop
         if (resolvedTeacherId && student.id) {
-          const { error: assignError } = await supabase
-            .from("student_teacher_assignments")
-            .insert({
-              org_id: orgId,
-              student_id: student.id,
-              teacher_id: resolvedTeacherId,
-            });
-          
-          if (assignError && !assignError.message.includes("duplicate")) {
-            console.log(`Teacher assignment warning for ${studentName}:`, assignError.message);
-          }
+          teacherAssignmentsBatch.push({
+            org_id: orgId,
+            student_id: student.id,
+            teacher_id: resolvedTeacherId,
+          });
         }
 
         // 5. Create recurring lesson if provided
@@ -1174,6 +1202,20 @@ serve(async (req) => {
       }
     }
 
+    // Batch insert teacher assignments
+    if (teacherAssignmentsBatch.length > 0) {
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < teacherAssignmentsBatch.length; i += BATCH_SIZE) {
+        const batch = teacherAssignmentsBatch.slice(i, i + BATCH_SIZE);
+        const { error } = await supabase
+          .from("student_teacher_assignments")
+          .upsert(batch, { onConflict: "org_id,student_id,teacher_id", ignoreDuplicates: true });
+        if (error) {
+          console.log("Teacher assignment batch warning:", error.message);
+        }
+      }
+    }
+
     // Update counts from created entities
     result.locationsCreated = createdLocations.size;
     result.rateCardsCreated = createdRateCards.size;
@@ -1185,6 +1227,7 @@ serve(async (req) => {
       action: "csv_import",
       actor_user_id: user.id,
       after: {
+        import_batch_id: importBatchId,
         students_created: result.studentsCreated,
         guardians_created: result.guardiansCreated,
         links_created: result.linksCreated,
@@ -1197,7 +1240,7 @@ serve(async (req) => {
       },
     });
 
-    return new Response(JSON.stringify(result), {
+    return new Response(JSON.stringify({ ...result, importBatchId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
