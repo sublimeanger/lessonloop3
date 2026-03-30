@@ -113,6 +113,15 @@ export default function Signup() {
       return;
     }
 
+    if (getPasswordScore(password) < 2) {
+      toast({
+        title: 'Password too weak',
+        description: 'Add uppercase letters, numbers, or special characters to strengthen your password.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
     const { error } = await signUp(trimmedEmail, password, fullName.trim());
     setIsLoading(false);

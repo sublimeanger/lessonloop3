@@ -315,67 +315,80 @@ export default function PortalSchedule() {
                 )}
               </div>
 
-              {/* Attendance */}
-              {isPast && lesson.students.some(s => s.attendance_status) && (
-                <div className="mt-3 pt-3 border-t">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Attendance</p>
-                  <div className="flex flex-wrap gap-2">
-                    {lesson.students.map((student) => (
-                      <div key={student.id} className="flex items-center gap-1.5">
-                        <span className="text-sm">{student.first_name}:</span>
-                        {getAttendanceBadge(student.attendance_status)}
+              {/* Expandable detail section */}
+              {hasExpandableContent && (
+                <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                  <ChevronDown className={cn('h-3.5 w-3.5 transition-transform duration-200', isExpanded && 'rotate-180')} />
+                  <span>{isExpanded ? 'Hide details' : 'Tap for details'}</span>
+                </div>
+              )}
+
+              {isExpanded && (
+                <div className="animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                  {/* Attendance */}
+                  {isPast && lesson.students.some(s => s.attendance_status) && (
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Attendance</p>
+                      <div className="flex flex-wrap gap-2">
+                        {lesson.students.map((student) => (
+                          <div key={student.id} className="flex items-center gap-1.5">
+                            <span className="text-sm">{student.first_name}:</span>
+                            {getAttendanceBadge(student.attendance_status)}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Shared notes */}
-              {lesson.notes_shared && (
-                <div className="mt-3 pt-3 border-t">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-                    <FileText className="h-3.5 w-3.5" /> Lesson Notes
-                  </div>
-                  <p className="text-sm bg-muted/50 p-2.5 rounded-md whitespace-pre-wrap">{lesson.notes_shared}</p>
-                </div>
-              )}
-
-              {/* Structured lesson notes (from lesson_notes table, parent-safe RPC) */}
-              {(() => {
-                const notesForLesson = (parentNotes || []).filter(n => n.lesson_id === lesson.id && n.parent_visible);
-                if (notesForLesson.length === 0) return null;
-                return (
-                  <div className="mt-3 pt-3 border-t space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-                      <FileText className="h-3.5 w-3.5" /> Detailed Notes
                     </div>
-                    {notesForLesson.map(n => (
-                      <div key={n.id} className="bg-primary/5 rounded-md p-3">
-                        <LessonNoteCard
-                          contentCovered={n.content_covered}
-                          homework={n.homework}
-                          focusAreas={n.focus_areas}
-                          engagementRating={null}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
+                  )}
 
-              {lesson.recap_url && (
-                <div className="mt-3 pt-3 border-t">
-                  <a
-                    href={lesson.recap_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
-                    style={{ minHeight: 44 }}
-                  >
-                    <Video className="h-4 w-4 shrink-0" />
-                    Watch Recap
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  </a>
+                  {/* Shared notes */}
+                  {lesson.notes_shared && (
+                    <div className="mt-3 pt-3 border-t">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+                        <FileText className="h-3.5 w-3.5" /> Lesson Notes
+                      </div>
+                      <p className="text-sm bg-muted/50 p-2.5 rounded-md whitespace-pre-wrap">{lesson.notes_shared}</p>
+                    </div>
+                  )}
+
+                  {/* Structured lesson notes */}
+                  {(() => {
+                    const notesForLesson = (parentNotes || []).filter(n => n.lesson_id === lesson.id && n.parent_visible);
+                    if (notesForLesson.length === 0) return null;
+                    return (
+                      <div className="mt-3 pt-3 border-t space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+                          <FileText className="h-3.5 w-3.5" /> Detailed Notes
+                        </div>
+                        {notesForLesson.map(n => (
+                          <div key={n.id} className="bg-primary/5 rounded-md p-3">
+                            <LessonNoteCard
+                              contentCovered={n.content_covered}
+                              homework={n.homework}
+                              focusAreas={n.focus_areas}
+                              engagementRating={null}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {lesson.recap_url && (
+                    <div className="mt-3 pt-3 border-t">
+                      <a
+                        href={lesson.recap_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
+                        style={{ minHeight: 44 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Video className="h-4 w-4 shrink-0" />
+                        Watch Recap
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

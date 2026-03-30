@@ -329,7 +329,9 @@ export default function PortalHome() {
               Hi {firstName}! 👋
             </h1>
             <p className="text-white/70 mt-1 text-sm">
-              Here's what's happening with your family's lessons.
+              {selectedChildId && filteredChildren?.length === 1
+                ? `Here's how ${filteredChildren[0].first_name} is doing.`
+                : "Here's what's happening with your family's lessons."}
             </p>
           </div>
           {/* Decorative circles */}
