@@ -46,6 +46,7 @@ export default function PortalInvoices() {
   const { invoicesEnabled } = usePortalFeatures();
   const { currentOrg } = useOrg();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
