@@ -225,6 +225,43 @@ export default function Students() {
   const [confirmToggle, setConfirmToggle] = useState<StudentListItem | null>(null);
   const [sortBy, setSortBy] = useState<'last_name' | 'first_name' | 'created_at'>('last_name');
 
+  // Batch invite state
+  const [batchInviteOpen, setBatchInviteOpen] = useState(false);
+  const [isBatchInviting, setIsBatchInviting] = useState(false);
+  const [uninvitedCount, setUninvitedCount] = useState<number | null>(null);
+
+  const openBatchInviteDialog = async () => {
+    if (!currentOrg) return;
+    const { count } = await supabase
+      .from('guardians')
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', currentOrg.id)
+      .not('email', 'is', null)
+      .is('user_id', null);
+    setUninvitedCount(count ?? 0);
+    setBatchInviteOpen(true);
+  };
+
+  const handleBatchInviteAll = async () => {
+    if (!currentOrg) return;
+    setIsBatchInviting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-invite-guardians', {
+        body: { org_id: currentOrg.id },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Invites sent',
+        description: `${data.invited} portal invite${data.invited !== 1 ? 's' : ''} sent.`,
+      });
+      setBatchInviteOpen(false);
+    } catch (error: any) {
+      toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsBatchInviting(false);
+    }
+  };
+
   const statusCounts = useMemo(() => ({
     all: students.length,
     active: students.filter((s) => s.status === 'active').length,
