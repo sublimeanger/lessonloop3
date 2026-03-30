@@ -135,7 +135,7 @@ export function MappingStep({
                 ?
               </AlertDescription>
             </Alert>
-          )
+          )}
 
           {warnings.length > 0 && (
             <Alert>
