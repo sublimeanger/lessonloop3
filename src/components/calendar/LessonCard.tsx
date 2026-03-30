@@ -167,6 +167,11 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
               Edited
             </span>
           )}
+          {isOnline && (
+            <span className="inline-flex items-center ml-0.5 -mt-px">
+              <Video className="h-2.5 w-2.5 text-primary" />
+            </span>
+          )}
         </div>
 
         {/* Student name */}
