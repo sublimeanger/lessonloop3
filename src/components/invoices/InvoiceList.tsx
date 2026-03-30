@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Receipt } from 'lucide-react';
+import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Receipt, RotateCcw } from 'lucide-react';
 import { InlineEmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
@@ -173,6 +173,15 @@ function InvoiceActions({
             <DropdownMenuItem onClick={() => guard(onSendReminder)} disabled={busy}>
               <Bell className="mr-2 h-4 w-4" />
               Send Reminder
+            </DropdownMenuItem>
+          </>
+        )}
+        {invoice.status === 'paid' && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate(`/invoices/${invoice.id}?action=refund`)} disabled={busy}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Refund
             </DropdownMenuItem>
           </>
         )}
