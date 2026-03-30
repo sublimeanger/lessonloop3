@@ -203,15 +203,17 @@ const handler = async (req: Request): Promise<Response> => {
       installments = instData || [];
     }
 
-    // Fetch org details (name + payment preferences)
+    // Fetch org details (name + payment preferences + branding)
     const { data: org } = await supabaseService
       .from("organisations")
-      .select("name, online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix")
+      .select("name, online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix, logo_url, brand_primary_color")
       .eq("id", orgId)
       .single();
 
     const orgName = org?.name || "Your Academy";
     const onlinePaymentsEnabled = org?.online_payments_enabled !== false;
+    const brandColor = org?.brand_primary_color || "#2563eb";
+    const logoUrl = org?.logo_url || null;
     const hasBankDetails = !!(org?.bank_account_name && org?.bank_sort_code && org?.bank_account_number);
     const bankRef = org?.bank_reference_prefix
       ? `${org.bank_reference_prefix}-${invoiceNumber}`
@@ -230,7 +232,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Shared button styles
     const buttonStyle = `
       display: inline-block;
-      background-color: #2563eb;
+      background-color: ${brandColor};
       color: #ffffff;
       padding: 12px 24px;
       text-decoration: none;
@@ -252,13 +254,19 @@ const handler = async (req: Request): Promise<Response> => {
       : "";
 
     // CTA section based on payment preferences
+    const ctaLabel = installments.length > 0 && firstUnpaidInstallment
+      ? "View Invoice & Pay First Installment"
+      : "View & Pay Invoice";
+    const ctaSubtext = installments.length > 0 && firstUnpaidInstallment
+      ? `Click the button above to view your invoice and pay installment ${firstUnpaidInstallment.installment_number} (${formatMinorAmount(firstUnpaidInstallment.amount_minor, invoice.currency_code)}) securely online.`
+      : "Click the button above to view your invoice and make a payment securely online.";
     const payOnlineCta = onlinePaymentsEnabled
       ? `
       <p style="text-align: center;">
-        <a href="${portalLink}" style="${buttonStyle}">View & Pay Invoice</a>
+        <a href="${portalLink}" style="${buttonStyle}">${ctaLabel}</a>
       </p>
       <p style="font-size: 12px; color: #666;">
-        Click the button above to view your invoice and make a payment securely online.
+        ${ctaSubtext}
       </p>`
       : "";
 
@@ -273,6 +281,7 @@ const handler = async (req: Request): Promise<Response> => {
     const installmentScheduleHtml = installments.length > 0
       ? `
       <p style="margin: 12px 0 8px; font-weight: 600;">Payment plan: ${installments.length} installments</p>
+      ${firstUnpaidInstallment ? `<p style="margin: 4px 0 12px; font-size: 16px; color: ${brandColor}; font-weight: 600;">Next payment due: ${formatMinorAmount(firstUnpaidInstallment.amount_minor, invoice.currency_code)} on ${formatDateUK(firstUnpaidInstallment.due_date)}</p>` : ""}
       <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
         <thead>
           <tr style="border-bottom: 2px solid #ddd;">
@@ -280,23 +289,25 @@ const handler = async (req: Request): Promise<Response> => {
             <th style="text-align: left; padding: 6px 8px;">Amount</th>
             <th style="text-align: left; padding: 6px 8px;">Due Date</th>
             <th style="text-align: left; padding: 6px 8px;">Status</th>
+            <th style="text-align: left; padding: 6px 8px;">Pay Link</th>
           </tr>
         </thead>
         <tbody>
           ${installments.map((inst: any) => {
             const instAmount = formatMinorAmount(inst.amount_minor, invoice.currency_code);
             const instDue = formatDateUK(inst.due_date);
-            const isFirstUnpaid = firstUnpaidInstallment && inst.id === firstUnpaidInstallment.id;
             const statusLabel = inst.status === "paid" ? "Paid" : inst.status === "overdue" ? "Overdue" : inst.status === "void" ? "Voided" : "Pending";
             const statusColor = inst.status === "paid" ? "#16a34a" : inst.status === "overdue" ? "#dc2626" : "#666";
-            const payNow = isFirstUnpaid && onlinePaymentsEnabled
-              ? ` <a href="${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&installment=${inst.id}&action=pay" style="color: #2563eb; font-weight: 600; text-decoration: none;">[Pay Now]</a>`
-              : "";
+            const isUnpaid = inst.status === "pending" || inst.status === "overdue";
+            const payLink = isUnpaid && onlinePaymentsEnabled
+              ? `<a href="${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&installment=${inst.id}&action=pay" style="color: ${brandColor}; font-weight: 600; text-decoration: none;">Pay Now</a>`
+              : inst.status === "paid" ? '<span style="color: #16a34a;">&#10003;</span>' : "—";
             return `<tr style="border-bottom: 1px solid #eee;">
               <td style="padding: 6px 8px;">Installment ${inst.installment_number}</td>
               <td style="padding: 6px 8px;">${escapeHtml(instAmount)}</td>
               <td style="padding: 6px 8px;">${escapeHtml(instDue)}</td>
-              <td style="padding: 6px 8px; color: ${statusColor};">${statusLabel}${payNow}</td>
+              <td style="padding: 6px 8px; color: ${statusColor};">${statusLabel}</td>
+              <td style="padding: 6px 8px;">${payLink}</td>
             </tr>`;
           }).join("")}
         </tbody>
@@ -313,12 +324,26 @@ const handler = async (req: Request): Promise<Response> => {
       : `
       <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${escapeHtml(invoiceNumber)}</p>
-        <p style="margin: 5px 0;"><strong>Amount Due:</strong> ${escapeHtml(amount)}</p>
+        ${(invoice.paid_minor || 0) > 0
+          ? `<p style="margin: 5px 0;"><strong>Total:</strong> ${escapeHtml(formatMinorAmount(invoice.total_minor, invoice.currency_code))}</p>
+        <p style="margin: 5px 0;"><strong>Paid:</strong> ${escapeHtml(formatMinorAmount(invoice.paid_minor || 0, invoice.currency_code))}</p>
+        <p style="margin: 5px 0; font-weight: 600;"><strong>Remaining:</strong> ${escapeHtml(amount)}</p>`
+          : `<p style="margin: 5px 0;"><strong>Amount Due:</strong> ${escapeHtml(amount)}</p>`}
         <p style="margin: 5px 0;"><strong>Due Date:</strong> ${escapeHtml(dueDate)}</p>
       </div>`;
 
+    // Branded header with org logo and accent colour
+    const brandedHeader = logoUrl
+      ? `<div style="border-bottom: 3px solid ${brandColor}; padding-bottom: 16px; margin-bottom: 20px;">
+          <img src="${logoUrl}" alt="${escapeHtml(orgName)}" style="max-height: 60px;" />
+        </div>`
+      : `<div style="border-bottom: 3px solid ${brandColor}; padding-bottom: 16px; margin-bottom: 20px;">
+          <h2 style="margin: 0; color: ${brandColor};">${escapeHtml(orgName)}</h2>
+        </div>`;
+
     const htmlContent = isReminder
       ? `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          ${brandedHeader}
           <h1 style="color: #333; margin-bottom: 20px;">Payment Reminder</h1>
           <p>Dear ${escapeHtml(recipientName)},</p>
           <p>This is a friendly reminder that payment for the following invoice is due:</p>
@@ -330,6 +355,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Thank you,<br>${escapeHtml(orgName)}</p>
         </div>`
       : `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          ${brandedHeader}
           <h1 style="color: #333; margin-bottom: 20px;">Invoice ${escapeHtml(invoiceNumber)}</h1>
           <p>Dear ${escapeHtml(recipientName)},</p>
           <p>Please find below the details of your invoice:</p>
