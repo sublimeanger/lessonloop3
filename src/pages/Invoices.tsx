@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { useRealtimeInvoices } from '@/hooks/useRealtimeInvoices';
 import { AppLayout } from '@/components/layout/AppLayout';
