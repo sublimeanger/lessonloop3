@@ -425,6 +425,8 @@ export default function PortalInvoices() {
                       isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
                       isHighlighted={invoice.id === highlightedInvoiceId}
                       showPayButton={onlinePaymentsEnabled}
+                      isExpanded={expandedInvoiceId === invoice.id}
+                      onToggle={() => setExpandedInvoiceId(prev => prev === invoice.id ? null : invoice.id)}
                     />
                   )
                 ))}
