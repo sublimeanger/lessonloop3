@@ -203,15 +203,17 @@ const handler = async (req: Request): Promise<Response> => {
       installments = instData || [];
     }
 
-    // Fetch org details (name + payment preferences)
+    // Fetch org details (name + payment preferences + branding)
     const { data: org } = await supabaseService
       .from("organisations")
-      .select("name, online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix")
+      .select("name, online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix, logo_url, brand_primary_color")
       .eq("id", orgId)
       .single();
 
     const orgName = org?.name || "Your Academy";
     const onlinePaymentsEnabled = org?.online_payments_enabled !== false;
+    const brandColor = org?.brand_primary_color || "#2563eb";
+    const logoUrl = org?.logo_url || null;
     const hasBankDetails = !!(org?.bank_account_name && org?.bank_sort_code && org?.bank_account_number);
     const bankRef = org?.bank_reference_prefix
       ? `${org.bank_reference_prefix}-${invoiceNumber}`
@@ -230,7 +232,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Shared button styles
     const buttonStyle = `
       display: inline-block;
-      background-color: #2563eb;
+      background-color: ${brandColor};
       color: #ffffff;
       padding: 12px 24px;
       text-decoration: none;
@@ -279,7 +281,7 @@ const handler = async (req: Request): Promise<Response> => {
     const installmentScheduleHtml = installments.length > 0
       ? `
       <p style="margin: 12px 0 8px; font-weight: 600;">Payment plan: ${installments.length} installments</p>
-      ${firstUnpaidInstallment ? `<p style="margin: 4px 0 12px; font-size: 16px; color: #2563eb; font-weight: 600;">Next payment due: ${formatMinorAmount(firstUnpaidInstallment.amount_minor, invoice.currency_code)} on ${formatDateUK(firstUnpaidInstallment.due_date)}</p>` : ""}
+      ${firstUnpaidInstallment ? `<p style="margin: 4px 0 12px; font-size: 16px; color: ${brandColor}; font-weight: 600;">Next payment due: ${formatMinorAmount(firstUnpaidInstallment.amount_minor, invoice.currency_code)} on ${formatDateUK(firstUnpaidInstallment.due_date)}</p>` : ""}
       <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
         <thead>
           <tr style="border-bottom: 2px solid #ddd;">
@@ -298,7 +300,7 @@ const handler = async (req: Request): Promise<Response> => {
             const statusColor = inst.status === "paid" ? "#16a34a" : inst.status === "overdue" ? "#dc2626" : "#666";
             const isUnpaid = inst.status === "pending" || inst.status === "overdue";
             const payLink = isUnpaid && onlinePaymentsEnabled
-              ? `<a href="${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&installment=${inst.id}&action=pay" style="color: #2563eb; font-weight: 600; text-decoration: none;">Pay Now</a>`
+              ? `<a href="${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&installment=${inst.id}&action=pay" style="color: ${brandColor}; font-weight: 600; text-decoration: none;">Pay Now</a>`
               : inst.status === "paid" ? '<span style="color: #16a34a;">&#10003;</span>' : "—";
             return `<tr style="border-bottom: 1px solid #eee;">
               <td style="padding: 6px 8px;">Installment ${inst.installment_number}</td>
@@ -326,8 +328,18 @@ const handler = async (req: Request): Promise<Response> => {
         <p style="margin: 5px 0;"><strong>Due Date:</strong> ${escapeHtml(dueDate)}</p>
       </div>`;
 
+    // Branded header with org logo and accent colour
+    const brandedHeader = logoUrl
+      ? `<div style="border-bottom: 3px solid ${brandColor}; padding-bottom: 16px; margin-bottom: 20px;">
+          <img src="${logoUrl}" alt="${escapeHtml(orgName)}" style="max-height: 60px;" />
+        </div>`
+      : `<div style="border-bottom: 3px solid ${brandColor}; padding-bottom: 16px; margin-bottom: 20px;">
+          <h2 style="margin: 0; color: ${brandColor};">${escapeHtml(orgName)}</h2>
+        </div>`;
+
     const htmlContent = isReminder
       ? `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          ${brandedHeader}
           <h1 style="color: #333; margin-bottom: 20px;">Payment Reminder</h1>
           <p>Dear ${escapeHtml(recipientName)},</p>
           <p>This is a friendly reminder that payment for the following invoice is due:</p>
@@ -339,6 +351,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Thank you,<br>${escapeHtml(orgName)}</p>
         </div>`
       : `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          ${brandedHeader}
           <h1 style="color: #333; margin-bottom: 20px;">Invoice ${escapeHtml(invoiceNumber)}</h1>
           <p>Dear ${escapeHtml(recipientName)},</p>
           <p>Please find below the details of your invoice:</p>

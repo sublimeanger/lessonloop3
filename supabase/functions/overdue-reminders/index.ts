@@ -54,7 +54,7 @@ serve(async (req) => {
       .from("invoices")
       .select(`
         id, invoice_number, total_minor, paid_minor, currency_code, due_date, org_id, payment_plan_enabled,
-        organisation:organisations!inner(name, overdue_reminder_days),
+        organisation:organisations!inner(name, overdue_reminder_days, logo_url, brand_primary_color),
         payer_guardian:guardians(id, full_name, email, user_id),
         payer_student:students(id, first_name, last_name)
       `)
@@ -87,7 +87,7 @@ serve(async (req) => {
         invoice:invoices!inner (
           id, invoice_number, total_minor, currency_code, org_id, status,
           paid_minor, installment_count,
-          organisation:organisations!inner(name, overdue_reminder_days),
+          organisation:organisations!inner(name, overdue_reminder_days, logo_url, brand_primary_color),
           payer_guardian:guardians(id, full_name, email, user_id)
         )
       `)
@@ -137,6 +137,16 @@ function formatCurrency(minor: number, code: string): string {
 
 function formatDateGB(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function buildBrandedHeader(orgName: string, logoUrl: string | null, brandColor: string): string {
+  return logoUrl
+    ? `<div style="border-bottom: 3px solid ${brandColor}; padding-bottom: 16px; margin-bottom: 20px;">
+        <img src="${logoUrl}" alt="${escapeHtml(orgName)}" style="max-height: 60px;" />
+      </div>`
+    : `<div style="border-bottom: 3px solid ${brandColor}; padding-bottom: 16px; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: ${brandColor};">${escapeHtml(orgName)}</h2>
+      </div>`;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -237,7 +247,7 @@ interface OverdueInvoice {
   due_date: string;
   org_id: string;
   payment_plan_enabled: boolean | null;
-  organisation: { name: string; overdue_reminder_days: number[] | null } | null;
+  organisation: { name: string; overdue_reminder_days: number[] | null; logo_url: string | null; brand_primary_color: string | null } | null;
   payer_guardian: { id: string; full_name: string; email: string; user_id: string | null } | null;
   payer_student: { id: string; first_name: string; last_name: string } | null;
 }
@@ -255,6 +265,8 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
   if (await shouldSkipGuardian(supabase, invoice.org_id, guardian, invoice.id, "overdue_reminder", today)) return "skip";
 
   const orgName = org?.name || "LessonLoop";
+  const brandColor = org?.brand_primary_color || "#2563eb";
+  const logoUrl = org?.logo_url || null;
   const remainingMinor = invoice.total_minor - (invoice.paid_minor || 0);
   const amount = formatCurrency(remainingMinor, invoice.currency_code);
   const portalLink = `${FRONTEND_URL}/portal/invoices?invoice=${invoice.id}`;
@@ -266,11 +278,12 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
     ? `Important: Invoice ${invoice.invoice_number} requires attention`
     : `Reminder: Invoice ${invoice.invoice_number} is overdue`;
 
-  const accentColor = urgencyLevel === "urgent" ? "#dc2626" : "#2563eb";
+  const accentColor = urgencyLevel === "urgent" ? "#dc2626" : brandColor;
   const bgColor = urgencyLevel === "urgent" ? "#fef2f2" : "#f5f5f5";
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      ${buildBrandedHeader(orgName, logoUrl, brandColor)}
       <h1 style="color: ${accentColor}; margin-bottom: 20px;">
         Payment ${urgencyLevel === "urgent" ? "Urgently Required" : "Reminder"}
       </h1>
@@ -323,7 +336,7 @@ interface OverdueInstallment {
     status: string;
     paid_minor: number | null;
     installment_count: number | null;
-    organisation: { name: string; overdue_reminder_days: number[] | null } | null;
+    organisation: { name: string; overdue_reminder_days: number[] | null; logo_url: string | null; brand_primary_color: string | null } | null;
     payer_guardian: { id: string; full_name: string; email: string; user_id: string | null } | null;
   };
 }
@@ -341,6 +354,8 @@ async function processInstallmentReminder(supabase: any, installment: OverdueIns
   if (await shouldSkipGuardian(supabase, invoice.org_id, guardian, installment.id, "installment_reminder", today)) return "skip";
 
   const orgName = org?.name || "LessonLoop";
+  const brandColor = org?.brand_primary_color || "#2563eb";
+  const logoUrl = org?.logo_url || null;
   const installmentAmount = formatCurrency(installment.amount_minor, invoice.currency_code);
   const totalRemaining = formatCurrency((invoice.total_minor - (invoice.paid_minor || 0)), invoice.currency_code);
 
@@ -348,19 +363,20 @@ async function processInstallmentReminder(supabase: any, installment: OverdueIns
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      ${buildBrandedHeader(orgName, logoUrl, brandColor)}
       <h1 style="color: #333;">Payment Plan Reminder</h1>
       <p>Dear ${escapeHtml(guardian.full_name)},</p>
       <p>Installment <strong>${installment.installment_number} of ${invoice.installment_count}</strong>
          for invoice <strong>${escapeHtml(invoice.invoice_number)}</strong>
          is now <strong>${daysOverdue} days overdue</strong>.</p>
-      <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+      <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${brandColor};">
         <p style="margin: 5px 0;"><strong>Installment amount:</strong> ${escapeHtml(installmentAmount)}</p>
         <p style="margin: 5px 0;"><strong>Due date:</strong> ${formatDateGB(installment.due_date)}</p>
         <p style="margin: 5px 0;"><strong>Remaining balance:</strong> ${escapeHtml(totalRemaining)}</p>
       </div>
       <p style="text-align: center;">
-        <a href="${FRONTEND_URL}/portal/invoices?invoice=${invoice.id}"
-           style="display:inline-block;background-color:#2563eb;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;">
+        <a href="${FRONTEND_URL}/portal/invoices?invoice=${invoice.id}&installment=${installment.id}&action=pay"
+           style="display:inline-block;background-color:${brandColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;">
           Pay Now
         </a>
       </p>
