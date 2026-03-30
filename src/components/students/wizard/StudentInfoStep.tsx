@@ -128,7 +128,16 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label>Instrument</Label>
-          <Select value={data.instrumentId} onValueChange={(v) => update('instrumentId', v)}>
+          <Select
+            value={data.instrumentId}
+            onValueChange={(v) => {
+              if (v === '__add_new__') {
+                setAddInstrumentOpen(true);
+                return;
+              }
+              update('instrumentId', v);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select..." />
             </SelectTrigger>
@@ -142,8 +151,16 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
                   ))}
                 </SelectGroup>
               ))}
+              <SelectItem value="__add_new__" className="text-primary font-medium">
+                <Plus className="h-3.5 w-3.5 mr-1 inline" /> Add new instrument
+              </SelectItem>
             </SelectContent>
           </Select>
+          <AddInstrumentDialog
+            open={addInstrumentOpen}
+            onOpenChange={setAddInstrumentOpen}
+            onCreated={(id) => update('instrumentId', id)}
+          />
         </div>
         <div className="space-y-2">
           <Label>Exam Board</Label>
