@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link } from 'react-router-dom';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
@@ -31,9 +32,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { UnmarkedBacklogView } from '@/components/register/UnmarkedBacklogView';
 
 export default function DailyRegister() {
   usePageMeta('Daily Register | LessonLoop', 'Take attendance for daily lessons');
+  const [searchParams] = useSearchParams();
+  const isBacklogView = searchParams.get('view') === 'unmarked';
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { user } = useAuth();
   const { currentRole, currentOrg } = useOrg();
@@ -138,6 +142,15 @@ export default function DailyRegister() {
     created_at: '',
     updated_at: '',
   }));
+
+  // Backlog view for unmarked lessons
+  if (isBacklogView) {
+    return (
+      <AppLayout>
+        <UnmarkedBacklogView />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

@@ -175,6 +175,7 @@ export function useInvoiceStats() {
         total_outstanding: number;
         overdue: number;
         overdue_count: number;
+        past_due_count: number;
         draft_count: number;
         sent_count: number;
         paid_total: number;
@@ -187,6 +188,7 @@ export function useInvoiceStats() {
         totalOutstanding: result.total_outstanding ?? 0,
         overdue: result.overdue ?? 0,
         overdueCount: result.overdue_count ?? 0,
+        pastDueCount: result.past_due_count ?? 0,
         draftCount: result.draft_count ?? 0,
         sentCount: result.sent_count ?? 0,
         paid: result.paid_total ?? 0,
