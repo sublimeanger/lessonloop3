@@ -28,6 +28,7 @@ import {
   CalendarSyncBanner,
   ContinuationWidget,
 } from '@/components/dashboard';
+import { UpcomingWeekWidget } from '@/components/dashboard/UpcomingWeekWidget';
 import { FinanceDashboard } from '@/components/dashboard/FinanceDashboard';
 import {
   Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
@@ -184,13 +185,28 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           <ContinuationWidget />
         </SectionErrorBoundary>
 
-        {/* Stats Grid — 6 cards, 2 cols mobile, 3 cols desktop */}
+        {/* Teaching Section — "Here's your day" comes FIRST for solo teachers */}
+        <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-8">
+          <SectionErrorBoundary name="Today's Timeline">
+            <TodayTimeline className="lg:col-span-5" />
+          </SectionErrorBoundary>
+          <div className="lg:col-span-3 flex flex-col gap-4 sm:gap-6">
+            <SectionErrorBoundary name="Upcoming Week">
+              <UpcomingWeekWidget />
+            </SectionErrorBoundary>
+            <SectionErrorBoundary name="Quick Actions">
+              <QuickActionsGrid variant="solo" />
+            </SectionErrorBoundary>
+          </div>
+        </motion.div>
+
+        {/* Business Stats — below the teaching section */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
             <GridSkeleton count={6} columns={4} />
           ) : (
             <StatsGrid>
-              <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle={currentOrg?.org_type === 'solo_teacher' ? 'Your schedule' : 'Across all teachers'} icon={Calendar} href="/calendar" variant="teal" />
+              <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Your schedule" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
               <StatCard title="Revenue (MTD)" value={formatCurrency(stats?.revenueMTD ?? 0)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="violet" />
@@ -198,16 +214,6 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
               <StatCard title="Total Lessons" value={stats?.totalLessons ?? 0} subtitle="All time" icon={BookOpen} href="/reports/lessons" variant="teal" />
             </StatsGrid>
           )}
-        </motion.div>
-
-        {/* Main Content Grid — stacked on mobile, side-by-side on lg */}
-        <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-8">
-          <SectionErrorBoundary name="Today's Timeline">
-            <TodayTimeline className="order-last lg:order-none lg:col-span-5" />
-          </SectionErrorBoundary>
-          <SectionErrorBoundary name="Quick Actions">
-            <QuickActionsGrid variant="solo" className="order-first lg:order-none lg:col-span-3" />
-          </SectionErrorBoundary>
         </motion.div>
 
         {/* Payment Analytics */}
