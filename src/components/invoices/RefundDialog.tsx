@@ -365,7 +365,9 @@ export function RefundDialog({
             <div className="text-center space-y-1">
               <h3 className="text-lg font-semibold">Refund Processed</h3>
               <p className="text-sm text-muted-foreground">
-                {formatCurrencyMinor(refundAmountMinor, currencyCode)} will be returned to the parent's payment method.
+                {isManual
+                  ? `Refund of ${formatCurrencyMinor(refundAmountMinor, currencyCode)} has been recorded.`
+                  : `${formatCurrencyMinor(refundAmountMinor, currencyCode)} will be returned to the parent's payment method.`}
               </p>
             </div>
           </motion.div>
