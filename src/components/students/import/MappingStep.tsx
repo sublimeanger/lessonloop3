@@ -116,6 +116,27 @@ export function MappingStep({
             </div>
           )}
 
+          {sourceSoftware && sourceSoftware !== "auto" && detectedSource &&
+           detectedSource !== sourceSoftware && SOURCE_LABELS[detectedSource] && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Source mismatch</AlertTitle>
+              <AlertDescription>
+                You selected {SOURCE_LABELS[sourceSoftware] || sourceSoftware} but
+                the file looks like it's from {SOURCE_LABELS[detectedSource]}.
+                Would you like to{" "}
+                <button
+                  type="button"
+                  className="text-primary underline font-medium"
+                  onClick={() => setSourceSoftware?.("auto")}
+                >
+                  switch to auto-detect
+                </button>
+                ?
+              </AlertDescription>
+            </Alert>
+          )
+
           {warnings.length > 0 && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
