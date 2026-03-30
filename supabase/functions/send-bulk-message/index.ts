@@ -151,6 +151,14 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields: org_id, name, subject, body");
     }
 
+    // Fail early if email sending is requested but RESEND_API_KEY is not configured
+    if (shouldSendEmail && !resendApiKey) {
+      return new Response(
+        JSON.stringify({ error: "Email service not configured. Set RESEND_API_KEY in edge function environment, or set send_email: false for in-app only." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // MSG-L2: body-length validation
     if (data.body.length > 10000 || data.subject.length > 500) {
       return new Response(
