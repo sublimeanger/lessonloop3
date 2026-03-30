@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import jsPDF from 'jspdf';
 
 const DEFAULT_FILTERS: NotesExplorerFilters = {
-  startDate: startOfDay(subDays(new Date(), 30)).toISOString(),
+  startDate: startOfDay(subDays(new Date(), 90)).toISOString(),
   endDate: endOfDay(new Date()).toISOString(),
 };
 
