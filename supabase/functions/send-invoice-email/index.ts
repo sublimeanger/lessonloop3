@@ -241,15 +241,27 @@ const handler = async (req: Request): Promise<Response> => {
       margin: 20px 0;
     `.replace(/\s+/g, " ").trim();
 
-    // Bank details HTML block
+    // Bank details HTML block — prominent styling with transfer instructions
+    const bankTransferRef = invoice.payment_plan_enabled && firstUnpaidInstallment
+      ? (org?.bank_reference_prefix
+          ? `${org.bank_reference_prefix}-${invoiceNumber}-${firstUnpaidInstallment.installment_number}`
+          : `${invoiceNumber}-${firstUnpaidInstallment.installment_number}`)
+      : bankRef;
+    const bankTransferAmount = invoice.payment_plan_enabled && firstUnpaidInstallment
+      ? formatMinorAmount(firstUnpaidInstallment.amount_minor, invoice.currency_code)
+      : amount;
     const bankDetailsHtml = hasBankDetails
       ? `
-      <div style="background: #f0f9ff; padding: 16px 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #bae6fd;">
-        <p style="margin: 0 0 8px; font-weight: 600; color: #0c4a6e;">Bank Transfer Details</p>
+      <div style="background: #f0f9ff; padding: 20px 24px; border-radius: 8px; margin: 20px 0; border: 2px solid #0c4a6e;">
+        <p style="margin: 0 0 12px; font-weight: 700; font-size: 16px; color: #0c4a6e;">\u{1F4B3} Bank Transfer Option</p>
         <p style="margin: 4px 0; font-size: 14px;"><strong>Account Name:</strong> ${escapeHtml(org!.bank_account_name)}</p>
         <p style="margin: 4px 0; font-size: 14px;"><strong>Sort Code:</strong> ${escapeHtml(org!.bank_sort_code)}</p>
         <p style="margin: 4px 0; font-size: 14px;"><strong>Account Number:</strong> ${escapeHtml(org!.bank_account_number)}</p>
-        <p style="margin: 4px 0; font-size: 14px;"><strong>Reference:</strong> ${escapeHtml(bankRef)}</p>
+        <p style="margin: 8px 0 4px; font-size: 15px; font-weight: 700; color: #0c4a6e;">Reference: ${escapeHtml(bankTransferRef)}</p>
+        ${invoice.payment_plan_enabled && firstUnpaidInstallment
+          ? `<p style="margin: 8px 0 4px; font-size: 14px;">Transfer <strong>${escapeHtml(bankTransferAmount)}</strong> with reference <strong>${escapeHtml(bankTransferRef)}</strong></p>`
+          : ""}
+        <p style="margin: 10px 0 0; font-size: 13px; color: #555; font-style: italic;">Please allow 3\u20135 business days for bank transfers to be processed.</p>
       </div>`
       : "";
 
@@ -273,8 +285,17 @@ const handler = async (req: Request): Promise<Response> => {
     const bankTransferCta = hasBankDetails && !onlinePaymentsEnabled ? bankDetailsHtml : "";
     const secondaryBankDetails = hasBankDetails && onlinePaymentsEnabled
       ? `
-      <p style="font-size: 13px; color: #666; margin-top: 12px; text-align: center;">Or pay by bank transfer:</p>
+      <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0 16px;" />
+      <p style="font-size: 15px; font-weight: 600; color: #333; margin-bottom: 4px; text-align: center;">Prefer to pay by bank transfer?</p>
       ${bankDetailsHtml}`
+      : "";
+
+    // Fallback when org has no bank details AND online payments disabled
+    const noPaymentMethodFallback = !onlinePaymentsEnabled && !hasBankDetails
+      ? `
+      <div style="background: #fefce8; padding: 16px 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #facc15;">
+        <p style="margin: 0; font-size: 14px; color: #713f12;">To arrange payment, please contact <strong>${escapeHtml(orgName)}</strong> directly.</p>
+      </div>`
       : "";
 
     // Build installment schedule HTML if payment plan is active
@@ -352,6 +373,7 @@ const handler = async (req: Request): Promise<Response> => {
           ${payOnlineCta}
           ${bankTransferCta}
           ${secondaryBankDetails}
+          ${noPaymentMethodFallback}
           <p>Thank you,<br>${escapeHtml(orgName)}</p>
         </div>`
       : `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -364,6 +386,7 @@ const handler = async (req: Request): Promise<Response> => {
           ${payOnlineCta}
           ${bankTransferCta}
           ${secondaryBankDetails}
+          ${noPaymentMethodFallback}
           <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
           <p>Thank you for your business,<br>${escapeHtml(orgName)}</p>
         </div>`;
