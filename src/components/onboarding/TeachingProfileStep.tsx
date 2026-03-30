@@ -306,45 +306,48 @@ export function TeachingProfileStep({
               </motion.div>
             )}
 
-            {/* Solo teacher: student count + instruments */}
+            {/* Solo teacher: student count */}
             {isSolo && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.4 }}
-                  className="space-y-3"
-                >
-                  <Label className="text-sm font-medium">How many students do you currently teach?</Label>
-                  <RangeSelector
-                    options={STUDENT_RANGES}
-                    value={studentCount}
-                    onChange={onStudentCountChange}
-                    ariaLabel="Number of students"
-                  />
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.4 }}
-                  className="space-y-3"
-                >
-                  <div>
-                    <Label className="text-sm font-medium">What instruments do you teach?</Label>
-                    <p className="text-xs text-muted-foreground mt-1">Select all that apply — this helps us personalise your experience.</p>
-                  </div>
-                  <ChipSelector
-                    options={POPULAR_INSTRUMENTS}
-                    selected={instruments}
-                    onToggle={toggleInstrument}
-                    allowCustom
-                    customPlaceholder="Add other..."
-                    ariaLabel="Instruments taught"
-                  />
-                </motion.div>
-              </>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.4 }}
+                className="space-y-3"
+              >
+                <Label className="text-sm font-medium">How many students do you currently teach?</Label>
+                <RangeSelector
+                  options={STUDENT_RANGES}
+                  value={studentCount}
+                  onChange={onStudentCountChange}
+                  ariaLabel="Number of students"
+                />
+              </motion.div>
             )}
+
+            {/* Instruments — shown for all org types */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: isSolo ? 0.2 : 0.25, duration: 0.4 }}
+              className="space-y-3"
+            >
+              <div>
+                <Label className="text-sm font-medium">
+                  {isSolo ? 'What instruments do you teach?' : 'What instruments does your organisation offer?'}
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select all that apply — you can always add more later in Settings.
+                </p>
+              </div>
+              <ChipSelector
+                options={POPULAR_INSTRUMENTS}
+                selected={instruments}
+                onToggle={toggleInstrument}
+                allowCustom
+                customPlaceholder="Add other..."
+                ariaLabel="Instruments taught"
+              />
+            </motion.div>
 
             {/* Studio/Academy: team size + locations + also teaches */}
             {isStudioOrAcademy && (
