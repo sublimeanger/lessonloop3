@@ -1,82 +1,63 @@
 
 
-# P1: Invoice/Refund/Void UI Fixes — 4 Bugs
+# P2: Parent Portal Interactivity Fixes — 4 Bugs
 
-## Bug 1: Refund button missing for manual payments
+## Bug 1: Lesson cards feel unclickable
 
-**Root cause**: Line 464 of `InvoiceDetail.tsx` requires `payment.provider === 'stripe' && payment.provider_reference`. Manual payments never match.
+**Current state**: `PortalSchedule.tsx` LessonCard (line 253) already shows teacher, location, attendance, and notes inline. Cards have `hover:shadow-elevated` but no expand/collapse interaction.
 
-**Fix**: The edge function `stripe-process-refund` explicitly rejects non-Stripe payments (line 55-57). So we need a separate "Record Refund" flow for manual payments that directly inserts a refund record.
+**Fix in `src/pages/portal/PortalSchedule.tsx`**:
+- Add `expandedLessonId` state to PortalSchedule component
+- Make LessonCard accept `isExpanded` and `onToggle` props
+- Add `cursor-pointer` and `hover:bg-accent/5` to the Card
+- On click, toggle expanded state
+- Move attendance (lines 315-327) and notes (lines 329-337) into a collapsible section that only renders when expanded
+- Keep the top section (title, time, location, teacher, students) always visible
+- Add a subtle `ChevronDown`/`ChevronUp` indicator
 
-### Changes:
+## Bug 2: Invoice cards lack line item details
 
-**`src/pages/InvoiceDetail.tsx`** (~line 464):
-- Change the refund button condition: show for ANY payment where `totalRefundedForPayment < payment.amount_minor`
-- For Stripe payments (`payment.provider === 'stripe' && payment.provider_reference`): use existing RefundDialog (calls `stripe-process-refund`)
-- For manual payments: use same RefundDialog but pass a new `isManual` prop
+**Current state**: `useParentInvoices` query (line 364) does NOT fetch `invoice_items`. InvoiceCard shows number, date, total, status, PDF, and Pay buttons only.
 
-**`src/components/invoices/RefundDialog.tsx`**:
-- Add `isManual?: boolean` prop
-- When `isManual` is true, the confirm step text changes from "refund to parent's payment method" to "record this refund"
-- When `isManual`, `handleConfirm` calls a new `processManualRefund` function instead of `processRefund`
+**Fix**:
+- **`src/hooks/useParentPortal.ts`** (~line 364): Add `invoice_items(description, quantity, unit_price_minor, amount_minor)` to the select
+- **`src/pages/portal/PortalInvoices.tsx`**: 
+  - Add `expandedInvoiceId` state
+  - Make InvoiceCard clickable (not on action buttons — use `e.stopPropagation()` on PDF/Pay buttons)
+  - When expanded, show line items list below the existing content: description, qty × unit price, line total
+  - Add `cursor-pointer` to the card wrapper
+  - Update `InvoiceCardProps` to include `invoice_items` array, `isExpanded`, `onToggle`
 
-**`src/hooks/useRefund.ts`**:
-- Add a `processManualRefund` function that directly inserts into the `refunds` table via Supabase client (provider='manual', status='succeeded'), then calls the `recalculate_invoice_paid` RPC, then invalidates queries
-- Export it alongside `processRefund`
+## Bug 3: Welcome message doesn't show child's name
 
----
+**Current state**: Line 329 says `Hi {firstName}! 👋` and line 332 says `Here's what's happening with your family's lessons.`
 
-## Bug 2: Void partially-paid invoice without warning
+**Fix in `src/pages/portal/PortalHome.tsx`**:
+- Derive selected child's first name from `filteredChildren` (already computed at line 259)
+- Update subtitle (line 332):
+  - If a child is selected: `Here's how {childFirstName} is doing.`
+  - If no child selected (all children): `Here's what's happening with your family's lessons.` (keep as-is)
 
-**Root cause**: Void dialog at line 711 doesn't check `totalPaid`.
+## Bug 4: Weak password accepted during signup
 
-### Changes:
+**Current state**: `Signup.tsx` line 107 only checks `password.length < PASSWORD_MIN_LENGTH` (8 chars). `getPasswordScore` returns 0-4 based on length, case mix, numbers/symbols. A password like `abcdefgh` gets score 1 ("Weak") but passes validation.
 
-**`src/pages/InvoiceDetail.tsx`** (~line 711-730):
-- In the `AlertDialogDescription`, add a warning when `totalPaid > 0`:
-  - "⚠️ This invoice has {formatCurrencyMinor(totalPaid, currency)} in recorded payments. Consider processing a refund before voiding."
-- Change the action button text to "Void Anyway" when `totalPaid > 0`
-
----
-
-## Bug 3: "From Lessons" invoice creation fails
-
-**Root cause analysis**: The `findRateForDuration` function has a fallback of `3000` (£30) when no rate cards exist, so NaN isn't the issue. Looking at the code flow, the `onSubmit` at line 173 wraps `createInvoice.mutateAsync` without try/catch — if it throws, the error propagates silently.
-
-More likely issues:
-- The `From Lessons` path passes `linked_lesson_id` and `student_id` in items, but the `create_invoice_with_items` RPC only accepts `description`, `quantity`, `unit_price_minor` fields in the items JSONB — it does handle `linked_lesson_id` and `student_id` (line in the RPC). So the schema should work.
-- Possible: lessons have no participants → `studentId` is undefined → RPC may fail on the UUID cast
-
-### Changes:
-
-**`src/components/invoices/CreateInvoiceModal.tsx`**:
-- Wrap the `onSubmit` handler in try/catch with a toast on error (currently missing — the `mutateAsync` throws but nothing catches it for the lessons path)
-- Add validation: if any lesson has no participants, show a warning toast and skip those lessons
-- Add validation: if no rate cards exist AND tab is 'lessons', show an info message "No rate cards configured — using default rate of £30"
-
----
-
-## Bug 4: Double-click creates duplicate students
-
-**Root cause**: `StudentWizard.tsx` line 475 already has `disabled={isSaving}` on the Create button, and `isSaving` is set to `true` at the start of `handleCreate`. However, `handleCreate` is `async` and called from form `onSubmit` — the `setIsSaving(true)` call at the top of `handleCreate` may not disable the button fast enough if the duplicate check query takes time.
-
-### Changes:
-
-**`src/components/students/StudentWizard.tsx`**:
-- The button at line 475 already has `disabled={isSaving}` — verify `isSaving` is set at the very start of `handleCreate` before any async operations
-- Look at line 149: `handleCreate` starts with `if (!currentOrg) return;` then duplicate check. Add `if (isSaving) return;` as the first line to guard against re-entry
-- Also add `setIsSaving(true)` immediately before the duplicate check, and ensure `setIsSaving(false)` in finally block
-- For the "Continue Anyway" button in the duplicate dialog (line 510), add `disabled={isSaving}` as well
-
----
+**Fix in `src/pages/Signup.tsx`**:
+- Import `getPasswordScore` from `PasswordStrengthIndicator`
+- After the length check (line 107-114), add a score check:
+  ```
+  if (getPasswordScore(password) < 2) → toast "Password too weak — add uppercase letters, numbers, or special characters"
+  ```
+- Score ≥ 2 means "Fair" or better (requires length ≥ 8 AND at least one of: mixed case or number/symbol)
+- `abcdefgh` → score 1 (blocked). `Abcd1234` → score 3 (allowed).
 
 ## Files Modified
 
 | File | Bug |
 |------|-----|
-| `src/pages/InvoiceDetail.tsx` | #1 (refund button), #2 (void warning) |
-| `src/components/invoices/RefundDialog.tsx` | #1 (manual refund support) |
-| `src/hooks/useRefund.ts` | #1 (manual refund function) |
-| `src/components/invoices/CreateInvoiceModal.tsx` | #3 (error handling + validation) |
-| `src/components/students/StudentWizard.tsx` | #4 (double-click guard) |
+| `src/pages/portal/PortalSchedule.tsx` | #1 (expandable lesson cards) |
+| `src/hooks/useParentPortal.ts` | #2 (fetch invoice_items) |
+| `src/pages/portal/PortalInvoices.tsx` | #2 (expandable invoice cards) |
+| `src/pages/portal/PortalHome.tsx` | #3 (child name in greeting) |
+| `src/pages/Signup.tsx` | #4 (block weak passwords) |
 
