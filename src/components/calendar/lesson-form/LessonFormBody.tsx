@@ -1,5 +1,5 @@
 import { RefObject, useMemo } from 'react';
-import { format, subDays } from 'date-fns';
+import { format, subDays, isBefore, startOfToday } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
