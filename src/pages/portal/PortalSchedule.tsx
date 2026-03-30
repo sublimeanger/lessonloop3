@@ -250,13 +250,17 @@ export default function PortalSchedule() {
   };
 
   // --- Lesson Card ---
-  const LessonCard = ({ lesson, isPast }: { lesson: Lesson; isPast?: boolean }) => {
+  const LessonCard = ({ lesson, isPast, isExpanded, onToggle }: { lesson: Lesson; isPast?: boolean; isExpanded?: boolean; onToggle?: () => void }) => {
     const isCancelled = lesson.status === 'cancelled';
+    const hasExpandableContent = (isPast && lesson.students.some(s => s.attendance_status)) || lesson.notes_shared || (parentNotes || []).some(n => n.lesson_id === lesson.id && n.parent_visible) || lesson.recap_url;
 
     const accentColor = isCancelled ? 'bg-destructive' : isPast ? 'bg-muted-foreground/30' : 'bg-primary';
     
     return (
-      <Card className={cn('overflow-hidden rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 relative', isCancelled && 'opacity-60')}>
+      <Card
+        className={cn('overflow-hidden rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 relative', isCancelled && 'opacity-60', hasExpandableContent && 'cursor-pointer')}
+        onClick={() => hasExpandableContent && onToggle?.()}
+      >
         {/* Left accent bar */}
         <div className={cn('absolute inset-y-0 left-0 w-[3px] rounded-l-2xl', accentColor)} />
         <CardContent className="p-4 pl-5">
