@@ -292,6 +292,9 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
             {isOpenSlot && !compact && (
               <Badge variant="outline" className="text-micro px-1 py-0 h-4 border-primary/50 text-primary bg-primary/10">Open</Badge>
             )}
+            {isOnline && !compact && (
+              <Video className="h-3 w-3 flex-shrink-0 text-primary" />
+            )}
             <span className="truncate">{compactStudentName}</span>
           </div>
           {!compact && duration >= 30 && (

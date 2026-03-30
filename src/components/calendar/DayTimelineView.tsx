@@ -255,10 +255,19 @@ export function DayTimelineView({
         {/* Main grid area */}
         <div
           ref={gridRef}
-          className={cn('relative flex-1', isLessonDragging || isResizing ? 'cursor-grabbing' : 'cursor-crosshair')}
+          className={cn('relative flex-1', isLessonDragging || isResizing ? 'cursor-grabbing' : 'cursor-crosshair', closure && 'bg-warning/5')}
           style={{ height: gridHeight }}
           onMouseDown={handleGridMouseDown}
         >
+          {/* Closure date banner */}
+          {closure && (
+            <div className="sticky top-0 z-20 px-3 py-1.5 bg-warning/15 border-b border-warning/30 text-sm text-warning-foreground flex items-center gap-2">
+              <Badge variant="outline" className="text-micro px-1.5 py-0 bg-warning/20 text-warning-foreground border-warning/30">
+                Closed
+              </Badge>
+              <span className="truncate">{closure.reason}</span>
+            </div>
+          )}
           {/* Hour lines */}
           {hours.map((hour) => (
             <div

@@ -253,6 +253,12 @@ export function LessonFormBody({
               />
             </PopoverContent>
           </Popover>
+          {isBefore(selectedDate, startOfToday()) && (
+            <div className="flex items-center gap-1.5 text-xs text-warning mt-1">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span>This lesson is scheduled in the past.</span>
+            </div>
+          )}
         </div>
         <div className="space-y-2">
           <Label>Time</Label>
