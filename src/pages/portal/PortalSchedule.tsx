@@ -60,6 +60,7 @@ export default function PortalSchedule() {
   const [calSyncOpen, setCalSyncOpen] = useState(false);
   const [icalUrl, setIcalUrl] = useState<string | null>(null);
   const [isGeneratingUrl, setIsGeneratingUrl] = useState(false);
+  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
 
   // Reschedule slot picker state
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
