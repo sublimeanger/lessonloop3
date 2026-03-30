@@ -147,10 +147,10 @@ export default function AcceptInvite() {
       });
 
       // Retry refreshProfile to ensure has_completed_onboarding is set by edge function
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 5; attempt++) {
         await refreshProfile();
-        // Short delay between retries to allow edge function DB write to propagate
-        if (attempt < 2) await new Promise(r => setTimeout(r, 500));
+        // Delay between retries to allow edge function DB write to propagate
+        if (attempt < 4) await new Promise(r => setTimeout(r, 1000));
       }
 
       if (data.role === 'parent') {
@@ -253,9 +253,9 @@ export default function AcceptInvite() {
         });
 
         // Retry refreshProfile to ensure has_completed_onboarding is set by edge function
-        for (let attempt = 0; attempt < 3; attempt++) {
+        for (let attempt = 0; attempt < 5; attempt++) {
           await refreshProfile();
-          if (attempt < 2) await new Promise(r => setTimeout(r, 500));
+          if (attempt < 4) await new Promise(r => setTimeout(r, 1000));
         }
 
         if (data.role === 'parent') {
