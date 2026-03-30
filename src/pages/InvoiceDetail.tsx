@@ -117,6 +117,26 @@ export default function InvoiceDetail() {
     }
   }, [searchParams, toast, setSearchParams, refetch]);
 
+  // Auto-open refund dialog when navigated with ?action=refund
+  useEffect(() => {
+    if (searchParams.get('action') === 'refund' && invoice?.payments?.length && !refundDialogOpen) {
+      const firstPayment = invoice.payments[0] as any;
+      const refunds = (invoice as any).refunds || [];
+      const totalRefunded = refunds
+        .filter((r: any) => r.original_payment_id === firstPayment.id)
+        .reduce((sum: number, r: any) => sum + (r.refund_amount_minor || 0), 0);
+      if (firstPayment.amount_minor > totalRefunded) {
+        setRefundPayment({
+          ...firstPayment,
+          _alreadyRefunded: totalRefunded,
+          _isManual: !(firstPayment.provider === 'stripe' && firstPayment.provider_reference),
+        });
+        setRefundDialogOpen(true);
+      }
+      setSearchParams({});
+    }
+  }, [invoice, searchParams, refundDialogOpen, setSearchParams]);
+
   const handlePayNow = () => {
     if (id) {
       setPaymentDrawerOpen(true);
