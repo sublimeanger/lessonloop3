@@ -524,8 +524,37 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
           </div>
         </div>
 
+        {/* Expandable line items */}
+        {hasLineItems && (
+          <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform duration-200', isExpanded && 'rotate-180')} />
+            <span>{isExpanded ? 'Hide details' : 'Tap for details'}</span>
+          </div>
+        )}
+
+        {isExpanded && hasLineItems && (
+          <div className="mt-3 pt-3 border-t animate-in fade-in-0 slide-in-from-top-2 duration-200">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Line Items</p>
+            <div className="space-y-1.5">
+              {invoice.invoice_items!.map((item, i) => (
+                <div key={i} className="flex items-start justify-between gap-2 text-sm">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-foreground">{item.description}</span>
+                    {item.quantity > 1 && (
+                      <span className="text-muted-foreground ml-1">× {item.quantity}</span>
+                    )}
+                  </div>
+                  <span className="tabular-nums text-muted-foreground shrink-0">
+                    {formatCurrencyMinor(item.amount_minor, currencyCode)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Actions row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3 pt-3 border-t">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="ghost"
             size="sm"
