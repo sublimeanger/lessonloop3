@@ -7,7 +7,21 @@ const MESSAGES = [
   { icon: Database, text: "Setting up lessons..." },
 ];
 
-export function ImportingStep() {
+function getExpectedDuration(totalRows?: number): string | null {
+  if (!totalRows) return null;
+  if (totalRows < 50) return "a few seconds";
+  if (totalRows <= 200) return "about 30 seconds";
+  if (totalRows <= 500) return "1–2 minutes";
+  return "several minutes";
+}
+
+interface ImportingStepProps {
+  totalRows?: number;
+}
+
+export function ImportingStep({ totalRows }: ImportingStepProps) {
+  const expectedDuration = getExpectedDuration(totalRows);
+
   return (
     <Card className="overflow-hidden">
       <CardContent className="py-16 sm:py-20">
@@ -23,8 +37,17 @@ export function ImportingStep() {
 
           <h3 className="text-section-title mb-2">Importing your data</h3>
           <p className="text-body text-muted-foreground mb-8">
-            Please wait while we process your records. This may take a moment for large files.
+            {totalRows
+              ? `Processing ${totalRows.toLocaleString()} records.`
+              : "Please wait while we process your records."}
+            {expectedDuration && ` Estimated time: ${expectedDuration}.`}
+            {" "}Please don't close this page.
           </p>
+
+          {/* Indeterminate progress bar */}
+          <div className="w-full max-w-xs mx-auto mb-6 h-1.5 bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: "60%" }} />
+          </div>
 
           {/* Animated step indicators */}
           <div className="space-y-3">
