@@ -3,8 +3,7 @@ import { logger } from '@/lib/logger';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { subDays, format } from 'date-fns';
-import { fromZonedTime } from 'date-fns-tz';
+import { format } from 'date-fns';
 
 export interface UrgentAction {
   id: string;
@@ -34,15 +33,7 @@ export function useUrgentActions() {
       try {
         // Fetch unmarked lessons (for admins and teachers) — last 30 days only
         if (isAdmin || isTeacher) {
-          const thirtyDaysAgo = subDays(new Date(), 30);
-          let query = supabase
-            .from('lessons')
-            .select('id', { count: 'exact', head: true })
-            .eq('org_id', currentOrg.id)
-            .eq('status', 'scheduled')
-            .lt('end_at', fromZonedTime(new Date(), orgTimezone).toISOString())
-            .gte('end_at', thirtyDaysAgo.toISOString());
-
+          let teacherId: string | undefined;
           if (isTeacher && !isAdmin) {
             const { data: teacherRecord } = await supabase
               .from('teachers')
@@ -50,12 +41,13 @@ export function useUrgentActions() {
               .eq('user_id', user.id)
               .eq('org_id', currentOrg.id)
               .maybeSingle();
-            if (teacherRecord) {
-              query = query.eq('teacher_id', teacherRecord.id);
-            }
+            teacherId = teacherRecord?.id;
           }
 
-          const { count: unmarkedCount } = await query;
+          const { data: unmarkedCount } = await (supabase as any).rpc('get_unmarked_lesson_count', {
+            _org_id: currentOrg.id,
+            _teacher_id: teacherId || null,
+          });
 
           if (unmarkedCount && unmarkedCount > 0) {
             urgentActions.push({
@@ -224,7 +216,7 @@ export function useUrgentActions() {
       }
     },
     enabled: !!currentOrg && !!user,
-    // Uses default SEMI_STABLE (2 min)
+    staleTime: 0, // Always refetch when invalidated by realtime
     refetchInterval: 120_000,
   });
 

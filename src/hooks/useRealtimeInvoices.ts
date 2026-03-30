@@ -78,6 +78,47 @@ export function useRealtimeInvoices() {
       .on(
         'postgres_changes',
         {
+          event: '*',
+          schema: 'public',
+          table: 'attendance_records',
+          filter: `org_id=eq.${orgId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['urgent-actions', orgId] });
+          queryClient.invalidateQueries({ queryKey: ['unmarked-lessons-backlog', orgId] });
+          queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'practice_logs',
+          filter: `org_id=eq.${orgId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['urgent-actions', orgId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'lessons',
+          filter: `org_id=eq.${orgId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['urgent-actions', orgId] });
+          queryClient.invalidateQueries({ queryKey: ['unmarked-lessons-backlog', orgId] });
+          queryClient.invalidateQueries({ queryKey: ['today-lessons'] });
+          queryClient.invalidateQueries({ queryKey: ['calendar-lessons'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
           event: 'INSERT',
           schema: 'public',
           table: 'payment_notifications',
