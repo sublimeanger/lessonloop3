@@ -250,7 +250,7 @@ export default function Invoices() {
       )}
 
       {!isParent ? (
-        <Tabs defaultValue="invoices" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList>
             <TabsTrigger value="invoices" className="gap-1.5">
               <Receipt className="h-3.5 w-3.5" />

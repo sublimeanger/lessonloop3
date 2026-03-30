@@ -71,14 +71,11 @@ export function useUrgentActions() {
 
         // Fetch overdue invoices (for admins and finance)
         if (isAdmin || isFinance) {
-          const sevenDaysAgo = subDays(new Date(), 7);
-
           const { count: overdueCount } = await supabase
             .from('invoices')
             .select('id', { count: 'exact', head: true })
             .eq('org_id', currentOrg.id)
-            .in('status', ['sent', 'overdue'])
-            .lt('due_date', format(sevenDaysAgo, 'yyyy-MM-dd'));
+            .eq('status', 'overdue');
 
           if (overdueCount && overdueCount > 0) {
             urgentActions.push({
@@ -88,6 +85,25 @@ export function useUrgentActions() {
               label: overdueCount === 1 ? 'overdue invoice' : 'overdue invoices',
               href: '/invoices?status=overdue',
               severity: 'error',
+            });
+          }
+
+          // Sent but past due (not yet marked overdue by cron)
+          const { count: pastDueCount } = await supabase
+            .from('invoices')
+            .select('id', { count: 'exact', head: true })
+            .eq('org_id', currentOrg.id)
+            .eq('status', 'sent')
+            .lt('due_date', format(new Date(), 'yyyy-MM-dd'));
+
+          if (pastDueCount && pastDueCount > 0) {
+            urgentActions.push({
+              id: 'past-due-invoices',
+              type: 'overdue_invoices',
+              count: pastDueCount,
+              label: pastDueCount === 1 ? 'invoice past due' : 'invoices past due',
+              href: '/invoices?status=sent&due=past',
+              severity: 'warning',
             });
           }
         }
