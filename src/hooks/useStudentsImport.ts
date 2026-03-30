@@ -303,13 +303,20 @@ export function useStudentsImport() {
     const failedDetails = importResult.details.filter(d => d.status === "error" || d.status === "skipped");
     if (failedDetails.length === 0) return;
 
-    const csvHeaders = [...headers, "Import Error"];
+    const csvHeaders = ["Row #", ...headers, "Error Category", "Import Error"];
+    const categorise = (error: string) => {
+      if (/Missing|Invalid|format/i.test(error)) return "Data";
+      if (/permission|RLS|Unauthorized/i.test(error)) return "Permission";
+      return "System";
+    };
     const csvRows = failedDetails.map(detail => {
       const originalRow = rows[detail.row - 1] || [];
-      return [...originalRow, detail.error || "Unknown error"];
+      const err = detail.error || "Unknown error";
+      return [String(detail.row), ...originalRow, categorise(err), err];
     });
 
     const csvContent = [
+      `# Fix the issues below and re-import this file. Row numbers match the original CSV.`,
       csvHeaders.map(h => `"${h.replace(/"/g, '""')}"`).join(","),
       ...csvRows.map(row => row.map(cell => `"${(cell || "").replace(/"/g, '""')}"`).join(","))
     ].join("\n");

@@ -1,4 +1,5 @@
-import { CheckCircle2, AlertCircle, Download, Users, ArrowRight, BookOpen, Link2, RotateCcw } from "lucide-react";
+import { useMemo } from "react";
+import { CheckCircle2, AlertCircle, Download, Users, ArrowRight, BookOpen, Link2, RotateCcw, AlertTriangle, ShieldAlert, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,12 +18,41 @@ interface CompleteStepProps {
 }
 
 export function CompleteStep({ importResult, downloadFailedRows, onImportMore, onViewStudents, onUndoImport }: CompleteStepProps) {
-  const hasErrors = importResult.errors.length > 0;
   const hasFailedRows = importResult.details.some(d => d.status === "error" || d.status === "skipped");
   const teachersCreated = (importResult as any).teachersCreated ?? 0;
   const locationsCreated = (importResult as any).locationsCreated ?? 0;
   const rateCardsCreated = (importResult as any).rateCardsCreated ?? 0;
   const hasExtras = teachersCreated > 0 || locationsCreated > 0 || rateCardsCreated > 0;
+
+  const categorisedErrors = useMemo(() => {
+    const categories = {
+      data: [] as typeof importResult.details,
+      schema: [] as typeof importResult.details,
+      permission: [] as typeof importResult.details,
+    };
+
+    importResult.details
+      .filter(d => d.status === "error")
+      .forEach(d => {
+        const error = d.error || "";
+        if (/Missing|Invalid|format/i.test(error)) {
+          categories.data.push(d);
+        } else if (/permission|RLS|Unauthorized/i.test(error)) {
+          categories.permission.push(d);
+        } else {
+          categories.schema.push(d);
+        }
+      });
+
+    return categories;
+  }, [importResult]);
+
+  const skippedRows = useMemo(
+    () => importResult.details.filter(d => d.status === "skipped"),
+    [importResult]
+  );
+
+  const hasErrors = categorisedErrors.data.length > 0 || categorisedErrors.schema.length > 0 || categorisedErrors.permission.length > 0;
 
   return (
     <Card className="overflow-hidden">
@@ -74,21 +104,71 @@ export function CompleteStep({ importResult, downloadFailedRows, onImportMore, o
           </p>
         )}
 
-        {/* Errors */}
+        {/* Categorised errors */}
         {hasErrors && (
-          <div className="max-w-xl mx-auto mb-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>{importResult.errors.length} Error{importResult.errors.length !== 1 ? "s" : ""}</AlertTitle>
-              <AlertDescription>
-                <ul className="list-disc list-inside text-sm mt-2 max-h-[150px] overflow-y-auto">
-                  {importResult.errors.slice(0, 10).map((err, i) => <li key={i}>{err}</li>)}
-                  {importResult.errors.length > 10 && (
-                    <li className="text-muted-foreground">...and {importResult.errors.length - 10} more</li>
-                  )}
-                </ul>
-              </AlertDescription>
-            </Alert>
+          <div className="max-w-xl mx-auto mb-6 space-y-4">
+            {categorisedErrors.data.length > 0 && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Data Issues ({categorisedErrors.data.length})</AlertTitle>
+                <AlertDescription>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    These rows had invalid data. Download the failed rows, fix them, and re-import.
+                  </p>
+                  <ul className="list-disc list-inside text-sm max-h-[120px] overflow-y-auto">
+                    {categorisedErrors.data.slice(0, 8).map((d, i) => (
+                      <li key={i} className="truncate">
+                        <span className="font-mono text-xs">#{d.row}</span> {d.student}: {d.error}
+                      </li>
+                    ))}
+                    {categorisedErrors.data.length > 8 && (
+                      <li className="text-muted-foreground">...and {categorisedErrors.data.length - 8} more</li>
+                    )}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {categorisedErrors.schema.length > 0 && (
+              <Alert variant="destructive">
+                <Database className="h-4 w-4" />
+                <AlertTitle>System Issues ({categorisedErrors.schema.length})</AlertTitle>
+                <AlertDescription>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    These failed due to a system constraint. Please contact support if this persists.
+                  </p>
+                  <ul className="list-disc list-inside text-sm max-h-[120px] overflow-y-auto">
+                    {categorisedErrors.schema.slice(0, 5).map((d, i) => (
+                      <li key={i} className="truncate">
+                        <span className="font-mono text-xs">#{d.row}</span> {d.student}: {d.error}
+                      </li>
+                    ))}
+                    {categorisedErrors.schema.length > 5 && (
+                      <li className="text-muted-foreground">...and {categorisedErrors.schema.length - 5} more</li>
+                    )}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {categorisedErrors.permission.length > 0 && (
+              <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Permission Issues ({categorisedErrors.permission.length})</AlertTitle>
+                <AlertDescription>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    These rows failed due to permission restrictions. Check your role or contact your admin.
+                  </p>
+                  <ul className="list-disc list-inside text-sm max-h-[120px] overflow-y-auto">
+                    {categorisedErrors.permission.slice(0, 5).map((d, i) => (
+                      <li key={i} className="truncate">
+                        <span className="font-mono text-xs">#{d.row}</span> {d.student}: {d.error}
+                      </li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         )}
 
@@ -99,6 +179,24 @@ export function CompleteStep({ importResult, downloadFailedRows, onImportMore, o
               <Download className="mr-2 h-4 w-4" />
               Download Failed/Skipped Rows
             </Button>
+          </div>
+        )}
+
+        {/* Skipped rows summary */}
+        {skippedRows.length > 0 && (
+          <div className="max-w-xl mx-auto rounded-lg bg-muted/50 border p-4 mb-6">
+            <h4 className="text-body-strong mb-2">
+              Skipped Rows ({skippedRows.length})
+            </h4>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {skippedRows.map(d => (
+                <div key={d.row} className="text-xs text-muted-foreground flex gap-2">
+                  <span className="font-mono w-8 shrink-0">#{d.row}</span>
+                  <span className="font-medium text-foreground">{d.student}</span>
+                  <span className="truncate">— {d.error}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
