@@ -23,6 +23,9 @@ verify_jwt = false
 [functions.send-invoice-email]
 verify_jwt = false
 
+[functions.batch-invite-guardians]
+verify_jwt = false
+
 [functions.create-billing-run]
 verify_jwt = false
 
