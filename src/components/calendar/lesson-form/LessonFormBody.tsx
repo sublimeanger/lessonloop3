@@ -1,5 +1,5 @@
 import { RefObject, useMemo } from 'react';
-import { format, subDays } from 'date-fns';
+import { format, subDays, isBefore, startOfToday } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSepa
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-import { CalendarIcon, Video } from 'lucide-react';
+import { CalendarIcon, Video, AlertTriangle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -253,6 +253,12 @@ export function LessonFormBody({
               />
             </PopoverContent>
           </Popover>
+          {isBefore(selectedDate, startOfToday()) && (
+            <div className="flex items-center gap-1.5 text-xs text-warning mt-1">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span>This lesson is scheduled in the past.</span>
+            </div>
+          )}
         </div>
         <div className="space-y-2">
           <Label>Time</Label>

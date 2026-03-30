@@ -2,7 +2,7 @@ import React from 'react';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { cn } from '@/lib/utils';
-import { Repeat, GripHorizontal, Check } from 'lucide-react';
+import { Repeat, GripHorizontal, Check, Video } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
@@ -72,6 +72,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
   const isEditedException = isRecurring && !!lesson.is_series_exception;
   const isCancelled = lesson.status === 'cancelled';
   const isOpenSlot = !!lesson.is_open_slot;
+  const isOnline = !!lesson.is_online;
   const hasMakeup = (lesson.makeupStudentIds?.length ?? 0) > 0;
   const colour = teacherColour ?? TEACHER_COLOURS[0];
 
@@ -132,6 +133,9 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
           {isOpenSlot && (
             <span className="text-micro font-medium text-primary bg-primary/15 px-0.5 rounded shrink-0">Open</span>
           )}
+          {isOnline && (
+            <Video className="h-2 w-2 shrink-0 text-primary" />
+          )}
         </div>
       );
     }
@@ -161,6 +165,11 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
           {isEditedException && (
             <span className="text-micro font-medium text-warning bg-warning/20 px-0.5 rounded ml-0.5 inline-block -mt-px">
               Edited
+            </span>
+          )}
+          {isOnline && (
+            <span className="inline-flex items-center ml-0.5 -mt-px">
+              <Video className="h-2.5 w-2.5 text-primary" />
             </span>
           )}
         </div>
@@ -230,6 +239,11 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
                 Make-up
               </Badge>
             )}
+            {isOnline && (
+              <Badge variant="outline" className="text-micro px-1 py-0 h-4 border-primary/50 text-primary bg-primary/10">
+                <Video className="h-2.5 w-2.5 mr-0.5" />Online
+              </Badge>
+            )}
           </div>
           <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
             {secondaryLine}
@@ -277,6 +291,9 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
             )}
             {isOpenSlot && !compact && (
               <Badge variant="outline" className="text-micro px-1 py-0 h-4 border-primary/50 text-primary bg-primary/10">Open</Badge>
+            )}
+            {isOnline && !compact && (
+              <Video className="h-3 w-3 flex-shrink-0 text-primary" />
             )}
             <span className="truncate">{compactStudentName}</span>
           </div>

@@ -8,7 +8,9 @@ import { useDragLesson } from './useDragLesson';
 import { useResizeLesson } from './useResizeLesson';
 import { DEFAULT_START_HOUR, DEFAULT_END_HOUR } from './calendarConstants';
 import { useOrg } from '@/contexts/OrgContext';
+import { useClosureDates } from '@/hooks/useCalendarData';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { useBulkSelection } from './BulkSelectionContext';
 import { Check } from 'lucide-react';
 
@@ -56,6 +58,10 @@ export function DayTimelineView({
   const { selectionMode, selectedIds } = useBulkSelection();
   const orgStartHour = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
   const orgEndHour = currentOrg?.schedule_end_hour ?? DEFAULT_END_HOUR;
+
+  // Fetch closure dates for this day
+  const { data: closures } = useClosureDates(currentDate, currentDate);
+  const closure = closures?.find((c) => isSameDay(c.date, currentDate));
 
   // Filter lessons to current day
   const dayLessons = useMemo(
@@ -249,10 +255,19 @@ export function DayTimelineView({
         {/* Main grid area */}
         <div
           ref={gridRef}
-          className={cn('relative flex-1', isLessonDragging || isResizing ? 'cursor-grabbing' : 'cursor-crosshair')}
+          className={cn('relative flex-1', isLessonDragging || isResizing ? 'cursor-grabbing' : 'cursor-crosshair', closure && 'bg-warning/5')}
           style={{ height: gridHeight }}
           onMouseDown={handleGridMouseDown}
         >
+          {/* Closure date banner */}
+          {closure && (
+            <div className="sticky top-0 z-20 px-3 py-1.5 bg-warning/15 border-b border-warning/30 text-sm text-warning-foreground flex items-center gap-2">
+              <Badge variant="outline" className="text-micro px-1.5 py-0 bg-warning/20 text-warning-foreground border-warning/30">
+                Closed
+              </Badge>
+              <span className="truncate">{closure.reason}</span>
+            </div>
+          )}
           {/* Hour lines */}
           {hours.map((hour) => (
             <div
