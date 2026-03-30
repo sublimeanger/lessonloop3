@@ -160,7 +160,7 @@ export function useAgeingReport(issueDateFrom?: string, issueDateTo?: string) {
       let query = supabase
         .from('invoices')
         .select(`
-          id, invoice_number, due_date, total_minor, status,
+          id, invoice_number, due_date, total_minor, paid_minor, status,
           payer_guardian:guardians!invoices_payer_guardian_id_fkey(full_name),
           payer_student:students!invoices_payer_student_id_fkey(first_name, last_name)
         `)
@@ -204,27 +204,29 @@ export function useAgeingReport(issueDateFrom?: string, issueDateTo?: string) {
         const payerName = inv.payer_guardian?.full_name 
           || (inv.payer_student ? `${inv.payer_student.first_name} ${inv.payer_student.last_name}` : 'Unknown');
 
+        const remainingMinor = inv.total_minor - (inv.paid_minor || 0);
+
         const invoiceData = {
           id: inv.id,
           invoiceNumber: inv.invoice_number,
           payerName,
           dueDate: inv.due_date,
-          totalMinor: inv.total_minor,
+          totalMinor: remainingMinor,
           daysOverdue,
         };
 
-        totalOutstanding += inv.total_minor / 100;
+        totalOutstanding += remainingMinor / 100;
         if (daysOverdue > 0) {
-          totalOverdue += inv.total_minor / 100;
+          totalOverdue += remainingMinor / 100;
         }
 
         // Find matching bucket
         for (const bucket of buckets) {
-          const inRange = daysOverdue >= bucket.minDays && 
+          const inRange = daysOverdue >= bucket.minDays &&
             (bucket.maxDays === null || daysOverdue <= bucket.maxDays);
           if (inRange) {
             bucket.invoices.push(invoiceData);
-            bucket.totalAmount += inv.total_minor / 100;
+            bucket.totalAmount += remainingMinor / 100;
             bucket.count += 1;
             break;
           }
