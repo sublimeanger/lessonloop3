@@ -60,6 +60,7 @@ interface DuplicateInfo {
   dbMatchType: "name" | "email" | null;
   existingStudentId: string | null;
   isCsvDuplicate: boolean;
+  isPossibleDuplicate: boolean;
   csvDuplicateOf: number | null;
 }
 
@@ -90,11 +91,12 @@ interface DryRunResult {
 interface RowStatus {
   row: number;
   name: string;
-  status: "ready" | "duplicate_csv" | "duplicate_db" | "invalid";
+  status: "ready" | "duplicate_csv" | "duplicate_db" | "possible_duplicate" | "invalid";
   duplicateOf?: number;
   existingStudentId?: string;
   matchType?: string;
   errors?: string[];
+  warning?: string;
 }
 
 interface ImportResult {
@@ -110,7 +112,7 @@ interface ImportResult {
 }
 
 // Smart date parser supporting DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD, written dates, etc.
-function parseDate(dateStr: string): string | null {
+function parseDate(dateStr: string, dateFormatHint?: 'dmy' | 'mdy'): string | null {
   if (!dateStr) return null;
   const s = dateStr.trim();
 
@@ -137,8 +139,12 @@ function parseDate(dateStr: string): string | null {
     } else if (bNum > 12) {
       month = aNum; day = bNum;
     } else {
-      // Ambiguous: default DD/MM/YYYY
-      day = aNum; month = bNum;
+      // Ambiguous: use locale hint or default DD/MM/YYYY
+      if (dateFormatHint === 'mdy') {
+        month = aNum; day = bNum; // US format
+      } else {
+        day = aNum; month = bNum; // UK/EU format (default)
+      }
     }
     if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
       return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -208,7 +214,7 @@ function isValidEmail(email: string): boolean {
 }
 
 // Validate a single row
-function validateRow(row: ImportRow): string[] {
+function validateRow(row: ImportRow, dateFormatHint?: 'dmy' | 'mdy'): string[] {
   const errors: string[] = [];
   
   if (!row.first_name?.trim()) {
@@ -227,13 +233,13 @@ function validateRow(row: ImportRow): string[] {
     errors.push("Invalid second guardian email format");
   }
   if (row.dob) {
-    const parsed = parseDate(row.dob);
+    const parsed = parseDate(row.dob, dateFormatHint);
     if (!parsed) {
       errors.push("Invalid date format for DOB");
     }
   }
   if (row.start_date) {
-    const parsed = parseDate(row.start_date);
+    const parsed = parseDate(row.start_date, dateFormatHint);
     if (!parsed) {
       errors.push("Invalid date format for start date");
     }
@@ -258,7 +264,8 @@ function validateRow(row: ImportRow): string[] {
 async function detectDuplicates(
   rows: ImportRow[],
   orgId: string,
-  supabase: any
+  supabase: any,
+  dateFormatHint?: 'dmy' | 'mdy'
 ): Promise<{ duplicates: DuplicateInfo[]; validation: ValidationResult }> {
   // Fetch existing students
   const { data: existingStudents } = await supabase
@@ -304,9 +311,35 @@ async function detectDuplicates(
     // Check CSV duplicates
     const csvDuplicateOfByName = csvNamesSeen.get(nameKey);
     const csvDuplicateOfByEmail = email ? csvEmailsSeen.get(email) : undefined;
-    const csvDuplicateOf = csvDuplicateOfByName !== undefined ? csvDuplicateOfByName : csvDuplicateOfByEmail;
-    const isCsvDuplicate = csvDuplicateOf !== undefined;
-    
+    let csvDuplicateOf: number | undefined;
+    let isCsvDuplicate = false;
+    let isPossibleDuplicate = false;
+
+    // Email match is definitive — same email = same person
+    if (csvDuplicateOfByEmail !== undefined) {
+      isCsvDuplicate = true;
+      csvDuplicateOf = csvDuplicateOfByEmail;
+    } else if (csvDuplicateOfByName !== undefined) {
+      // Name-only match: check if they have distinguishing data
+      const otherRow = rows[csvDuplicateOfByName];
+      const hasDistinguishingData = (
+        (email && otherRow.email && email !== otherRow.email?.toLowerCase().trim()) ||
+        (row.guardian_email && otherRow.guardian_email &&
+         row.guardian_email.toLowerCase().trim() !== otherRow.guardian_email.toLowerCase().trim()) ||
+        (row.dob && otherRow.dob && row.dob !== otherRow.dob)
+      );
+
+      if (hasDistinguishingData) {
+        // Different people with same name — mark as possible, not definitive
+        isCsvDuplicate = false;
+        isPossibleDuplicate = true;
+        csvDuplicateOf = csvDuplicateOfByName;
+      } else {
+        isCsvDuplicate = true;
+        csvDuplicateOf = csvDuplicateOfByName;
+      }
+    }
+
     // Record this row for future duplicate checks
     if (!csvNamesSeen.has(nameKey) && firstName && lastName) {
       csvNamesSeen.set(nameKey, idx);
@@ -314,10 +347,10 @@ async function detectDuplicates(
     if (!csvEmailsSeen.has(email) && email) {
       csvEmailsSeen.set(email, idx);
     }
-    
+
     // Validate the row
-    const rowErrors = validateRow(row);
-    
+    const rowErrors = validateRow(row, dateFormatHint);
+
     const duplicateInfo: DuplicateInfo = {
       row: idx + 1,
       name: displayName,
@@ -325,11 +358,12 @@ async function detectDuplicates(
       dbMatchType: dbMatchByName ? "name" : dbMatchByEmail ? "email" : null,
       existingStudentId: dbMatchByName || dbMatchByEmail || null,
       isCsvDuplicate,
+      isPossibleDuplicate,
       csvDuplicateOf: csvDuplicateOf !== undefined ? csvDuplicateOf + 1 : null,
     };
-    
+
     duplicates.push(duplicateInfo);
-    
+
     // Populate validation summary
     if (rowErrors.length > 0) {
       validation.errors.push({ row: idx + 1, errors: rowErrors });
@@ -339,6 +373,9 @@ async function detectDuplicates(
         duplicateOf: (csvDuplicateOf || 0) + 1,
         name: displayName,
       });
+    } else if (isPossibleDuplicate) {
+      // Same name but distinguishing data — count as valid but flag
+      validation.valid++;
     } else if (isDbDuplicate) {
       validation.duplicatesInDatabase.push({
         row: idx + 1,
@@ -382,7 +419,17 @@ function buildRowStatuses(
         duplicateOf: dup.csvDuplicateOf || undefined,
       };
     }
-    
+
+    if (dup.isPossibleDuplicate) {
+      return {
+        row: idx + 1,
+        name: displayName,
+        status: "possible_duplicate" as const,
+        duplicateOf: dup.csvDuplicateOf || undefined,
+        warning: `Same name as row ${dup.csvDuplicateOf} — verify this is a different student`,
+      };
+    }
+
     if (dup.isDbDuplicate) {
       return {
         row: idx + 1,
@@ -490,8 +537,20 @@ serve(async (req) => {
       return r;
     });
 
+    // Fetch org for locale-aware date parsing
+    const { data: orgForLocale } = await supabase
+      .from("organisations")
+      .select("country_code, timezone")
+      .eq("id", orgId)
+      .single();
+
+    const dateFormatHint: 'dmy' | 'mdy' =
+      ['US', 'USA'].includes(orgForLocale?.country_code?.toUpperCase() || '')
+      || orgForLocale?.timezone?.startsWith('America/')
+      ? 'mdy' : 'dmy';
+
     // Detect duplicates
-    const { duplicates, validation } = await detectDuplicates(rows, orgId, supabase);
+    const { duplicates, validation } = await detectDuplicates(rows, orgId, supabase, dateFormatHint);
     const rowStatuses = buildRowStatuses(rows, duplicates, validation);
 
     // DRY RUN MODE - return validation results without committing
@@ -500,13 +559,13 @@ serve(async (req) => {
       const guardiansToCreate = new Set<string>();
       const lessonsCount = rows.filter((row: ImportRow, idx: number) => {
         const status = rowStatuses[idx];
-        if (status.status !== "ready") return false;
+        if (status.status !== "ready" && status.status !== "possible_duplicate") return false;
         return row.lesson_day && row.lesson_time && effectiveTeacherIdFromRequest;
       }).length;
 
       rows.forEach((row: ImportRow, idx: number) => {
         const status = rowStatuses[idx];
-        if (status.status === "ready") {
+        if (status.status === "ready" || status.status === "possible_duplicate") {
           if (row.guardian_name?.trim()) {
             const guardianKey = row.guardian_email?.toLowerCase().trim() || row.guardian_name.toLowerCase().trim();
             guardiansToCreate.add(guardianKey);
@@ -542,7 +601,7 @@ serve(async (req) => {
       ? new Set(rowsToImport as number[])
       : new Set(
           rowStatuses
-            .filter(s => s.status === "ready" || (!skipDuplicates && (s.status === "duplicate_csv" || s.status === "duplicate_db")))
+            .filter(s => s.status === "ready" || s.status === "possible_duplicate" || (!skipDuplicates && (s.status === "duplicate_csv" || s.status === "duplicate_db")))
             .map(s => s.row - 1)
         );
 
@@ -866,7 +925,7 @@ serve(async (req) => {
         if (row.email) studentData.email = row.email.trim();
         if (row.phone) studentData.phone = row.phone.trim();
         if (row.dob) {
-          const parsedDob = parseDate(row.dob);
+          const parsedDob = parseDate(row.dob, dateFormatHint);
           if (parsedDob) studentData.dob = parsedDob;
         }
         if (row.notes) studentData.notes = row.notes.trim();
@@ -884,7 +943,7 @@ serve(async (req) => {
           if (normalized) studentData.gender = normalized;
         }
         if (row.start_date) {
-          const parsedStart = parseDate(row.start_date);
+          const parsedStart = parseDate(row.start_date, dateFormatHint);
           if (parsedStart) studentData.start_date = parsedStart;
         }
         if (row.tags) {

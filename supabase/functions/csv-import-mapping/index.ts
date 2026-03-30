@@ -312,6 +312,30 @@ Analyze the headers and sample values to determine the best mapping.`;
       });
     }
 
+    // Validate that AI-returned target_field values are actually valid
+    const validFieldNames = new Set(ALL_TARGET_FIELDS.map(f => f.name));
+    if (mappingResult.mappings) {
+      mappingResult.mappings = mappingResult.mappings.map((m: any) => ({
+        ...m,
+        target_field: m.target_field && validFieldNames.has(m.target_field)
+          ? m.target_field
+          : null,
+        confidence: m.target_field && !validFieldNames.has(m.target_field)
+          ? 0
+          : m.confidence,
+      }));
+    }
+
+    const filteredCount = mappingResult.mappings?.filter(
+      (m: any) => m.target_field === null && m.csv_header
+    ).length || 0;
+    if (filteredCount > 0) {
+      mappingResult.warnings = mappingResult.warnings || [];
+      mappingResult.warnings.push(
+        `${filteredCount} column(s) couldn't be auto-mapped. Please review the mapping below.`
+      );
+    }
+
     return new Response(JSON.stringify({
       ...mappingResult,
       detected_source: mappingResult.detected_source || effectiveSource || null,
