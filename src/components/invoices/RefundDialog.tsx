@@ -405,10 +405,10 @@ export function RefundDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RotateCcw className="h-5 w-5 text-primary" />
-              Process Refund
+              {isManual ? 'Record Refund' : 'Process Refund'}
             </DialogTitle>
             <DialogDescription>
-              Refund a payment back to the parent
+              {isManual ? 'Record a manual refund for this payment' : 'Refund a payment back to the parent'}
             </DialogDescription>
           </DialogHeader>
           {content}
