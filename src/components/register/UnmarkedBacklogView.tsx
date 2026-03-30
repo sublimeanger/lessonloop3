@@ -308,36 +308,8 @@ export function UnmarkedBacklogView() {
                         key={lesson.id}
                         layout
                         exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-                        className="relative"
                       >
                         <RegisterRowComponent lesson={lesson} />
-
-                        {/* Quick-mark overlay for collapsed state */}
-                        {lesson.participants.length > 0 && (
-                          <div className="absolute right-12 top-3.5 sm:right-14 sm:top-4">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={cn(
-                                "h-8 gap-1.5 text-xs",
-                                "text-success hover:text-success hover:bg-success/10",
-                                markingLessonId === lesson.id && "pointer-events-none"
-                              )}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMarkAllPresent(lesson.id);
-                              }}
-                              disabled={markingLessonId === lesson.id}
-                            >
-                              {markingLessonId === lesson.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                              )}
-                              <span className="hidden sm:inline">All Present</span>
-                            </Button>
-                          </div>
-                        )}
                       </motion.div>
                     ))}
                   </div>
