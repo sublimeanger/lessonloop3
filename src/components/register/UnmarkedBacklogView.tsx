@@ -122,7 +122,14 @@ export function UnmarkedBacklogView() {
     if (!rawLessons) return { grouped: [] as Array<{ date: string; dateLabel: string; lessons: RegisterLesson[] }>, totalCount: 0, totalStudents: 0 };
 
     const lessons: RegisterLesson[] = rawLessons
-      .filter((l) => (l.lesson_participants || []).length > 0) // Exclude open slots
+      .filter((l) => {
+        const participants = l.lesson_participants || [];
+        if (participants.length === 0) return false; // Exclude open slots
+        // Hide lessons where every participant already has attendance marked
+        const attendanceSet = new Set((l.attendance_records || []).map((ar) => ar.student_id));
+        const allMarked = participants.every((lp) => attendanceSet.has(lp.student_id));
+        return !allMarked;
+      })
       .map((l) => {
         const attendanceMap = new Map(
           (l.attendance_records || []).map((ar) => [ar.student_id, ar])
