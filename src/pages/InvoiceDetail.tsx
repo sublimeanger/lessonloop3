@@ -460,19 +460,23 @@ export default function InvoiceDetail() {
                               </div>
                             </div>
                           </div>
-                          {/* Refund button — only for Stripe payments, visible to billing admins */}
-                          {!isParent && canManageBilling && payment.provider === 'stripe' && payment.provider_reference && totalRefundedForPayment < payment.amount_minor && (
+                          {/* Refund button — visible to billing admins for any payment with refundable balance */}
+                          {!isParent && canManageBilling && totalRefundedForPayment < payment.amount_minor && (
                             <Button
                               variant="ghost"
                               size="sm"
                               className="text-muted-foreground hover:text-destructive h-8 gap-1.5"
                               onClick={() => {
-                                setRefundPayment({ ...payment, _alreadyRefunded: totalRefundedForPayment });
+                                setRefundPayment({
+                                  ...payment,
+                                  _alreadyRefunded: totalRefundedForPayment,
+                                  _isManual: !(payment.provider === 'stripe' && payment.provider_reference),
+                                });
                                 setRefundDialogOpen(true);
                               }}
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">Refund</span>
+                              <span className="hidden sm:inline">{payment.provider === 'stripe' && payment.provider_reference ? 'Refund' : 'Record Refund'}</span>
                             </Button>
                           )}
                         </div>
@@ -689,6 +693,9 @@ export default function InvoiceDetail() {
         paidAt={refundPayment?.paid_at}
         invoiceNumber={invoice.invoice_number}
         currencyCode={currency}
+        isManual={refundPayment?._isManual || false}
+        invoiceId={invoice.id}
+        orgId={currentOrg?.id}
       />
 
       {/* Parent Embedded Payment Drawer */}
@@ -713,6 +720,11 @@ export default function InvoiceDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Void Invoice</AlertDialogTitle>
             <AlertDialogDescription>
+              {totalPaid > 0 && (
+                <span className="block mb-2 text-amber-600 dark:text-amber-400 font-medium">
+                  ⚠️ This invoice has {formatCurrencyMinor(totalPaid, currency)} in recorded payments. Consider processing a refund before voiding.
+                </span>
+              )}
               Are you sure you want to void invoice {invoice.invoice_number}? This action cannot be undone.
               {invoice.credit_applied_minor > 0 && (
                 <> Any applied make-up credits ({formatCurrencyMinor(invoice.credit_applied_minor, currency)}) will be restored to the student's balance.</>
@@ -726,7 +738,7 @@ export default function InvoiceDetail() {
               disabled={updateStatus.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {updateStatus.isPending ? 'Voiding...' : 'Void Invoice'}
+              {updateStatus.isPending ? 'Voiding...' : totalPaid > 0 ? 'Void Anyway' : 'Void Invoice'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

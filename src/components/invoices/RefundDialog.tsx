@@ -56,6 +56,9 @@ interface RefundDialogProps {
   paidAt?: string;
   invoiceNumber?: string;
   currencyCode?: string;
+  isManual?: boolean;
+  invoiceId?: string;
+  orgId?: string;
 }
 
 export function RefundDialog({
@@ -68,6 +71,9 @@ export function RefundDialog({
   paidAt,
   invoiceNumber,
   currencyCode = 'GBP',
+  isManual = false,
+  invoiceId,
+  orgId,
 }: RefundDialogProps) {
   const maxRefundable = paymentAmount - alreadyRefunded;
   const [step, setStep] = useState<'form' | 'confirm' | 'success' | 'error'>('form');
@@ -75,7 +81,7 @@ export function RefundDialog({
   const [customAmount, setCustomAmount] = useState('');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
-  const { processRefund, isProcessing } = useRefund();
+  const { processRefund, processManualRefund, isProcessing } = useRefund();
   const isDesktop = useMediaQuery('(min-width: 640px)');
 
   // Reset state when dialog opens/closes
@@ -106,12 +112,21 @@ export function RefundDialog({
       notes,
     ].filter(Boolean).join(': ');
 
-    const result = await processRefund(
-      paymentId,
-      refundType === 'partial' ? refundAmountMinor : undefined,
-      reasonText || undefined,
-      currencyCode,
-    );
+    const result = isManual && invoiceId && orgId
+      ? await processManualRefund(
+          paymentId,
+          invoiceId,
+          orgId,
+          refundType === 'partial' ? refundAmountMinor : undefined,
+          reasonText || undefined,
+          currencyCode,
+        )
+      : await processRefund(
+          paymentId,
+          refundType === 'partial' ? refundAmountMinor : undefined,
+          reasonText || undefined,
+          currencyCode,
+        );
 
     if (result.success) {
       setStep('success');
@@ -281,7 +296,9 @@ export function RefundDialog({
               <div>
                 <p className="font-medium text-sm">Confirm refund</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  This will refund {formatCurrencyMinor(refundAmountMinor, currencyCode)} to the parent's payment method. This action cannot be undone.
+                  {isManual
+                    ? `This will record a refund of ${formatCurrencyMinor(refundAmountMinor, currencyCode)}. This action cannot be undone.`
+                    : `This will refund ${formatCurrencyMinor(refundAmountMinor, currencyCode)} to the parent's payment method. This action cannot be undone.`}
                 </p>
               </div>
             </div>
@@ -348,7 +365,9 @@ export function RefundDialog({
             <div className="text-center space-y-1">
               <h3 className="text-lg font-semibold">Refund Processed</h3>
               <p className="text-sm text-muted-foreground">
-                {formatCurrencyMinor(refundAmountMinor, currencyCode)} will be returned to the parent's payment method.
+                {isManual
+                  ? `Refund of ${formatCurrencyMinor(refundAmountMinor, currencyCode)} has been recorded.`
+                  : `${formatCurrencyMinor(refundAmountMinor, currencyCode)} will be returned to the parent's payment method.`}
               </p>
             </div>
           </motion.div>
@@ -386,10 +405,10 @@ export function RefundDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RotateCcw className="h-5 w-5 text-primary" />
-              Process Refund
+              {isManual ? 'Record Refund' : 'Process Refund'}
             </DialogTitle>
             <DialogDescription>
-              Refund a payment back to the parent
+              {isManual ? 'Record a manual refund for this payment' : 'Refund a payment back to the parent'}
             </DialogDescription>
           </DialogHeader>
           {content}
@@ -404,10 +423,10 @@ export function RefundDialog({
         <DrawerHeader className="px-0">
           <DrawerTitle className="flex items-center gap-2">
             <RotateCcw className="h-5 w-5 text-primary" />
-            Process Refund
+            {isManual ? 'Record Refund' : 'Process Refund'}
           </DrawerTitle>
           <DrawerDescription>
-            Refund a payment back to the parent
+            {isManual ? 'Record a manual refund for this payment' : 'Refund a payment back to the parent'}
           </DrawerDescription>
         </DrawerHeader>
         {content}

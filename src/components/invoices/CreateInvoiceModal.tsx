@@ -194,49 +194,95 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     let newInvoiceId: string | null = null;
     
     if (tab === 'manual') {
-      const result = await createInvoice.mutateAsync({
-        due_date: data.dueDate,
-        payer_guardian_id: data.payerType === 'guardian' ? data.payerId : undefined,
-        payer_student_id: data.payerType === 'student' ? data.payerId : undefined,
-        notes: data.notes,
-        credit_ids: creditIdsToApply.length > 0 ? creditIdsToApply : undefined,
-        items: data.items.map((item) => ({
-          description: item.description,
-          quantity: item.quantity,
-          unit_price_minor: Math.round(item.unitPrice * 100),
-        })),
-      });
-      newInvoiceId = result?.id || null;
+      try {
+        const result = await createInvoice.mutateAsync({
+          due_date: data.dueDate,
+          payer_guardian_id: data.payerType === 'guardian' ? data.payerId : undefined,
+          payer_student_id: data.payerType === 'student' ? data.payerId : undefined,
+          notes: data.notes,
+          credit_ids: creditIdsToApply.length > 0 ? creditIdsToApply : undefined,
+          items: data.items.map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unit_price_minor: Math.round(item.unitPrice * 100),
+          })),
+        });
+        newInvoiceId = result?.id || null;
+      } catch (err) {
+        toast({
+          title: 'Invoice creation failed',
+          description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+          variant: 'destructive',
+        });
+        return;
+      }
     } else {
       // Create from lessons
       const selectedLessonData = unbilledLessons.filter((l) => selectedLessons.has(l.id));
-      if (selectedLessonData.length === 0) return;
+      if (selectedLessonData.length === 0) {
+        toast({
+          title: 'No lessons selected',
+          description: 'Please select at least one lesson to include in the invoice.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      const result = await createInvoice.mutateAsync({
-        due_date: data.dueDate,
-        payer_guardian_id: data.payerType === 'guardian' ? data.payerId : undefined,
-        payer_student_id: data.payerType === 'student' ? data.payerId : undefined,
-        notes: data.notes,
-        credit_ids: creditIdsToApply.length > 0 ? creditIdsToApply : undefined,
-        items: selectedLessonData.map((lesson) => {
-          const durationMins = differenceInMinutes(
-            new Date(lesson.end_at),
-            new Date(lesson.start_at)
-          );
-          const unitPriceMinor = findRateForDuration(durationMins, rateCards);
-          const firstParticipant = lesson.lesson_participants?.[0];
-          const studentId = firstParticipant?.student?.id;
+      // Filter out lessons with no participants
+      const validLessons = selectedLessonData.filter(
+        (lesson) => lesson.lesson_participants && lesson.lesson_participants.length > 0
+      );
 
-          return {
-            description: lesson.title,
-            quantity: 1,
-            unit_price_minor: unitPriceMinor,
-            linked_lesson_id: lesson.id,
-            student_id: studentId,
-          };
-        }),
-      });
-      newInvoiceId = result?.id || null;
+      if (validLessons.length === 0) {
+        toast({
+          title: 'No valid lessons',
+          description: 'Selected lessons have no participants. Please add participants to lessons first.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (validLessons.length < selectedLessonData.length) {
+        toast({
+          title: 'Some lessons skipped',
+          description: `${selectedLessonData.length - validLessons.length} lesson(s) without participants were excluded.`,
+        });
+      }
+
+      try {
+        const result = await createInvoice.mutateAsync({
+          due_date: data.dueDate,
+          payer_guardian_id: data.payerType === 'guardian' ? data.payerId : undefined,
+          payer_student_id: data.payerType === 'student' ? data.payerId : undefined,
+          notes: data.notes,
+          credit_ids: creditIdsToApply.length > 0 ? creditIdsToApply : undefined,
+          items: validLessons.map((lesson) => {
+            const durationMins = differenceInMinutes(
+              new Date(lesson.end_at),
+              new Date(lesson.start_at)
+            );
+            const unitPriceMinor = findRateForDuration(durationMins, rateCards);
+            const firstParticipant = lesson.lesson_participants?.[0];
+            const studentId = firstParticipant?.student?.id;
+
+            return {
+              description: lesson.title,
+              quantity: 1,
+              unit_price_minor: unitPriceMinor,
+              linked_lesson_id: lesson.id,
+              student_id: studentId,
+            };
+          }),
+        });
+        newInvoiceId = result?.id || null;
+      } catch (err) {
+        toast({
+          title: 'Invoice creation failed',
+          description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     // Generate installments if payment plan is enabled
