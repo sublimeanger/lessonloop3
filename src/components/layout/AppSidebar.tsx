@@ -91,6 +91,8 @@ const soloOwnerGroups: NavGroup[] = [
     label: 'Business',
     items: [
       { title: 'Invoices', url: '/invoices', icon: Receipt },
+      { title: 'Locations', url: '/locations', icon: MapPin },
+      { title: 'Continuation', url: '/continuation', icon: ArrowRightLeft },
       { title: 'Messages', url: '/messages', icon: MessageSquare },
       { title: 'Reports', url: '/reports', icon: BarChart3 },
     ],
