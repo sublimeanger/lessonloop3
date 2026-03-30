@@ -133,6 +133,9 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
           {isOpenSlot && (
             <span className="text-micro font-medium text-primary bg-primary/15 px-0.5 rounded shrink-0">Open</span>
           )}
+          {isOnline && (
+            <Video className="h-2 w-2 shrink-0 text-primary" />
+          )}
         </div>
       );
     }
