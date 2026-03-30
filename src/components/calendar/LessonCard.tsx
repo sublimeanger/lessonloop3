@@ -239,6 +239,11 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
                 Make-up
               </Badge>
             )}
+            {isOnline && (
+              <Badge variant="outline" className="text-micro px-1 py-0 h-4 border-primary/50 text-primary bg-primary/10">
+                <Video className="h-2.5 w-2.5 mr-0.5" />Online
+              </Badge>
+            )}
           </div>
           <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
             {secondaryLine}
