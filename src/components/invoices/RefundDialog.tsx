@@ -112,12 +112,21 @@ export function RefundDialog({
       notes,
     ].filter(Boolean).join(': ');
 
-    const result = await processRefund(
-      paymentId,
-      refundType === 'partial' ? refundAmountMinor : undefined,
-      reasonText || undefined,
-      currencyCode,
-    );
+    const result = isManual && invoiceId && orgId
+      ? await processManualRefund(
+          paymentId,
+          invoiceId,
+          orgId,
+          refundType === 'partial' ? refundAmountMinor : undefined,
+          reasonText || undefined,
+          currencyCode,
+        )
+      : await processRefund(
+          paymentId,
+          refundType === 'partial' ? refundAmountMinor : undefined,
+          reasonText || undefined,
+          currencyCode,
+        );
 
     if (result.success) {
       setStep('success');
