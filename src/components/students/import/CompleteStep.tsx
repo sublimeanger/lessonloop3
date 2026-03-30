@@ -1,17 +1,22 @@
-import { CheckCircle2, AlertCircle, Download, Users, ArrowRight, BookOpen, Link2 } from "lucide-react";
+import { CheckCircle2, AlertCircle, Download, Users, ArrowRight, BookOpen, Link2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { ImportResult } from "@/hooks/useStudentsImport";
 
 interface CompleteStepProps {
-  importResult: ImportResult;
+  importResult: ImportResult & { importBatchId?: string };
   downloadFailedRows: () => void;
   onImportMore: () => void;
   onViewStudents: () => void;
+  onUndoImport?: (batchId: string) => void;
 }
 
-export function CompleteStep({ importResult, downloadFailedRows, onImportMore, onViewStudents }: CompleteStepProps) {
+export function CompleteStep({ importResult, downloadFailedRows, onImportMore, onViewStudents, onUndoImport }: CompleteStepProps) {
   const hasErrors = importResult.errors.length > 0;
   const hasFailedRows = importResult.details.some(d => d.status === "error" || d.status === "skipped");
   const teachersCreated = (importResult as any).teachersCreated ?? 0;
@@ -99,6 +104,35 @@ export function CompleteStep({ importResult, downloadFailedRows, onImportMore, o
 
         {/* Actions */}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+          {importResult.importBatchId && onUndoImport && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="text-destructive border-destructive/30">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Undo Import
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Undo this import?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove all {importResult.studentsCreated} students,
+                    their guardian links, and any lessons created during this import.
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep Import</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground"
+                    onClick={() => onUndoImport(importResult.importBatchId!)}
+                  >
+                    Yes, Undo Import
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <Button variant="outline" onClick={onImportMore}>Import More</Button>
           <Button onClick={onViewStudents}>
             View Students

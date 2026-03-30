@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/contexts/OrgContext";
@@ -63,6 +64,7 @@ export type Step = "upload" | "mapping" | "preview" | "importing" | "complete";
 export function useStudentsImport() {
   const navigate = useNavigate();
   const { currentOrg } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { counts, limits } = useUsageCounts();
 
@@ -295,6 +297,7 @@ export function useStudentsImport() {
     }
   }, [currentOrg, transformedRows, mappings, selectedTeacher, importLessons, skipDuplicates, dryRunResult, toast]);
 
+
   const downloadFailedRows = useCallback(() => {
     if (!importResult) return;
     const failedDetails = importResult.details.filter(d => d.status === "error" || d.status === "skipped");
@@ -346,6 +349,31 @@ export function useStudentsImport() {
     setDetectedSource(null);
   }, []);
 
+  const undoImport = useCallback(async (batchId: string) => {
+    if (!currentOrg) return;
+    try {
+      const { data, error } = await (supabase.rpc as any)('undo_student_import', {
+        _org_id: currentOrg.id,
+        _batch_id: batchId,
+        _user_id: user?.id,
+      });
+      if (error) throw error;
+      const result = data as any;
+      toast({
+        title: "Import undone",
+        description: `Removed ${result?.studentsRemoved ?? 0} students and ${result?.lessonsRemoved ?? 0} lessons.`,
+      });
+      resetImport();
+      navigate('/students');
+    } catch (error: any) {
+      toast({
+        title: "Undo failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  }, [currentOrg, user, toast, navigate, resetImport]);
+
   return {
     // Navigation
     navigate,
@@ -379,6 +407,7 @@ export function useStudentsImport() {
     executeImport,
     downloadFailedRows,
     resetImport,
+    undoImport,
 
     // Derived
     transformedRows,
