@@ -470,6 +470,34 @@ export default function Students() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={batchInviteOpen} onOpenChange={setBatchInviteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send portal invites</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will send a portal invite email to all guardians who have an
+              email address but haven't been invited yet. They'll be able to view
+              schedules, pay invoices, and track practice.
+              {uninvitedCount !== null && (
+                <span className="block mt-2 font-medium text-foreground">
+                  {uninvitedCount} guardian{uninvitedCount !== 1 ? 's' : ''} will receive invites.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBatchInviteAll} disabled={isBatchInviting || uninvitedCount === 0}>
+              {isBatchInviting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
+              ) : (
+                'Send Invites'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
