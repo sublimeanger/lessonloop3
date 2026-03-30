@@ -142,7 +142,9 @@ export default function StudentsImport() {
             />
           )}
 
-          {hook.step === "importing" && <ImportingStep />}
+          {hook.step === "importing" && (
+            <ImportingStep totalRows={hook.dryRunResult?.preview.studentsToCreate} />
+          )}
 
           {hook.step === "complete" && hook.importResult && (
             <CompleteStep
@@ -150,6 +152,7 @@ export default function StudentsImport() {
               downloadFailedRows={hook.downloadFailedRows}
               onImportMore={hook.resetImport}
               onViewStudents={() => hook.navigate("/students")}
+              onUndoImport={hook.undoImport}
             />
           )}
         </div>
