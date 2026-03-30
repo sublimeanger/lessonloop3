@@ -477,18 +477,20 @@ interface InvoiceCardProps {
   onToggle?: () => void;
 }
 
-function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, isHighlighted, showPayButton = true }: InvoiceCardProps) {
+function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, isHighlighted, showPayButton = true, isExpanded, onToggle }: InvoiceCardProps) {
   const remainingMinor = invoice.total_minor - (invoice.paid_minor || 0);
   const isPayable = ['sent', 'overdue'].includes(invoice.status) && showPayButton && remainingMinor > 0;
   const isPaid = invoice.status === 'paid';
   const { downloadPdf, isLoading: isPdfLoading } = useInvoicePdf();
+  const hasLineItems = invoice.invoice_items && invoice.invoice_items.length > 0;
 
   const accentColor = isPaid ? 'bg-success' : invoice.status === 'void' ? 'bg-muted-foreground/30' : 'bg-warning';
 
   return (
     <Card 
       id={`invoice-${invoice.id}`}
-      className={cn('rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 overflow-hidden relative', isHighlighted && 'ring-2 ring-primary ring-offset-2 animate-pulse')}
+      className={cn('rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 overflow-hidden relative cursor-pointer', isHighlighted && 'ring-2 ring-primary ring-offset-2 animate-pulse')}
+      onClick={() => onToggle?.()}
     >
       <div className={cn('absolute inset-y-0 left-0 w-1 rounded-l-2xl', accentColor)} />
       <CardContent className="p-4 pl-5">
