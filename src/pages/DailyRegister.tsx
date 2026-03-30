@@ -143,6 +143,15 @@ export default function DailyRegister() {
     updated_at: '',
   }));
 
+  // Backlog view for unmarked lessons
+  if (isBacklogView) {
+    return (
+      <AppLayout>
+        <UnmarkedBacklogView />
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <PageHeader
