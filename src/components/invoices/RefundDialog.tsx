@@ -56,6 +56,9 @@ interface RefundDialogProps {
   paidAt?: string;
   invoiceNumber?: string;
   currencyCode?: string;
+  isManual?: boolean;
+  invoiceId?: string;
+  orgId?: string;
 }
 
 export function RefundDialog({
@@ -68,6 +71,9 @@ export function RefundDialog({
   paidAt,
   invoiceNumber,
   currencyCode = 'GBP',
+  isManual = false,
+  invoiceId,
+  orgId,
 }: RefundDialogProps) {
   const maxRefundable = paymentAmount - alreadyRefunded;
   const [step, setStep] = useState<'form' | 'confirm' | 'success' | 'error'>('form');
