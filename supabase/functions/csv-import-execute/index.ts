@@ -549,7 +549,7 @@ serve(async (req) => {
     // Check student limit before import
     const { data: org } = await supabase
       .from("organisations")
-      .select("max_students")
+      .select("max_students, currency_code, timezone")
       .eq("id", orgId)
       .single();
     
@@ -745,7 +745,7 @@ serve(async (req) => {
             name: `${durationMinutes} minute lesson`,
             duration_minutes: durationMinutes,
             amount_per_lesson_minor: priceMinor,
-            currency_code: "GBP",
+            currency_code: org?.currency_code || "GBP",
             is_default: false,
           })
           .select("id")
