@@ -81,7 +81,7 @@ export function RefundDialog({
   const [customAmount, setCustomAmount] = useState('');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
-  const { processRefund, isProcessing } = useRefund();
+  const { processRefund, processManualRefund, isProcessing } = useRefund();
   const isDesktop = useMediaQuery('(min-width: 640px)');
 
   // Reset state when dialog opens/closes
