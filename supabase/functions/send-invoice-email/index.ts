@@ -252,13 +252,19 @@ const handler = async (req: Request): Promise<Response> => {
       : "";
 
     // CTA section based on payment preferences
+    const ctaLabel = installments.length > 0 && firstUnpaidInstallment
+      ? "View Invoice & Pay First Installment"
+      : "View & Pay Invoice";
+    const ctaSubtext = installments.length > 0 && firstUnpaidInstallment
+      ? `Click the button above to view your invoice and pay installment ${firstUnpaidInstallment.installment_number} (${formatMinorAmount(firstUnpaidInstallment.amount_minor, invoice.currency_code)}) securely online.`
+      : "Click the button above to view your invoice and make a payment securely online.";
     const payOnlineCta = onlinePaymentsEnabled
       ? `
       <p style="text-align: center;">
-        <a href="${portalLink}" style="${buttonStyle}">View & Pay Invoice</a>
+        <a href="${portalLink}" style="${buttonStyle}">${ctaLabel}</a>
       </p>
       <p style="font-size: 12px; color: #666;">
-        Click the button above to view your invoice and make a payment securely online.
+        ${ctaSubtext}
       </p>`
       : "";
 
@@ -273,6 +279,7 @@ const handler = async (req: Request): Promise<Response> => {
     const installmentScheduleHtml = installments.length > 0
       ? `
       <p style="margin: 12px 0 8px; font-weight: 600;">Payment plan: ${installments.length} installments</p>
+      ${firstUnpaidInstallment ? `<p style="margin: 4px 0 12px; font-size: 16px; color: #2563eb; font-weight: 600;">Next payment due: ${formatMinorAmount(firstUnpaidInstallment.amount_minor, invoice.currency_code)} on ${formatDateUK(firstUnpaidInstallment.due_date)}</p>` : ""}
       <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
         <thead>
           <tr style="border-bottom: 2px solid #ddd;">
@@ -280,23 +287,25 @@ const handler = async (req: Request): Promise<Response> => {
             <th style="text-align: left; padding: 6px 8px;">Amount</th>
             <th style="text-align: left; padding: 6px 8px;">Due Date</th>
             <th style="text-align: left; padding: 6px 8px;">Status</th>
+            <th style="text-align: left; padding: 6px 8px;">Pay Link</th>
           </tr>
         </thead>
         <tbody>
           ${installments.map((inst: any) => {
             const instAmount = formatMinorAmount(inst.amount_minor, invoice.currency_code);
             const instDue = formatDateUK(inst.due_date);
-            const isFirstUnpaid = firstUnpaidInstallment && inst.id === firstUnpaidInstallment.id;
             const statusLabel = inst.status === "paid" ? "Paid" : inst.status === "overdue" ? "Overdue" : inst.status === "void" ? "Voided" : "Pending";
             const statusColor = inst.status === "paid" ? "#16a34a" : inst.status === "overdue" ? "#dc2626" : "#666";
-            const payNow = isFirstUnpaid && onlinePaymentsEnabled
-              ? ` <a href="${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&installment=${inst.id}&action=pay" style="color: #2563eb; font-weight: 600; text-decoration: none;">[Pay Now]</a>`
-              : "";
+            const isUnpaid = inst.status === "pending" || inst.status === "overdue";
+            const payLink = isUnpaid && onlinePaymentsEnabled
+              ? `<a href="${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&installment=${inst.id}&action=pay" style="color: #2563eb; font-weight: 600; text-decoration: none;">Pay Now</a>`
+              : inst.status === "paid" ? '<span style="color: #16a34a;">&#10003;</span>' : "—";
             return `<tr style="border-bottom: 1px solid #eee;">
               <td style="padding: 6px 8px;">Installment ${inst.installment_number}</td>
               <td style="padding: 6px 8px;">${escapeHtml(instAmount)}</td>
               <td style="padding: 6px 8px;">${escapeHtml(instDue)}</td>
-              <td style="padding: 6px 8px; color: ${statusColor};">${statusLabel}${payNow}</td>
+              <td style="padding: 6px 8px; color: ${statusColor};">${statusLabel}</td>
+              <td style="padding: 6px 8px;">${payLink}</td>
             </tr>`;
           }).join("")}
         </tbody>
