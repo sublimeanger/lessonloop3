@@ -316,6 +316,10 @@ export default function Students() {
         actions={
           isAdmin ? (
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-1.5" onClick={openBatchInviteDialog}>
+                <Mail className="h-4 w-4" />
+                <span className="hidden sm:inline">Portal Invites</span>
+              </Button>
               <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-1.5" onClick={exportStudents} disabled={isLoading || students.length === 0}>
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">Export</span>
