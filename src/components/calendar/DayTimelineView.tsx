@@ -8,7 +8,9 @@ import { useDragLesson } from './useDragLesson';
 import { useResizeLesson } from './useResizeLesson';
 import { DEFAULT_START_HOUR, DEFAULT_END_HOUR } from './calendarConstants';
 import { useOrg } from '@/contexts/OrgContext';
+import { useClosureDates } from '@/hooks/useCalendarData';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { useBulkSelection } from './BulkSelectionContext';
 import { Check } from 'lucide-react';
 
