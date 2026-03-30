@@ -45,7 +45,7 @@ export function useUrgentActions() {
             teacherId = teacherRecord?.id;
           }
 
-          const { data: unmarkedCount } = await supabase.rpc('get_unmarked_lesson_count', {
+          const { data: unmarkedCount } = await (supabase as any).rpc('get_unmarked_lesson_count', {
             _org_id: currentOrg.id,
             _teacher_id: teacherId || null,
           });
