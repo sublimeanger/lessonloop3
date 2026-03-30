@@ -329,6 +329,9 @@ export function useUpdateAttendance() {
       // Invalidate calendar lessons so side panel / detail panel get fresh attendance data
       queryClient.invalidateQueries({ queryKey: ['calendar-lessons'] });
       queryClient.invalidateQueries({ queryKey: ['today-lessons'] });
+      // Refresh backlog view so marked lessons disappear
+      queryClient.invalidateQueries({ queryKey: ['unmarked-lessons-backlog'] });
+      queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
       // Attendance changes may trigger make-up credit/waitlist matching (1.1)
       queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist'] });
