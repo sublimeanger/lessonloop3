@@ -426,7 +426,7 @@ export default function PortalSchedule() {
                 </div>
 
                 {/* Desktop: separate buttons */}
-                <div className="hidden sm:flex flex-col gap-1">
+                <div className="hidden sm:flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="gap-1" aria-label="Add to calendar">
