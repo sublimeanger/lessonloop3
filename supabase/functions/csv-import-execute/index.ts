@@ -801,6 +801,9 @@ serve(async (req) => {
       details: [],
     };
 
+    // Collect teacher assignments for batch insert after the main loop
+    const teacherAssignmentsBatch: any[] = [];
+
     // Process each row
     for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
       // Skip rows not marked for import
@@ -1084,19 +1087,13 @@ serve(async (req) => {
           }
         }
 
-        // 4. Create teacher assignment if we have a resolved teacher (use new teacher_id column)
+        // 4. Collect teacher assignment for batch insert after the loop
         if (resolvedTeacherId && student.id) {
-          const { error: assignError } = await supabase
-            .from("student_teacher_assignments")
-            .insert({
-              org_id: orgId,
-              student_id: student.id,
-              teacher_id: resolvedTeacherId,
-            });
-          
-          if (assignError && !assignError.message.includes("duplicate")) {
-            console.log(`Teacher assignment warning for ${studentName}:`, assignError.message);
-          }
+          teacherAssignmentsBatch.push({
+            org_id: orgId,
+            student_id: student.id,
+            teacher_id: resolvedTeacherId,
+          });
         }
 
         // 5. Create recurring lesson if provided
@@ -1198,6 +1195,20 @@ serve(async (req) => {
           status: "error",
           error: error.message,
         });
+      }
+    }
+
+    // Batch insert teacher assignments
+    if (teacherAssignmentsBatch.length > 0) {
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < teacherAssignmentsBatch.length; i += BATCH_SIZE) {
+        const batch = teacherAssignmentsBatch.slice(i, i + BATCH_SIZE);
+        const { error } = await supabase
+          .from("student_teacher_assignments")
+          .upsert(batch, { onConflict: "org_id,student_id,teacher_id", ignoreDuplicates: true });
+        if (error) {
+          console.log("Teacher assignment batch warning:", error.message);
+        }
       }
     }
 
