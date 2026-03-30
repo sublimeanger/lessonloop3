@@ -5166,6 +5166,186 @@ export type Database = {
           },
         ]
       }
+      term_continuation_responses: {
+        Row: {
+          id: string
+          org_id: string
+          run_id: string
+          student_id: string
+          guardian_id: string
+          lesson_summary: Json
+          response: string
+          response_at: string | null
+          response_method: string | null
+          response_token: string
+          withdrawal_reason: string | null
+          withdrawal_notes: string | null
+          is_processed: boolean
+          processed_at: string | null
+          term_adjustment_id: string | null
+          initial_sent_at: string | null
+          reminder_1_sent_at: string | null
+          reminder_2_sent_at: string | null
+          reminder_count: number
+          next_term_fee_minor: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          run_id: string
+          student_id: string
+          guardian_id: string
+          lesson_summary?: Json
+          response?: string
+          response_at?: string | null
+          response_method?: string | null
+          response_token?: string
+          withdrawal_reason?: string | null
+          withdrawal_notes?: string | null
+          is_processed?: boolean
+          processed_at?: string | null
+          term_adjustment_id?: string | null
+          initial_sent_at?: string | null
+          reminder_1_sent_at?: string | null
+          reminder_2_sent_at?: string | null
+          reminder_count?: number
+          next_term_fee_minor?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          run_id?: string
+          student_id?: string
+          guardian_id?: string
+          lesson_summary?: Json
+          response?: string
+          response_at?: string | null
+          response_method?: string | null
+          response_token?: string
+          withdrawal_reason?: string | null
+          withdrawal_notes?: string | null
+          is_processed?: boolean
+          processed_at?: string | null
+          term_adjustment_id?: string | null
+          initial_sent_at?: string | null
+          reminder_1_sent_at?: string | null
+          reminder_2_sent_at?: string | null
+          reminder_count?: number
+          next_term_fee_minor?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_continuation_responses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_responses_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "term_continuation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_responses_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_responses_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      term_continuation_runs: {
+        Row: {
+          id: string
+          org_id: string
+          current_term_id: string | null
+          next_term_id: string | null
+          notice_deadline: string
+          reminder_schedule: number[]
+          assumed_continuing: boolean
+          status: string
+          sent_at: string | null
+          deadline_passed_at: string | null
+          completed_at: string | null
+          summary: Json
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          current_term_id?: string | null
+          next_term_id?: string | null
+          notice_deadline: string
+          reminder_schedule?: number[]
+          assumed_continuing?: boolean
+          status?: string
+          sent_at?: string | null
+          deadline_passed_at?: string | null
+          completed_at?: string | null
+          summary?: Json
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          current_term_id?: string | null
+          next_term_id?: string | null
+          notice_deadline?: string
+          reminder_schedule?: number[]
+          assumed_continuing?: boolean
+          status?: string
+          sent_at?: string | null
+          deadline_passed_at?: string | null
+          completed_at?: string | null
+          summary?: Json
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_continuation_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_runs_current_term_id_fkey"
+            columns: ["current_term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_runs_next_term_id_fkey"
+            columns: ["next_term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_off_blocks: {
         Row: {
           created_at: string

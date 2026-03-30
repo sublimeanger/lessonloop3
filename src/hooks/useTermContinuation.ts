@@ -119,7 +119,7 @@ export function useContinuationRuns() {
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('term_continuation_runs')
         .select(`
           *,
@@ -129,7 +129,11 @@ export function useContinuationRuns() {
         .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Table may not exist yet if migration hasn't been applied — degrade gracefully
+        if (error.code === '42P01') return [];
+        throw error;
+      }
       return (data || []) as ContinuationRun[];
     },
     enabled: !!currentOrg?.id,
@@ -145,7 +149,7 @@ export function useContinuationRun(runId: string | null) {
     queryFn: async () => {
       if (!currentOrg?.id || !runId) return null;
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('term_continuation_runs')
         .select(`
           *,
@@ -156,7 +160,10 @@ export function useContinuationRun(runId: string | null) {
         .eq('org_id', currentOrg.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42P01') return null;
+        throw error;
+      }
       return data as ContinuationRun;
     },
     enabled: !!currentOrg?.id && !!runId,
@@ -203,7 +210,7 @@ export function useContinuationResponses(
     queryFn: async () => {
       if (!currentOrg?.id || !runId) return [];
 
-      let query = (supabase as any)
+      let query = supabase
         .from('term_continuation_responses')
         .select(`
           *,
@@ -219,7 +226,10 @@ export function useContinuationResponses(
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42P01') return [];
+        throw error;
+      }
       return (data || []) as ContinuationResponseEntry[];
     },
     enabled: !!currentOrg?.id && !!runId,
@@ -247,7 +257,7 @@ export function useParentContinuationPending() {
 
       if (!guardian) return [];
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('term_continuation_responses')
         .select(`
           *,
@@ -261,7 +271,10 @@ export function useParentContinuationPending() {
         .eq('org_id', currentOrg.id)
         .eq('response', 'pending');
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42P01') return [];
+        throw error;
+      }
       // Only include responses where the run is actively collecting
       return ((data || []) as any[]).filter(
         (r: any) => r.run && ['sent', 'reminding'].includes(r.run.status)
@@ -466,7 +479,7 @@ export function useRespondToContinuation() {
     }) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('term_continuation_responses')
         .update({
           response: data.response,
@@ -521,7 +534,7 @@ export function useBulkProcessContinuation() {
             ? ['withdrawing']
             : ['continuing', 'assumed_continuing', 'withdrawing'];
 
-      const { data: responses, error: respError } = await (supabase as any)
+      const { data: responses, error: respError } = await supabase
         .from('term_continuation_responses')
         .select('id, student_id, response, lesson_summary, run_id')
         .eq('run_id', data.run_id)
@@ -647,7 +660,7 @@ export function useBulkProcessContinuation() {
               if (confirmResult?.adjustment_id) {
                 anyWithdrawalSucceeded = true;
                 // Store term_adjustment_id
-                await (supabase as any)
+                await supabase
                   .from('term_continuation_responses')
                   .update({ term_adjustment_id: confirmResult.adjustment_id })
                   .eq('id', resp.id);
@@ -664,7 +677,7 @@ export function useBulkProcessContinuation() {
         }
 
         // Mark as processed
-        await (supabase as any)
+        await supabase
           .from('term_continuation_responses')
           .update({
             is_processed: true,
@@ -676,7 +689,7 @@ export function useBulkProcessContinuation() {
       }
 
       // If all responses are now processed, mark run as completed
-      const { data: unprocessed } = await (supabase as any)
+      const { data: unprocessed } = await supabase
         .from('term_continuation_responses')
         .select('id')
         .eq('run_id', data.run_id)
@@ -684,7 +697,7 @@ export function useBulkProcessContinuation() {
         .limit(1);
 
       if (!unprocessed || unprocessed.length === 0) {
-        await (supabase as any)
+        await supabase
           .from('term_continuation_runs')
           .update({
             status: 'completed',
@@ -826,7 +839,7 @@ export function usePreviewBulkProcess() {
             ? ['withdrawing']
             : ['continuing', 'assumed_continuing', 'withdrawing'];
 
-      const { data: responses, error } = await (supabase as any)
+      const { data: responses, error } = await supabase
         .from('term_continuation_responses')
         .select('id, student_id, response, lesson_summary')
         .eq('run_id', data.run_id)
@@ -898,7 +911,7 @@ export function useDeleteContinuationRun() {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
       // Responses are deleted automatically via ON DELETE CASCADE on the run_id FK
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('term_continuation_runs')
         .delete()
         .eq('id', runId)
@@ -939,9 +952,9 @@ export function useUpdateContinuationResponse() {
         response_at: new Date().toISOString(),
       };
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('term_continuation_responses')
-        .update(updateData)
+        .update(updateData as any)
         .eq('id', id)
         .eq('org_id', currentOrg.id);
 
