@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { UnmarkedBacklogView } from '@/components/register/UnmarkedBacklogView';
 
 export default function DailyRegister() {
   usePageMeta('Daily Register | LessonLoop', 'Take attendance for daily lessons');
