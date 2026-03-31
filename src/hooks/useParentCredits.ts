@@ -52,7 +52,7 @@ export function useParentCredits() {
       const studentIds = links.map((l) => l.student_id);
 
       const { data, error } = await supabase
-        .from('available_credits' as any)
+        .from('available_credits')
         .select(`
           id, student_id, credit_value_minor, expires_at,
           redeemed_at, applied_to_invoice_id, notes, issued_at,
