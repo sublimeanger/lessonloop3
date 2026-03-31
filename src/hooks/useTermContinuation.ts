@@ -230,7 +230,7 @@ export function useContinuationResponses(
         if (error.code === '42P01') return [];
         throw error;
       }
-      return (data || []) as ContinuationResponseEntry[];
+      return (data || []) as unknown as ContinuationResponseEntry[];
     },
     enabled: !!currentOrg?.id && !!runId,
     staleTime: STALE_VOLATILE,
