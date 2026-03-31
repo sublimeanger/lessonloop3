@@ -120,7 +120,7 @@ export function useContinuationRuns() {
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('term_continuation_runs')
         .select(`
           *,
@@ -150,7 +150,7 @@ export function useContinuationRun(runId: string | null) {
     queryFn: async () => {
       if (!currentOrg?.id || !runId) return null;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('term_continuation_runs')
         .select(`
           *,
@@ -258,7 +258,7 @@ export function useParentContinuationPending() {
 
       if (!guardian) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('term_continuation_responses')
         .select(`
           *,
@@ -480,7 +480,7 @@ export function useRespondToContinuation() {
     }) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('term_continuation_responses')
         .update({
           response: data.response,
@@ -535,7 +535,7 @@ export function useBulkProcessContinuation() {
             ? ['withdrawing']
             : ['continuing', 'assumed_continuing', 'withdrawing'];
 
-      const { data: responses, error: respError } = await supabase
+      const { data: responses, error: respError } = await (supabase as any)
         .from('term_continuation_responses')
         .select('id, student_id, response, lesson_summary, run_id')
         .eq('run_id', data.run_id)
@@ -661,7 +661,7 @@ export function useBulkProcessContinuation() {
               if (confirmResult?.adjustment_id) {
                 anyWithdrawalSucceeded = true;
                 // Store term_adjustment_id
-                await supabase
+                await (supabase as any)
                   .from('term_continuation_responses')
                   .update({ term_adjustment_id: confirmResult.adjustment_id })
                   .eq('id', resp.id);
@@ -678,7 +678,7 @@ export function useBulkProcessContinuation() {
         }
 
         // Mark as processed
-        await supabase
+        await (supabase as any)
           .from('term_continuation_responses')
           .update({
             is_processed: true,
@@ -690,7 +690,7 @@ export function useBulkProcessContinuation() {
       }
 
       // If all responses are now processed, mark run as completed
-      const { data: unprocessed } = await supabase
+      const { data: unprocessed } = await (supabase as any)
         .from('term_continuation_responses')
         .select('id')
         .eq('run_id', data.run_id)
@@ -698,7 +698,7 @@ export function useBulkProcessContinuation() {
         .limit(1);
 
       if (!unprocessed || unprocessed.length === 0) {
-        await supabase
+        await (supabase as any)
           .from('term_continuation_runs')
           .update({
             status: 'completed',
@@ -840,7 +840,7 @@ export function usePreviewBulkProcess() {
             ? ['withdrawing']
             : ['continuing', 'assumed_continuing', 'withdrawing'];
 
-      const { data: responses, error } = await supabase
+      const { data: responses, error } = await (supabase as any)
         .from('term_continuation_responses')
         .select('id, student_id, response, lesson_summary')
         .eq('run_id', data.run_id)
@@ -912,7 +912,7 @@ export function useDeleteContinuationRun() {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
       // Responses are deleted automatically via ON DELETE CASCADE on the run_id FK
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('term_continuation_runs')
         .delete()
         .eq('id', runId)
@@ -953,7 +953,7 @@ export function useUpdateContinuationResponse() {
         response_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('term_continuation_responses')
         .update(updateData as any)
         .eq('id', id)
