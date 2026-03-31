@@ -783,7 +783,7 @@ export function useUpdateContinuationResponse() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, response }: { id: string; response: ContinuationResponseType }) => {
+    mutationFn: async ({ id, run_id, response }: { id: string; run_id: string; response: ContinuationResponseType }) => {
       if (!currentOrg) throw new Error('No org');
 
       const updateData: Record<string, unknown> = {
@@ -798,6 +798,12 @@ export function useUpdateContinuationResponse() {
         .eq('org_id', currentOrg.id);
 
       if (error) throw error;
+
+      // Recalculate run summary after admin override
+      await (supabase as any).rpc('recalc_continuation_summary', {
+        _run_id: run_id,
+        _org_id: currentOrg.id,
+      });
 
       logAudit(currentOrg.id, user?.id || '', 'update', 'continuation_response', id, {
         after: { response },
