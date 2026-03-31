@@ -79,7 +79,26 @@ serve(async (req) => {
 
     // 5. Delete user data using the service role client
 
-    // 5a. Remove all org memberships for this user
+    // 5a. Nullify guardian.user_id for all guardians linked to this user
+    // This prevents dangling FK references after auth user deletion
+    const { error: guardianError } = await supabaseAdmin
+      .from('guardians')
+      .update({ user_id: null })
+      .eq('user_id', user.id);
+
+    if (guardianError) {
+      console.error('Failed to unlink guardians:', guardianError);
+      // Non-blocking — continue with deletion
+    }
+
+    // 5b. Clean up AI data
+    await supabaseAdmin.from('ai_messages').delete().eq('user_id', user.id);
+    await supabaseAdmin.from('ai_action_proposals').delete().eq('user_id', user.id);
+
+    // 5c. Clean up notification preferences
+    await supabaseAdmin.from('notification_preferences').delete().eq('user_id', user.id);
+
+    // 5d. Remove all org memberships for this user
     const { error: membershipError } = await supabaseAdmin
       .from("org_memberships")
       .delete()
