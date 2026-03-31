@@ -191,5 +191,9 @@ Finance role can access `/settings` — this is **intentional** (`routes.ts:157`
 Calendar: All datetime comparisons against timestamptz columns must use explicit UTC (Z suffix or .toISOString()). Never rely on runtime timezone being UTC.
 Calendar: Calendar view range computation must use org timezone, not browser timezone. Use fromZonedTime/toZonedTime from date-fns-tz.
 Calendar: When editing recurring lessons with "this_and_future", always update the recurrence_rules row to reflect schedule changes.
+Email: All HTML email templates MUST use escapeHtml() from _shared/escape-html.ts for any interpolated value — even admin-controlled data (defence-in-depth).
+Email: From addresses use lessonloop.net domain (never .app or other domains). Billing emails use billing@, notifications use notifications@, invites use noreply@.
+Email: Non-transactional emails (reminders, marketing, make-up offers) must check isNotificationEnabled() before sending. Transactional emails (invoices, receipts, refunds) always send.
+
 - [ ] GDPR disclosure for Anthropic as LoopAssist data sub-processor
 - [ ] Consider redacting student phone numbers from LoopAssist AI tool results
