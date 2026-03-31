@@ -123,7 +123,7 @@ export function BookTrialModal({ open, onOpenChange, lead }: BookTrialModalProps
         .from('leads')
         .update({
           trial_lesson_id: lesson.id,
-          trial_date: startDateTime.toISOString(),
+          trial_date: startAtUtc.toISOString(),
           stage: 'trial_booked',
         })
         .eq('id', lead.id);

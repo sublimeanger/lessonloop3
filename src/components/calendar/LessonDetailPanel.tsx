@@ -302,6 +302,24 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             }
           });
 
+        // Also check for active (sent/overdue) invoices
+        supabase
+          .from('invoice_items')
+          .select('invoice_id, invoices!inner(status, invoice_number)')
+          .in('linked_lesson_id', cancelledLessonIds)
+          .in('invoices.status', ['sent', 'overdue'])
+          .then(({ data: activeItems }) => {
+            if (activeItems && activeItems.length > 0) {
+              const invoiceNumbers = [...new Set(
+                activeItems.map((i: any) => i.invoices?.invoice_number).filter(Boolean)
+              )];
+              toast({
+                title: 'Active invoices affected',
+                description: `Invoice(s) ${invoiceNumbers.join(', ')} include cancelled lesson(s). Consider voiding or issuing credit notes.`,
+              });
+            }
+          });
+
         // 4. Notify parents about the cancellation
         supabase.functions.invoke('send-cancellation-notification', {
           body: {
