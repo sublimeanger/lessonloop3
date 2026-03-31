@@ -88,7 +88,7 @@ async function fetchCalendarLessons(
 
   const [teacherRecords, participantsData, attendanceData, makeupData] = await Promise.all([
     teacherIds.length > 0
-      ? supabase.from('teachers').select('id, display_name, email').in('id', teacherIds as string[])
+      ? supabase.from('teachers').select('id, display_name, email').in('id', teacherIds as string[]).eq('org_id', orgId)
       : Promise.resolve({ data: [] }),
     supabase
       .from('lesson_participants')

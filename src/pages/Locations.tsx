@@ -393,7 +393,7 @@ export default function Locations() {
     setDeleteLocDialog(prev => ({ ...prev, isDeleting: true }));
     const { locationId } = deleteLocDialog;
 
-    const { data: rooms } = await supabase.from('rooms').select('id').eq('location_id', locationId);
+    const { data: rooms } = await supabase.from('rooms').select('id').eq('location_id', locationId).eq('org_id', currentOrg!.id);
     if (rooms && rooms.length > 0) {
       const { error: roomErr } = await supabase.from('rooms').delete().eq('location_id', locationId);
       if (roomErr) {
