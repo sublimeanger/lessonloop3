@@ -621,7 +621,7 @@ export function useBulkProcessContinuation() {
           extendedCount++;
         } else if (resp.response === 'withdrawing') {
           // For withdrawals, we create term adjustments via the edge function
-          const lessons = resp.lesson_summary || [];
+          const lessons = (resp.lesson_summary || []) as unknown as LessonSummaryItem[];
           let anyWithdrawalSucceeded = false;
           for (const lesson of lessons) {
             if (!lesson.recurrence_id) continue;
