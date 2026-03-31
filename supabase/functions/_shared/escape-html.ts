@@ -18,3 +18,15 @@ export function escapeHtml(str: string): string {
 export function escapeAndLineBreak(str: string): string {
   return escapeHtml(str).replace(/\n/g, '<br>');
 }
+
+/**
+ * Sanitise a display name for use in email "from" address.
+ * Strips control characters and limits length.
+ */
+export function sanitiseFromName(name: string): string {
+  return name
+    .replace(/[\r\n\t\x00-\x1f]/g, '')
+    .replace(/["<>]/g, '')
+    .slice(0, 100)
+    .trim() || 'LessonLoop';
+}
