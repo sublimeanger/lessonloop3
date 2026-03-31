@@ -83,58 +83,19 @@ export function useRefund() {
     setError(null);
 
     try {
-      // Fetch payment to calculate max refundable
-      const { data: payment, error: paymentErr } = await supabase
-        .from('payments')
-        .select('amount_minor')
-        .eq('id', paymentId)
-        .single();
+      const refundAmount = amount != null ? Math.round(amount) : undefined;
 
-      if (paymentErr || !payment) throw new Error('Payment not found');
-
-      const { data: existingRefunds } = await (supabase as any)
-        .from('refunds')
-        .select('amount_minor')
-        .eq('payment_id', paymentId)
-        .eq('status', 'succeeded');
-
-      const totalRefunded = (existingRefunds || []).reduce(
-        (sum: number, r: any) => sum + r.amount_minor, 0
-      );
-      const maxRefundable = payment.amount_minor - totalRefunded;
-      const refundAmount = amount != null ? Math.round(amount) : maxRefundable;
-
-      if (refundAmount <= 0) throw new Error('Refund amount must be greater than zero');
-      if (refundAmount > maxRefundable) throw new Error(`Maximum refundable amount is ${maxRefundable}`);
-
-      const userId = (await supabase.auth.getUser()).data.user?.id;
-
-      // Insert refund record directly
-      const { data: refundRecord, error: insertErr } = await (supabase as any)
-        .from('refunds')
-        .insert({
-          payment_id: paymentId,
-          invoice_id: invoiceId,
-          org_id: orgId,
-          amount_minor: refundAmount,
-          reason: reason || null,
-          status: 'succeeded',
-          stripe_refund_id: null,
-          refunded_by: userId,
-        })
-        .select('id')
-        .single();
-
-      if (insertErr) throw new Error('Failed to create refund record');
-
-      // Recalculate invoice paid_minor
-      const { error: recalcErr } = await (supabase as any).rpc('recalculate_invoice_paid', {
+      // Use the record_manual_refund RPC which handles auth, validation,
+      // refund insertion, invoice recalculation, and audit logging atomically.
+      const { data: result, error: rpcErr } = await (supabase as any).rpc('record_manual_refund', {
+        _payment_id: paymentId,
         _invoice_id: invoiceId,
+        _org_id: orgId,
+        _amount_minor: refundAmount ?? null,
+        _reason: reason || null,
       });
 
-      if (recalcErr) {
-        console.error('Failed to recalculate invoice after manual refund:', recalcErr);
-      }
+      if (rpcErr) throw new Error(rpcErr.message || 'Failed to create refund record');
 
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -146,10 +107,10 @@ export function useRefund() {
 
       toast({
         title: 'Refund recorded',
-        description: `Refund of ${formatCurrencyMinor(refundAmount, currencyCode)} has been recorded successfully.`,
+        description: `Refund of ${formatCurrencyMinor(result.amount_minor, currencyCode)} has been recorded successfully.`,
       });
 
-      return { success: true, refundId: refundRecord?.id, amountMinor: refundAmount, status: 'succeeded' };
+      return { success: true, refundId: result.refund_id, amountMinor: result.amount_minor, status: 'succeeded' };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Refund failed';
       setError(message);
