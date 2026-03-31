@@ -581,6 +581,7 @@ export default function Continuation() {
                                   onValueChange={(val) =>
                                     updateResponse.mutate({
                                       id: resp.id,
+                                      run_id: resp.run_id,
                                       response: val as ContinuationResponseType,
                                     })
                                   }

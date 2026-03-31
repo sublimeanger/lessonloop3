@@ -64,6 +64,7 @@ export function ContinuationResponseDetail({
 
     await respondMutation.mutateAsync({
       response_id: response.id,
+      run_id: response.run_id,
       response: overrideResponse as ContinuationResponseType,
       withdrawal_notes: notes || undefined,
     });
