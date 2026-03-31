@@ -1484,12 +1484,6 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
-    // Per-org daily cap (cost control) — now using verified orgId
-    const dailyCapResult = await checkLoopAssistDailyCap(orgId);
-    if (!dailyCapResult.allowed) {
-      return rateLimitResponse(corsHeaders, dailyCapResult);
-    }
-
     // ── Prompt injection defenses (shared: _shared/sanitise-ai-input.ts) ──
     if (Array.isArray(messages)) {
       messages = messages.map((m: { role: string; content: string }) => ({
@@ -1504,6 +1498,12 @@ serve(async (req) => {
       .select("name, org_type, currency_code, subscription_plan, ai_preferences")
       .eq("id", orgId)
       .single();
+
+    // Per-org daily cap (cost control) — plan-based limits
+    const dailyCapResult = await checkLoopAssistDailyCap(orgId, orgData?.subscription_plan);
+    if (!dailyCapResult.allowed) {
+      return rateLimitResponse(corsHeaders, dailyCapResult);
+    }
 
     const currencyCode = orgData?.currency_code || 'GBP';
     const fmtCurrency = (minor: number) =>
@@ -1692,7 +1692,7 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
         headers: anthropicHeaders,
         body: JSON.stringify({
           model: aiModel,
-          max_tokens: 4096,
+          max_tokens: 1024,
           system: fullContext,
           messages: initialMessages,
           tools: TOOLS,
@@ -1817,7 +1817,7 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
               headers: anthropicHeaders,
               body: JSON.stringify({
                 model: aiModel,
-                max_tokens: 4096,
+                max_tokens: 1024,
                 system: fullContext,
                 messages: anthropicMessages,
                 tools: TOOLS,
