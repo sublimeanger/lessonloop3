@@ -150,6 +150,9 @@ These patterns were established during the audit. All future code must follow th
 8. **`voided_at IS NULL`** filter on every make_up_credits query
 9. **Lesson notes** accessed via RPCs only (column-level privacy)
 10. **Bulk operations** use atomic RPCs (not client-side loops)
+11. **Auth/RLS:** All `SECURITY DEFINER` RPCs callable from the frontend MUST have an `is_org_*` auth check as the FIRST statement in the function body. Functions only called by service role (webhooks, cron) should have `REVOKE EXECUTE FROM authenticated`.
+12. **Auth/RLS:** Never reference `organisation_members` — the correct table is `org_memberships`.
+13. **Auth/RLS:** PostgreSQL grants `EXECUTE` to `PUBLIC` by default on new functions. When creating new `SECURITY DEFINER` functions, always add either (a) an internal auth check, or (b) a `REVOKE EXECUTE FROM authenticated` statement.
 ## Key Technical Constraints
 | Constraint | Reason |
 |-----------|--------|
