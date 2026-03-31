@@ -343,6 +343,19 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
     const selectedTeacher = teachers.find(t => t.id === teacherId);
     const teacherUserId = selectedTeacher?.userId || null;
 
+    // Warn about editing completed lessons
+    if (lesson && lesson.status === 'completed' && status === 'completed') {
+      const timeChanged = startTime !== format(parseISO(lesson.start_at), 'HH:mm');
+      const dateChanged = format(selectedDate, 'yyyy-MM-dd') !== format(parseISO(lesson.start_at), 'yyyy-MM-dd');
+      const teacherChanged = teacherId !== lesson.teacher_id;
+      if (timeChanged || dateChanged || teacherChanged) {
+        toast({
+          title: 'Editing completed lesson',
+          description: 'Changing the time, date, or teacher of a completed lesson may affect billing calculations.',
+        });
+      }
+    }
+
     const blockingConflicts = conflictState.conflicts.filter(c => c.severity === 'error');
     if (blockingConflicts.length > 0) {
       toast({

@@ -135,11 +135,12 @@ export async function checkSlotConflicts(
   const availBlocks = availResult.data || [];
 
   // Check for org-wide or location-specific closure
-  const hasClosure = closures.some(c =>
-    c.applies_to_all_locations || !config.locationId || c.location_id === config.locationId || !c.location_id
+  const applicableClosures = closures.filter(c =>
+    c.applies_to_all_locations || !config.locationId || c.location_id === config.locationId
   );
+  const hasClosure = applicableClosures.length > 0;
   const closureReason = hasClosure
-    ? closures[0]?.reason || 'Closure date'
+    ? applicableClosures[0]?.reason || 'Closure date'
     : null;
 
   return slots.map(slot => {

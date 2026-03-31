@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { LessonWithDetails, CalendarFilters } from '@/components/calendar/types';
 import { startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, format, parseISO } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 /**
  * Converts a UTC ISO string to an org-local wall-clock ISO string.
@@ -163,16 +163,20 @@ export function useCalendarData(
   const queryClient = useQueryClient();
 
   const { startIso, endIso } = useMemo(() => {
+    const tz = currentOrg?.timezone || 'Europe/London';
+    // Get the current date in the org's timezone
+    const zonedDate = toZonedTime(currentDate, tz);
     let start: Date, end: Date;
     if (view === 'day' || view === 'week' || view === 'stacked') {
-      start = startOfWeek(currentDate, { weekStartsOn: 1 });
-      end = endOfWeek(currentDate, { weekStartsOn: 1 });
+      // Start/end of week in org timezone, then convert to UTC for query
+      start = fromZonedTime(startOfWeek(zonedDate, { weekStartsOn: 1 }), tz);
+      end = fromZonedTime(endOfWeek(zonedDate, { weekStartsOn: 1 }), tz);
     } else {
-      start = startOfDay(currentDate);
-      end = endOfDay(addDays(currentDate, 14));
+      start = fromZonedTime(startOfDay(zonedDate), tz);
+      end = fromZonedTime(endOfDay(addDays(zonedDate, 14)), tz);
     }
     return { startIso: start.toISOString(), endIso: end.toISOString() };
-  }, [currentDate, view]);
+  }, [currentDate, view, currentOrg?.timezone]);
 
   const queryKey = useMemo(
     () => ['calendar-lessons', currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id, filters.instrument, filters.hide_cancelled],

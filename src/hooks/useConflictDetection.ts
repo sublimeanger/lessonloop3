@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { logger } from '@/lib/logger';
 import { format, getDay, differenceInMinutes, addMinutes, subMinutes, subHours, addHours } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { ConflictResult } from '@/components/calendar/types';
@@ -79,13 +80,13 @@ export function useConflictDetection() {
         Promise.all([
           // Check closure dates
           safeCheck(
-            () => checkClosureDates(currentOrg.id, start_at, location_id, currentOrg.block_scheduling_on_closures),
+            () => checkClosureDates(currentOrg.id, start_at, location_id, currentOrg.block_scheduling_on_closures, currentOrg.timezone || 'Europe/London'),
             'closure dates'
           ),
           // Check teacher availability blocks (uses teacher_id)
           teacher_id
             ? safeCheck(
-                () => checkTeacherAvailability(currentOrg.id, teacher_id, start_at, end_at),
+                () => checkTeacherAvailability(currentOrg.id, teacher_id, start_at, end_at, currentOrg.timezone || 'Europe/London'),
                 'teacher availability'
               )
             : Promise.resolve([]),
@@ -177,10 +178,12 @@ async function checkClosureDates(
   orgId: string,
   startAt: Date,
   locationId: string | null,
-  blockScheduling: boolean
+  blockScheduling: boolean,
+  orgTimezone: string
 ): Promise<ConflictResult[]> {
   const conflicts: ConflictResult[] = [];
-  const lessonDate = format(startAt, 'yyyy-MM-dd');
+  const orgStart = toZonedTime(startAt, orgTimezone);
+  const lessonDate = format(orgStart, 'yyyy-MM-dd');
   
   const { data: closures } = await supabase
     .from('closure_dates')
@@ -214,12 +217,15 @@ async function checkTeacherAvailability(
   orgId: string,
   teacherId: string,
   startAt: Date,
-  endAt: Date
+  endAt: Date,
+  orgTimezone: string
 ): Promise<ConflictResult[]> {
   const conflicts: ConflictResult[] = [];
-  const dayOfWeek = DAY_INDEX_TO_NAME[getDay(startAt)];
-  const lessonStartTime = format(startAt, 'HH:mm:ss');
-  const lessonEndTime = format(endAt, 'HH:mm:ss');
+  const orgStart = toZonedTime(startAt, orgTimezone);
+  const orgEnd = toZonedTime(endAt, orgTimezone);
+  const dayOfWeek = DAY_INDEX_TO_NAME[getDay(orgStart)];
+  const lessonStartTime = format(orgStart, 'HH:mm:ss');
+  const lessonEndTime = format(orgEnd, 'HH:mm:ss');
 
   const { data: availabilityBlocks } = await supabase
     .from('availability_blocks')
