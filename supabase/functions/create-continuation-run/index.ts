@@ -62,6 +62,7 @@ const DAY_NAMES = [
   "Thursday",
   "Friday",
   "Saturday",
+  "Sunday",
 ];
 
 const FRONTEND_URL =
