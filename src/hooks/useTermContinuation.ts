@@ -59,6 +59,7 @@ export interface LessonSummaryItem {
   recurrence_id: string;
   day: string;
   time: string;
+  teacher_id?: string | null;
   teacher_name: string | null;
   instrument: string | null;
   duration_mins: number;
