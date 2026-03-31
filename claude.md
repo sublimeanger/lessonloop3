@@ -186,5 +186,10 @@ Finance role can access `/settings` — this is **intentional** (`routes.ts:157`
 - [ ] Accessibility audit (axe-playwright)
 - [ ] Visual regression baselines
 - [ ] Backup restore drill
+
+## Calendar Rules
+Calendar: All datetime comparisons against timestamptz columns must use explicit UTC (Z suffix or .toISOString()). Never rely on runtime timezone being UTC.
+Calendar: Calendar view range computation must use org timezone, not browser timezone. Use fromZonedTime/toZonedTime from date-fns-tz.
+Calendar: When editing recurring lessons with "this_and_future", always update the recurrence_rules row to reflect schedule changes.
 - [ ] GDPR disclosure for Anthropic as LoopAssist data sub-processor
 - [ ] Consider redacting student phone numbers from LoopAssist AI tool results
