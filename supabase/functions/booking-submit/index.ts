@@ -104,6 +104,38 @@ Deno.serve(async (req) => {
     const orgId = bookingPage.org_id;
     const orgName = (bookingPage as any).org?.name || bookingPage.title || 'the studio';
 
+    // Re-validate slot availability before creating lead
+    const { data: bookingPageFull } = await supabase
+      .from('booking_pages')
+      .select('lesson_duration_mins')
+      .eq('id', bookingPage.id)
+      .single();
+
+    const durationMins = bookingPageFull?.lesson_duration_mins || 60;
+    const slotStartTime = `${slot.date}T${slot.start_time}:00Z`;
+    const slotEndMins = parseInt(slot.start_time.split(':')[0]) * 60 +
+      parseInt(slot.start_time.split(':')[1]) + durationMins;
+    const endHH = String(Math.floor(slotEndMins / 60)).padStart(2, '0');
+    const endMM = String(slotEndMins % 60).padStart(2, '0');
+    const slotEndTime = `${slot.date}T${endHH}:${endMM}:00Z`;
+
+    const { data: conflictingLessons } = await supabase
+      .from('lessons')
+      .select('id')
+      .eq('org_id', orgId)
+      .eq('teacher_id', slot.teacher_id)
+      .neq('status', 'cancelled')
+      .lt('start_at', slotEndTime)
+      .gt('end_at', slotStartTime)
+      .limit(1);
+
+    if (conflictingLessons && conflictingLessons.length > 0) {
+      return new Response(
+        JSON.stringify({ error: 'This slot is no longer available. Please refresh and choose another time.' }),
+        { status: 409, headers: jsonHeaders }
+      );
+    }
+
     // 2. Create lead
     const { data: lead, error: leadError } = await supabase
       .from('leads')

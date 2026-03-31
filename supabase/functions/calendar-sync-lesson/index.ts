@@ -259,17 +259,25 @@ Deno.serve(async (req) => {
       if (lesson.online_meeting_url) descriptionParts.push(`Zoom: ${lesson.online_meeting_url}`);
       if (lesson.notes_shared) descriptionParts.push(lesson.notes_shared);
 
+      // Fetch org timezone for Google Calendar display
+      const { data: org } = await supabase
+        .from('organisations')
+        .select('timezone')
+        .eq('id', lesson.org_id)
+        .single();
+      const tz = org?.timezone || 'UTC';
+
       const event = {
         summary: lesson.title,
         description: descriptionParts.join('\n\n'),
         location: locationParts.join(', ') || undefined,
         start: {
           dateTime: lesson.start_at,
-          timeZone: 'UTC',
+          timeZone: tz,
         },
         end: {
           dateTime: lesson.end_at,
-          timeZone: 'UTC',
+          timeZone: tz,
         },
         status: lesson.status === 'cancelled' ? 'cancelled' : 'confirmed',
       };
