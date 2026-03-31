@@ -134,7 +134,7 @@ export function useContinuationRuns() {
         if (error.code === '42P01') return [];
         throw error;
       }
-      return (data || []) as ContinuationRun[];
+      return (data || []) as unknown as ContinuationRun[];
     },
     enabled: !!currentOrg?.id,
     staleTime: STALE_SEMI_STABLE,
