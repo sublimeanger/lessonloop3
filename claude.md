@@ -90,6 +90,8 @@ Key triggers to be aware of:
 4. **Financial amounts:** always from DB, never from client request body
 5. **Email:** use Resend API with 3x retry and backoff
 6. **config.toml:** functions called from email links or cron MUST have `verify_jwt = false`
+Cron jobs: See docs/CRON_JOBS.md for all 6 required scheduled jobs.
+
 ## Frontend
 ### Key Conventions
 - **Currency:** always `formatCurrencyMinor(amount, currency)` or `currencySymbol(currency)` — never hardcoded £/$
