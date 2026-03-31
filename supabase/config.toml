@@ -107,6 +107,16 @@ verify_jwt = false
 [functions.zoom-sync-lesson]
 verify_jwt = false
 
+# ── Continuation deadline processing ────────────────────────────────
+# CRON REQUIRED: Schedule in Supabase Dashboard → Edge Functions → Schedules
+# Schedule: Daily at 8am UTC (0 8 * * *)
+# Body: { "action": "process_deadline" }
+# Auth: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+# This auto-processes runs whose notice_deadline has passed.
+
+[functions.create-continuation-run]
+verify_jwt = false
+
 # ── Seed/test functions ─────────────────────────────────────────
 # seed-demo-data is intentionally NOT deployed to production.
 # Run it locally only: supabase functions serve seed-demo-data
