@@ -32,39 +32,27 @@ serve(async (req) => {
     (protectedCredits ?? []).map((r: { credit_id: string }) => r.credit_id)
   );
 
-  // Mark credits as expired where expires_at has passed and they haven't been
-  // redeemed, already expired, or voided (CRD-H1 FIX: added voided_at IS NULL)
-  const { data: expired, error } = await supabase
+  // CRD-C1 FIX: Exclude protected credits BEFORE the update to eliminate race condition.
+  // Previously, all credits were expired first, then protected ones were un-expired,
+  // leaving a window where concurrent requests could see them as expired.
+  const protectedIdArray = Array.from(protectedCreditIds);
+
+  // Build the base query
+  let query = supabase
     .from("make_up_credits")
     .update({ expired_at: now, updated_at: now })
     .is("redeemed_at", null)
     .is("expired_at", null)
     .is("voided_at", null)
     .not("expires_at", "is", null)
-    .lt("expires_at", now)
-    .select("id");
+    .lt("expires_at", now);
 
-  // CRD-H2 FIX: Filter out protected credits (those linked to active waitlist entries)
-  // The Supabase client doesn't support NOT IN subqueries, so we filter post-query
-  // and only keep the ones that are NOT protected
-  const toExpire = (expired ?? []).filter(
-    (c: { id: string }) => !protectedCreditIds.has(c.id)
-  );
-  const toProtect = (expired ?? []).filter(
-    (c: { id: string }) => protectedCreditIds.has(c.id)
-  );
-
-  // Undo expiry for protected credits (they were already updated above)
-  if (toProtect.length > 0) {
-    const protectIds = toProtect.map((c: { id: string }) => c.id);
-    await supabase
-      .from("make_up_credits")
-      .update({ expired_at: null, updated_at: now })
-      .in("id", protectIds);
-    console.log(
-      `Credit expiry: ${toProtect.length} credits protected (linked to active waitlist)`
-    );
+  // Exclude protected credits from the update entirely
+  if (protectedIdArray.length > 0) {
+    query = query.not("id", "in", `(${protectedIdArray.join(",")})`);
   }
+
+  const { data: expired, error } = await query.select("id");
 
   if (error) {
     console.error("Credit expiry error:", error.message);
@@ -74,13 +62,16 @@ serve(async (req) => {
     );
   }
 
-  const count = toExpire.length;
+  const count = expired?.length || 0;
   console.log(`Credit expiry: ${count} credits marked as expired`);
+  if (protectedIdArray.length > 0) {
+    console.log(`Credit expiry: ${protectedIdArray.length} credits protected (linked to active waitlist)`);
+  }
 
   // Expire waitlist entries linked to the now-expired credits (1.7)
   let waitlistExpiredCount = 0;
-  if (toExpire.length > 0) {
-    const creditIds = toExpire.map((c: { id: string }) => c.id);
+  if (count > 0) {
+    const creditIds = (expired ?? []).map((c: { id: string }) => c.id);
     const { data: expiredWaitlist, error: wlError } = await supabase
       .from("make_up_waitlist")
       .update({ status: "expired" })
@@ -97,7 +88,7 @@ serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ success: true, expired_count: count, protected_count: toProtect.length, waitlist_expired_count: waitlistExpiredCount }),
+    JSON.stringify({ success: true, expired_count: count, protected_count: protectedIdArray.length, waitlist_expired_count: waitlistExpiredCount }),
     { status: 200, headers: { "Content-Type": "application/json" } }
   );
 });
