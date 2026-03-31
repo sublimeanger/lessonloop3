@@ -56,8 +56,14 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   "default":               { maxRequests: 100, windowMinutes: 1 },
 };
 
-// ── Per-org daily cap (LoopAssist) ──
-const LOOPASSIST_DAILY_ORG_LIMIT = 200;
+// ── Per-org daily cap (LoopAssist) — varies by subscription plan ──
+const LOOPASSIST_DAILY_LIMITS: Record<string, number> = {
+  trial: 10,
+  solo_teacher: 30,
+  academy: 100,
+  agency: 200,
+  custom: 200,
+};
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -132,8 +138,10 @@ export async function checkRateLimit(
  * Call this in addition to the per-user check for AI endpoints.
  */
 export async function checkLoopAssistDailyCap(
-  orgId: string
+  orgId: string,
+  plan?: string
 ): Promise<RateLimitResult> {
+  const limit = LOOPASSIST_DAILY_LIMITS[plan || 'trial'] || 10;
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -155,7 +163,7 @@ export async function checkLoopAssistDailyCap(
   }
 
   const used = count ?? 0;
-  if (used >= LOOPASSIST_DAILY_ORG_LIMIT) {
+  if (used >= limit) {
     // Seconds until midnight UTC
     const now = new Date();
     const midnight = new Date(now);
@@ -166,11 +174,11 @@ export async function checkLoopAssistDailyCap(
       allowed: false,
       remaining: 0,
       retryAfterSeconds,
-      message: `Your organisation has reached its daily limit of ${LOOPASSIST_DAILY_ORG_LIMIT} LoopAssist messages. Resets at midnight UTC.`,
+      message: `Your organisation has reached its daily limit of ${limit} LoopAssist messages. Resets at midnight UTC.`,
     };
   }
 
-  return { allowed: true, remaining: LOOPASSIST_DAILY_ORG_LIMIT - used };
+  return { allowed: true, remaining: limit - used };
 }
 
 /**
