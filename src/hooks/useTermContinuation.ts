@@ -857,7 +857,7 @@ export function usePreviewBulkProcess() {
       for (const resp of responses || []) {
         if (['continuing', 'assumed_continuing'].includes(resp.response)) {
           confirmedCount++;
-          const lessons = resp.lesson_summary || [];
+          const lessons = (resp.lesson_summary || []) as unknown as LessonSummaryItem[];
           for (const lesson of lessons) {
             if (!lesson.recurrence_id) continue;
             // Rough estimate: weeks between term dates
