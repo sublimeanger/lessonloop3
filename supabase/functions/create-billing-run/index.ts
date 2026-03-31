@@ -494,6 +494,20 @@ async function executeBillingLogic(
       ? ["scheduled", "completed"]
       : ["completed"];
 
+  // Convert date boundaries to UTC using org timezone so evening lessons
+  // on the last day of the period are not silently excluded (FIN-H2)
+  const tz = org.timezone || "Europe/London";
+
+  function localToUTC(localDatetime: string, timezone: string): string {
+    const date = new Date(localDatetime);
+    const utcDate = new Date(date.toLocaleString("en-US", { timeZone: timezone }));
+    const offset = utcDate.getTime() - date.getTime();
+    return new Date(date.getTime() - offset).toISOString();
+  }
+
+  const startUTC = localToUTC(`${startDate}T00:00:00`, tz);
+  const endUTC = localToUTC(`${endDate}T23:59:59`, tz);
+
   // Fetch lessons
   const { data: lessons, error: lessonsError } = await client
     .from("lessons")
@@ -515,8 +529,8 @@ async function executeBillingLogic(
     .eq("org_id", orgId)
     .in("status", statusFilter)
     .or('is_open_slot.is.null,is_open_slot.eq.false')
-    .gte("start_at", startDate)
-    .lte("start_at", endDate);
+    .gte("start_at", startUTC)
+    .lte("start_at", endUTC);
 
   if (lessonsError) throw lessonsError;
 
