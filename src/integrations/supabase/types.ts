@@ -5761,6 +5761,10 @@ export type Database = {
         }
         Returns: Json
       }
+      recalc_continuation_summary: {
+        Args: { _run_id: string; _org_id: string }
+        Returns: Json
+      }
       redeem_make_up_credit: {
         Args: { _credit_id: string; _lesson_id: string; _org_id: string }
         Returns: Json
