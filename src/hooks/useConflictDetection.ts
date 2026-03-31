@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { logger } from '@/lib/logger';
 import { format, getDay, differenceInMinutes, addMinutes, subMinutes, subHours, addHours } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { ConflictResult } from '@/components/calendar/types';
