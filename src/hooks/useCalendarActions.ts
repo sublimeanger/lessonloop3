@@ -199,38 +199,30 @@ export function useCalendarActions({
 
       try {
         if (mode === 'this_and_future' && lesson.recurrence_id) {
-          // Fetch all future lessons in the series to apply per-lesson offset
           const offset = newStart.getTime() - new Date(utcStartAt).getTime();
           const newDuration = newEnd.getTime() - newStart.getTime();
+          const originalDuration = new Date(utcEndAt).getTime() - new Date(utcStartAt).getTime();
 
-          const { data: futureLessons, error: fetchError } = await supabase
+          // Update current lesson directly
+          const { error: firstError } = await supabase
             .from('lessons')
-            .select('id, start_at, end_at')
-            .eq('recurrence_id', lesson.recurrence_id)
-            .gte('start_at', utcStartAt);
+            .update({
+              start_at: newStart.toISOString(),
+              end_at: newEnd.toISOString(),
+            })
+            .eq('id', lesson.id);
 
-          if (fetchError) throw fetchError;
+          if (firstError) throw firstError;
 
-          if (futureLessons && futureLessons.length > 0) {
-            // Batch update in chunks of 50
-            const CHUNK_SIZE = 50;
-            for (let i = 0; i < futureLessons.length; i += CHUNK_SIZE) {
-              const chunk = futureLessons.slice(i, i + CHUNK_SIZE);
-              const updates = chunk.map(fl => {
-                const shiftedStart = new Date(new Date(fl.start_at).getTime() + offset);
-                const shiftedEnd = new Date(shiftedStart.getTime() + newDuration);
-                return supabase
-                  .from('lessons')
-                  .update({
-                    start_at: shiftedStart.toISOString(),
-                    end_at: shiftedEnd.toISOString(),
-                  })
-                  .eq('id', fl.id);
-              });
-              const results = await Promise.all(updates);
-              const failed = results.find(r => r.error);
-              if (failed?.error) throw failed.error;
-            }
+          // Shift all future lessons in one RPC call
+          if (offset !== 0 || newDuration !== originalDuration) {
+            await supabase.rpc('shift_recurring_lesson_times', {
+              p_recurrence_id: lesson.recurrence_id,
+              p_after_start_at: utcStartAt,
+              p_offset_ms: offset,
+              p_new_duration_ms: newDuration,
+              p_exclude_lesson_id: lesson.id,
+            });
           }
         } else {
           const updatePayload: Record<string, unknown> = {
