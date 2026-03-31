@@ -592,7 +592,7 @@ export function useBulkProcessContinuation() {
                 .eq('id', lesson.recurrence_id);
 
               // Materialise lesson rows for the extended period
-              const { data: matResult, error: matError } = await (supabase.rpc as any)(
+              const { data: matResult, error: matError } = await (supabase as any).rpc(
                 'materialise_continuation_lessons',
                 {
                   p_org_id: currentOrg.id,
