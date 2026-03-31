@@ -247,7 +247,28 @@ serve(async (req) => {
 
     // Check for existing Stripe customer or create one
     let customerId: string | undefined;
-    if (payerEmail) {
+
+    // Check guardian_payment_preferences for existing Stripe customer
+    if (invoice.payer_guardian_id) {
+      const { data: prefs } = await supabase
+        .from("guardian_payment_preferences")
+        .select("stripe_customer_id")
+        .eq("guardian_id", invoice.payer_guardian_id)
+        .eq("org_id", invoice.org_id)
+        .maybeSingle();
+
+      if (prefs?.stripe_customer_id) {
+        try {
+          await stripe.customers.retrieve(prefs.stripe_customer_id);
+          customerId = prefs.stripe_customer_id;
+        } catch {
+          // Customer deleted in Stripe — fall through to email search
+        }
+      }
+    }
+
+    // Only search by email if we don't have a stored customer
+    if (!customerId && payerEmail) {
       const customers = await stripe.customers.list({ email: payerEmail, limit: 1 });
       if (customers.data.length > 0) {
         customerId = customers.data[0].id;
@@ -263,6 +284,17 @@ serve(async (req) => {
         });
         customerId = customer.id;
       }
+    }
+
+    // Persist customer ID in guardian_payment_preferences
+    if (invoice.payer_guardian_id && customerId) {
+      await supabase
+        .from("guardian_payment_preferences")
+        .upsert({
+          guardian_id: invoice.payer_guardian_id,
+          org_id: invoice.org_id,
+          stripe_customer_id: customerId,
+        }, { onConflict: "guardian_id,org_id" });
     }
 
     // Build success/cancel URLs
