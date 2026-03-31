@@ -151,8 +151,43 @@ serve(async (req) => {
 
         // If card declined, notify the parent
         if (err.code === "card_declined" || err.type === "StripeCardError") {
-          // Could trigger a notification email here in a future iteration
           console.log(`Card declined for installment ${inst.id} — manual payment required`);
+
+          // Notify parent their auto-pay failed
+          try {
+            const resendApiKey = Deno.env.get("RESEND_API_KEY");
+            if (resendApiKey) {
+              const { Resend } = await import("https://esm.sh/resend@2.0.0");
+              const resend = new Resend(resendApiKey);
+
+              // Get guardian email
+              const { data: guardian } = await supabase
+                .from("guardians")
+                .select("email, full_name")
+                .eq("id", invoice.payer_guardian_id)
+                .single();
+
+              const { data: orgData } = await supabase
+                .from("organisations")
+                .select("name")
+                .eq("id", invoice.org_id)
+                .single();
+
+              if (guardian?.email) {
+                await resend.emails.send({
+                  from: `${orgData?.name || 'LessonLoop'} <noreply@mail.lessonloop.net>`,
+                  to: guardian.email,
+                  subject: `Payment failed — ${invoice.invoice_number}`,
+                  html: `<p>Hi ${guardian.full_name},</p>
+                    <p>Your automatic payment of £${(inst.amount_minor / 100).toFixed(2)} for invoice ${invoice.invoice_number} could not be processed. Your card was declined.</p>
+                    <p>Please log in to the parent portal to update your payment method or pay manually.</p>
+                    <p>Thanks,<br>${orgData?.name || 'Your Academy'}</p>`,
+                });
+              }
+            }
+          } catch (notifyErr) {
+            console.error("Failed to send auto-pay failure notification:", notifyErr);
+          }
         }
       }
     }
