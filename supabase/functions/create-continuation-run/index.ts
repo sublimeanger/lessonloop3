@@ -90,6 +90,266 @@ function generateDatesForDay(
   return dates;
 }
 
+interface RecurrenceEntry {
+  lessons: any[];
+  daysOfWeek: number[];
+}
+
+type StudentRecurrenceMap = Map<string, Map<string, RecurrenceEntry>>;
+
+/** Shared helper: fetch reference data, create run, build response rows, insert, and return result. */
+async function buildResponseRows(
+  client: any,
+  orgId: string,
+  studentRecurrences: StudentRecurrenceMap,
+  currentTerm: any,
+  nextTerm: any,
+  userId: string,
+  options: {
+    assumed_continuing: boolean;
+    reminder_schedule: number[];
+    notice_deadline: string;
+    current_term_id: string;
+    next_term_id: string;
+  }
+): Promise<{
+  run: any;
+  responseRows: any[];
+  preview: any[];
+  skippedStudents: { name: string; reason: string }[];
+  summary: any;
+}> {
+  const studentIds = Array.from(studentRecurrences.keys());
+
+  // Fetch students
+  const { data: students } = await client
+    .from("students")
+    .select("id, first_name, last_name, default_rate_card_id, status")
+    .in("id", studentIds)
+    .eq("org_id", orgId)
+    .eq("status", "active")
+    .is("deleted_at", null);
+
+  const activeStudentIds = new Set((students || []).map((s: any) => s.id));
+  const studentMap = new Map<string, any>(
+    (students || []).map((s: any) => [s.id, s])
+  );
+
+  // Fetch guardians (primary payers)
+  const { data: guardianLinks } = await client
+    .from("student_guardians")
+    .select("student_id, guardian_id, is_primary_payer, guardians!inner(id, full_name, email)")
+    .in("student_id", studentIds)
+    .eq("org_id", orgId)
+    .eq("is_primary_payer", true);
+
+  const guardianMap = new Map<string, any>();
+  for (const gl of guardianLinks || []) {
+    guardianMap.set(gl.student_id, {
+      guardian_id: gl.guardian_id,
+      ...(gl.guardians as any),
+    });
+  }
+
+  // Fetch rate cards
+  const { data: rateCards } = await client
+    .from("rate_cards")
+    .select("id, duration_mins, rate_amount, is_default")
+    .eq("org_id", orgId);
+
+  // Fetch teachers
+  const { data: teachers } = await client
+    .from("teachers")
+    .select("id, display_name")
+    .eq("org_id", orgId);
+
+  const teacherMap = new Map<string, any>(
+    (teachers || []).map((t: any) => [t.id, t.display_name])
+  );
+
+  // Fetch student instruments
+  const { data: studentInstruments } = await client
+    .from("student_instruments")
+    .select("student_id, instruments!inner(name)")
+    .in("student_id", studentIds);
+
+  const instrumentMap = new Map<string, string>();
+  for (const si of studentInstruments || []) {
+    const name = (si.instruments as any)?.name;
+    if (name) instrumentMap.set(si.student_id, name);
+  }
+
+  // Fetch closure dates for next term
+  const { data: closureDates } = await client
+    .from("closure_dates")
+    .select("date, location_id, applies_to_all_locations")
+    .eq("org_id", orgId)
+    .gte("date", nextTerm.start_date)
+    .lte("date", nextTerm.end_date);
+
+  const globalClosures = new Set<string>();
+  const locationClosures = new Map<string, Set<string>>();
+  for (const cd of closureDates || []) {
+    if (cd.applies_to_all_locations) {
+      globalClosures.add(cd.date);
+    } else if (cd.location_id) {
+      if (!locationClosures.has(cd.location_id)) {
+        locationClosures.set(cd.location_id, new Set());
+      }
+      locationClosures.get(cd.location_id)!.add(cd.date);
+    }
+  }
+
+  // Insert run
+  const { data: run, error: runError } = await client
+    .from("term_continuation_runs")
+    .insert({
+      org_id: orgId,
+      current_term_id: options.current_term_id,
+      next_term_id: options.next_term_id,
+      notice_deadline: options.notice_deadline,
+      assumed_continuing: options.assumed_continuing,
+      reminder_schedule: options.reminder_schedule,
+      status: "draft",
+      summary: {},
+      created_by: userId,
+    })
+    .select()
+    .single();
+
+  if (runError) throw runError;
+
+  // Build response rows
+  const responseRows: any[] = [];
+  const preview: any[] = [];
+  const skippedStudents: { name: string; reason: string }[] = [];
+
+  for (const [studentId, recMap] of studentRecurrences) {
+    if (!activeStudentIds.has(studentId)) continue;
+
+    const student = studentMap.get(studentId);
+    const guardian = guardianMap.get(studentId);
+
+    if (!student) continue;
+    if (!guardian) {
+      skippedStudents.push({
+        name: `${student.first_name} ${student.last_name}`,
+        reason: "no_guardian",
+      });
+      continue;
+    }
+
+    const lessonSummary: any[] = [];
+    let totalFee = 0;
+
+    for (const [recId, recData] of recMap) {
+      const firstLesson = recData.lessons[0];
+      const durationMs =
+        new Date(firstLesson.end_at).getTime() -
+        new Date(firstLesson.start_at).getTime();
+      const durationMins = Math.round(durationMs / 60000);
+      const timeStr = firstLesson.start_at.substring(11, 16);
+
+      // Get rate
+      let rate: number;
+      if (student.default_rate_card_id && rateCards) {
+        const studentCard = rateCards.find(
+          (rc: any) => rc.id === student.default_rate_card_id
+        );
+        rate = studentCard
+          ? studentCard.rate_amount
+          : findRateForDuration(durationMins, rateCards || []);
+      } else {
+        rate = findRateForDuration(durationMins, rateCards || []);
+      }
+
+      // Count lessons in next term (excluding global and location-specific closures)
+      const { daysOfWeek } = recData;
+      const studentLocationId = firstLesson.location_id;
+      const locationSpecificClosures = studentLocationId
+        ? locationClosures.get(studentLocationId) || new Set<string>()
+        : new Set<string>();
+      let lessonsNextTerm = 0;
+      for (const dow of daysOfWeek) {
+        const dates = generateDatesForDay(
+          nextTerm.start_date,
+          nextTerm.end_date,
+          dow
+        );
+        lessonsNextTerm += dates.filter(
+          (d) => !globalClosures.has(d) && !locationSpecificClosures.has(d)
+        ).length;
+      }
+
+      const fee = rate * lessonsNextTerm;
+      totalFee += fee;
+
+      lessonSummary.push({
+        recurrence_id: recId,
+        day: daysOfWeek.length > 0 ? DAY_NAMES[daysOfWeek[0]] : "Unknown",
+        time: timeStr,
+        teacher_id: firstLesson.teacher_id || null,
+        teacher_name: firstLesson.teacher_id
+          ? teacherMap.get(firstLesson.teacher_id) || null
+          : null,
+        instrument: instrumentMap.get(studentId) || null,
+        duration_mins: durationMins,
+        rate_minor: rate,
+        lessons_next_term: lessonsNextTerm,
+      });
+    }
+
+    responseRows.push({
+      org_id: orgId,
+      run_id: run.id,
+      student_id: studentId,
+      guardian_id: guardian.guardian_id,
+      lesson_summary: lessonSummary,
+      response: "pending",
+      next_term_fee_minor: totalFee,
+    });
+
+    preview.push({
+      student_name: `${student.first_name} ${student.last_name}`,
+      guardian_name: guardian.full_name,
+      guardian_email: guardian.email,
+      lesson_count: lessonSummary.reduce(
+        (sum: number, l: any) => sum + l.lessons_next_term,
+        0
+      ),
+      fee_minor: totalFee,
+      has_email: !!guardian.email,
+    });
+  }
+
+  // Bulk insert responses
+  if (responseRows.length > 0) {
+    const { error: insertError } = await client
+      .from("term_continuation_responses")
+      .insert(responseRows);
+    if (insertError) throw insertError;
+  }
+
+  // Recalc summary
+  const summary = await recalcSummary(client, run.id);
+
+  // Audit log
+  await client.from("audit_log").insert({
+    org_id: orgId,
+    actor_user_id: userId,
+    action: "continuation_run.created",
+    entity_type: "term_continuation_run",
+    entity_id: run.id,
+    after: {
+      current_term: currentTerm.name,
+      next_term: nextTerm.name,
+      total_students: responseRows.length,
+    },
+  });
+
+  return { run, responseRows, preview, skippedStudents, summary };
+}
+
 /** Recalculate and persist run summary from response rows. */
 async function recalcSummary(client: any, runId: string) {
   const { data: responses } = await client
@@ -372,243 +632,40 @@ async function handleCreate(
     );
   }
 
-  const { data: students } = await client
-    .from("students")
-    .select("id, first_name, last_name, default_rate_card_id, status")
-    .in("id", studentIds)
-    .eq("org_id", orgId)
-    .eq("status", "active")
-    .is("deleted_at", null);
-
-  const activeStudentIds = new Set((students || []).map((s: any) => s.id));
-  const studentMap = new Map<string, any>(
-    (students || []).map((s: any) => [s.id, s])
-  );
-
-  // Get guardians (primary payers)
-  const { data: guardianLinks } = await client
-    .from("student_guardians")
-    .select("student_id, guardian_id, is_primary_payer, guardians!inner(id, full_name, email)")
-    .in("student_id", studentIds)
-    .eq("org_id", orgId)
-    .eq("is_primary_payer", true);
-
-  const guardianMap = new Map<string, any>();
-  for (const gl of guardianLinks || []) {
-    guardianMap.set(gl.student_id, {
-      guardian_id: gl.guardian_id,
-      ...(gl.guardians as any),
-    });
-  }
-
-  // Get rate cards
-  const { data: rateCards } = await client
-    .from("rate_cards")
-    .select("id, duration_mins, rate_amount, is_default")
-    .eq("org_id", orgId);
-
-  // Get teachers for display names
-  const { data: teachers } = await client
-    .from("teachers")
-    .select("id, display_name")
-    .eq("org_id", orgId);
-
-  const teacherMap = new Map<string, any>(
-    (teachers || []).map((t: any) => [t.id, t.display_name])
-  );
-
-  // Get student instruments
-  const { data: studentInstruments } = await client
-    .from("student_instruments")
-    .select("student_id, instruments!inner(name)")
-    .in("student_id", studentIds);
-
-  const instrumentMap = new Map<string, string>();
-  for (const si of studentInstruments || []) {
-    const name = (si.instruments as any)?.name;
-    if (name) {
-      instrumentMap.set(si.student_id, name);
-    }
-  }
-
-  // Get closure dates for next term
-  const { data: closureDates } = await client
-    .from("closure_dates")
-    .select("date, location_id, applies_to_all_locations")
-    .eq("org_id", orgId)
-    .gte("date", nextTerm.start_date)
-    .lte("date", nextTerm.end_date);
-
-  const globalClosures = new Set<string>();
-  const locationClosures = new Map<string, Set<string>>();
-  for (const cd of closureDates || []) {
-    if (cd.applies_to_all_locations) {
-      globalClosures.add(cd.date);
-    } else if (cd.location_id) {
-      if (!locationClosures.has(cd.location_id)) {
-        locationClosures.set(cd.location_id, new Set());
-      }
-      locationClosures.get(cd.location_id)!.add(cd.date);
-    }
-  }
-
-  // 4. Insert run
-  const { data: run, error: runError } = await client
-    .from("term_continuation_runs")
-    .insert({
-      org_id: orgId,
-      current_term_id,
-      next_term_id,
-      notice_deadline,
-      assumed_continuing: body.assumed_continuing ?? true,
-      reminder_schedule: body.reminder_schedule ?? [7, 14],
-      status: "draft",
-      summary: {},
-      created_by: userId,
-    })
-    .select()
-    .single();
-
-  if (runError) throw runError;
-
-  // 5. Build response rows
-  const responseRows: any[] = [];
-  const preview: any[] = [];
-  const skippedStudents: { name: string; reason: string }[] = [];
-
+  // Normalize to shared format
+  const normalized: StudentRecurrenceMap = new Map();
   for (const [studentId, recMap] of studentRecurrences) {
-    if (!activeStudentIds.has(studentId)) continue;
-
-    const student = studentMap.get(studentId);
-    const guardian = guardianMap.get(studentId);
-
-    if (!student) continue;
-    if (!guardian) {
-      skippedStudents.push({ name: `${student.first_name} ${student.last_name}`, reason: 'no_guardian' });
-      continue;
-    }
-
-    const lessonSummary: any[] = [];
-    let totalFee = 0;
-
+    const normRecMap = new Map<string, RecurrenceEntry>();
     for (const [recId, recData] of recMap) {
-      const firstLesson = recData.lessons[0];
-      const durationMs =
-        new Date(firstLesson.end_at).getTime() -
-        new Date(firstLesson.start_at).getTime();
-      const durationMins = Math.round(durationMs / 60000);
-      const timeStr = firstLesson.start_at.substring(11, 16);
-
-      // Get rate
-      let rate: number;
-      if (student.default_rate_card_id && rateCards) {
-        const studentCard = rateCards.find(
-          (rc: any) => rc.id === student.default_rate_card_id
-        );
-        rate = studentCard
-          ? studentCard.rate_amount
-          : findRateForDuration(durationMins, rateCards || []);
-      } else {
-        rate = findRateForDuration(durationMins, rateCards || []);
-      }
-
-      // Count lessons in next term
-      const daysOfWeek = recData.recurrence?.days_of_week || [];
-      const studentLocationId = firstLesson.location_id;
-      const locationSpecificClosures = studentLocationId
-        ? locationClosures.get(studentLocationId) || new Set<string>()
-        : new Set<string>();
-      let lessonsNextTerm = 0;
-      for (const dow of daysOfWeek) {
-        const dates = generateDatesForDay(
-          nextTerm.start_date,
-          nextTerm.end_date,
-          dow
-        );
-        lessonsNextTerm += dates.filter(
-          (d) => !globalClosures.has(d) && !locationSpecificClosures.has(d)
-        ).length;
-      }
-
-      const fee = rate * lessonsNextTerm;
-      totalFee += fee;
-
-      lessonSummary.push({
-        recurrence_id: recId,
-        day: daysOfWeek.length > 0 ? DAY_NAMES[daysOfWeek[0]] : "Unknown",
-        time: timeStr,
-        teacher_id: firstLesson.teacher_id || null,
-        teacher_name: firstLesson.teacher_id
-          ? teacherMap.get(firstLesson.teacher_id) || null
-          : null,
-        instrument: instrumentMap.get(studentId) || null,
-        duration_mins: durationMins,
-        rate_minor: rate,
-        lessons_next_term: lessonsNextTerm,
+      normRecMap.set(recId, {
+        lessons: recData.lessons,
+        daysOfWeek: recData.recurrence?.days_of_week || [],
       });
     }
-
-    responseRows.push({
-      org_id: orgId,
-      run_id: run.id,
-      student_id: studentId,
-      guardian_id: guardian.guardian_id,
-      lesson_summary: lessonSummary,
-      response: "pending",
-      next_term_fee_minor: totalFee,
-    });
-
-    preview.push({
-      student_name: `${student.first_name} ${student.last_name}`,
-      guardian_name: guardian.full_name,
-      guardian_email: guardian.email,
-      lesson_count: lessonSummary.reduce(
-        (sum: number, l: any) => sum + l.lessons_next_term,
-        0
-      ),
-      fee_minor: totalFee,
-      has_email: !!guardian.email,
-    });
+    normalized.set(studentId, normRecMap);
   }
 
-  // 6. Bulk insert responses
-  if (responseRows.length > 0) {
-    const { error: insertError } = await client
-      .from("term_continuation_responses")
-      .insert(responseRows);
-    if (insertError) throw insertError;
-  }
-
-  // 7. Update summary
-  const summary = await recalcSummary(client, run.id);
-
-  // 8. Audit log
-  await client.from("audit_log").insert({
-    org_id: orgId,
-    actor_user_id: userId,
-    action: "continuation_run.created",
-    entity_type: "term_continuation_run",
-    entity_id: run.id,
-    after: {
-      current_term: currentTerm.name,
-      next_term: nextTerm.name,
-      total_students: responseRows.length,
-    },
+  const result = await buildResponseRows(client, orgId, normalized, currentTerm, nextTerm, userId, {
+    assumed_continuing: body.assumed_continuing ?? true,
+    reminder_schedule: body.reminder_schedule ?? [7, 14],
+    notice_deadline: notice_deadline!,
+    current_term_id: current_term_id!,
+    next_term_id: next_term_id!,
   });
 
   return jsonResponse(
     {
-      run_id: run.id,
-      total_students: responseRows.length,
-      summary,
-      preview,
-      skipped_students: skippedStudents,
+      run_id: result.run.id,
+      total_students: result.responseRows.length,
+      summary: result.summary,
+      preview: result.preview,
+      skipped_students: result.skippedStudents,
     },
     cors
   );
 }
 
-// Fallback create handler using simpler queries
+// Fallback create handler using simpler queries (no nested join)
 async function handleCreateFallback(
   client: any,
   body: ContinuationRunRequest,
@@ -648,23 +705,23 @@ async function handleCreateFallback(
 
   // Build student → recurrence → lessons map
   const lessonMap = new Map<string, any>(lessons.map((l: any) => [l.id, l]));
-  const studentRecurrences = new Map<string, Map<string, any[]>>();
+  const rawStudentRecurrences = new Map<string, Map<string, any[]>>();
 
   for (const p of participants || []) {
     const lesson = lessonMap.get(p.lesson_id);
     if (!lesson?.recurrence_id) continue;
 
-    if (!studentRecurrences.has(p.student_id)) {
-      studentRecurrences.set(p.student_id, new Map());
+    if (!rawStudentRecurrences.has(p.student_id)) {
+      rawStudentRecurrences.set(p.student_id, new Map());
     }
-    const recMap = studentRecurrences.get(p.student_id)!;
+    const recMap = rawStudentRecurrences.get(p.student_id)!;
     if (!recMap.has(lesson.recurrence_id)) {
       recMap.set(lesson.recurrence_id, []);
     }
     recMap.get(lesson.recurrence_id)!.push(lesson);
   }
 
-  const studentIds = Array.from(studentRecurrences.keys());
+  const studentIds = Array.from(rawStudentRecurrences.keys());
   if (studentIds.length === 0) {
     return jsonResponse(
       { error: "No active students with recurring lessons found" },
@@ -673,42 +730,7 @@ async function handleCreateFallback(
     );
   }
 
-  // Get active students
-  const { data: students } = await client
-    .from("students")
-    .select("id, first_name, last_name, default_rate_card_id")
-    .in("id", studentIds)
-    .eq("org_id", orgId)
-    .eq("status", "active")
-    .is("deleted_at", null);
-
-  const activeStudentIds = new Set((students || []).map((s: any) => s.id));
-  const studentMap = new Map<string, any>((students || []).map((s: any) => [s.id, s]));
-
-  // Get primary payer guardians
-  const { data: guardianLinks } = await client
-    .from("student_guardians")
-    .select("student_id, guardian_id")
-    .in("student_id", studentIds)
-    .eq("org_id", orgId)
-    .eq("is_primary_payer", true);
-
-  const guardianIdMap = new Map<string, string>();
-  for (const gl of guardianLinks || []) {
-    guardianIdMap.set(gl.student_id, gl.guardian_id);
-  }
-
-  const guardianIds = [...new Set(Array.from(guardianIdMap.values()))];
-  const { data: guardians } = await client
-    .from("guardians")
-    .select("id, full_name, email")
-    .in("id", guardianIds);
-
-  const guardianDetailMap = new Map<string, any>(
-    (guardians || []).map((g: any) => [g.id, g])
-  );
-
-  // Get recurrence rules
+  // Get recurrence rules (needed separately since no nested join)
   const recurrenceIds = [
     ...new Set(lessons.map((l: any) => l.recurrence_id).filter(Boolean)),
   ];
@@ -721,203 +743,36 @@ async function handleCreateFallback(
     (recurrences || []).map((r: any) => [r.id, r])
   );
 
-  // Get rate cards
-  const { data: rateCards } = await client
-    .from("rate_cards")
-    .select("id, duration_mins, rate_amount, is_default")
-    .eq("org_id", orgId);
-
-  // Get teachers
-  const { data: teachers } = await client
-    .from("teachers")
-    .select("id, display_name")
-    .eq("org_id", orgId);
-
-  const teacherMap = new Map<string, any>(
-    (teachers || []).map((t: any) => [t.id, t.display_name])
-  );
-
-  // Get instruments
-  const { data: studentInstruments } = await client
-    .from("student_instruments")
-    .select("student_id, instruments!inner(name)")
-    .in("student_id", studentIds);
-
-  const instrumentMap = new Map<string, string>();
-  for (const si of studentInstruments || []) {
-    const name = (si.instruments as any)?.name;
-    if (name) instrumentMap.set(si.student_id, name);
-  }
-
-  // Get closure dates for next term
-  const { data: closureDates } = await client
-    .from("closure_dates")
-    .select("date, location_id, applies_to_all_locations")
-    .eq("org_id", orgId)
-    .gte("date", nextTerm.start_date)
-    .lte("date", nextTerm.end_date);
-
-  const globalClosuresFb = new Set<string>();
-  const locationClosuresFb = new Map<string, Set<string>>();
-  for (const cd of closureDates || []) {
-    if (cd.applies_to_all_locations) {
-      globalClosuresFb.add(cd.date);
-    } else if (cd.location_id) {
-      if (!locationClosuresFb.has(cd.location_id)) {
-        locationClosuresFb.set(cd.location_id, new Set());
-      }
-      locationClosuresFb.get(cd.location_id)!.add(cd.date);
-    }
-  }
-
-  // Insert run
-  const { data: run, error: runError } = await client
-    .from("term_continuation_runs")
-    .insert({
-      org_id: orgId,
-      current_term_id: body.current_term_id,
-      next_term_id: body.next_term_id,
-      notice_deadline: body.notice_deadline,
-      assumed_continuing: body.assumed_continuing ?? true,
-      reminder_schedule: body.reminder_schedule ?? [7, 14],
-      status: "draft",
-      summary: {},
-      created_by: userId,
-    })
-    .select()
-    .single();
-
-  if (runError) throw runError;
-
-  // Build response rows
-  const responseRows: any[] = [];
-  const preview: any[] = [];
-  const skippedStudents: { name: string; reason: string }[] = [];
-
-  for (const [studentId, recMap] of studentRecurrences) {
-    if (!activeStudentIds.has(studentId)) continue;
-
-    const student = studentMap.get(studentId);
-    if (!student) continue;
-
-    const guardianId = guardianIdMap.get(studentId);
-    if (!guardianId) {
-      skippedStudents.push({ name: `${student.first_name} ${student.last_name}`, reason: 'no_guardian' });
-      continue;
-    }
-
-    const guardian = guardianDetailMap.get(guardianId);
-    if (!guardian) {
-      skippedStudents.push({ name: `${student.first_name} ${student.last_name}`, reason: 'no_guardian' });
-      continue;
-    }
-
-    const lessonSummary: any[] = [];
-    let totalFee = 0;
-
+  // Normalize to shared format
+  const normalized: StudentRecurrenceMap = new Map();
+  for (const [studentId, recMap] of rawStudentRecurrences) {
+    const normRecMap = new Map<string, RecurrenceEntry>();
     for (const [recId, recLessons] of recMap) {
-      const firstLesson = recLessons[0];
-      const durationMs =
-        new Date(firstLesson.end_at).getTime() -
-        new Date(firstLesson.start_at).getTime();
-      const durationMins = Math.round(durationMs / 60000);
-      const timeStr = firstLesson.start_at.substring(11, 16);
       const recurrence = recurrenceMap.get(recId);
-      const daysOfWeek = recurrence?.days_of_week || [];
-
-      let rate: number;
-      if (student.default_rate_card_id && rateCards) {
-        const studentCard = rateCards.find(
-          (rc: any) => rc.id === student.default_rate_card_id
-        );
-        rate = studentCard
-          ? studentCard.rate_amount
-          : findRateForDuration(durationMins, rateCards || []);
-      } else {
-        rate = findRateForDuration(durationMins, rateCards || []);
-      }
-
-      const studentLocationIdFb = firstLesson.location_id;
-      const locationSpecificClosuresFb = studentLocationIdFb
-        ? locationClosuresFb.get(studentLocationIdFb) || new Set<string>()
-        : new Set<string>();
-      let lessonsNextTerm = 0;
-      for (const dow of daysOfWeek) {
-        const dates = generateDatesForDay(
-          nextTerm.start_date,
-          nextTerm.end_date,
-          dow
-        );
-        lessonsNextTerm += dates.filter(
-          (d) => !globalClosuresFb.has(d) && !locationSpecificClosuresFb.has(d)
-        ).length;
-      }
-
-      const fee = rate * lessonsNextTerm;
-      totalFee += fee;
-
-      lessonSummary.push({
-        recurrence_id: recId,
-        day: daysOfWeek.length > 0 ? DAY_NAMES[daysOfWeek[0]] : "Unknown",
-        time: timeStr,
-        teacher_id: firstLesson.teacher_id || null,
-        teacher_name: firstLesson.teacher_id
-          ? teacherMap.get(firstLesson.teacher_id) || null
-          : null,
-        instrument: instrumentMap.get(studentId) || null,
-        duration_mins: durationMins,
-        rate_minor: rate,
-        lessons_next_term: lessonsNextTerm,
+      normRecMap.set(recId, {
+        lessons: recLessons,
+        daysOfWeek: recurrence?.days_of_week || [],
       });
     }
-
-    responseRows.push({
-      org_id: orgId,
-      run_id: run.id,
-      student_id: studentId,
-      guardian_id: guardianId,
-      lesson_summary: lessonSummary,
-      response: "pending",
-      next_term_fee_minor: totalFee,
-    });
-
-    preview.push({
-      student_name: `${student.first_name} ${student.last_name}`,
-      guardian_name: guardian.full_name,
-      guardian_email: guardian.email,
-      lesson_count: lessonSummary.reduce(
-        (sum: number, l: any) => sum + l.lessons_next_term,
-        0
-      ),
-      fee_minor: totalFee,
-      has_email: !!guardian.email,
-    });
+    normalized.set(studentId, normRecMap);
   }
 
-  if (responseRows.length > 0) {
-    const { error: insertError } = await client
-      .from("term_continuation_responses")
-      .insert(responseRows);
-    if (insertError) throw insertError;
-  }
-
-  const summary = await recalcSummary(client, run.id);
-
-  await client.from("audit_log").insert({
-    org_id: orgId,
-    actor_user_id: userId,
-    action: "continuation_run.created",
-    entity_type: "term_continuation_run",
-    entity_id: run.id,
-    after: {
-      current_term: currentTerm.name,
-      next_term: nextTerm.name,
-      total_students: responseRows.length,
-    },
+  const result = await buildResponseRows(client, orgId, normalized, currentTerm, nextTerm, userId, {
+    assumed_continuing: body.assumed_continuing ?? true,
+    reminder_schedule: body.reminder_schedule ?? [7, 14],
+    notice_deadline: body.notice_deadline!,
+    current_term_id: body.current_term_id!,
+    next_term_id: body.next_term_id!,
   });
 
   return jsonResponse(
-    { run_id: run.id, total_students: responseRows.length, summary, preview, skipped_students: skippedStudents },
+    {
+      run_id: result.run.id,
+      total_students: result.responseRows.length,
+      summary: result.summary,
+      preview: result.preview,
+      skipped_students: result.skippedStudents,
+    },
     cors
   );
 }
