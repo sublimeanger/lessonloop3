@@ -83,19 +83,16 @@ export function useRefund() {
     setError(null);
 
     try {
-      const refundAmount = amount != null ? Math.round(amount) : undefined;
-
-      // Use the record_manual_refund RPC which handles auth, validation,
-      // refund insertion, invoice recalculation, and audit logging atomically.
-      const { data: result, error: rpcErr } = await (supabase as any).rpc('record_manual_refund', {
+      const { data, error: rpcError } = await (supabase.rpc as any)('record_manual_refund', {
         _payment_id: paymentId,
         _invoice_id: invoiceId,
         _org_id: orgId,
-        _amount_minor: refundAmount ?? null,
+        _amount_minor: amount != null ? Math.round(amount) : null,
         _reason: reason || null,
       });
 
-      if (rpcErr) throw new Error(rpcErr.message || 'Failed to create refund record');
+      if (rpcError) throw new Error(rpcError.message);
+      if (data?.error) throw new Error(data.error);
 
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -107,18 +104,14 @@ export function useRefund() {
 
       toast({
         title: 'Refund recorded',
-        description: `Refund of ${formatCurrencyMinor(result.amount_minor, currencyCode)} has been recorded successfully.`,
+        description: `Refund of ${formatCurrencyMinor(data.amount_minor, currencyCode)} has been recorded.`,
       });
 
-      return { success: true, refundId: result.refund_id, amountMinor: result.amount_minor, status: 'succeeded' };
+      return { success: true, ...data };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Refund failed';
       setError(message);
-      toast({
-        title: 'Refund failed',
-        description: message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Refund failed', description: message, variant: 'destructive' });
       return { success: false, error: message };
     } finally {
       setIsProcessing(false);

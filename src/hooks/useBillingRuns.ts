@@ -127,7 +127,7 @@ export function useDeleteBillingRun() {
       const { data, error } = await (supabase.rpc as any)('delete_billing_run', {
         _billing_run_id: billingRunId,
         _org_id: currentOrg.id,
-      });
+      }) as { data: any; error: any };
 
       if (error) throw error;
       return data as unknown as { deleted_invoices: number; deleted_items: number };
