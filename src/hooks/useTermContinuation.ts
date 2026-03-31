@@ -586,7 +586,7 @@ export function useBulkProcessContinuation() {
             if (rec && rec.end_date && rec.end_date < data.next_term_end_date) {
               const oldEndDate = rec.end_date;
 
-              await (supabase as any)
+              await supabase
                 .from('recurrence_rules')
                 .update({ end_date: data.next_term_end_date })
                 .eq('id', lesson.recurrence_id);
