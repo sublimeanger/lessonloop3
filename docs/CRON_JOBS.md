@@ -48,6 +48,30 @@ Each uses the SUPABASE_SERVICE_ROLE_KEY as Bearer token auth.
 - **Purpose:** Auto-processes continuation runs past their notice deadline. Converts pending responses to no_response or assumed_continuing.
 - **If missing:** Continuation deadlines never auto-process. Runs stay in 'sent' status forever.
 
+### 7. stripe-auto-pay-installment
+- **Schedule:** `0 6 * * *` (6:00 AM UTC daily)
+- **Function:** stripe-auto-pay-installment
+- **Body:** `{}`
+- **Purpose:** Charges default payment method for installments due today or overdue,
+  where the guardian has auto-pay enabled.
+- **If missing:** Auto-pay never fires. Parents opted into auto-pay still
+  have to pay manually. Installments go overdue unnecessarily.
+
+### 8. auto-pay-upcoming-reminder
+- **Schedule:** `0 9 * * *` (9:00 AM UTC daily)
+- **Function:** auto-pay-upcoming-reminder
+- **Body:** `{}`
+- **Purpose:** Sends email reminders to guardians with auto-pay enabled about
+  upcoming installments being charged in the next 3 days.
+- **If missing:** Parents aren't warned before auto-charges.
+
+### 9. installment-upcoming-reminder
+- **Schedule:** `0 9 * * *` (9:00 AM UTC daily)
+- **Function:** installment-upcoming-reminder
+- **Body:** `{}`
+- **Purpose:** Sends email reminders about installments due in the next 7 days.
+- **If missing:** Parents aren't reminded about upcoming installments.
+
 ## Verification
 
 Check Supabase Dashboard → Edge Functions → Invocations to confirm each job runs daily.
