@@ -1,12 +1,11 @@
 // CRON SETUP REQUIRED:
 // This function must be scheduled via Supabase Dashboard → Edge Functions → Schedules
-// Recommended schedule: Daily at 3:00am UTC (0 3 * * *)
+// Recommended schedule: Daily at 02:00 UTC (0 2 * * *)
 //
-// IMPORTANT — cron ordering:
-// credit-expiry-warning should run BEFORE credit-expiry so that warnings
-// are sent while credits are still active. Recommended schedule:
-//   credit-expiry-warning  → 0 2 * * *  (2:00 AM UTC)
-//   credit-expiry          → 0 3 * * *  (3:00 AM UTC)
+// RECOMMENDED CRON ORDER:
+// 1. credit-expiry-warning at 01:55 UTC
+// 2. credit-expiry at 02:00 UTC
+// This ensures warnings are sent before credits are marked expired.
 //
 // Without this cron schedule, expired credits will never be marked as expired.
 
