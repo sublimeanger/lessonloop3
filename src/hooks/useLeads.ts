@@ -356,6 +356,23 @@ export function useCreateLead() {
       if (!currentOrg) throw new Error('No organisation selected');
       if (!user) throw new Error('Not authenticated');
 
+      // Check for duplicate lead by email
+      if (input.contact_email) {
+        const { data: existing } = await db
+          .from('leads')
+          .select('id, stage, contact_name')
+          .eq('org_id', currentOrg.id)
+          .eq('contact_email', input.contact_email)
+          .not('stage', 'in', '(lost,enrolled)')
+          .maybeSingle();
+
+        if (existing) {
+          throw new Error(
+            `A lead already exists for this email (${existing.contact_name}, stage: ${STAGE_LABELS[existing.stage as LeadStage] || existing.stage}). View the existing lead instead.`
+          );
+        }
+      }
+
       // 1. Create the lead
       const { data: lead, error: leadError } = await db
         .from('leads')

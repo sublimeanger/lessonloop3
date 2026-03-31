@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Calendar } from 'lucide-react';
+import { fromZonedTime } from 'date-fns-tz';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTeachers, type Teacher } from '@/hooks/useTeachers';
 import { useOrg } from '@/contexts/OrgContext';
@@ -93,9 +94,11 @@ export function BookTrialModal({ open, onOpenChange, lead }: BookTrialModalProps
 
     setIsSubmitting(true);
     try {
-      // Construct start and end times
-      const startDateTime = new Date(`${date}T${time}`);
-      const endDateTime = new Date(startDateTime.getTime() + parseInt(durationMins, 10) * 60_000);
+      // Construct start and end times in org timezone, then convert to UTC
+      const orgTimezone = currentOrg.timezone || 'Europe/London';
+      const localDateTime = new Date(`${date}T${time}`);
+      const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
+      const endAtUtc = new Date(startAtUtc.getTime() + parseInt(durationMins, 10) * 60_000);
 
       // 1. Create the trial lesson
       const { data: lesson, error: lessonError } = await supabase
@@ -105,8 +108,8 @@ export function BookTrialModal({ open, onOpenChange, lead }: BookTrialModalProps
           created_by: user.id,
           teacher_id: teacherId || null,
           title: `Trial - ${selectedStudent.first_name}`,
-          start_at: startDateTime.toISOString(),
-          end_at: endDateTime.toISOString(),
+          start_at: startAtUtc.toISOString(),
+          end_at: endAtUtc.toISOString(),
           status: 'scheduled',
           lesson_type: 'trial',
         } as any)
@@ -120,7 +123,7 @@ export function BookTrialModal({ open, onOpenChange, lead }: BookTrialModalProps
         .from('leads')
         .update({
           trial_lesson_id: lesson.id,
-          trial_date: startDateTime.toISOString(),
+          trial_date: startAtUtc.toISOString(),
           stage: 'trial_booked',
         })
         .eq('id', lead.id);
