@@ -5440,58 +5440,61 @@ export type Database = {
     Views: {
       available_credits: {
         Row: {
-          applied_to_invoice_id: string | null
-          created_at: string | null
-          created_by: string | null
-          credit_status: string | null
-          credit_value_minor: number | null
-          expired_at: string | null
+          id: string
+          org_id: string
+          student_id: string
+          credit_value_minor: number
           expires_at: string | null
-          id: string | null
-          issued_at: string | null
-          issued_for_lesson_id: string | null
-          notes: string | null
-          org_id: string | null
           redeemed_at: string | null
+          expired_at: string | null
+          voided_at: string | null
+          applied_to_invoice_id: string | null
+          notes: string | null
+          issued_at: string
+          issued_for_lesson_id: string | null
+          created_by: string | null
           redeemed_lesson_id: string | null
-          student_id: string | null
-          updated_at: string | null
+          created_at: string
+          updated_at: string
+          credit_status: string
         }
         Insert: {
-          applied_to_invoice_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          credit_status?: never
-          credit_value_minor?: number | null
-          expired_at?: string | null
+          id?: string
+          org_id: string
+          student_id: string
+          credit_value_minor?: number
           expires_at?: string | null
-          id?: string | null
-          issued_at?: string | null
-          issued_for_lesson_id?: string | null
-          notes?: string | null
-          org_id?: string | null
           redeemed_at?: string | null
+          expired_at?: string | null
+          voided_at?: string | null
+          applied_to_invoice_id?: string | null
+          notes?: string | null
+          issued_at?: string
+          issued_for_lesson_id?: string | null
+          created_by?: string | null
           redeemed_lesson_id?: string | null
-          student_id?: string | null
-          updated_at?: string | null
+          created_at?: string
+          updated_at?: string
+          credit_status?: never
         }
         Update: {
-          applied_to_invoice_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          credit_status?: never
-          credit_value_minor?: number | null
-          expired_at?: string | null
+          id?: string
+          org_id?: string
+          student_id?: string
+          credit_value_minor?: number
           expires_at?: string | null
-          id?: string | null
-          issued_at?: string | null
-          issued_for_lesson_id?: string | null
-          notes?: string | null
-          org_id?: string | null
           redeemed_at?: string | null
+          expired_at?: string | null
+          voided_at?: string | null
+          applied_to_invoice_id?: string | null
+          notes?: string | null
+          issued_at?: string
+          issued_for_lesson_id?: string | null
+          created_by?: string | null
           redeemed_lesson_id?: string | null
-          student_id?: string | null
-          updated_at?: string | null
+          created_at?: string
+          updated_at?: string
+          credit_status?: never
         }
         Relationships: [
           {

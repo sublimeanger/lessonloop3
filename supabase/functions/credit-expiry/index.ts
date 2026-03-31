@@ -1,10 +1,13 @@
 // CRON SETUP REQUIRED:
 // This function must be scheduled via Supabase Dashboard → Edge Functions → Schedules
-// Schedule: Daily at 2am UTC (0 2 * * *)
-// Also schedule credit-expiry-warning with the same frequency (0 2 * * *)
+// Recommended schedule: Daily at 02:00 UTC (0 2 * * *)
 //
-// Without this cron schedule, expired credits will never be marked as expired
-// and the credit-expiry-warning emails will never be sent.
+// RECOMMENDED CRON ORDER:
+// 1. credit-expiry-warning at 01:55 UTC
+// 2. credit-expiry at 02:00 UTC
+// This ensures warnings are sent before credits are marked expired.
+//
+// Without this cron schedule, expired credits will never be marked as expired.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";

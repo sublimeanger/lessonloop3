@@ -18,6 +18,8 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     // --- Auth check ---
+    // Accepts either a user JWT (from frontend) or the service-role key
+    // (from pg_net in offer_makeup_slot RPC — CRD-L1 atomic notification).
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -26,18 +28,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const userId = user.id;
+    const token = authHeader.replace("Bearer ", "");
+    const isServiceRole = token === supabaseServiceKey;
 
     const { waitlist_id } = await req.json();
     if (!waitlist_id) {
@@ -47,35 +39,49 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch waitlist entry via user-scoped client (RLS enforces org access)
-    const { data: waitlistCheck, error: waitlistCheckError } = await userClient
-      .from("make_up_waitlist")
-      .select("id, org_id")
-      .eq("id", waitlist_id)
-      .single();
-
-    if (waitlistCheckError || !waitlistCheck) {
-      return new Response(JSON.stringify({ error: "Waitlist entry not found or no access" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (!isServiceRole) {
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
       });
-    }
 
-    // Verify caller is admin/owner of this org
-    const { data: membership, error: membershipError } = await userClient
-      .from("org_memberships")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("org_id", waitlistCheck.org_id)
-      .in("role", ["owner", "admin"])
-      .eq("status", "active")
-      .maybeSingle();
+      const { data: { user }, error: userError } = await userClient.auth.getUser();
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-    if (membershipError || !membership) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // Fetch waitlist entry via user-scoped client (RLS enforces org access)
+      const { data: waitlistCheck, error: waitlistCheckError } = await userClient
+        .from("make_up_waitlist")
+        .select("id, org_id")
+        .eq("id", waitlist_id)
+        .single();
+
+      if (waitlistCheckError || !waitlistCheck) {
+        return new Response(JSON.stringify({ error: "Waitlist entry not found or no access" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify caller is admin/owner of this org
+      const { data: membership, error: membershipError } = await userClient
+        .from("org_memberships")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("org_id", waitlistCheck.org_id)
+        .in("role", ["owner", "admin"])
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (membershipError || !membership) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // --- Authorised: proceed with service-role client ---

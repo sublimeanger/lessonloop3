@@ -1,7 +1,11 @@
 // CRON SETUP REQUIRED:
 // This function must be scheduled via Supabase Dashboard → Edge Functions → Schedules
-// Schedule: Daily at 2am UTC (0 2 * * *)
-// Also schedule credit-expiry with the same frequency (0 2 * * *)
+// Recommended schedule: Daily at 01:55 UTC (55 1 * * *)
+//
+// RECOMMENDED CRON ORDER:
+// 1. credit-expiry-warning at 01:55 UTC
+// 2. credit-expiry at 02:00 UTC
+// This ensures warnings are sent before credits are marked expired.
 //
 // Sends warning emails to guardians about credits expiring in the next 3 days.
 
@@ -49,7 +53,13 @@ Deno.serve(async (req) => {
     );
   }
 
-  if (!credits?.length) {
+  // If a credit was already expired by a concurrent credit-expiry run,
+  // skip it (defensive — our query already filters expired_at IS NULL)
+  const validCredits = (credits || []).filter(
+    (c: any) => c.expired_at === null
+  );
+
+  if (!validCredits.length) {
     console.log("No credits expiring in the next 3 days");
     return new Response(
       JSON.stringify({ success: true, sent: 0 }),
@@ -59,7 +69,7 @@ Deno.serve(async (req) => {
 
   // Deduplicate: avoid sending multiple warnings for same credit
   // Check message_log for already-sent warnings
-  const creditIds = credits.map((c) => c.id);
+  const creditIds = validCredits.map((c) => c.id);
   const { data: alreadySent } = await supabase
     .from("message_log")
     .select("related_id")
@@ -67,7 +77,7 @@ Deno.serve(async (req) => {
     .in("related_id", creditIds);
 
   const sentSet = new Set((alreadySent ?? []).map((m) => m.related_id));
-  const unsent = credits.filter((c) => !sentSet.has(c.id));
+  const unsent = validCredits.filter((c) => !sentSet.has(c.id));
 
   let sentCount = 0;
 
