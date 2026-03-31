@@ -197,3 +197,9 @@ Email: Non-transactional emails (reminders, marketing, make-up offers) must chec
 
 - [ ] GDPR disclosure for Anthropic as LoopAssist data sub-processor
 - [ ] Consider redacting student phone numbers from LoopAssist AI tool results
+
+## Parent Portal Security Rules
+Parent Portal: All portal queries MUST follow the guardian chain: auth.uid() → guardians.user_id → student_guardians.guardian_id → students. Never query by student_id alone without verifying guardian ownership.
+Parent Portal: notes_private must NEVER appear in any portal query or component. Only notes_shared is visible to parents.
+Parent Portal: Draft invoices must be excluded from parent views (.in('status', ['sent', 'paid', 'overdue', 'void'])).
+Parent Portal: URL parameters (?child=xxx) must be cross-validated against the guardian's linked students before use in queries.
