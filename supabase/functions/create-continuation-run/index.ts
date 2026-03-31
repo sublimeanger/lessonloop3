@@ -319,6 +319,7 @@ async function handleCreate(
         end_at,
         status,
         teacher_id,
+        location_id,
         recurrence_rules!inner (
           id,
           days_of_week
@@ -438,10 +439,16 @@ async function handleCreate(
     .gte("date", nextTerm.start_date)
     .lte("date", nextTerm.end_date);
 
-  const closureDateSet = new Set<string>();
+  const globalClosures = new Set<string>();
+  const locationClosures = new Map<string, Set<string>>();
   for (const cd of closureDates || []) {
     if (cd.applies_to_all_locations) {
-      closureDateSet.add(cd.date);
+      globalClosures.add(cd.date);
+    } else if (cd.location_id) {
+      if (!locationClosures.has(cd.location_id)) {
+        locationClosures.set(cd.location_id, new Set());
+      }
+      locationClosures.get(cd.location_id)!.add(cd.date);
     }
   }
 
@@ -507,6 +514,10 @@ async function handleCreate(
 
       // Count lessons in next term
       const daysOfWeek = recData.recurrence?.days_of_week || [];
+      const studentLocationId = firstLesson.location_id;
+      const locationSpecificClosures = studentLocationId
+        ? locationClosures.get(studentLocationId) || new Set<string>()
+        : new Set<string>();
       let lessonsNextTerm = 0;
       for (const dow of daysOfWeek) {
         const dates = generateDatesForDay(
@@ -515,7 +526,7 @@ async function handleCreate(
           dow
         );
         lessonsNextTerm += dates.filter(
-          (d) => !closureDateSet.has(d)
+          (d) => !globalClosures.has(d) && !locationSpecificClosures.has(d)
         ).length;
       }
 
@@ -611,7 +622,7 @@ async function handleCreateFallback(
   // Get lessons in current term with recurrence
   const { data: lessons } = await client
     .from("lessons")
-    .select("id, recurrence_id, start_at, end_at, teacher_id, status")
+    .select("id, recurrence_id, start_at, end_at, teacher_id, location_id, status")
     .eq("org_id", orgId)
     .not("recurrence_id", "is", null)
     .neq("status", "cancelled")
@@ -741,14 +752,22 @@ async function handleCreateFallback(
   // Get closure dates for next term
   const { data: closureDates } = await client
     .from("closure_dates")
-    .select("date, applies_to_all_locations")
+    .select("date, location_id, applies_to_all_locations")
     .eq("org_id", orgId)
     .gte("date", nextTerm.start_date)
     .lte("date", nextTerm.end_date);
 
-  const closureDateSet = new Set<string>();
+  const globalClosuresFb = new Set<string>();
+  const locationClosuresFb = new Map<string, Set<string>>();
   for (const cd of closureDates || []) {
-    if (cd.applies_to_all_locations) closureDateSet.add(cd.date);
+    if (cd.applies_to_all_locations) {
+      globalClosuresFb.add(cd.date);
+    } else if (cd.location_id) {
+      if (!locationClosuresFb.has(cd.location_id)) {
+        locationClosuresFb.set(cd.location_id, new Set());
+      }
+      locationClosuresFb.get(cd.location_id)!.add(cd.date);
+    }
   }
 
   // Insert run
@@ -818,6 +837,10 @@ async function handleCreateFallback(
         rate = findRateForDuration(durationMins, rateCards || []);
       }
 
+      const studentLocationIdFb = firstLesson.location_id;
+      const locationSpecificClosuresFb = studentLocationIdFb
+        ? locationClosuresFb.get(studentLocationIdFb) || new Set<string>()
+        : new Set<string>();
       let lessonsNextTerm = 0;
       for (const dow of daysOfWeek) {
         const dates = generateDatesForDay(
@@ -825,7 +848,9 @@ async function handleCreateFallback(
           nextTerm.end_date,
           dow
         );
-        lessonsNextTerm += dates.filter((d) => !closureDateSet.has(d)).length;
+        lessonsNextTerm += dates.filter(
+          (d) => !globalClosuresFb.has(d) && !locationSpecificClosuresFb.has(d)
+        ).length;
       }
 
       const fee = rate * lessonsNextTerm;
