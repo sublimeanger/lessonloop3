@@ -107,6 +107,31 @@ serve(async (req) => {
 
         if (updateError) throw updateError;
 
+        // Cascade soft-delete to related data
+        // Anonymise practice data
+        await supabaseAdmin.from('practice_logs')
+          .update({ notes: null })
+          .eq('student_id', entityId);
+
+        // Void unredeemed credits
+        await supabaseAdmin.from('make_up_credits')
+          .update({ voided_at: new Date().toISOString(), notes: 'Voided: GDPR deletion' })
+          .eq('student_id', entityId)
+          .is('redeemed_at', null)
+          .is('voided_at', null);
+
+        // Remove from waitlists
+        await supabaseAdmin.from('make_up_waitlist')
+          .update({ status: 'withdrawn' })
+          .eq('student_id', entityId)
+          .in('status', ['waiting', 'matched', 'offered']);
+
+        // Anonymise message_log entries
+        await supabaseAdmin.from('message_log')
+          .update({ recipient_name: '[deleted]', recipient_email: '[deleted]' })
+          .eq('recipient_id', entityId)
+          .eq('recipient_type', 'student');
+
         result = { success: true, message: `Student ${student.first_name} ${student.last_name} has been deactivated.` };
       } else if (action === "anonymise") {
         // Anonymise personal data
@@ -161,6 +186,12 @@ serve(async (req) => {
           .eq("id", entityId);
 
         if (updateError) throw updateError;
+
+        // Anonymise message_log entries for this guardian
+        await supabaseAdmin.from('message_log')
+          .update({ recipient_name: '[deleted]', recipient_email: '[deleted]' })
+          .eq('recipient_id', entityId)
+          .eq('recipient_type', 'guardian');
 
         result = { success: true, message: `Guardian ${guardian.full_name} has been deactivated.` };
       } else if (action === "anonymise") {
