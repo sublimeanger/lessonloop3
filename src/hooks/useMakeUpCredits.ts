@@ -50,7 +50,7 @@ export interface RedeemCreditInput {
   lesson_id: string;
 }
 
-export function useMakeUpCredits(studentId?: string) {
+export function useMakeUpCredits(studentId?: string, activeOnly = false) {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -58,7 +58,7 @@ export function useMakeUpCredits(studentId?: string) {
 
   // Fetch credits for a student or all credits in org
   const { data: credits, isLoading, refetch } = useQuery({
-    queryKey: ['make_up_credits', currentOrg?.id, studentId],
+    queryKey: ['make_up_credits', currentOrg?.id, studentId, activeOnly],
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
@@ -74,6 +74,15 @@ export function useMakeUpCredits(studentId?: string) {
 
       if (studentId) {
         query = query.eq('student_id', studentId);
+      }
+
+      // Server-side filter for performance — avoids fetching thousands of
+      // redeemed/expired/voided credits for busy academies
+      if (activeOnly) {
+        query = query
+          .is('redeemed_at', null)
+          .is('expired_at', null)
+          .is('voided_at', null);
       }
 
       const { data, error } = await query;
@@ -190,12 +199,17 @@ export function useMakeUpCredits(studentId?: string) {
     },
   });
 
-  // Check if a lesson cancellation qualifies for a credit
-  const checkCreditEligibility = useCallback(async (
+  /**
+   * Client-side estimate of credit eligibility for UI display.
+   * NOTE: The server-side trigger (auto_issue_credit_on_absence) is the
+   * source of truth. This is for showing a helpful hint to the admin
+   * before they mark attendance. It may disagree with the server.
+   */
+  const estimateCreditEligibility = useCallback(async (
     lessonStartAt: string,
     cancellationTime: Date = new Date()
-  ): Promise<{ eligible: boolean; hoursNotice: number; requiredHours: number }> => {
-    if (!currentOrg?.id) return { eligible: false, hoursNotice: 0, requiredHours: 24 };
+  ): Promise<{ eligible: boolean; hoursNotice: number; requiredHours: number; note: string }> => {
+    if (!currentOrg?.id) return { eligible: false, hoursNotice: 0, requiredHours: 24, note: '' };
 
     // Get org's notice hours setting
     const { data: org } = await supabase
@@ -212,6 +226,7 @@ export function useMakeUpCredits(studentId?: string) {
       eligible: hoursNotice >= requiredHours,
       hoursNotice,
       requiredHours,
+      note: 'Final eligibility determined by your make-up policies when attendance is saved.',
     };
   }, [currentOrg?.id]);
 
@@ -224,7 +239,7 @@ export function useMakeUpCredits(studentId?: string) {
     createCredit,
     redeemCredit,
     voidCredit,
-    checkCreditEligibility,
+    checkCreditEligibility: estimateCreditEligibility,
   };
 }
 

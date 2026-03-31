@@ -10,7 +10,7 @@ interface CreditBalanceBadgeProps {
 
 export function CreditBalanceBadge({ studentId, showIcon = true }: CreditBalanceBadgeProps) {
   const { currentOrg } = useOrg();
-  const { totalAvailableValue, isLoading } = useMakeUpCredits(studentId);
+  const { totalAvailableValue, isLoading } = useMakeUpCredits(studentId, true);
 
   if (isLoading || totalAvailableValue === 0) {
     return null;

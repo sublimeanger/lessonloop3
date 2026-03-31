@@ -59,6 +59,7 @@ export interface LessonSummaryItem {
   recurrence_id: string;
   day: string;
   time: string;
+  teacher_id?: string | null;
   teacher_name: string | null;
   instrument: string | null;
   duration_mins: number;
@@ -119,7 +120,7 @@ export function useContinuationRuns() {
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('term_continuation_runs')
         .select(`
           *,
@@ -134,7 +135,7 @@ export function useContinuationRuns() {
         if (error.code === '42P01') return [];
         throw error;
       }
-      return (data || []) as ContinuationRun[];
+      return (data || []) as unknown as ContinuationRun[];
     },
     enabled: !!currentOrg?.id,
     staleTime: STALE_SEMI_STABLE,
@@ -149,7 +150,7 @@ export function useContinuationRun(runId: string | null) {
     queryFn: async () => {
       if (!currentOrg?.id || !runId) return null;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('term_continuation_runs')
         .select(`
           *,
@@ -164,7 +165,7 @@ export function useContinuationRun(runId: string | null) {
         if (error.code === '42P01') return null;
         throw error;
       }
-      return data as ContinuationRun;
+      return data as unknown as ContinuationRun;
     },
     enabled: !!currentOrg?.id && !!runId,
     staleTime: STALE_VOLATILE,
@@ -210,7 +211,7 @@ export function useContinuationResponses(
     queryFn: async () => {
       if (!currentOrg?.id || !runId) return [];
 
-      let query = supabase
+      let query = (supabase as any)
         .from('term_continuation_responses')
         .select(`
           *,
@@ -230,7 +231,7 @@ export function useContinuationResponses(
         if (error.code === '42P01') return [];
         throw error;
       }
-      return (data || []) as ContinuationResponseEntry[];
+      return (data || []) as unknown as ContinuationResponseEntry[];
     },
     enabled: !!currentOrg?.id && !!runId,
     staleTime: STALE_VOLATILE,
@@ -257,7 +258,7 @@ export function useParentContinuationPending() {
 
       if (!guardian) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('term_continuation_responses')
         .select(`
           *,
@@ -479,7 +480,7 @@ export function useRespondToContinuation() {
     }) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('term_continuation_responses')
         .update({
           response: data.response,
@@ -534,7 +535,7 @@ export function useBulkProcessContinuation() {
             ? ['withdrawing']
             : ['continuing', 'assumed_continuing', 'withdrawing'];
 
-      const { data: responses, error: respError } = await supabase
+      const { data: responses, error: respError } = await (supabase as any)
         .from('term_continuation_responses')
         .select('id, student_id, response, lesson_summary, run_id')
         .eq('run_id', data.run_id)
@@ -554,7 +555,7 @@ export function useBulkProcessContinuation() {
       for (const resp of responses || []) {
         if (['continuing', 'assumed_continuing'].includes(resp.response)) {
           // Extend recurrences into next term
-          const lessons = resp.lesson_summary || [];
+          const lessons = (resp.lesson_summary || []) as unknown as LessonSummaryItem[];
           for (const lesson of lessons) {
             if (!lesson.recurrence_id) continue;
 
@@ -577,7 +578,7 @@ export function useBulkProcessContinuation() {
             }
 
             // Check current end_date of recurrence
-            const { data: rec } = await (supabase as any)
+            const { data: rec } = await supabase
               .from('recurrence_rules')
               .select('id, end_date, days_of_week')
               .eq('id', lesson.recurrence_id)
@@ -586,13 +587,13 @@ export function useBulkProcessContinuation() {
             if (rec && rec.end_date && rec.end_date < data.next_term_end_date) {
               const oldEndDate = rec.end_date;
 
-              await (supabase as any)
+              await supabase
                 .from('recurrence_rules')
                 .update({ end_date: data.next_term_end_date })
                 .eq('id', lesson.recurrence_id);
 
               // Materialise lesson rows for the extended period
-              const { data: matResult, error: matError } = await (supabase.rpc as any)(
+              const { data: matResult, error: matError } = await (supabase as any).rpc(
                 'materialise_continuation_lessons',
                 {
                   p_org_id: currentOrg.id,
@@ -621,7 +622,7 @@ export function useBulkProcessContinuation() {
           extendedCount++;
         } else if (resp.response === 'withdrawing') {
           // For withdrawals, we create term adjustments via the edge function
-          const lessons = resp.lesson_summary || [];
+          const lessons = (resp.lesson_summary || []) as unknown as LessonSummaryItem[];
           let anyWithdrawalSucceeded = false;
           for (const lesson of lessons) {
             if (!lesson.recurrence_id) continue;
@@ -660,7 +661,7 @@ export function useBulkProcessContinuation() {
               if (confirmResult?.adjustment_id) {
                 anyWithdrawalSucceeded = true;
                 // Store term_adjustment_id
-                await supabase
+                await (supabase as any)
                   .from('term_continuation_responses')
                   .update({ term_adjustment_id: confirmResult.adjustment_id })
                   .eq('id', resp.id);
@@ -677,7 +678,7 @@ export function useBulkProcessContinuation() {
         }
 
         // Mark as processed
-        await supabase
+        await (supabase as any)
           .from('term_continuation_responses')
           .update({
             is_processed: true,
@@ -689,7 +690,7 @@ export function useBulkProcessContinuation() {
       }
 
       // If all responses are now processed, mark run as completed
-      const { data: unprocessed } = await supabase
+      const { data: unprocessed } = await (supabase as any)
         .from('term_continuation_responses')
         .select('id')
         .eq('run_id', data.run_id)
@@ -697,7 +698,7 @@ export function useBulkProcessContinuation() {
         .limit(1);
 
       if (!unprocessed || unprocessed.length === 0) {
-        await supabase
+        await (supabase as any)
           .from('term_continuation_runs')
           .update({
             status: 'completed',
@@ -839,7 +840,7 @@ export function usePreviewBulkProcess() {
             ? ['withdrawing']
             : ['continuing', 'assumed_continuing', 'withdrawing'];
 
-      const { data: responses, error } = await supabase
+      const { data: responses, error } = await (supabase as any)
         .from('term_continuation_responses')
         .select('id, student_id, response, lesson_summary')
         .eq('run_id', data.run_id)
@@ -857,7 +858,7 @@ export function usePreviewBulkProcess() {
       for (const resp of responses || []) {
         if (['continuing', 'assumed_continuing'].includes(resp.response)) {
           confirmedCount++;
-          const lessons = resp.lesson_summary || [];
+          const lessons = (resp.lesson_summary || []) as unknown as LessonSummaryItem[];
           for (const lesson of lessons) {
             if (!lesson.recurrence_id) continue;
             // Rough estimate: weeks between term dates
@@ -911,7 +912,7 @@ export function useDeleteContinuationRun() {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
       // Responses are deleted automatically via ON DELETE CASCADE on the run_id FK
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('term_continuation_runs')
         .delete()
         .eq('id', runId)
@@ -952,7 +953,7 @@ export function useUpdateContinuationResponse() {
         response_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('term_continuation_responses')
         .update(updateData as any)
         .eq('id', id)
