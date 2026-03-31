@@ -72,6 +72,15 @@ Each uses the SUPABASE_SERVICE_ROLE_KEY as Bearer token auth.
 - **Purpose:** Sends email reminders about installments due in the next 7 days.
 - **If missing:** Parents aren't reminded about upcoming installments.
 
+### 10. enrolment-offer-expiry
+- **Schedule:** `0 3 * * *` (3:00 AM UTC daily)
+- **Function:** enrolment-offer-expiry
+- **Body:** `{}`
+- **Purpose:** Expires enrolment waitlist offers that haven't been
+  responded to within the org's configured expiry period (default 48h).
+- **If missing:** Offers never expire. Families who ignore offers
+  block their waitlist position indefinitely.
+
 ## Verification
 
 Check Supabase Dashboard → Edge Functions → Invocations to confirm each job runs daily.
