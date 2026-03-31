@@ -50,7 +50,7 @@ export interface RedeemCreditInput {
   lesson_id: string;
 }
 
-export function useMakeUpCredits(studentId?: string) {
+export function useMakeUpCredits(studentId?: string, activeOnly = false) {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
