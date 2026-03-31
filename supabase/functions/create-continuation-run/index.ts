@@ -600,6 +600,18 @@ async function handleCreate(
     );
   }
 
+  // Fetch make-up booked lessons so we can exclude make-up participants
+  const { data: makeupBookings } = await client
+    .from("make_up_waitlist")
+    .select("student_id, booked_lesson_id")
+    .eq("org_id", orgId)
+    .eq("status", "booked")
+    .not("booked_lesson_id", "is", null);
+
+  const makeupBookedLessons = new Set(
+    (makeupBookings || []).map((b: any) => `${b.student_id}:${b.booked_lesson_id}`)
+  );
+
   // Group by student → recurrence
   const studentRecurrences = new Map<
     string,
@@ -610,6 +622,9 @@ async function handleCreate(
     const studentId = lp.student_id;
     const lesson = lp.lessons as any;
     if (!lesson?.recurrence_id) continue;
+
+    // Skip make-up participants — they shouldn't be in continuation
+    if (makeupBookedLessons.has(`${studentId}:${lesson.id}`)) continue;
 
     if (!studentRecurrences.has(studentId)) {
       studentRecurrences.set(studentId, new Map());
@@ -703,6 +718,18 @@ async function handleCreateFallback(
     .in("lesson_id", lessonIds)
     .eq("org_id", orgId);
 
+  // Fetch make-up booked lessons so we can exclude make-up participants
+  const { data: makeupBookingsFb } = await client
+    .from("make_up_waitlist")
+    .select("student_id, booked_lesson_id")
+    .eq("org_id", orgId)
+    .eq("status", "booked")
+    .not("booked_lesson_id", "is", null);
+
+  const makeupBookedLessonsFb = new Set(
+    (makeupBookingsFb || []).map((b: any) => `${b.student_id}:${b.booked_lesson_id}`)
+  );
+
   // Build student → recurrence → lessons map
   const lessonMap = new Map<string, any>(lessons.map((l: any) => [l.id, l]));
   const rawStudentRecurrences = new Map<string, Map<string, any[]>>();
@@ -710,6 +737,9 @@ async function handleCreateFallback(
   for (const p of participants || []) {
     const lesson = lessonMap.get(p.lesson_id);
     if (!lesson?.recurrence_id) continue;
+
+    // Skip make-up participants — they shouldn't be in continuation
+    if (makeupBookedLessonsFb.has(`${p.student_id}:${p.lesson_id}`)) continue;
 
     if (!rawStudentRecurrences.has(p.student_id)) {
       rawStudentRecurrences.set(p.student_id, new Map());
