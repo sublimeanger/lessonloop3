@@ -198,6 +198,14 @@ Email: Non-transactional emails (reminders, marketing, make-up offers) must chec
 - [ ] GDPR disclosure for Anthropic as LoopAssist data sub-processor
 - [ ] Consider redacting student phone numbers from LoopAssist AI tool results
 
+## Account & GDPR Deletion Rules
+Account Deletion: The `account-delete` function nullifies `guardians.user_id`, deletes `ai_messages`, `ai_action_proposals`, and `notification_preferences` before removing org memberships and the auth user.
+GDPR Delete: Student soft-delete cascades to `practice_logs` (anonymise notes), `make_up_credits` (void unredeemed), `make_up_waitlist` (withdraw active), and `message_log` (anonymise recipient). Guardian soft-delete anonymises `message_log` entries.
+LoopAssist: Daily org caps are plan-based (trial=10, solo_teacher=30, academy=100, agency/custom=200) via `checkLoopAssistDailyCap(orgId, plan)`.
+LoopAssist: `max_tokens` is set to 1024 — sufficient for the "2-3 short paragraphs" system prompt constraint.
+Cron Auth: All cron/internal edge functions must use `validateCronAuth(req)` from `_shared/cron-auth.ts` — never inline secret comparison.
+Owner Demotion: The `trg_prevent_owner_demotion` trigger on `org_memberships` prevents anyone except the owner themselves from changing their role away from 'owner'.
+
 ## Parent Portal Security Rules
 Parent Portal: All portal queries MUST follow the guardian chain: auth.uid() → guardians.user_id → student_guardians.guardian_id → students. Never query by student_id alone without verifying guardian ownership.
 Parent Portal: notes_private must NEVER appear in any portal query or component. Only notes_shared is visible to parents.
