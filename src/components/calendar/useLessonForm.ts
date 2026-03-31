@@ -454,6 +454,34 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
                   p_exclude_lesson_id: lesson.id,
                 });
               }
+
+              // Update recurrence_rules with new schedule
+              if (lesson.recurrence_id) {
+                const newDayOfWeek = selectedDate.getDay();
+                const currentDayOfWeek = parseISO(lesson.start_at).getDay();
+                const shouldUpdateRule = timeOffsetMs !== 0 || originalDuration !== newDuration || newDayOfWeek !== currentDayOfWeek;
+
+                if (shouldUpdateRule) {
+                  const { data: currentRule } = await supabase
+                    .from('recurrence_rules')
+                    .select('days_of_week')
+                    .eq('id', lesson.recurrence_id)
+                    .single();
+
+                  if (currentRule) {
+                    const updatedDays = (currentRule.days_of_week || []).map((d: number) =>
+                      d === currentDayOfWeek ? newDayOfWeek : d
+                    );
+                    await supabase
+                      .from('recurrence_rules')
+                      .update({
+                        days_of_week: [...new Set(updatedDays)],
+                        start_date: format(selectedDate, 'yyyy-MM-dd'),
+                      })
+                      .eq('id', lesson.recurrence_id);
+                  }
+                }
+              }
             } catch (futureError: any) {
               toast({
                 title: 'Partial update',
