@@ -261,6 +261,21 @@ serve(async (req) => {
       }
     }
 
+    // Expire any pending checkout/PI sessions for this invoice
+    const { data: pendingSessions } = await supabase
+      .from("stripe_checkout_sessions")
+      .select("id")
+      .eq("invoice_id", invoiceId)
+      .eq("status", "pending")
+      .gt("expires_at", new Date().toISOString());
+
+    if (pendingSessions && pendingSessions.length > 0) {
+      await supabase
+        .from("stripe_checkout_sessions")
+        .update({ status: "expired" })
+        .in("id", pendingSessions.map((s: any) => s.id));
+    }
+
     // Build PaymentIntent params
     const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: paymentAmount,
