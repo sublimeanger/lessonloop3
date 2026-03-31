@@ -94,9 +94,11 @@ export function BookTrialModal({ open, onOpenChange, lead }: BookTrialModalProps
 
     setIsSubmitting(true);
     try {
-      // Construct start and end times
-      const startDateTime = new Date(`${date}T${time}`);
-      const endDateTime = new Date(startDateTime.getTime() + parseInt(durationMins, 10) * 60_000);
+      // Construct start and end times in org timezone, then convert to UTC
+      const orgTimezone = currentOrg.timezone || 'Europe/London';
+      const localDateTime = new Date(`${date}T${time}`);
+      const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
+      const endAtUtc = new Date(startAtUtc.getTime() + parseInt(durationMins, 10) * 60_000);
 
       // 1. Create the trial lesson
       const { data: lesson, error: lessonError } = await supabase
