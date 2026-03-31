@@ -352,13 +352,14 @@ export function useParentLessons(options?: { studentId?: string; status?: string
 export function useParentInvoices(options?: { status?: string }) {
   const { user } = useAuth();
   const { currentOrg } = useOrg();
+  const { guardianId } = useGuardianId();
 
   return useQuery({
-    queryKey: ['parent-invoices', user?.id, currentOrg?.id, options],
+    queryKey: ['parent-invoices', user?.id, currentOrg?.id, guardianId, options],
     queryFn: async () => {
-      if (!user || !currentOrg) return [];
+      if (!user || !currentOrg || !guardianId) return [];
 
-      // Parent invoices are fetched via RLS policy
+      // Explicit guardian filter uses index before RLS evaluation
       let query = supabase
         .from('invoices')
         .select(`
@@ -377,6 +378,7 @@ export function useParentInvoices(options?: { status?: string }) {
           invoice_items(description, quantity, unit_price_minor, amount_minor)
         `)
         .eq('org_id', currentOrg.id)
+        .eq('payer_guardian_id', guardianId)
         .in('status', ['sent', 'paid', 'overdue', 'void'])
         .order('due_date', { ascending: false });
 
@@ -389,7 +391,7 @@ export function useParentInvoices(options?: { status?: string }) {
 
       return (data || []) as ParentInvoice[];
     },
-    enabled: !!user && !!currentOrg,
+    enabled: !!user && !!currentOrg && !!guardianId,
   });
 }
 
