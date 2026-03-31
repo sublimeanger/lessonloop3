@@ -203,3 +203,8 @@ Parent Portal: All portal queries MUST follow the guardian chain: auth.uid() →
 Parent Portal: notes_private must NEVER appear in any portal query or component. Only notes_shared is visible to parents.
 Parent Portal: Draft invoices must be excluded from parent views (.in('status', ['sent', 'paid', 'overdue', 'void'])).
 Parent Portal: URL parameters (?child=xxx) must be cross-validated against the guardian's linked students before use in queries.
+
+Leads: Lead conversion MUST use the atomic convert_lead RPC. Never create students/guardians from sequential client-side calls.
+Leads: Always check for duplicate leads by contact_email before creating new leads.
+Waitlist: Enrolment waitlist mutations use atomic RPCs (add_to_enrolment_waitlist, respond_to_enrolment_offer, convert_waitlist_to_student, withdraw_from_enrolment_waitlist). Never bypass these with direct table operations.
+Cancellation: When cancelling lessons, the cascade checks draft invoices. Sent/overdue invoices require manual admin action (void or credit note).

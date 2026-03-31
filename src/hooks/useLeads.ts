@@ -239,8 +239,9 @@ export function useLeads(filters?: LeadFilters) {
       if (filters?.source) {
         query = query.eq('source', filters.source);
       }
-      if (filters?.search) {
-        query = query.ilike('contact_name', `%${filters.search}%`);
+      const trimmedSearch = filters?.search?.trim();
+      if (trimmedSearch) {
+        query = query.ilike('contact_name', `%${trimmedSearch}%`);
       }
 
       const { data, error } = await query;
