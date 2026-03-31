@@ -117,6 +117,15 @@ verify_jwt = false
 [functions.create-continuation-run]
 verify_jwt = false
 
+# ── Auto-pay and reminder functions ─────────────────────────────
+# Called by cron jobs with x-cron-secret header auth.
+
+[functions.stripe-auto-pay-installment]
+verify_jwt = false
+
+[functions.auto-pay-upcoming-reminder]
+verify_jwt = false
+
 # ── Seed/test functions ─────────────────────────────────────────
 # seed-demo-data is intentionally NOT deployed to production.
 # Run it locally only: supabase functions serve seed-demo-data
