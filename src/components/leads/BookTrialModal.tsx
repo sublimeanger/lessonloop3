@@ -108,8 +108,8 @@ export function BookTrialModal({ open, onOpenChange, lead }: BookTrialModalProps
           created_by: user.id,
           teacher_id: teacherId || null,
           title: `Trial - ${selectedStudent.first_name}`,
-          start_at: startDateTime.toISOString(),
-          end_at: endDateTime.toISOString(),
+          start_at: startAtUtc.toISOString(),
+          end_at: endAtUtc.toISOString(),
           status: 'scheduled',
           lesson_type: 'trial',
         } as any)
