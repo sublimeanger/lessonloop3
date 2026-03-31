@@ -474,6 +474,7 @@ export function useRespondToContinuation() {
   return useMutation({
     mutationFn: async (data: {
       response_id: string;
+      run_id: string;
       response: ContinuationResponseType;
       withdrawal_reason?: string;
       withdrawal_notes?: string;
@@ -493,6 +494,12 @@ export function useRespondToContinuation() {
         .eq('org_id', currentOrg.id);
 
       if (error) throw error;
+
+      // Recalculate run summary after admin override
+      await (supabase as any).rpc('recalc_continuation_summary', {
+        _run_id: data.run_id,
+        _org_id: currentOrg.id,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['continuation-responses'] });
