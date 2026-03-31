@@ -138,8 +138,8 @@ Deno.serve(async (req) => {
       .eq('org_id', orgId)
       .in('teacher_id', teacherIds)
       .neq('status', 'cancelled')
-      .gte('start_at', `${date_from}T00:00:00`)
-      .lte('start_at', `${date_to}T23:59:59`);
+      .gte('start_at', `${date_from}T00:00:00Z`)
+      .lte('start_at', `${date_to}T23:59:59Z`);
 
     // 5. Get time-off blocks in date range
     const { data: timeOff } = await supabase
@@ -147,8 +147,8 @@ Deno.serve(async (req) => {
       .select('*')
       .eq('org_id', orgId)
       .in('teacher_id', teacherIds)
-      .lte('start_at', `${date_to}T23:59:59`)
-      .gte('end_at', `${date_from}T00:00:00`);
+      .lte('start_at', `${date_to}T23:59:59Z`)
+      .gte('end_at', `${date_from}T00:00:00Z`);
 
     // 6. Get closure dates
     const { data: closures } = await supabase
@@ -166,8 +166,8 @@ Deno.serve(async (req) => {
     const slots: Slot[] = [];
 
     // Iterate each day in range
-    const startDate = new Date(date_from + 'T00:00:00');
-    const endDate = new Date(date_to + 'T00:00:00');
+    const startDate = new Date(date_from + 'T00:00:00Z');
+    const endDate = new Date(date_to + 'T00:00:00Z');
 
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const dateStr = d.toISOString().slice(0, 10);
@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
             const slotEndTime = minutesToTime(slotEnd);
 
             // Check minimum notice
-            const slotDateTime = new Date(`${dateStr}T${slotStartTime}:00`);
+            const slotDateTime = new Date(`${dateStr}T${slotStartTime}:00Z`);
             if (slotDateTime <= minNoticeTime) continue;
 
             // Check for conflicts with existing lessons
@@ -201,8 +201,8 @@ Deno.serve(async (req) => {
               if (lesson.teacher_id !== teacher.id) return false;
               const lessonStart = new Date(lesson.start_at);
               const lessonEnd = new Date(lesson.end_at);
-              const sStart = new Date(`${dateStr}T${slotStartTime}:00`);
-              const sEnd = new Date(`${dateStr}T${slotEndTime}:00`);
+              const sStart = new Date(`${dateStr}T${slotStartTime}:00Z`);
+              const sEnd = new Date(`${dateStr}T${slotEndTime}:00Z`);
               return sStart < lessonEnd && sEnd > lessonStart;
             });
             if (hasConflict) continue;
@@ -212,8 +212,8 @@ Deno.serve(async (req) => {
               if (to.teacher_id !== teacher.id) return false;
               const toStart = new Date(to.start_at);
               const toEnd = new Date(to.end_at);
-              const sStart = new Date(`${dateStr}T${slotStartTime}:00`);
-              const sEnd = new Date(`${dateStr}T${slotEndTime}:00`);
+              const sStart = new Date(`${dateStr}T${slotStartTime}:00Z`);
+              const sEnd = new Date(`${dateStr}T${slotEndTime}:00Z`);
               return sStart < toEnd && sEnd > toStart;
             });
             if (hasTimeOff) continue;
