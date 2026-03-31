@@ -58,7 +58,7 @@ export function useMakeUpCredits(studentId?: string, activeOnly = false) {
 
   // Fetch credits for a student or all credits in org
   const { data: credits, isLoading, refetch } = useQuery({
-    queryKey: ['make_up_credits', currentOrg?.id, studentId],
+    queryKey: ['make_up_credits', currentOrg?.id, studentId, activeOnly],
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
@@ -74,6 +74,15 @@ export function useMakeUpCredits(studentId?: string, activeOnly = false) {
 
       if (studentId) {
         query = query.eq('student_id', studentId);
+      }
+
+      // Server-side filter for performance — avoids fetching thousands of
+      // redeemed/expired/voided credits for busy academies
+      if (activeOnly) {
+        query = query
+          .is('redeemed_at', null)
+          .is('expired_at', null)
+          .is('voided_at', null);
       }
 
       const { data, error } = await query;
