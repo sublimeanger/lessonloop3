@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { escapeHtml } from "../_shared/escape-html.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -72,7 +73,7 @@ serve(async (req) => {
           subject: "We miss you! Your LessonLoop data is waiting 💙",
           html: `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-              <h1 style="color: #1a1a2e;">Hi ${firstName},</h1>
+              <h1 style="color: #1a1a2e;">Hi ${escapeHtml(firstName)},</h1>
               
               <p style="color: #444; font-size: 16px; line-height: 1.6;">
                 It's been a few days since your LessonLoop trial ended. 
