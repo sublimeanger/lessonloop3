@@ -4,6 +4,20 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
+function formatBookingDate(dateStr: string, timeStr: string): { date: string; time: string } {
+  const d = new Date(`${dateStr}T${timeStr}:00Z`);
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  };
+  return {
+    date: d.toLocaleDateString('en-GB', options),
+    time: d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }),
+  };
+}
+
 interface BookingChild {
   first_name: string;
   last_name?: string;
@@ -194,6 +208,7 @@ Deno.serve(async (req) => {
     if (RESEND_API_KEY) {
       try {
         const childNames = children.map(c => c.first_name).join(', ');
+        const formatted = formatBookingDate(slot.date, slot.start_time);
         await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -210,8 +225,8 @@ Deno.serve(async (req) => {
                 <p>Hi ${contact.name},</p>
                 <p>Thank you for your interest in ${orgName}! We've received your trial lesson request.</p>
                 <div style="background: #f0fdfa; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                  <p style="margin: 4px 0;"><strong>Date:</strong> ${slot.date}</p>
-                  <p style="margin: 4px 0;"><strong>Time:</strong> ${slot.start_time}</p>
+                  <p style="margin: 4px 0;"><strong>Date:</strong> ${formatted.date}</p>
+                  <p style="margin: 4px 0;"><strong>Time:</strong> ${formatted.time}</p>
                   <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${childNames}</p>
                 </div>
                 <p>The team will review your request and confirm the booking shortly. You'll receive another email once confirmed.</p>
@@ -243,6 +258,7 @@ Deno.serve(async (req) => {
 
         if (adminEmails.length > 0) {
           const childSummary = children.map(c => `${c.first_name}${c.instrument ? ` (${c.instrument})` : ''}`).join(', ');
+          const adminFormatted = formatBookingDate(slot.date, slot.start_time);
           await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
@@ -260,7 +276,7 @@ Deno.serve(async (req) => {
                   <div style="background: #f0fdfa; border-radius: 8px; padding: 16px; margin: 16px 0;">
                     <p style="margin: 4px 0;"><strong>Contact:</strong> ${contact.name} (${contact.email}${contact.phone ? `, ${contact.phone}` : ''})</p>
                     <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${childSummary}</p>
-                    <p style="margin: 4px 0;"><strong>Requested:</strong> ${slot.date} at ${slot.start_time}</p>
+                    <p style="margin: 4px 0;"><strong>Requested:</strong> ${adminFormatted.date} at ${adminFormatted.time}</p>
                     ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${notes}</p>` : ''}
                   </div>
                   <p>Head to the <a href="https://app.lessonloop.net/leads" style="color: #0d9488;">Leads</a> page to review and confirm.</p>
