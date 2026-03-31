@@ -239,7 +239,7 @@ export function useMakeUpCredits(studentId?: string, activeOnly = false) {
     createCredit,
     redeemCredit,
     voidCredit,
-    checkCreditEligibility,
+    checkCreditEligibility: estimateCreditEligibility,
   };
 }
 
