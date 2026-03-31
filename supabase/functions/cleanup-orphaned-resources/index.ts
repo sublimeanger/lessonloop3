@@ -10,6 +10,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateCronAuth } from "../_shared/cron-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,13 +24,8 @@ Deno.serve(async (req) => {
   }
 
   // Auth: only allow cron / internal calls
-  const cronSecret = req.headers.get("x-cron-secret");
-  if (cronSecret !== Deno.env.get("INTERNAL_CRON_SECRET")) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  const authError = validateCronAuth(req);
+  if (authError) return authError;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
