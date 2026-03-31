@@ -80,13 +80,13 @@ export function useConflictDetection() {
         Promise.all([
           // Check closure dates
           safeCheck(
-            () => checkClosureDates(currentOrg.id, start_at, location_id, currentOrg.block_scheduling_on_closures),
+            () => checkClosureDates(currentOrg.id, start_at, location_id, currentOrg.block_scheduling_on_closures, currentOrg.timezone || 'Europe/London'),
             'closure dates'
           ),
           // Check teacher availability blocks (uses teacher_id)
           teacher_id
             ? safeCheck(
-                () => checkTeacherAvailability(currentOrg.id, teacher_id, start_at, end_at),
+                () => checkTeacherAvailability(currentOrg.id, teacher_id, start_at, end_at, currentOrg.timezone || 'Europe/London'),
                 'teacher availability'
               )
             : Promise.resolve([]),
