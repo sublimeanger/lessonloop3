@@ -211,7 +211,7 @@ export function useContinuationResponses(
     queryFn: async () => {
       if (!currentOrg?.id || !runId) return [];
 
-      let query = supabase
+      let query = (supabase as any)
         .from('term_continuation_responses')
         .select(`
           *,
