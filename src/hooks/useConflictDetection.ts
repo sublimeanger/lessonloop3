@@ -217,12 +217,15 @@ async function checkTeacherAvailability(
   orgId: string,
   teacherId: string,
   startAt: Date,
-  endAt: Date
+  endAt: Date,
+  orgTimezone: string
 ): Promise<ConflictResult[]> {
   const conflicts: ConflictResult[] = [];
-  const dayOfWeek = DAY_INDEX_TO_NAME[getDay(startAt)];
-  const lessonStartTime = format(startAt, 'HH:mm:ss');
-  const lessonEndTime = format(endAt, 'HH:mm:ss');
+  const orgStart = toZonedTime(startAt, orgTimezone);
+  const orgEnd = toZonedTime(endAt, orgTimezone);
+  const dayOfWeek = DAY_INDEX_TO_NAME[getDay(orgStart)];
+  const lessonStartTime = format(orgStart, 'HH:mm:ss');
+  const lessonEndTime = format(orgEnd, 'HH:mm:ss');
 
   const { data: availabilityBlocks } = await supabase
     .from('availability_blocks')
