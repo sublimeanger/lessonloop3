@@ -370,6 +370,15 @@ Deno.serve(async (req: Request) => {
           }
         }
 
+        // Clean up make-up credits and waitlist entries for the withdrawn student
+        if (anyWithdrawalSucceeded) {
+          await adminClient.rpc('cleanup_withdrawal_credits', {
+            _student_id: resp.student_id,
+            _org_id: body.org_id,
+            _effective_date: body.next_term_start_date,
+          });
+        }
+
         // Only count and mark processed if at least one withdrawal succeeded
         if (!anyWithdrawalSucceeded && lessons.length > 0) continue;
         withdrawnCount++;
