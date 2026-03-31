@@ -85,7 +85,7 @@ export default function Pricing() {
 
       {/* Pricing Cards */}
       <section className="py-8 lg:py-12 bg-background relative">
-        <div className="container mx-auto px-6 lg:px-8 overflow-hidden">
+        <div className="container mx-auto px-6 lg:px-8 overflow-visible">
           <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto">
             {plans.map((plan, index) => (
               <PricingCard 
