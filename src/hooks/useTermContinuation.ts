@@ -577,7 +577,7 @@ export function useBulkProcessContinuation() {
             }
 
             // Check current end_date of recurrence
-            const { data: rec } = await (supabase as any)
+            const { data: rec } = await supabase
               .from('recurrence_rules')
               .select('id, end_date, days_of_week')
               .eq('id', lesson.recurrence_id)
