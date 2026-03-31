@@ -178,10 +178,12 @@ async function checkClosureDates(
   orgId: string,
   startAt: Date,
   locationId: string | null,
-  blockScheduling: boolean
+  blockScheduling: boolean,
+  orgTimezone: string
 ): Promise<ConflictResult[]> {
   const conflicts: ConflictResult[] = [];
-  const lessonDate = format(startAt, 'yyyy-MM-dd');
+  const orgStart = toZonedTime(startAt, orgTimezone);
+  const lessonDate = format(orgStart, 'yyyy-MM-dd');
   
   const { data: closures } = await supabase
     .from('closure_dates')
