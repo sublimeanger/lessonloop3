@@ -525,6 +525,7 @@ async function handleCreate(
         recurrence_id: recId,
         day: daysOfWeek.length > 0 ? DAY_NAMES[daysOfWeek[0]] : "Unknown",
         time: timeStr,
+        teacher_id: firstLesson.teacher_id || null,
         teacher_name: firstLesson.teacher_id
           ? teacherMap.get(firstLesson.teacher_id) || null
           : null,
@@ -833,6 +834,7 @@ async function handleCreateFallback(
         recurrence_id: recId,
         day: daysOfWeek.length > 0 ? DAY_NAMES[daysOfWeek[0]] : "Unknown",
         time: timeStr,
+        teacher_id: firstLesson.teacher_id || null,
         teacher_name: firstLesson.teacher_id
           ? teacherMap.get(firstLesson.teacher_id) || null
           : null,

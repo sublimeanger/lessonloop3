@@ -37,6 +37,7 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   // Term continuation
   "create-continuation-run": { maxRequests: 10, windowMinutes: 60 },
   "continuation-respond":   { maxRequests: 20, windowMinutes: 60 },
+  "bulk-process-continuation": { maxRequests: 5, windowMinutes: 60 },
 
   // Data imports
   "csv-import":            { maxRequests: 10,  windowMinutes: 10 },

@@ -26,6 +26,9 @@ verify_jwt = false
 [functions.batch-invite-guardians]
 verify_jwt = false
 
+[functions.bulk-process-continuation]
+verify_jwt = false
+
 [functions.create-billing-run]
 verify_jwt = false
 
