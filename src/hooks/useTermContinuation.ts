@@ -534,198 +534,29 @@ export function useBulkProcessContinuation() {
         throw new Error('No organisation selected');
       }
 
-      // Get responses to process
-      const responseFilter: ContinuationResponseType[] =
-        data.process_type === 'confirmed'
-          ? ['continuing', 'assumed_continuing']
-          : data.process_type === 'withdrawals'
-            ? ['withdrawing']
-            : ['continuing', 'assumed_continuing', 'withdrawing'];
-
-      const { data: responses, error: respError } = await (supabase as any)
-        .from('term_continuation_responses')
-        .select('id, student_id, response, lesson_summary, run_id')
-        .eq('run_id', data.run_id)
-        .eq('org_id', currentOrg.id)
-        .eq('is_processed', false)
-        .in('response', responseFilter);
-
-      if (respError) throw respError;
-
-      let processedCount = 0;
-      let extendedCount = 0;
-      let withdrawnCount = 0;
-      let lessonsCreated = 0;
-
-      const conflictWarnings: string[] = [];
-
-      for (const resp of responses || []) {
-        if (['continuing', 'assumed_continuing'].includes(resp.response)) {
-          // Extend recurrences into next term
-          const lessons = (resp.lesson_summary || []) as unknown as LessonSummaryItem[];
-          for (const lesson of lessons) {
-            if (!lesson.recurrence_id) continue;
-
-            // FIX 1: Check for teacher conflicts in the new term date range
-            if (lesson.teacher_id) {
-              const { data: conflicts } = await supabase
-                .from('lessons')
-                .select('id, start_at, title')
-                .eq('teacher_id', lesson.teacher_id)
-                .gte('start_at', data.next_term_start_date)
-                .lte('start_at', data.next_term_end_date)
-                .neq('status', 'cancelled');
-
-              if (conflicts && conflicts.length > 0) {
-                const studentName = resp.student_id;
-                conflictWarnings.push(
-                  `${lesson.teacher_name || 'Teacher'} has ${conflicts.length} existing lesson(s) in the new term period`
-                );
-              }
-            }
-
-            // Check current end_date of recurrence
-            const { data: rec } = await supabase
-              .from('recurrence_rules')
-              .select('id, end_date, days_of_week')
-              .eq('id', lesson.recurrence_id)
-              .single();
-
-            if (rec && rec.end_date && rec.end_date < data.next_term_end_date) {
-              const oldEndDate = rec.end_date;
-
-              await supabase
-                .from('recurrence_rules')
-                .update({ end_date: data.next_term_end_date })
-                .eq('id', lesson.recurrence_id);
-
-              // Materialise lesson rows for the extended period
-              const { data: matResult, error: matError } = await (supabase as any).rpc(
-                'materialise_continuation_lessons',
-                {
-                  p_org_id: currentOrg.id,
-                  p_recurrence_id: lesson.recurrence_id,
-                  p_student_id: resp.student_id,
-                  p_from_date: oldEndDate,
-                  p_to_date: data.next_term_end_date,
-                  p_rate_minor: lesson.rate_minor ?? null,
-                  p_created_by: user.id,
-                }
-              );
-
-              if (matError) {
-                console.warn(`[continuation] Lesson materialisation failed for recurrence ${lesson.recurrence_id}:`, matError.message);
-              } else if (matResult) {
-                const result = matResult as Record<string, number>;
-                lessonsCreated += result.created ?? 0;
-                if (result.conflicts > 0) {
-                  conflictWarnings.push(
-                    `${lesson.teacher_name || 'Teacher'}: ${result.conflicts} time-slot conflict(s) skipped`
-                  );
-                }
-              }
-            }
-          }
-          extendedCount++;
-        } else if (resp.response === 'withdrawing') {
-          // For withdrawals, we create term adjustments via the edge function
-          const lessons = (resp.lesson_summary || []) as unknown as LessonSummaryItem[];
-          let anyWithdrawalSucceeded = false;
-          for (const lesson of lessons) {
-            if (!lesson.recurrence_id) continue;
-
-            try {
-              // Preview — use next term start date so cancellation begins from the correct boundary
-              const { data: previewResult, error: prevError } =
-                await supabase.functions.invoke('process-term-adjustment', {
-                  body: {
-                    action: 'preview',
-                    org_id: currentOrg.id,
-                    adjustment_type: 'withdrawal',
-                    student_id: resp.student_id,
-                    recurrence_id: lesson.recurrence_id,
-                    effective_date: data.next_term_start_date,
-                  },
-                });
-
-              if (prevError || previewResult?.error) continue;
-
-              // Confirm
-              const { data: confirmResult } =
-                await supabase.functions.invoke('process-term-adjustment', {
-                  body: {
-                    action: 'confirm',
-                    org_id: currentOrg.id,
-                    adjustment_type: 'withdrawal',
-                    student_id: resp.student_id,
-                    recurrence_id: lesson.recurrence_id,
-                    effective_date: data.next_term_start_date,
-                    adjustment_id: previewResult.adjustment_id,
-                    generate_credit_note: true,
-                  },
-                });
-
-              if (confirmResult?.adjustment_id) {
-                anyWithdrawalSucceeded = true;
-                // Store term_adjustment_id
-                await (supabase as any)
-                  .from('term_continuation_responses')
-                  .update({ term_adjustment_id: confirmResult.adjustment_id })
-                  .eq('id', resp.id);
-              }
-            } catch (withdrawErr: any) {
-              // Log but continue processing other lessons for this response
-              console.warn(`[continuation] Withdrawal failed for recurrence ${lesson.recurrence_id}:`, withdrawErr?.message || withdrawErr);
-            }
-          }
-
-          // Only count and mark processed if at least one withdrawal succeeded
-          if (!anyWithdrawalSucceeded && lessons.length > 0) continue;
-          withdrawnCount++;
-        }
-
-        // Mark as processed
-        await (supabase as any)
-          .from('term_continuation_responses')
-          .update({
-            is_processed: true,
-            processed_at: new Date().toISOString(),
-          })
-          .eq('id', resp.id);
-
-        processedCount++;
-      }
-
-      // If all responses are now processed, mark run as completed
-      const { data: unprocessed } = await (supabase as any)
-        .from('term_continuation_responses')
-        .select('id')
-        .eq('run_id', data.run_id)
-        .eq('is_processed', false)
-        .limit(1);
-
-      if (!unprocessed || unprocessed.length === 0) {
-        await (supabase as any)
-          .from('term_continuation_runs')
-          .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', data.run_id);
-      }
-
-      logAudit(
-        currentOrg.id,
-        user.id,
-        'continuation_run.processed',
-        'term_continuation_run',
-        data.run_id,
+      const { data: result, error } = await supabase.functions.invoke(
+        'bulk-process-continuation',
         {
-          after: { processedCount, extendedCount, withdrawnCount },
+          body: {
+            org_id: currentOrg.id,
+            run_id: data.run_id,
+            next_term_start_date: data.next_term_start_date,
+            next_term_end_date: data.next_term_end_date,
+            process_type: data.process_type,
+          },
         }
       );
 
-      return { processedCount, extendedCount, withdrawnCount, lessonsCreated, conflictWarnings };
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+
+      return result as {
+        processedCount: number;
+        extendedCount: number;
+        withdrawnCount: number;
+        lessonsCreated: number;
+        conflictWarnings: string[];
+      };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['continuation-runs'] });
