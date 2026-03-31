@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { escapeHtml } from "../_shared/escape-html.ts";
+import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
@@ -182,10 +182,14 @@ async function logAndSend(
       method: "POST",
       headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: `${opts.orgName} <billing@lessonloop.net>`,
+        from: `${sanitiseFromName(opts.orgName)} <billing@lessonloop.net>`,
         to: [opts.recipientEmail],
         subject: opts.subject,
         html: opts.html,
+        headers: {
+          'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
       }),
     });
 

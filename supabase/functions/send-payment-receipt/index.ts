@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { escapeHtml } from "../_shared/escape-html.ts";
+import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
@@ -254,7 +254,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: `${org.name} <billing@lessonloop.net>`,
+        from: `${sanitiseFromName(org.name)} <billing@lessonloop.net>`,
         to: [recipientEmail],
         subject,
         html: htmlContent,

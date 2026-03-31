@@ -1,5 +1,6 @@
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const RECIPIENT_EMAIL = 'jamie@searchflare.co.uk';
@@ -155,6 +156,29 @@ Deno.serve(async (req) => {
       from: sanitizedData.email,
       subject: sanitizedData.subject,
     });
+
+    // Log to message_log (best effort — no org context for contact form)
+    try {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+      await supabase.from('message_log').insert({
+        org_id: null,
+        channel: 'email',
+        subject: 'LessonLoop enquiry',
+        body: sanitizedData.message,
+        sender_user_id: null,
+        recipient_type: 'staff',
+        recipient_email: RECIPIENT_EMAIL,
+        recipient_name: null,
+        message_type: 'contact_form',
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+      });
+    } catch (logErr) {
+      console.error('Failed to log contact message:', logErr);
+    }
 
     return new Response(
       JSON.stringify({ success: true, message: 'Message sent successfully' }),

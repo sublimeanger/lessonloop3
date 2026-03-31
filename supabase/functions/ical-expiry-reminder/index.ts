@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
               Authorization: `Bearer ${resendApiKey}`,
             },
             body: JSON.stringify({
-              from: "LessonLoop <notifications@lessonloop.app>",
+              from: "LessonLoop <notifications@lessonloop.net>",
               to: [profile.email],
               subject,
               html,
@@ -108,6 +108,21 @@ Deno.serve(async (req) => {
           if (emailRes.ok) {
             sent++;
             console.log(`Sent iCal expiry reminder to ${profile.email}`);
+
+            // Log to message_log
+            await supabase.from('message_log').insert({
+              org_id: conn.org_id,
+              channel: 'email',
+              subject,
+              body: '',
+              sender_user_id: null,
+              recipient_type: 'staff',
+              recipient_email: profile.email,
+              recipient_name: profile.full_name || '',
+              message_type: 'ical_expiry_reminder',
+              status: 'sent',
+              sent_at: new Date().toISOString(),
+            });
           } else {
             const errText = await emailRes.text();
             console.error(`Failed to send to ${profile.email}:`, errText);

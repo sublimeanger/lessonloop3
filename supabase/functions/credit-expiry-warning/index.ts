@@ -176,10 +176,14 @@ Deno.serve(async (req) => {
               Authorization: `Bearer ${resendApiKey}`,
             },
             body: JSON.stringify({
-              from: "LessonLoop <notifications@lessonloop.app>",
+              from: "LessonLoop <notifications@lessonloop.net>",
               to: [guardian.email],
               subject,
               html,
+              headers: {
+                'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+              },
             }),
           });
 

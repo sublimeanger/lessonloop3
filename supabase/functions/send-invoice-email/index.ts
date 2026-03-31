@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
-import { escapeHtml } from "../_shared/escape-html.ts";
+import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 
 // Get frontend URL from environment or use default
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
@@ -410,7 +410,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // ── INV-H3 FIX: Send with 3x retry and exponential backoff ──
     const { ok: emailSent, result } = await sendWithRetry(resendApiKey, {
-      from: `${orgName} <billing@lessonloop.net>`,
+      from: `${sanitiseFromName(orgName)} <billing@lessonloop.net>`,
       to: [recipientEmail],
       subject,
       html: htmlContent,

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { escapeHtml } from "../_shared/escape-html.ts";
+import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
@@ -201,7 +201,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Authorization": `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: `${org?.name || "LessonLoop"} <billing@lessonloop.net>`,
+        from: `${sanitiseFromName(org?.name || "LessonLoop")} <billing@lessonloop.net>`,
         to: [recipientEmail],
         subject: `Refund of ${formattedAmount} — ${invoiceNumber}`,
         html: emailHtml,
@@ -214,6 +214,22 @@ const handler = async (req: Request): Promise<Response> => {
     } else {
       console.log(`Refund notification sent to ${recipientEmail}`);
     }
+
+    // Log to message_log
+    await supabase.from('message_log').insert({
+      org_id: orgId,
+      channel: 'email',
+      subject: `Refund of ${formattedAmount} — ${invoiceNumber}`,
+      body: '',
+      sender_user_id: null,
+      recipient_type: invoice.payer_guardian_id ? 'guardian' : 'student',
+      recipient_id: invoice.payer_guardian_id || invoice.payer_student_id,
+      recipient_email: recipientEmail,
+      recipient_name: recipientName,
+      message_type: 'refund_notification',
+      status: emailResponse.ok ? 'sent' : 'failed',
+      sent_at: emailResponse.ok ? new Date().toISOString() : null,
+    });
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

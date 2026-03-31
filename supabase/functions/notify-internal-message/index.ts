@@ -165,6 +165,22 @@ const handler = async (req: Request): Promise<Response> => {
       errorMessage = "Email service not configured";
     }
 
+    // Log to message_log
+    await supabase.from('message_log').insert({
+      org_id: data.org_id,
+      channel: 'email',
+      subject: `[Internal] ${data.subject}`,
+      body: data.body,
+      sender_user_id: user.id,
+      recipient_type: 'staff',
+      recipient_email: recipientProfile.email,
+      recipient_name: recipientProfile.full_name || '',
+      message_type: 'internal_message',
+      status: emailSent ? 'sent' : 'failed',
+      sent_at: emailSent ? new Date().toISOString() : null,
+      error_message: errorMessage,
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
