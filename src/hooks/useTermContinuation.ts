@@ -164,7 +164,7 @@ export function useContinuationRun(runId: string | null) {
         if (error.code === '42P01') return null;
         throw error;
       }
-      return data as ContinuationRun;
+      return data as unknown as ContinuationRun;
     },
     enabled: !!currentOrg?.id && !!runId,
     staleTime: STALE_VOLATILE,
