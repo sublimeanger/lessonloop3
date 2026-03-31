@@ -1,6 +1,7 @@
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { escapeHtml, sanitiseFromName } from '../_shared/escape-html.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
@@ -216,25 +217,39 @@ Deno.serve(async (req) => {
             Authorization: `Bearer ${RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: 'LessonLoop <noreply@lessonloop.net>',
+            from: `${sanitiseFromName(orgName)} <noreply@lessonloop.net>`,
             to: [contact.email],
             subject: `Trial lesson request received - ${orgName}`,
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #0d9488;">Trial Lesson Request Received</h2>
-                <p>Hi ${contact.name},</p>
-                <p>Thank you for your interest in ${orgName}! We've received your trial lesson request.</p>
+                <p>Hi ${escapeHtml(contact.name)},</p>
+                <p>Thank you for your interest in ${escapeHtml(orgName)}! We've received your trial lesson request.</p>
                 <div style="background: #f0fdfa; border-radius: 8px; padding: 16px; margin: 16px 0;">
                   <p style="margin: 4px 0;"><strong>Date:</strong> ${formatted.date}</p>
                   <p style="margin: 4px 0;"><strong>Time:</strong> ${formatted.time}</p>
-                  <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${childNames}</p>
+                  <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${escapeHtml(childNames)}</p>
                 </div>
                 <p>The team will review your request and confirm the booking shortly. You'll receive another email once confirmed.</p>
-                ${bookingPage.confirmation_message ? `<p style="color: #666; font-style: italic;">${bookingPage.confirmation_message}</p>` : ''}
-                <p style="color: #999; font-size: 12px; margin-top: 32px;">This email was sent by LessonLoop on behalf of ${orgName}.</p>
+                ${bookingPage.confirmation_message ? `<p style="color: #666; font-style: italic;">${escapeHtml(bookingPage.confirmation_message)}</p>` : ''}
+                <p style="color: #999; font-size: 12px; margin-top: 32px;">This email was sent by LessonLoop on behalf of ${escapeHtml(orgName)}.</p>
               </div>
             `,
           }),
+        });
+        // Log to message_log
+        await supabase.from('message_log').insert({
+          org_id: orgId,
+          channel: 'email',
+          subject: `Trial lesson request received - ${orgName}`,
+          body: '',
+          sender_user_id: null,
+          recipient_type: 'guardian',
+          recipient_email: contact.email,
+          recipient_name: contact.name,
+          message_type: 'booking_confirmation',
+          status: 'sent',
+          sent_at: new Date().toISOString(),
         });
       } catch (emailErr) {
         console.error('Failed to send confirmation email:', emailErr);
@@ -266,7 +281,7 @@ Deno.serve(async (req) => {
               Authorization: `Bearer ${RESEND_API_KEY}`,
             },
             body: JSON.stringify({
-              from: 'LessonLoop <noreply@lessonloop.net>',
+              from: `${sanitiseFromName(orgName)} <noreply@lessonloop.net>`,
               to: adminEmails,
               subject: `New trial booking request from ${contact.name}`,
               html: `
@@ -274,10 +289,10 @@ Deno.serve(async (req) => {
                   <h2 style="color: #0d9488;">New Trial Lesson Request</h2>
                   <p>A new trial lesson has been requested via your booking page.</p>
                   <div style="background: #f0fdfa; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                    <p style="margin: 4px 0;"><strong>Contact:</strong> ${contact.name} (${contact.email}${contact.phone ? `, ${contact.phone}` : ''})</p>
-                    <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${childSummary}</p>
+                    <p style="margin: 4px 0;"><strong>Contact:</strong> ${escapeHtml(contact.name)} (${escapeHtml(contact.email)}${contact.phone ? `, ${escapeHtml(contact.phone)}` : ''})</p>
+                    <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${escapeHtml(childSummary)}</p>
                     <p style="margin: 4px 0;"><strong>Requested:</strong> ${adminFormatted.date} at ${adminFormatted.time}</p>
-                    ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${notes}</p>` : ''}
+                    ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${escapeHtml(notes)}</p>` : ''}
                   </div>
                   <p>Head to the <a href="https://app.lessonloop.net/leads" style="color: #0d9488;">Leads</a> page to review and confirm.</p>
                 </div>
