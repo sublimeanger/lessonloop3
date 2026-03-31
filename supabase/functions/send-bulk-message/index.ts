@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
-import { escapeHtml } from "../_shared/escape-html.ts";
+import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { logError } from "../_shared/log.ts";
 
@@ -58,6 +58,10 @@ async function sendSingleEmail(
         to: [guardian.email],
         subject,
         html: htmlBody,
+        headers: {
+          'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
       }),
     });
 
@@ -230,7 +234,7 @@ const handler = async (req: Request): Promise<Response> => {
         </p>
       </div>
     `;
-    const fromAddress = `${orgName} <notifications@lessonloop.net>`;
+    const fromAddress = `${sanitiseFromName(orgName)} <notifications@lessonloop.net>`;
 
     // ---- Handle in-app only mode ----
     if (!shouldSendEmail) {

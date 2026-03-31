@@ -180,6 +180,10 @@ const handler = async (req: Request): Promise<Response> => {
           to: [guardian.email],
           subject,
           html: htmlContent,
+          headers: {
+            'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
         }),
       });
 

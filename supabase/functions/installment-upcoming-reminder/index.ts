@@ -124,6 +124,10 @@ serve(async (req) => {
               to: [guardian.email],
               subject,
               html,
+              headers: {
+                'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+              },
             }),
           });
           const result = await response.json();

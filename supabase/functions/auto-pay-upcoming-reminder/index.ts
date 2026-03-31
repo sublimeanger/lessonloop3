@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml } from "../_shared/escape-html.ts";
+import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
@@ -81,11 +82,22 @@ serve(async (req) => {
       // Get guardian email
       const { data: guardian } = await supabase
         .from("guardians")
-        .select("full_name, email")
+        .select("full_name, email, user_id")
         .eq("id", invoice.payer_guardian_id)
         .single();
 
       if (!guardian?.email) continue;
+
+      // Check notification preference
+      if (guardian.user_id) {
+        const prefEnabled = await isNotificationEnabled(
+          supabase, invoice.org_id, guardian.user_id, 'email_invoice_reminders'
+        );
+        if (!prefEnabled) {
+          console.log(`Guardian ${invoice.payer_guardian_id} opted out of invoice reminders`);
+          continue;
+        }
+      }
 
       // Get org name
       const { data: org } = await supabase
@@ -172,6 +184,10 @@ serve(async (req) => {
               to: [guardian.email],
               subject,
               html: htmlContent,
+              headers: {
+                'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+              },
             }),
           });
 
