@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { LessonWithDetails, CalendarFilters } from '@/components/calendar/types';
 import { startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, format, parseISO } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 /**
  * Converts a UTC ISO string to an org-local wall-clock ISO string.
