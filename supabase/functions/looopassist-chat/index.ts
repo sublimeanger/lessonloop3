@@ -1580,7 +1580,10 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
       let currentTextAccum = "";
       let currentJsonAccum = "";
 
-      const reader = sseResponse.body!.getReader();
+      if (!sseResponse.body) {
+        return { content: [{ type: "text", text: "AI service returned an empty response. Please try again." }], stop_reason: "end_turn" };
+      }
+      const reader = sseResponse.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
 
