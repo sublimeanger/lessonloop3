@@ -1394,6 +1394,11 @@ Todays scheduled lessons: ${todayLessons?.length || 0}`;
 
     const isPro = orgData?.subscription_plan === "academy" || orgData?.subscription_plan === "agency" || orgData?.subscription_plan === "custom";
     const aiModel = isPro ? "claude-sonnet-4-5-20250929" : "claude-haiku-4-5-20251001";
+    // NOTE: These are date-pinned snapshots. If Anthropic releases newer
+    // snapshots with improvements, update these strings. Check:
+    // https://docs.anthropic.com/en/docs/about-claude/models for latest IDs.
+    // "latest" aliases (e.g. claude-haiku-4-5-latest) auto-upgrade but may
+    // introduce unexpected behaviour changes. Pinned is safer for production.
 
     const orgContext = orgData
       ? `\n\nORGANISATION: ${orgData.name} (${orgData.org_type})
@@ -1580,7 +1585,10 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
       let currentTextAccum = "";
       let currentJsonAccum = "";
 
-      const reader = sseResponse.body!.getReader();
+      if (!sseResponse.body) {
+        return { content: [{ type: "text", text: "AI service returned an empty response. Please try again." }], stop_reason: "end_turn" };
+      }
+      const reader = sseResponse.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
 
