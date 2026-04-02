@@ -331,7 +331,13 @@ export default function PortalHome() {
             <p className="text-white/70 mt-1 text-sm">
               {selectedChildId && filteredChildren?.length === 1
                 ? `Here's how ${filteredChildren[0].first_name} is doing.`
-                : "Here's what's happening with your family's lessons."}
+                : children && children.length === 1
+                  ? `Here's how ${children[0].first_name} is doing.`
+                  : children && children.length === 2
+                    ? `Here's how ${children[0].first_name} and ${children[1].first_name} are doing.`
+                    : children && children.length > 2
+                      ? `Here's how ${children[0].first_name}, ${children[1].first_name} and ${children.length - 2} more are doing.`
+                      : "Here's what's happening with your family's lessons."}
             </p>
           </div>
           {/* Decorative circles */}
