@@ -91,6 +91,9 @@ export function StackedWeekView({
     const ws = startOfWeek(currentDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(ws, i));
   }, [currentDate]);
+  const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
+  const weekEnd = useMemo(() => endOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
+  const { data: closures } = useClosureDates(weekStart, weekEnd);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   // Group lessons by day
