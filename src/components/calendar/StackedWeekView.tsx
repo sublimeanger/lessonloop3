@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
-import { startOfWeek, addDays, format, isToday, isWeekend, parseISO } from 'date-fns';
+import { startOfWeek, addDays, endOfWeek, format, isToday, isWeekend, isSameDay, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { TeacherWithColour, getTeacherColour, TeacherColourEntry } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useClosureDates } from '@/hooks/useCalendarData';
 
 const VISIBLE_WHEN_COLLAPSED = 6;
 
@@ -89,6 +91,9 @@ export function StackedWeekView({
     const ws = startOfWeek(currentDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(ws, i));
   }, [currentDate]);
+  const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
+  const weekEnd = useMemo(() => endOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
+  const { data: closures } = useClosureDates(weekStart, weekEnd);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   // Group lessons by day
@@ -135,6 +140,7 @@ export function StackedWeekView({
         const key = format(day, 'yyyy-MM-dd');
         const dayLessons = lessonsByDay.get(key) || [];
         const today = isToday(day);
+        const closure = closures?.find((c) => isSameDay(c.date, day));
         const count = dayLessons.length;
         const isExpanded = expandedDays.has(key);
 
@@ -149,6 +155,7 @@ export function StackedWeekView({
             className={cn(
               'bg-background flex flex-col min-h-[280px]',
               today && 'border-l-2 border-l-primary',
+              closure && 'bg-warning/5 dark:bg-warning/5',
             )}
           >
             {/* Day header — compact */}
@@ -177,6 +184,14 @@ export function StackedWeekView({
                   </span>
                 )}
               </div>
+              {closure && (
+                <Badge
+                  variant="outline"
+                  className="text-micro px-1 py-0 mt-0.5 bg-warning/20 text-warning-foreground dark:bg-warning/30 dark:text-warning"
+                >
+                  {closure.reason}
+                </Badge>
+              )}
             </div>
 
             {/* Lesson cards */}

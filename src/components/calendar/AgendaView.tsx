@@ -3,7 +3,10 @@ import { format, parseISO, isSameDay, startOfDay, addDays } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS, getTeacherColour } from './teacherColours';
+import { useClosureDates } from '@/hooks/useCalendarData';
 
 function resolveColour(
   colourMap: Map<string, TeacherWithColour>,
@@ -49,6 +52,9 @@ interface AgendaViewProps {
 }
 
 export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourMap, groupByTeacher = false }: AgendaViewProps) {
+  const rangeEnd = useMemo(() => addDays(startOfDay(currentDate), 13), [currentDate]);
+  const { data: closures } = useClosureDates(currentDate, rangeEnd);
+
   const groupedLessons = useMemo(() => {
     const groups: { date: Date; lessons: LessonWithDetails[] }[] = [];
     for (let i = 0; i < 14; i++) {
@@ -56,12 +62,13 @@ export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourM
       const dayLessons = lessons
         .filter(l => isSameDay(parseISO(l.start_at), day))
         .sort((a, b) => a.start_at.localeCompare(b.start_at));
-      if (dayLessons.length > 0) {
+      const closure = closures?.find((c) => isSameDay(c.date, day));
+      if (dayLessons.length > 0 || closure) {
         groups.push({ date: day, lessons: dayLessons });
       }
     }
     return groups;
-  }, [currentDate, lessons]);
+  }, [currentDate, lessons, closures]);
 
   if (groupedLessons.length === 0) {
     return (
@@ -75,9 +82,11 @@ export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourM
   return (
     <ScrollArea className="h-[calc(100vh-280px)]">
       <div className="space-y-6 pr-4">
-        {groupedLessons.map(({ date, lessons: dayLessons }) => (
+        {groupedLessons.map(({ date, lessons: dayLessons }) => {
+          const closure = closures?.find((c) => isSameDay(c.date, date));
+          return (
           <div key={date.toISOString()}>
-            <div className="sticky top-0 bg-background py-2 mb-2 border-b">
+            <div className={cn('sticky top-0 bg-background py-2 mb-2 border-b', closure && 'bg-warning/10')}>
               <h3 className="font-semibold">
                 {format(date, 'EEEE, d MMMM yyyy')}
                 {isSameDay(date, new Date()) && (
@@ -86,6 +95,14 @@ export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourM
                 <span className="ml-2 text-muted-foreground text-sm font-normal">
                   ({dayLessons.length} lesson{dayLessons.length !== 1 ? 's' : ''})
                 </span>
+                {closure && (
+                  <Badge
+                    variant="outline"
+                    className="ml-2 text-micro px-1.5 py-0 bg-warning/20 text-warning-foreground dark:bg-warning/30 dark:text-warning"
+                  >
+                    {closure.reason}
+                  </Badge>
+                )}
               </h3>
             </div>
 
@@ -129,7 +146,8 @@ export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourM
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </ScrollArea>
   );

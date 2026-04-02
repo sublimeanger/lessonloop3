@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { Calendar as CalendarIcon, Check } from 'lucide-react';
 import { TeacherLink } from '@/components/shared/TeacherLink';
 import { useBulkSelection } from './BulkSelectionContext';
+import { Badge } from '@/components/ui/badge';
+import { useClosureDates } from '@/hooks/useCalendarData';
 
 function resolveColour(
   colourMap: Map<string, TeacherWithColour>,
@@ -32,6 +34,9 @@ export function MobileDayView({
   onLongPress,
 }: MobileDayViewProps) {
   const { selectionMode, selectedIds } = useBulkSelection();
+  const { data: closures } = useClosureDates(currentDate, currentDate);
+  const closure = closures?.find((c) => isSameDay(c.date, currentDate));
+
   // Filter lessons for the current day and sort chronologically
   const dayLessons = useMemo(() => {
     return lessons
@@ -39,21 +44,35 @@ export function MobileDayView({
       .sort((a, b) => a.start_at.localeCompare(b.start_at));
   }, [lessons, currentDate]);
 
+  const closureBanner = closure ? (
+    <div className="px-3 py-1.5 bg-warning/15 border-b border-warning/30 text-sm text-warning-foreground flex items-center gap-2">
+      <Badge variant="outline" className="text-micro px-1.5 py-0 bg-warning/20 text-warning-foreground border-warning/30">
+        Closed
+      </Badge>
+      <span className="truncate">{closure.reason}</span>
+    </div>
+  ) : null;
+
   if (dayLessons.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-          <CalendarIcon className="h-8 w-8 text-muted-foreground/50" />
+      <div>
+        {closureBanner}
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+            <CalendarIcon className="h-8 w-8 text-muted-foreground/50" />
+          </div>
+          <p className="text-base font-semibold text-foreground">No lessons today</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Tap + to schedule a lesson
+          </p>
         </div>
-        <p className="text-base font-semibold text-foreground">No lessons today</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          Tap + to schedule a lesson
-        </p>
       </div>
     );
   }
 
   return (
+    <div>
+      {closureBanner}
     <div className="divide-y divide-border">
       {dayLessons.map((lesson, idx) => {
         const startTime = parseISO(lesson.start_at);
@@ -182,6 +201,7 @@ export function MobileDayView({
           </div>
         );
       })}
+    </div>
     </div>
   );
 }
