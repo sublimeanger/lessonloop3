@@ -189,8 +189,8 @@ export function RouteGuard({
         return <AuthLoading onLogout={signOut} onForceRedirect={handleForceRedirect} />;
       }
       // Grace expired and retry done — user genuinely has no staff membership
-      logger.warn('[RouteGuard] Role still null after grace period - redirecting to /portal/home');
-      return <Navigate to="/portal/home" replace />;
+      logger.warn('[RouteGuard] Role still null after grace period - redirecting to /dashboard');
+      return <Navigate to="/dashboard" replace />;
     }
     
     if (!allowedRoles.includes(currentRole)) {
