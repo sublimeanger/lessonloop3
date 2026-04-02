@@ -19,8 +19,6 @@ export interface InvoiceWithDetails extends Invoice {
   payments?: Payment[];
   payer_guardian?: { id: string; full_name: string; email: string | null } | null;
   payer_student?: { id: string; first_name: string; last_name: string; email: string | null } | null;
-  is_credit_note?: boolean;
-  related_invoice_id?: string | null;
 }
 
 export interface InvoiceFilters {
