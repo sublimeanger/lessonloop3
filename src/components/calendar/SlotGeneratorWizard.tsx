@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Clock, MapPin, User, Loader2 } from 'lucide-react';
+import { format, addWeeks, setDay, getDay, parseISO, isAfter, isBefore, startOfDay, isSameDay } from 'date-fns';
+import { Calendar as CalendarIcon, Clock, MapPin, User, Loader2, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { SlotPreviewTimeline } from './SlotPreviewTimeline';
 import { computeSlots, checkSlotConflicts, useSlotGenerator, type SlotGeneratorConfig, type GeneratedSlot } from '@/hooks/useSlotGenerator';
 import { useOrgTimezone } from '@/hooks/useOrgTimezone';
 import { useOrg } from '@/contexts/OrgContext';
+import { useCurrentTerm } from '@/hooks/useTerms';
 import { cn } from '@/lib/utils';
 
 interface Teacher {
@@ -43,8 +44,32 @@ interface SlotGeneratorWizardProps {
   onComplete?: (date: Date) => void;
 }
 
+export interface DatedSlotGroup {
+  date: Date;
+  dateLabel: string;
+  slots: GeneratedSlot[];
+}
+
 const DURATION_OPTIONS = [15, 20, 30, 45, 60];
 const BREAK_OPTIONS = [0, 5, 10, 15];
+
+const REPEAT_OPTIONS = [
+  { value: '0', label: 'This day only' },
+  { value: '1', label: '1 week' },
+  { value: '2', label: '2 weeks' },
+  { value: '4', label: '4 weeks' },
+  { value: 'term', label: 'Full term' },
+];
+
+const DAY_LABELS = [
+  { value: 1, label: 'Mon' },
+  { value: 2, label: 'Tue' },
+  { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' },
+  { value: 5, label: 'Fri' },
+  { value: 6, label: 'Sat' },
+  { value: 0, label: 'Sun' },
+];
 
 function timeOptions() {
   const opts: { label: string; hour: number; minute: number }[] = [];
@@ -59,9 +84,55 @@ function timeOptions() {
 
 const TIME_OPTIONS = timeOptions();
 
+/** Compute all target dates given repeat config */
+function computeTargetDates(
+  startDate: Date,
+  repeatValue: string,
+  selectedDays: number[],
+  termEndDate?: string | null,
+): Date[] {
+  if (repeatValue === '0' || selectedDays.length === 0) {
+    return [startDate];
+  }
+
+  let weekCount: number;
+  if (repeatValue === 'term') {
+    if (!termEndDate) return [startDate];
+    const end = parseISO(termEndDate);
+    const diffMs = end.getTime() - startDate.getTime();
+    weekCount = Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000));
+    if (weekCount <= 0) return [startDate];
+    weekCount = Math.min(weekCount, 52); // safety cap
+  } else {
+    weekCount = parseInt(repeatValue, 10);
+  }
+
+  const today = startOfDay(new Date());
+  const endLimit = repeatValue === 'term' && termEndDate ? parseISO(termEndDate) : null;
+  const dates: Date[] = [];
+
+  for (let week = 0; week < weekCount; week++) {
+    const weekBase = addWeeks(startDate, week);
+    for (const dayOfWeek of selectedDays) {
+      const adjusted = setDay(weekBase, dayOfWeek, { weekStartsOn: 1 });
+      if (isBefore(adjusted, startDate) && !isSameDay(adjusted, startDate)) continue;
+      if (isBefore(adjusted, today)) continue;
+      if (endLimit && isAfter(adjusted, endLimit)) continue;
+      // Avoid duplicates
+      if (!dates.some(d => isSameDay(d, adjusted))) {
+        dates.push(adjusted);
+      }
+    }
+  }
+
+  dates.sort((a, b) => a.getTime() - b.getTime());
+  return dates;
+}
+
 export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, rooms, defaultDate, onComplete }: SlotGeneratorWizardProps) {
   const { timezone } = useOrgTimezone();
   const { currentOrg } = useOrg();
+  const currentTerm = useCurrentTerm();
   const generateMutation = useSlotGenerator();
 
   const [step, setStep] = useState(1);
@@ -73,6 +144,10 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
   const [durationMins, setDurationMins] = useState(30);
   const [breakMins, setBreakMins] = useState(0);
 
+  // Repeat state
+  const [repeatValue, setRepeatValue] = useState('0');
+  const [selectedDays, setSelectedDays] = useState<number[]>(() => [getDay(defaultDate || new Date())]);
+
   // Step 2 state
   const [teacherId, setTeacherId] = useState('');
   const [locationId, setLocationId] = useState('');
@@ -82,22 +157,44 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
   const [notes, setNotes] = useState('');
 
   // Step 3 state
-  const [slots, setSlots] = useState<GeneratedSlot[]>([]);
+  const [slotGroups, setSlotGroups] = useState<DatedSlotGroup[]>([]);
 
   const selectedTeacher = teachers.find(t => t.id === teacherId);
   const filteredRooms = locationId ? rooms.filter(r => r.location_id === locationId) : rooms;
+
+  // When date changes, auto-select its day of week
+  const handleDateChange = (d: Date) => {
+    setDate(d);
+    const dow = getDay(d);
+    if (!selectedDays.includes(dow)) {
+      setSelectedDays(prev => [...prev, dow].sort());
+    }
+  };
+
+  const toggleDay = (day: number) => {
+    setSelectedDays(prev => {
+      if (prev.includes(day)) {
+        // Don't allow deselecting all days
+        if (prev.length <= 1) return prev;
+        return prev.filter(d => d !== day);
+      }
+      return [...prev, day].sort();
+    });
+  };
 
   // Reset state when dialog closes
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       setStep(1);
-      setSlots([]);
+      setSlotGroups([]);
       setTeacherId('');
       setLocationId('');
       setRoomId('');
       setLessonType('private');
       setMaxParticipants(1);
       setNotes('');
+      setRepeatValue('0');
+      setSelectedDays([getDay(defaultDate || new Date())]);
     }
     onOpenChange(isOpen);
   };
@@ -107,7 +204,7 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
     return { hour: h, minute: m };
   };
 
-  const slotCount = useMemo(() => {
+  const slotsPerDay = useMemo(() => {
     const s = parseTime(startTime);
     const e = parseTime(endTime);
     const totalMins = (e.hour * 60 + e.minute) - (s.hour * 60 + s.minute);
@@ -116,8 +213,14 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
     return Math.floor(totalMins / block);
   }, [startTime, endTime, durationMins, breakMins]);
 
+  const targetDates = useMemo(() => {
+    return computeTargetDates(date, repeatValue, selectedDays, currentTerm?.end_date);
+  }, [date, repeatValue, selectedDays, currentTerm?.end_date]);
+
+  const totalSlotCount = slotsPerDay * targetDates.length;
+
   const goToStep2 = () => {
-    if (slotCount <= 0) return;
+    if (slotsPerDay <= 0) return;
     setStep(2);
   };
 
@@ -127,56 +230,81 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
     if (!teacherId) return;
     const s = parseTime(startTime);
     const e = parseTime(endTime);
-    const config: SlotGeneratorConfig = {
-      date,
-      startHour: s.hour, startMinute: s.minute,
-      endHour: e.hour, endMinute: e.minute,
-      durationMins, breakMins,
-      teacherId, teacherUserId: selectedTeacher?.user_id || null,
-      locationId: locationId || null, roomId: roomId || null,
-      lessonType, maxParticipants, notes,
-    };
-    const rawSlots = computeSlots(config);
-    // SG-01..04: Check for conflicts (teacher, room, closure, time-off, availability)
+
     setIsCheckingConflicts(true);
-    const checkedSlots = await checkSlotConflicts(
-      rawSlots,
-      { teacherId, roomId: roomId || null, locationId: locationId || null, orgId: currentOrg?.id || '' },
-      date,
-      timezone,
-    );
+    const groups: DatedSlotGroup[] = [];
+
+    for (const targetDate of targetDates) {
+      const config: SlotGeneratorConfig = {
+        date: targetDate,
+        startHour: s.hour, startMinute: s.minute,
+        endHour: e.hour, endMinute: e.minute,
+        durationMins, breakMins,
+        teacherId, teacherUserId: selectedTeacher?.user_id || null,
+        locationId: locationId || null, roomId: roomId || null,
+        lessonType, maxParticipants, notes,
+      };
+      const rawSlots = computeSlots(config);
+      const checkedSlots = await checkSlotConflicts(
+        rawSlots,
+        { teacherId, roomId: roomId || null, locationId: locationId || null, orgId: currentOrg?.id || '' },
+        targetDate,
+        timezone,
+      );
+      // Prefix slot IDs with date to keep them unique across groups
+      const datePrefix = format(targetDate, 'yyyy-MM-dd');
+      const prefixedSlots = checkedSlots.map(sl => ({
+        ...sl,
+        id: `${datePrefix}-${sl.id}`,
+      }));
+      groups.push({
+        date: targetDate,
+        dateLabel: format(targetDate, 'EEE, d MMM yyyy'),
+        slots: prefixedSlots,
+      });
+    }
+
     setIsCheckingConflicts(false);
-    setSlots(checkedSlots);
+    setSlotGroups(groups);
     setStep(3);
   };
 
-  const toggleSlot = (id: string) => {
-    setSlots(prev => prev.map(s => {
-      // Don't allow toggling conflict slots back on
-      if (s.id === id && s.conflictMessage) return s;
-      return s.id === id ? { ...s, excluded: !s.excluded } : s;
-    }));
+  const toggleSlot = (slotId: string) => {
+    setSlotGroups(prev => prev.map(group => ({
+      ...group,
+      slots: group.slots.map(s => {
+        if (s.id === slotId && s.conflictMessage) return s;
+        return s.id === slotId ? { ...s, excluded: !s.excluded } : s;
+      }),
+    })));
   };
 
   const handleGenerate = async () => {
     const s = parseTime(startTime);
     const e = parseTime(endTime);
-    const config: SlotGeneratorConfig = {
-      date,
-      startHour: s.hour, startMinute: s.minute,
-      endHour: e.hour, endMinute: e.minute,
-      durationMins, breakMins,
-      teacherId, teacherUserId: selectedTeacher?.user_id || null,
-      locationId: locationId || null, roomId: roomId || null,
-      lessonType, maxParticipants, notes,
-    };
 
-    await generateMutation.mutateAsync({ config, slots, timezone });
+    const allConfigs: { config: SlotGeneratorConfig; slots: GeneratedSlot[] }[] = slotGroups.map(group => ({
+      config: {
+        date: group.date,
+        startHour: s.hour, startMinute: s.minute,
+        endHour: e.hour, endMinute: e.minute,
+        durationMins, breakMins,
+        teacherId, teacherUserId: selectedTeacher?.user_id || null,
+        locationId: locationId || null, roomId: roomId || null,
+        lessonType, maxParticipants, notes,
+      },
+      slots: group.slots,
+    }));
+
+    await generateMutation.mutateAsync({ configs: allConfigs, timezone });
     handleOpenChange(false);
     onComplete?.(date);
   };
 
-  const activeSlotCount = slots.filter(s => !s.excluded).length;
+  const allSlots = slotGroups.flatMap(g => g.slots);
+  const activeSlotCount = allSlots.filter(s => !s.excluded).length;
+
+  const isRepeatEnabled = repeatValue !== '0';
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -204,7 +332,7 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
                   <Calendar
                     mode="single"
                     selected={date}
-                    onSelect={(d) => d && setDate(d)}
+                    onSelect={(d) => d && handleDateChange(d)}
                     disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
                     className="p-3 pointer-events-auto"
                   />
@@ -262,13 +390,61 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
               </div>
             </div>
 
+            {/* Repeat section */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <div className="flex items-center gap-2">
+                <Repeat className="h-4 w-4 text-muted-foreground" />
+                <Label className="font-medium">Repeat</Label>
+              </div>
+              <Select value={repeatValue} onValueChange={setRepeatValue}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {REPEAT_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                      {opt.value === 'term' && !currentTerm && ' (no active term)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {isRepeatEnabled && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">On days</Label>
+                  <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                    {DAY_LABELS.map(d => (
+                      <button
+                        key={d.value}
+                        type="button"
+                        onClick={() => toggleDay(d.value)}
+                        className={cn(
+                          'px-2.5 py-1 rounded-md text-xs font-medium transition-colors border',
+                          selectedDays.includes(d.value)
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+                        )}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isRepeatEnabled && repeatValue === 'term' && !currentTerm && (
+                <p className="text-xs text-destructive">No active term found. Please set up a term first, or choose a fixed repeat duration.</p>
+              )}
+            </div>
+
             <div className="rounded-lg bg-muted/50 p-3 text-center">
               <p className="text-lg font-semibold text-foreground">
-                {slotCount > 0 ? `This will create ${slotCount} slot${slotCount !== 1 ? 's' : ''}` : 'Invalid time range'}
+                {slotsPerDay > 0
+                  ? `This will create ${totalSlotCount} slot${totalSlotCount !== 1 ? 's' : ''}${targetDates.length > 1 ? ` across ${targetDates.length} days` : ''}`
+                  : 'Invalid time range'}
               </p>
-              {slotCount > 0 && (
+              {slotsPerDay > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {startTime} → {endTime}, {durationMins} min each{breakMins > 0 ? ` + ${breakMins} min break` : ''}
+                  {slotsPerDay} per day · {startTime} → {endTime}, {durationMins} min each{breakMins > 0 ? ` + ${breakMins} min break` : ''}
                 </p>
               )}
             </div>
@@ -362,8 +538,25 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
 
         {step === 3 && (
           <div className="space-y-3">
-            <SlotPreviewTimeline slots={slots} onToggleSlot={toggleSlot} />
-            {activeSlotCount === 0 && slots.length > 0 && (
+            {slotGroups.length <= 1 ? (
+              <SlotPreviewTimeline slots={allSlots} onToggleSlot={toggleSlot} />
+            ) : (
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                {slotGroups.map(group => {
+                  const groupActive = group.slots.filter(s => !s.excluded).length;
+                  return (
+                    <div key={group.dateLabel}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <h4 className="text-sm font-semibold text-foreground">{group.dateLabel}</h4>
+                        <span className="text-xs text-muted-foreground">{groupActive} of {group.slots.length} active</span>
+                      </div>
+                      <SlotPreviewTimeline slots={group.slots} onToggleSlot={toggleSlot} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {activeSlotCount === 0 && allSlots.length > 0 && (
               <p className="text-sm text-destructive text-center">
                 All slots have conflicts. Go back and choose a different date or time range.
               </p>
@@ -379,7 +572,7 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
           )}
           <div className="flex-1" />
           {step === 1 && (
-            <Button className="min-h-11 sm:min-h-9" onClick={goToStep2} disabled={slotCount <= 0}>
+            <Button className="min-h-11 sm:min-h-9" onClick={goToStep2} disabled={slotsPerDay <= 0 || (repeatValue === 'term' && !currentTerm)}>
               Next
             </Button>
           )}
