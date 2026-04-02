@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
-import { startOfWeek, addDays, format, isToday, isWeekend, parseISO } from 'date-fns';
+import { startOfWeek, addDays, endOfWeek, format, isToday, isWeekend, isSameDay, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { TeacherWithColour, getTeacherColour, TeacherColourEntry } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useClosureDates } from '@/hooks/useCalendarData';
 
 const VISIBLE_WHEN_COLLAPSED = 6;
 
