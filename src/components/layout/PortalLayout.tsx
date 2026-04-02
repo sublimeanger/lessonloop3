@@ -38,7 +38,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
     return (
       <ChildFilterProvider>
         <SidebarProvider>
-            <div className="min-h-screen w-full flex flex-col bg-background overflow-x-hidden">
+            <div className="min-h-[100dvh] w-full flex flex-col bg-background overflow-x-hidden">
             <Header />
             <PortalSidebar />
             <div className="w-full px-4 pt-3">
