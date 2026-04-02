@@ -60,7 +60,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
   return (
     <ChildFilterProvider>
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-background">
+        <div className="min-h-[100dvh] flex w-full bg-background">
           <PortalSidebar />
           <div className="flex-1 flex flex-col">
             <Header />
