@@ -45,7 +45,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   if (pathChanged) prevPathRef.current = location.pathname;
 
   return (
-    <div className="flex min-h-screen w-full flex-col overflow-x-hidden">
+    <div className="flex min-h-[100dvh] w-full flex-col overflow-x-hidden">
       <TrialExpiredBanner show={trialModalDismissed} />
       <Header />
       <div className="flex flex-1">

@@ -128,7 +128,7 @@ export function StaffBottomNav() {
       role="navigation"
       aria-label="Staff navigation"
     >
-      <div className="flex items-stretch justify-around h-16">
+      <div className="flex items-stretch justify-around h-16 landscape:h-10">
         {tabs.map((tab) => {
           const isMessages = tab.path === '/messages';
           const badge = isMessages && messageBadge > 0 ? messageBadge : null;
