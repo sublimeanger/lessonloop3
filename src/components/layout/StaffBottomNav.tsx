@@ -46,7 +46,6 @@ const soloOwnerMore: TabItem[] = [
   { label: 'Invoices', path: '/invoices', icon: ClipboardList },
   { label: 'Register', path: '/register', icon: ClipboardList },
   { label: 'Practice', path: '/practice', icon: ClipboardList },
-  { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
 // Owner/Admin tabs
@@ -77,7 +76,6 @@ const ownerAdminMore: TabItem[] = [
   { label: 'Teachers', path: '/teachers', icon: Users },
   { label: 'Invoices', path: '/invoices', icon: ClipboardList },
   { label: 'Register', path: '/register', icon: ClipboardList },
-  { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
 const teacherMore: TabItem[] = [
@@ -86,12 +84,11 @@ const teacherMore: TabItem[] = [
   { label: 'Practice', path: '/practice', icon: Music },
   { label: 'Resources', path: '/resources', icon: FolderOpen },
   { label: 'Notes', path: '/notes', icon: FileText },
-  { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
 const financeMore: TabItem[] = [
   { label: 'Reports', path: '/reports', icon: BarChart3 },
-  { label: 'Settings', path: '/settings', icon: Settings },
+  
 ];
 
 function getTabsForRole(role: string | null, orgType?: string | null): { tabs: TabItem[]; more: TabItem[] } {
