@@ -32,6 +32,7 @@ const config: CapacitorConfig = {
     scrollEnabled: true,
     backgroundColor: '#ffffff',
     allowsLinkPreview: false,
+    allowsBackForwardNavigationGestures: true,
   },
 
   plugins: {
@@ -54,6 +55,8 @@ const config: CapacitorConfig = {
       resize: 'body',
       resizeOnFullScreen: true,
       style: 'DARK',
+      scrollAssist: true,
+      scrollPadding: true,
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
