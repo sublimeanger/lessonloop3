@@ -141,7 +141,7 @@ export function StaffBottomNav() {
               aria-label={badge ? `${tab.label}, ${badge} unread` : tab.label}
               className={({ isActive }) =>
                 cn(
-                  'flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors relative',
+                  'flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors relative landscape:gap-0 landscape:flex-row landscape:gap-1.5',
                   isActive ? 'text-primary' : 'text-muted-foreground',
                 )
               }
