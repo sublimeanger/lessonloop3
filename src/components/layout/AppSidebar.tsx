@@ -185,6 +185,12 @@ const teacherGroups: NavGroup[] = [
       { title: 'Messages', url: '/messages', icon: MessageSquare },
     ],
   },
+  {
+    label: 'Business',
+    items: [
+      { title: 'Reports', url: '/reports', icon: BarChart3 },
+    ],
+  },
 ];
 
 const parentGroups: NavGroup[] = [
