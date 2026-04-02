@@ -149,7 +149,7 @@ export function StaffBottomNav() {
               {({ isActive }) => (
                 <>
                   <div className="relative">
-                    <tab.icon className={cn('h-5 w-5', isActive && 'stroke-[2.5]')} />
+                    <tab.icon className={cn('h-5 w-5 landscape:h-4 landscape:w-4', isActive && 'stroke-[2.5]')} />
                     {badge && (
                       <span
                         className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground"
