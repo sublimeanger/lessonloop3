@@ -422,13 +422,6 @@ export type Database = {
             referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "availability_blocks_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers_with_pay"
-            referencedColumns: ["id"]
-          },
         ]
       }
       availability_templates: {
@@ -646,13 +639,6 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "booking_page_teachers_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers_with_pay"
             referencedColumns: ["id"]
           },
         ]
@@ -1131,13 +1117,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "enrolment_waitlist_offered_teacher_id_fkey"
-            columns: ["offered_teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers_with_pay"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "enrolment_waitlist_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
@@ -1170,13 +1149,6 @@ export type Database = {
             columns: ["preferred_teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "enrolment_waitlist_preferred_teacher_id_fkey"
-            columns: ["preferred_teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers_with_pay"
             referencedColumns: ["id"]
           },
         ]
@@ -1914,6 +1886,8 @@ export type Database = {
       }
       invoices: {
         Row: {
+          adjustment_id: string | null
+          billing_run_id: string | null
           created_at: string
           credit_applied_minor: number
           currency_code: string
@@ -1921,6 +1895,7 @@ export type Database = {
           id: string
           installment_count: number | null
           invoice_number: string
+          is_credit_note: boolean
           issue_date: string
           notes: string | null
           org_id: string
@@ -1928,6 +1903,7 @@ export type Database = {
           payer_guardian_id: string | null
           payer_student_id: string | null
           payment_plan_enabled: boolean | null
+          related_invoice_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor: number
           tax_minor: number
@@ -1937,6 +1913,8 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          adjustment_id?: string | null
+          billing_run_id?: string | null
           created_at?: string
           credit_applied_minor?: number
           currency_code?: string
@@ -1944,6 +1922,7 @@ export type Database = {
           id?: string
           installment_count?: number | null
           invoice_number: string
+          is_credit_note?: boolean
           issue_date?: string
           notes?: string | null
           org_id: string
@@ -1951,6 +1930,7 @@ export type Database = {
           payer_guardian_id?: string | null
           payer_student_id?: string | null
           payment_plan_enabled?: boolean | null
+          related_invoice_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor?: number
           tax_minor?: number
@@ -1960,6 +1940,8 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          adjustment_id?: string | null
+          billing_run_id?: string | null
           created_at?: string
           credit_applied_minor?: number
           currency_code?: string
@@ -1967,6 +1949,7 @@ export type Database = {
           id?: string
           installment_count?: number | null
           invoice_number?: string
+          is_credit_note?: boolean
           issue_date?: string
           notes?: string | null
           org_id?: string
@@ -1974,6 +1957,7 @@ export type Database = {
           payer_guardian_id?: string | null
           payer_student_id?: string | null
           payment_plan_enabled?: boolean | null
+          related_invoice_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor?: number
           tax_minor?: number
@@ -1983,6 +1967,20 @@ export type Database = {
           vat_rate?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "term_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_billing_run_id_fkey"
+            columns: ["billing_run_id"]
+            isOneToOne: false
+            referencedRelation: "billing_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_org_id_fkey"
             columns: ["org_id"]
@@ -2009,6 +2007,13 @@ export type Database = {
             columns: ["payer_student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_related_invoice_id_fkey"
+            columns: ["related_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
           {
@@ -2402,13 +2407,6 @@ export type Database = {
             referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "lesson_notes_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers_with_pay"
-            referencedColumns: ["id"]
-          },
         ]
       }
       lesson_participants: {
@@ -2602,13 +2600,6 @@ export type Database = {
             referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "lessons_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers_with_pay"
-            referencedColumns: ["id"]
-          },
         ]
       }
       locations: {
@@ -2697,6 +2688,8 @@ export type Database = {
           redeemed_lesson_id: string | null
           student_id: string
           updated_at: string
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           applied_to_invoice_id?: string | null
@@ -2714,6 +2707,8 @@ export type Database = {
           redeemed_lesson_id?: string | null
           student_id: string
           updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           applied_to_invoice_id?: string | null
@@ -2731,10 +2726,12 @@ export type Database = {
           redeemed_lesson_id?: string | null
           student_id?: string
           updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "make_up_credits_applied_to_invoice_id_fkey"
+            foreignKeyName: "fk_credit_invoice"
             columns: ["applied_to_invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
@@ -2783,6 +2780,7 @@ export type Database = {
           description: string | null
           eligibility: string
           id: string
+          max_credits_per_term: number | null
           org_id: string
           releases_slot: boolean
         }
@@ -2791,6 +2789,7 @@ export type Database = {
           description?: string | null
           eligibility?: string
           id?: string
+          max_credits_per_term?: number | null
           org_id: string
           releases_slot?: boolean
         }
@@ -2799,6 +2798,7 @@ export type Database = {
           description?: string | null
           eligibility?: string
           id?: string
+          max_credits_per_term?: number | null
           org_id?: string
           releases_slot?: boolean
         }
@@ -2837,6 +2837,7 @@ export type Database = {
           missed_lesson_date: string
           missed_lesson_id: string
           notes: string | null
+          offer_expires_at: string | null
           offered_at: string | null
           org_id: string
           preferred_days: string[] | null
@@ -2865,6 +2866,7 @@ export type Database = {
           missed_lesson_date: string
           missed_lesson_id: string
           notes?: string | null
+          offer_expires_at?: string | null
           offered_at?: string | null
           org_id: string
           preferred_days?: string[] | null
@@ -2893,6 +2895,7 @@ export type Database = {
           missed_lesson_date?: string
           missed_lesson_id?: string
           notes?: string | null
+          offer_expires_at?: string | null
           offered_at?: string | null
           org_id?: string
           preferred_days?: string[] | null
@@ -2994,13 +2997,6 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "make_up_waitlist_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers_with_pay"
             referencedColumns: ["id"]
           },
         ]
@@ -3464,6 +3460,9 @@ export type Database = {
           buffer_minutes_between_locations: number | null
           cancellation_notice_hours: number
           cancels_at: string | null
+          continuation_assumed_continuing: boolean | null
+          continuation_notice_weeks: number | null
+          continuation_reminder_days: number[] | null
           country_code: string
           created_at: string
           created_by: string
@@ -3472,6 +3471,9 @@ export type Database = {
           default_exam_board_id: string | null
           default_lesson_length_mins: number
           default_payment_terms_days: number | null
+          default_plan_frequency: string
+          default_plan_installments: number
+          default_plan_threshold_minor: number | null
           enrolment_offer_expiry_hours: number | null
           id: string
           invoice_footer_note: string | null
@@ -3505,6 +3507,7 @@ export type Database = {
           stripe_subscription_id: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
           subscription_status: Database["public"]["Enums"]["subscription_status"]
+          teacher_limit_exceeded: boolean
           teacher_payment_analytics_enabled: boolean
           teacher_payment_notifications_enabled: boolean
           terms_conditions_url: string | null
@@ -3529,6 +3532,9 @@ export type Database = {
           buffer_minutes_between_locations?: number | null
           cancellation_notice_hours?: number
           cancels_at?: string | null
+          continuation_assumed_continuing?: boolean | null
+          continuation_notice_weeks?: number | null
+          continuation_reminder_days?: number[] | null
           country_code?: string
           created_at?: string
           created_by: string
@@ -3537,6 +3543,9 @@ export type Database = {
           default_exam_board_id?: string | null
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
+          default_plan_frequency?: string
+          default_plan_installments?: number
+          default_plan_threshold_minor?: number | null
           enrolment_offer_expiry_hours?: number | null
           id?: string
           invoice_footer_note?: string | null
@@ -3570,6 +3579,7 @@ export type Database = {
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
+          teacher_limit_exceeded?: boolean
           teacher_payment_analytics_enabled?: boolean
           teacher_payment_notifications_enabled?: boolean
           terms_conditions_url?: string | null
@@ -3594,6 +3604,9 @@ export type Database = {
           buffer_minutes_between_locations?: number | null
           cancellation_notice_hours?: number
           cancels_at?: string | null
+          continuation_assumed_continuing?: boolean | null
+          continuation_notice_weeks?: number | null
+          continuation_reminder_days?: number[] | null
           country_code?: string
           created_at?: string
           created_by?: string
@@ -3602,6 +3615,9 @@ export type Database = {
           default_exam_board_id?: string | null
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
+          default_plan_frequency?: string
+          default_plan_installments?: number
+          default_plan_threshold_minor?: number | null
           enrolment_offer_expiry_hours?: number | null
           id?: string
           invoice_footer_note?: string | null
@@ -3635,6 +3651,7 @@ export type Database = {
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
+          teacher_limit_exceeded?: boolean
           teacher_payment_analytics_enabled?: boolean
           teacher_payment_notifications_enabled?: boolean
           terms_conditions_url?: string | null
@@ -3876,13 +3893,6 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "practice_assignments_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers_with_pay"
             referencedColumns: ["id"]
           },
         ]
@@ -4285,6 +4295,74 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refunds: {
+        Row: {
+          amount_minor: number
+          created_at: string | null
+          id: string
+          invoice_id: string
+          org_id: string
+          payment_id: string
+          reason: string | null
+          refunded_by: string | null
+          status: string
+          stripe_refund_id: string | null
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string | null
+          id?: string
+          invoice_id: string
+          org_id: string
+          payment_id: string
+          reason?: string | null
+          refunded_by?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string | null
+          id?: string
+          invoice_id?: string
+          org_id?: string
+          payment_id?: string
+          reason?: string | null
+          refunded_by?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
         ]
@@ -4867,13 +4945,6 @@ export type Database = {
             referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "student_teacher_assignments_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers_with_pay"
-            referencedColumns: ["id"]
-          },
         ]
       }
       students: {
@@ -4887,12 +4958,16 @@ export type Database = {
           dob: string | null
           email: string | null
           first_name: string
+          gender: string | null
           id: string
           last_name: string
           notes: string | null
           org_id: string
+          payment_plan_preference: string
           phone: string | null
+          start_date: string | null
           status: Database["public"]["Enums"]["student_status"]
+          tags: string[] | null
           updated_at: string
         }
         Insert: {
@@ -4905,12 +4980,16 @@ export type Database = {
           dob?: string | null
           email?: string | null
           first_name: string
+          gender?: string | null
           id?: string
           last_name: string
           notes?: string | null
           org_id: string
+          payment_plan_preference?: string
           phone?: string | null
+          start_date?: string | null
           status?: Database["public"]["Enums"]["student_status"]
+          tags?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -4923,12 +5002,16 @@ export type Database = {
           dob?: string | null
           email?: string | null
           first_name?: string
+          gender?: string | null
           id?: string
           last_name?: string
           notes?: string | null
           org_id?: string
+          payment_plan_preference?: string
           phone?: string | null
+          start_date?: string | null
           status?: Database["public"]["Enums"]["student_status"]
+          tags?: string[] | null
           updated_at?: string
         }
         Relationships: [
@@ -4958,13 +5041,6 @@ export type Database = {
             columns: ["default_teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "students_default_teacher_id_fkey"
-            columns: ["default_teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teachers_with_pay"
             referencedColumns: ["id"]
           },
           {
@@ -5121,6 +5197,356 @@ export type Database = {
           },
         ]
       }
+      term_adjustments: {
+        Row: {
+          adjustment_amount_minor: number
+          adjustment_type: string
+          cancelled_lesson_ids: string[] | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string
+          created_lesson_ids: string[] | null
+          credit_note_invoice_id: string | null
+          currency_code: string
+          effective_date: string
+          id: string
+          lesson_rate_minor: number
+          lessons_difference: number
+          new_day_of_week: string | null
+          new_lessons_count: number | null
+          new_location_id: string | null
+          new_recurrence_id: string | null
+          new_teacher_id: string | null
+          new_time: string | null
+          notes: string | null
+          org_id: string
+          original_day_of_week: string | null
+          original_lessons_remaining: number
+          original_recurrence_id: string | null
+          original_time: string | null
+          status: string
+          student_id: string
+          term_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          adjustment_amount_minor: number
+          adjustment_type: string
+          cancelled_lesson_ids?: string[] | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by: string
+          created_lesson_ids?: string[] | null
+          credit_note_invoice_id?: string | null
+          currency_code?: string
+          effective_date: string
+          id?: string
+          lesson_rate_minor: number
+          lessons_difference: number
+          new_day_of_week?: string | null
+          new_lessons_count?: number | null
+          new_location_id?: string | null
+          new_recurrence_id?: string | null
+          new_teacher_id?: string | null
+          new_time?: string | null
+          notes?: string | null
+          org_id: string
+          original_day_of_week?: string | null
+          original_lessons_remaining?: number
+          original_recurrence_id?: string | null
+          original_time?: string | null
+          status?: string
+          student_id: string
+          term_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          adjustment_amount_minor?: number
+          adjustment_type?: string
+          cancelled_lesson_ids?: string[] | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string
+          created_lesson_ids?: string[] | null
+          credit_note_invoice_id?: string | null
+          currency_code?: string
+          effective_date?: string
+          id?: string
+          lesson_rate_minor?: number
+          lessons_difference?: number
+          new_day_of_week?: string | null
+          new_lessons_count?: number | null
+          new_location_id?: string | null
+          new_recurrence_id?: string | null
+          new_teacher_id?: string | null
+          new_time?: string | null
+          notes?: string | null
+          org_id?: string
+          original_day_of_week?: string | null
+          original_lessons_remaining?: number
+          original_recurrence_id?: string | null
+          original_time?: string | null
+          status?: string
+          student_id?: string
+          term_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_adjustments_credit_note_invoice_id_fkey"
+            columns: ["credit_note_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_adjustments_new_recurrence_id_fkey"
+            columns: ["new_recurrence_id"]
+            isOneToOne: false
+            referencedRelation: "recurrence_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_adjustments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_adjustments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_adjustments_original_recurrence_id_fkey"
+            columns: ["original_recurrence_id"]
+            isOneToOne: false
+            referencedRelation: "recurrence_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_adjustments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_adjustments_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      term_continuation_responses: {
+        Row: {
+          created_at: string
+          guardian_id: string
+          id: string
+          initial_sent_at: string | null
+          is_processed: boolean | null
+          lesson_summary: Json
+          next_term_fee_minor: number | null
+          org_id: string
+          processed_at: string | null
+          reminder_1_sent_at: string | null
+          reminder_2_sent_at: string | null
+          reminder_count: number | null
+          response: string
+          response_at: string | null
+          response_method: string | null
+          response_token: string
+          run_id: string
+          student_id: string
+          term_adjustment_id: string | null
+          updated_at: string
+          withdrawal_notes: string | null
+          withdrawal_reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          guardian_id: string
+          id?: string
+          initial_sent_at?: string | null
+          is_processed?: boolean | null
+          lesson_summary?: Json
+          next_term_fee_minor?: number | null
+          org_id: string
+          processed_at?: string | null
+          reminder_1_sent_at?: string | null
+          reminder_2_sent_at?: string | null
+          reminder_count?: number | null
+          response?: string
+          response_at?: string | null
+          response_method?: string | null
+          response_token?: string
+          run_id: string
+          student_id: string
+          term_adjustment_id?: string | null
+          updated_at?: string
+          withdrawal_notes?: string | null
+          withdrawal_reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          guardian_id?: string
+          id?: string
+          initial_sent_at?: string | null
+          is_processed?: boolean | null
+          lesson_summary?: Json
+          next_term_fee_minor?: number | null
+          org_id?: string
+          processed_at?: string | null
+          reminder_1_sent_at?: string | null
+          reminder_2_sent_at?: string | null
+          reminder_count?: number | null
+          response?: string
+          response_at?: string | null
+          response_method?: string | null
+          response_token?: string
+          run_id?: string
+          student_id?: string
+          term_adjustment_id?: string | null
+          updated_at?: string
+          withdrawal_notes?: string | null
+          withdrawal_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_continuation_responses_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_responses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_responses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_responses_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "term_continuation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_responses_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_responses_term_adjustment_id_fkey"
+            columns: ["term_adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "term_adjustments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      term_continuation_runs: {
+        Row: {
+          assumed_continuing: boolean | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          current_term_id: string | null
+          deadline_passed_at: string | null
+          id: string
+          next_term_id: string | null
+          notice_deadline: string
+          org_id: string
+          reminder_schedule: number[] | null
+          sent_at: string | null
+          status: string
+          summary: Json
+          updated_at: string
+        }
+        Insert: {
+          assumed_continuing?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          current_term_id?: string | null
+          deadline_passed_at?: string | null
+          id?: string
+          next_term_id?: string | null
+          notice_deadline: string
+          org_id: string
+          reminder_schedule?: number[] | null
+          sent_at?: string | null
+          status?: string
+          summary?: Json
+          updated_at?: string
+        }
+        Update: {
+          assumed_continuing?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          current_term_id?: string | null
+          deadline_passed_at?: string | null
+          id?: string
+          next_term_id?: string | null
+          notice_deadline?: string
+          org_id?: string
+          reminder_schedule?: number[] | null
+          sent_at?: string | null
+          status?: string
+          summary?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_continuation_runs_current_term_id_fkey"
+            columns: ["current_term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_runs_next_term_id_fkey"
+            columns: ["next_term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_continuation_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       terms: {
         Row: {
           created_at: string
@@ -5226,35 +5652,61 @@ export type Database = {
             referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      zoom_meeting_mappings: {
+        Row: {
+          connection_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          join_url: string
+          last_synced_at: string | null
+          lesson_id: string
+          start_url: string | null
+          sync_status: string
+          zoom_meeting_id: number
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          join_url: string
+          last_synced_at?: string | null
+          lesson_id: string
+          start_url?: string | null
+          sync_status?: string
+          zoom_meeting_id: number
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          join_url?: string
+          last_synced_at?: string | null
+          lesson_id?: string
+          start_url?: string | null
+          sync_status?: string
+          zoom_meeting_id?: number
+        }
+        Relationships: [
           {
-            foreignKeyName: "time_off_blocks_teacher_id_fkey"
-            columns: ["teacher_id"]
+            foreignKeyName: "zoom_meeting_mappings_connection_id_fkey"
+            columns: ["connection_id"]
             isOneToOne: false
-            referencedRelation: "teachers_with_pay"
+            referencedRelation: "calendar_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_meeting_mappings_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: true
+            referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
         ]
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
       }
     }
     Views: {
@@ -5276,6 +5728,8 @@ export type Database = {
           redeemed_lesson_id: string | null
           student_id: string | null
           updated_at: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           applied_to_invoice_id?: string | null
@@ -5294,6 +5748,8 @@ export type Database = {
           redeemed_lesson_id?: string | null
           student_id?: string | null
           updated_at?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           applied_to_invoice_id?: string | null
@@ -5312,10 +5768,12 @@ export type Database = {
           redeemed_lesson_id?: string | null
           student_id?: string | null
           updated_at?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "make_up_credits_applied_to_invoice_id_fkey"
+            foreignKeyName: "fk_credit_invoice"
             columns: ["applied_to_invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
@@ -5455,89 +5913,67 @@ export type Database = {
           },
         ]
       }
-      teachers_with_pay: {
-        Row: {
-          bio: string | null
-          created_at: string | null
-          default_lesson_length_mins: number | null
-          display_name: string | null
-          email: string | null
-          employment_type: Database["public"]["Enums"]["employment_type"] | null
-          id: string | null
-          instruments: string[] | null
-          org_id: string | null
-          pay_rate_type: Database["public"]["Enums"]["pay_rate_type"] | null
-          pay_rate_value: number | null
-          payroll_notes: string | null
-          phone: string | null
-          status: Database["public"]["Enums"]["student_status"] | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          bio?: string | null
-          created_at?: string | null
-          default_lesson_length_mins?: number | null
-          display_name?: string | null
-          email?: string | null
-          employment_type?:
-            | Database["public"]["Enums"]["employment_type"]
-            | null
-          id?: string | null
-          instruments?: string[] | null
-          org_id?: string | null
-          pay_rate_type?: never
-          pay_rate_value?: never
-          payroll_notes?: never
-          phone?: string | null
-          status?: Database["public"]["Enums"]["student_status"] | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          bio?: string | null
-          created_at?: string | null
-          default_lesson_length_mins?: number | null
-          display_name?: string | null
-          email?: string | null
-          employment_type?:
-            | Database["public"]["Enums"]["employment_type"]
-            | null
-          id?: string | null
-          instruments?: string[] | null
-          org_id?: string | null
-          pay_rate_type?: never
-          pay_rate_value?: never
-          payroll_notes?: never
-          phone?: string | null
-          status?: Database["public"]["Enums"]["student_status"] | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "teachers_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "teachers_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "parent_org_info"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Functions: {
+      _notify_streak_milestone: {
+        Args: { _new_current: number; _org_id: string; _student_id: string }
+        Returns: undefined
+      }
+      add_to_enrolment_waitlist: {
+        Args: {
+          _child_age?: number
+          _child_first_name: string
+          _child_last_name?: string
+          _contact_email?: string
+          _contact_name: string
+          _contact_phone?: string
+          _experience_level?: string
+          _guardian_id?: string
+          _instrument_id?: string
+          _instrument_name: string
+          _lead_id?: string
+          _lesson_duration_mins?: number
+          _notes?: string
+          _org_id: string
+          _preferred_days?: string[]
+          _preferred_location_id?: string
+          _preferred_teacher_id?: string
+          _preferred_time_earliest?: string
+          _preferred_time_latest?: string
+          _priority?: string
+          _source?: string
+        }
+        Returns: Json
+      }
       anonymise_guardian: { Args: { guardian_id: string }; Returns: undefined }
       anonymise_student: { Args: { student_id: string }; Returns: undefined }
+      bulk_cancel_lessons: {
+        Args: { p_lesson_ids: string[] }
+        Returns: Database["public"]["CompositeTypes"]["bulk_lesson_result"]
+        SetofOptions: {
+          from: "*"
+          to: "bulk_lesson_result"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      bulk_update_lessons: {
+        Args: { p_changes: Json; p_lesson_ids: string[] }
+        Returns: Database["public"]["CompositeTypes"]["bulk_lesson_result"]
+        SetofOptions: {
+          from: "*"
+          to: "bulk_lesson_result"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       can_edit_lesson: {
         Args: { _lesson_id: string; _user_id: string }
         Returns: boolean
+      }
+      cancel_payment_plan: {
+        Args: { p_invoice_id: string }
+        Returns: undefined
       }
       check_rate_limit: {
         Args: {
@@ -5548,10 +5984,23 @@ export type Database = {
         }
         Returns: boolean
       }
+      cleanup_expired_invites: { Args: never; Returns: number }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      cleanup_withdrawal_credits: {
+        Args: { _effective_date: string; _org_id: string; _student_id: string }
+        Returns: Json
+      }
       complete_expired_assignments: { Args: never; Returns: undefined }
       confirm_makeup_booking: {
         Args: { _org_id: string; _waitlist_id: string }
+        Returns: Json
+      }
+      convert_lead: {
+        Args: { _lead_id: string; _org_id: string; _students: Json }
+        Returns: Json
+      }
+      convert_waitlist_to_student: {
+        Args: { p_entry_id: string; p_org_id: string; p_teacher_id?: string }
         Returns: Json
       }
       create_invoice_with_items: {
@@ -5564,6 +6013,14 @@ export type Database = {
           _payer_guardian_id?: string
           _payer_student_id?: string
         }
+        Returns: Json
+      }
+      delete_billing_run: {
+        Args: { _billing_run_id: string; _org_id: string }
+        Returns: Json
+      }
+      dismiss_makeup_match: {
+        Args: { _org_id: string; _waitlist_id: string }
         Returns: Json
       }
       find_waitlist_matches: {
@@ -5616,11 +6073,49 @@ export type Database = {
         }
       }
       generate_invoice_number: { Args: { _org_id: string }; Returns: string }
+      get_calendar_error_count: { Args: { p_org_id: string }; Returns: number }
       get_guardian_ids_for_user: {
         Args: { _user_id: string }
         Returns: string[]
       }
       get_invoice_stats: { Args: { _org_id: string }; Returns: Json }
+      get_lesson_notes_for_staff: {
+        Args: {
+          p_filters?: Json
+          p_org_id: string
+          p_role?: string
+          p_user_id?: string
+        }
+        Returns: {
+          content_covered: string
+          created_at: string
+          engagement_rating: number
+          focus_areas: string
+          homework: string
+          id: string
+          lesson_id: string
+          lesson_start_at: string
+          lesson_status: string
+          lesson_title: string
+          org_id: string
+          parent_visible: boolean
+          student_first_name: string
+          student_id: string
+          student_last_name: string
+          teacher_display_name: string
+          teacher_id: string
+          teacher_private_notes: string
+          updated_at: string
+        }[]
+      }
+      get_lessons_on_date: {
+        Args: { p_date: string; p_org_id: string }
+        Returns: {
+          id: string
+          start_at: string
+          student_name: string
+        }[]
+      }
       get_org_calendar_health: {
         Args: { p_org_id: string }
         Returns: {
@@ -5644,6 +6139,22 @@ export type Database = {
       get_parent_dashboard_data: {
         Args: { _org_id: string; _user_id: string }
         Returns: Json
+      }
+      get_parent_lesson_notes: {
+        Args: { p_org_id: string; p_student_ids: string[] }
+        Returns: {
+          content_covered: string
+          created_at: string
+          engagement_rating: number
+          focus_areas: string
+          homework: string
+          id: string
+          lesson_id: string
+          parent_visible: boolean
+          student_id: string
+          teacher_id: string
+          updated_at: string
+        }[]
       }
       get_revenue_report: {
         Args: {
@@ -5682,6 +6193,15 @@ export type Database = {
       get_teacher_id_for_user: {
         Args: { _org_id: string; _user_id: string }
         Returns: string
+      }
+      get_teachers_with_pay: {
+        Args: { p_org_id: string; p_teacher_ids: string[] }
+        Returns: {
+          display_name: string
+          id: string
+          pay_rate_type: string
+          pay_rate_value: number
+        }[]
       }
       get_unbilled_lesson_ids: {
         Args: { _end: string; _org_id: string; _start: string }
@@ -5733,6 +6253,10 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      is_org_parent: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_org_scheduler: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
@@ -5746,9 +6270,48 @@ export type Database = {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
+      materialise_continuation_lessons: {
+        Args: {
+          p_created_by?: string
+          p_from_date: string
+          p_org_id: string
+          p_rate_minor?: number
+          p_recurrence_id: string
+          p_student_id: string
+          p_to_date: string
+        }
+        Returns: Json
+      }
+      offer_makeup_slot: {
+        Args: { _org_id: string; _waitlist_id: string }
+        Returns: Json
+      }
       reassign_teacher_conversations_to_owner: {
         Args: { _org_id: string }
         Returns: number
+      }
+      recalc_continuation_summary: {
+        Args: { _org_id: string; _run_id: string }
+        Returns: Json
+      }
+      recalculate_invoice_paid: { Args: { _invoice_id: string }; Returns: Json }
+      record_installment_payment: {
+        Args: {
+          p_amount_minor: number
+          p_installment_id: string
+          p_stripe_payment_intent_id?: string
+        }
+        Returns: Json
+      }
+      record_manual_refund: {
+        Args: {
+          _amount_minor?: number
+          _invoice_id: string
+          _org_id: string
+          _payment_id: string
+          _reason?: string
+        }
+        Returns: Json
       }
       record_payment_and_update_status: {
         Args: {
@@ -5761,12 +6324,35 @@ export type Database = {
         }
         Returns: Json
       }
+      record_stripe_payment: {
+        Args: {
+          _amount_minor: number
+          _installment_id?: string
+          _invoice_id: string
+          _org_id: string
+          _pay_remaining?: boolean
+          _provider_reference: string
+        }
+        Returns: Json
+      }
       redeem_make_up_credit: {
         Args: { _credit_id: string; _lesson_id: string; _org_id: string }
         Returns: Json
       }
       reset_stale_streaks: { Args: never; Returns: undefined }
+      respond_to_enrolment_offer: {
+        Args: { _action: string; _entry_id: string; _org_id: string }
+        Returns: Json
+      }
+      respond_to_makeup_offer: {
+        Args: { _action: string; _waitlist_id: string }
+        Returns: Json
+      }
       seed_make_up_policies: { Args: { _org_id: string }; Returns: undefined }
+      set_primary_location: {
+        Args: { p_location_id: string; p_org_id: string }
+        Returns: undefined
+      }
       shift_recurring_lesson_times: {
         Args: {
           p_after_start_at: string
@@ -5781,9 +6367,44 @@ export type Database = {
         Args: { _org_id: string; _teacher_user_id: string; _thread_id: string }
         Returns: boolean
       }
+      update_payment_plan: {
+        Args: {
+          p_frequency?: string
+          p_installments: number
+          p_invoice_id: string
+        }
+        Returns: {
+          amount_minor: number
+          created_at: string | null
+          due_date: string
+          id: string
+          installment_number: number
+          invoice_id: string
+          org_id: string
+          paid_at: string | null
+          payment_id: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "invoice_installments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       void_invoice: {
         Args: { _invoice_id: string; _org_id: string }
         Returns: undefined
+      }
+      void_make_up_credit: {
+        Args: { _credit_id: string; _org_id: string }
+        Returns: Json
+      }
+      withdraw_from_enrolment_waitlist: {
+        Args: { _entry_id: string; _org_id: string }
+        Returns: Json
       }
     }
     Enums: {
@@ -5862,7 +6483,13 @@ export type Database = {
         | "paused"
     }
     CompositeTypes: {
-      [_ in never]: never
+      bulk_lesson_result: {
+        updated_count: number | null
+        skipped_ids: string[] | null
+        skipped_reasons: string[] | null
+        conflict_ids: string[] | null
+        conflict_details: string[] | null
+      }
     }
   }
 }
