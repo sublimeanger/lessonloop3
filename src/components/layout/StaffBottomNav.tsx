@@ -128,7 +128,7 @@ export function StaffBottomNav() {
       role="navigation"
       aria-label="Staff navigation"
     >
-      <div className="flex items-stretch justify-around h-16">
+      <div className="flex items-stretch justify-around h-16 landscape:h-10">
         {tabs.map((tab) => {
           const isMessages = tab.path === '/messages';
           const badge = isMessages && messageBadge > 0 ? messageBadge : null;
@@ -141,7 +141,7 @@ export function StaffBottomNav() {
               aria-label={badge ? `${tab.label}, ${badge} unread` : tab.label}
               className={({ isActive }) =>
                 cn(
-                  'flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors relative',
+                  'flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors relative landscape:gap-0 landscape:flex-row landscape:gap-1.5',
                   isActive ? 'text-primary' : 'text-muted-foreground',
                 )
               }
@@ -149,7 +149,7 @@ export function StaffBottomNav() {
               {({ isActive }) => (
                 <>
                   <div className="relative">
-                    <tab.icon className={cn('h-5 w-5', isActive && 'stroke-[2.5]')} />
+                    <tab.icon className={cn('h-5 w-5 landscape:h-4 landscape:w-4', isActive && 'stroke-[2.5]')} />
                     {badge && (
                       <span
                         className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground"
