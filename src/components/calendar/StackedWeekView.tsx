@@ -140,6 +140,7 @@ export function StackedWeekView({
         const key = format(day, 'yyyy-MM-dd');
         const dayLessons = lessonsByDay.get(key) || [];
         const today = isToday(day);
+        const closure = closures?.find((c) => isSameDay(c.date, day));
         const count = dayLessons.length;
         const isExpanded = expandedDays.has(key);
 
@@ -154,6 +155,7 @@ export function StackedWeekView({
             className={cn(
               'bg-background flex flex-col min-h-[280px]',
               today && 'border-l-2 border-l-primary',
+              closure && 'bg-warning/5 dark:bg-warning/5',
             )}
           >
             {/* Day header — compact */}
