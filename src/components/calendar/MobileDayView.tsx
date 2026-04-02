@@ -202,5 +202,6 @@ export function MobileDayView({
         );
       })}
     </div>
+    </div>
   );
 }
