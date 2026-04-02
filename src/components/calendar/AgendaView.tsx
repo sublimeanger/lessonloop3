@@ -145,7 +145,8 @@ export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourM
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </ScrollArea>
   );
