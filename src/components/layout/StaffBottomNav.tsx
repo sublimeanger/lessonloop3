@@ -76,7 +76,6 @@ const ownerAdminMore: TabItem[] = [
   { label: 'Teachers', path: '/teachers', icon: Users },
   { label: 'Invoices', path: '/invoices', icon: ClipboardList },
   { label: 'Register', path: '/register', icon: ClipboardList },
-  { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
 const teacherMore: TabItem[] = [
