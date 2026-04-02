@@ -55,6 +55,8 @@ const config: CapacitorConfig = {
       resize: 'body',
       resizeOnFullScreen: true,
       style: 'DARK',
+      scrollAssist: true,
+      scrollPadding: true,
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
