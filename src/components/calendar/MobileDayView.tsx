@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { Calendar as CalendarIcon, Check } from 'lucide-react';
 import { TeacherLink } from '@/components/shared/TeacherLink';
 import { useBulkSelection } from './BulkSelectionContext';
+import { Badge } from '@/components/ui/badge';
+import { useClosureDates } from '@/hooks/useCalendarData';
 
 function resolveColour(
   colourMap: Map<string, TeacherWithColour>,
