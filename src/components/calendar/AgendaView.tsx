@@ -81,9 +81,11 @@ export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourM
   return (
     <ScrollArea className="h-[calc(100vh-280px)]">
       <div className="space-y-6 pr-4">
-        {groupedLessons.map(({ date, lessons: dayLessons }) => (
+        {groupedLessons.map(({ date, lessons: dayLessons }) => {
+          const closure = closures?.find((c) => isSameDay(c.date, date));
+          return (
           <div key={date.toISOString()}>
-            <div className="sticky top-0 bg-background py-2 mb-2 border-b">
+            <div className={cn('sticky top-0 bg-background py-2 mb-2 border-b', closure && 'bg-warning/10')}>
               <h3 className="font-semibold">
                 {format(date, 'EEEE, d MMMM yyyy')}
                 {isSameDay(date, new Date()) && (
@@ -92,6 +94,14 @@ export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourM
                 <span className="ml-2 text-muted-foreground text-sm font-normal">
                   ({dayLessons.length} lesson{dayLessons.length !== 1 ? 's' : ''})
                 </span>
+                {closure && (
+                  <Badge
+                    variant="outline"
+                    className="ml-2 text-micro px-1.5 py-0 bg-warning/20 text-warning-foreground dark:bg-warning/30 dark:text-warning"
+                  >
+                    {closure.reason}
+                  </Badge>
+                )}
               </h3>
             </div>
 
