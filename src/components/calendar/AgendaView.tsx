@@ -3,6 +3,7 @@ import { format, parseISO, isSameDay, startOfDay, addDays } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS, getTeacherColour } from './teacherColours';
 import { useClosureDates } from '@/hooks/useCalendarData';
