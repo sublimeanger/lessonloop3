@@ -331,7 +331,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Generate iCal content ────────────────────────────────────────
-    const domain = 'lessonloop.app';
+    const domain = 'lessonloop.net';
     const now = formatICalDateUTC(new Date());
     const useTZID = !!TIMEZONE_RULES[timezone];
 
