@@ -184,6 +184,14 @@ export function StackedWeekView({
                   </span>
                 )}
               </div>
+              {closure && (
+                <Badge
+                  variant="outline"
+                  className="text-micro px-1 py-0 mt-0.5 bg-warning/20 text-warning-foreground dark:bg-warning/30 dark:text-warning"
+                >
+                  {closure.reason}
+                </Badge>
+              )}
             </div>
 
             {/* Lesson cards */}
