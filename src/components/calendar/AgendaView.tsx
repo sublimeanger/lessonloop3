@@ -51,6 +51,9 @@ interface AgendaViewProps {
 }
 
 export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourMap, groupByTeacher = false }: AgendaViewProps) {
+  const rangeEnd = useMemo(() => addDays(startOfDay(currentDate), 13), [currentDate]);
+  const { data: closures } = useClosureDates(currentDate, rangeEnd);
+
   const groupedLessons = useMemo(() => {
     const groups: { date: Date; lessons: LessonWithDetails[] }[] = [];
     for (let i = 0; i < 14; i++) {
@@ -58,12 +61,13 @@ export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourM
       const dayLessons = lessons
         .filter(l => isSameDay(parseISO(l.start_at), day))
         .sort((a, b) => a.start_at.localeCompare(b.start_at));
-      if (dayLessons.length > 0) {
+      const closure = closures?.find((c) => isSameDay(c.date, day));
+      if (dayLessons.length > 0 || closure) {
         groups.push({ date: day, lessons: dayLessons });
       }
     }
     return groups;
-  }, [currentDate, lessons]);
+  }, [currentDate, lessons, closures]);
 
   if (groupedLessons.length === 0) {
     return (
