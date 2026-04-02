@@ -88,12 +88,8 @@ export function useDragLesson({
 
         // Compute grab offset: where the user clicked relative to the lesson's top in the grid
         const rect = gridRef.current.getBoundingClientRect();
-        const viewport = scrollViewportRef.current?.querySelector(
-          '[data-radix-scroll-area-viewport]'
-        );
-        const scrollTop = viewport ? viewport.scrollTop : 0;
         const mouseY = (startMousePos.current?.y ?? clientY);
-        const gridY = mouseY - rect.top + scrollTop;
+        const gridY = mouseY - rect.top;
         grabOffsetY.current = gridY - top;
 
         // Find which day column the lesson is in
@@ -135,12 +131,8 @@ export function useDragLesson({
       if (!dragStateRef.current || !gridRef.current) return;
 
       const rect = gridRef.current.getBoundingClientRect();
-      const viewport = scrollViewportRef.current?.querySelector(
-        '[data-radix-scroll-area-viewport]'
-      );
-      const scrollTop = viewport ? viewport.scrollTop : 0;
 
-      const y = clientY - rect.top + scrollTop;
+      const y = clientY - rect.top;
       const x = clientX - rect.left;
 
       // Subtract the grab offset so the card stays under the cursor

@@ -75,11 +75,7 @@ export function useResizeLesson({
       if (!current || !gridRef.current) return;
 
       const rect = gridRef.current.getBoundingClientRect();
-      const viewport = scrollViewportRef.current?.querySelector(
-        '[data-radix-scroll-area-viewport]'
-      );
-      const scrollTop = viewport ? viewport.scrollTop : 0;
-      const y = clientY - rect.top + scrollTop;
+      const y = clientY - rect.top;
 
       // Enforce minimum duration (15 minutes = hourHeight/4)
       const minBottom = current.top + (MIN_DURATION / 60) * hourHeight;

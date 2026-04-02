@@ -141,9 +141,7 @@ export function DayTimelineView({
       if ((e.target as HTMLElement).closest('[data-lesson-block]')) return;
       const rect = gridRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const viewport = scrollViewportRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-      const scrollTop = viewport ? viewport.scrollTop : 0;
-      const y = e.clientY - rect.top + scrollTop;
+      const y = e.clientY - rect.top;
       setCreateDrag({ startY: y, currentY: y });
     },
     [isParent]
@@ -155,9 +153,7 @@ export function DayTimelineView({
     const handleMove = (e: MouseEvent) => {
       const rect = gridRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const viewport = scrollViewportRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-      const scrollTop = viewport ? viewport.scrollTop : 0;
-      const y = e.clientY - rect.top + scrollTop;
+      const y = e.clientY - rect.top;
       setCreateDrag((prev) => (prev ? { ...prev, currentY: y } : null));
     };
 

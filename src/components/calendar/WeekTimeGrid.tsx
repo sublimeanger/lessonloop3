@@ -210,9 +210,9 @@ export function WeekTimeGrid({
   const getAccurateY = (e: React.MouseEvent): number => {
     if (!dayColumnsRef.current) return 0;
     const rect = dayColumnsRef.current.getBoundingClientRect();
-    const viewport = scrollViewportRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-    const scrollTop = viewport ? viewport.scrollTop : 0;
-    return e.clientY - rect.top + scrollTop;
+    // getBoundingClientRect() already accounts for parent scroll,
+    // so no scrollTop adjustment is needed.
+    return e.clientY - rect.top;
   };
 
   const getDayFromX = (e: React.MouseEvent): Date | null => {
