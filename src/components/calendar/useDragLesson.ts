@@ -135,12 +135,8 @@ export function useDragLesson({
       if (!dragStateRef.current || !gridRef.current) return;
 
       const rect = gridRef.current.getBoundingClientRect();
-      const viewport = scrollViewportRef.current?.querySelector(
-        '[data-radix-scroll-area-viewport]'
-      );
-      const scrollTop = viewport ? viewport.scrollTop : 0;
 
-      const y = clientY - rect.top + scrollTop;
+      const y = clientY - rect.top;
       const x = clientX - rect.left;
 
       // Subtract the grab offset so the card stays under the cursor
