@@ -84,6 +84,7 @@ const teacherMore: TabItem[] = [
   { label: 'Practice', path: '/practice', icon: Music },
   { label: 'Resources', path: '/resources', icon: FolderOpen },
   { label: 'Notes', path: '/notes', icon: FileText },
+  { label: 'Reports', path: '/reports', icon: BarChart3 },
 ];
 
 const financeMore: TabItem[] = [
