@@ -46,7 +46,6 @@ const soloOwnerMore: TabItem[] = [
   { label: 'Invoices', path: '/invoices', icon: ClipboardList },
   { label: 'Register', path: '/register', icon: ClipboardList },
   { label: 'Practice', path: '/practice', icon: ClipboardList },
-  { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
 // Owner/Admin tabs
