@@ -156,7 +156,7 @@ export const appRoutes: RouteConfig[] = [
   { path: '/reports/teacher-performance', component: TeacherPerformanceReport, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Teacher Performance' },
   { path: '/continuation', component: Continuation, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Continuation' },
   { path: '/notes', component: NotesExplorer, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher'], label: 'Lesson Notes' },
-  { path: '/settings', component: Settings, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher', 'finance'], label: 'Settings' },
+  { path: '/settings', component: Settings, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Settings' },
   { path: '/help', component: Help, auth: 'protected', label: 'Help' },
 ];
 

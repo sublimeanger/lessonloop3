@@ -88,7 +88,7 @@ const teacherMore: TabItem[] = [
 
 const financeMore: TabItem[] = [
   { label: 'Reports', path: '/reports', icon: BarChart3 },
-  { label: 'Settings', path: '/settings', icon: Settings },
+  
 ];
 
 function getTabsForRole(role: string | null, orgType?: string | null): { tabs: TabItem[]; more: TabItem[] } {
