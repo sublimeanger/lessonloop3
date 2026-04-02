@@ -39,7 +39,7 @@ function vtimezone(tz: string): string {
  * Generate an .ics file string for a single lesson.
  */
 export function generateICSEvent(lesson: ExportLesson, timezone = 'Europe/London'): string {
-  const uid = `${Date.now()}-${Math.random().toString(36).slice(2)}@lessonloop.app`;
+  const uid = `${Date.now()}-${Math.random().toString(36).slice(2)}@lessonloop.net`;
   const location = lesson.location?.name || '';
 
   return [
