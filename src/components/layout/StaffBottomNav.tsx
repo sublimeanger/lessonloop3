@@ -105,7 +105,8 @@ function getTabsForRole(role: string | null, orgType?: string | null): { tabs: T
     case 'finance':
       return { tabs: financeTabs, more: financeMore };
     default:
-      return { tabs: ownerAdminTabs, more: ownerAdminMore };
+      // Fallback while role resolves (e.g. invited teacher before membership propagates)
+      return { tabs: teacherTabs, more: [] };
   }
 }
 
