@@ -32,6 +32,7 @@ const config: CapacitorConfig = {
     scrollEnabled: true,
     backgroundColor: '#ffffff',
     allowsLinkPreview: false,
+    allowsBackForwardNavigationGestures: true,
   },
 
   plugins: {
