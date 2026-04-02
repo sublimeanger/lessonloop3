@@ -215,53 +215,57 @@ export function useSlotGenerator() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ config, slots, timezone }: { config: SlotGeneratorConfig; slots: GeneratedSlot[]; timezone: string }) => {
+    mutationFn: async ({ configs, timezone }: {
+      configs: { config: SlotGeneratorConfig; slots: GeneratedSlot[] }[];
+      timezone: string;
+    }) => {
       if (!currentOrg || !user) throw new Error('Not authenticated');
 
-      const activeSlots = slots.filter(s => !s.excluded);
-      if (activeSlots.length === 0) throw new Error('No slots to generate');
-      if (activeSlots.length > 50) throw new Error('Maximum 50 slots per batch');
-
-      // FIX 5: Server-side past date validation
       const now = new Date();
-      for (const slot of activeSlots) {
-        const [sh, sm] = slot.startTime.split(':').map(Number);
-        const localStart = setMinutes(setHours(config.date, sh), sm);
-        const utcStart = fromZonedTime(localStart, timezone);
-        if (utcStart < now) {
-          throw new Error('Cannot generate slots in the past');
+      const allSlotRows: any[] = [];
+      const allDateStrs: string[] = [];
+
+      for (const { config, slots } of configs) {
+        const activeSlots = slots.filter(s => !s.excluded);
+        if (activeSlots.length === 0) continue;
+
+        const dateStr = format(config.date, 'yyyy-MM-dd');
+        allDateStrs.push(dateStr);
+
+        for (const slot of activeSlots) {
+          const [sh, sm] = slot.startTime.split(':').map(Number);
+          const [eh, em] = slot.endTime.split(':').map(Number);
+          const localStart = setMinutes(setHours(config.date, sh), sm);
+          const localEnd = setMinutes(setHours(config.date, eh), em);
+          const utcStart = fromZonedTime(localStart, timezone);
+          const utcEnd = fromZonedTime(localEnd, timezone);
+
+          if (utcStart < now) {
+            throw new Error('Cannot generate slots in the past');
+          }
+
+          allSlotRows.push({
+            org_id: currentOrg.id,
+            title: `Open Slot — ${slot.startTime}`,
+            start_at: utcStart.toISOString(),
+            end_at: utcEnd.toISOString(),
+            lesson_type: config.lessonType,
+            status: 'scheduled' as const,
+            teacher_id: config.teacherId,
+            teacher_user_id: config.teacherUserId,
+            location_id: config.locationId || null,
+            room_id: config.roomId || null,
+            max_participants: config.maxParticipants,
+            notes_shared: config.notes || null,
+            is_open_slot: true,
+            is_online: false,
+            created_by: user.id,
+          });
         }
       }
 
-      const dateStr = format(config.date, 'yyyy-MM-dd');
-
-      // FIX 6: Batch insert all slots at once
-      const allSlotRows = activeSlots.map(slot => {
-        const [sh, sm] = slot.startTime.split(':').map(Number);
-        const [eh, em] = slot.endTime.split(':').map(Number);
-        const localStart = setMinutes(setHours(config.date, sh), sm);
-        const localEnd = setMinutes(setHours(config.date, eh), em);
-        const utcStart = fromZonedTime(localStart, timezone);
-        const utcEnd = fromZonedTime(localEnd, timezone);
-
-        return {
-          org_id: currentOrg.id,
-          title: `Open Slot — ${slot.startTime}`,
-          start_at: utcStart.toISOString(),
-          end_at: utcEnd.toISOString(),
-          lesson_type: config.lessonType,
-          status: 'scheduled' as const,
-          teacher_id: config.teacherId,
-          teacher_user_id: config.teacherUserId,
-          location_id: config.locationId || null,
-          room_id: config.roomId || null,
-          max_participants: config.maxParticipants,
-          notes_shared: config.notes || null,
-          is_open_slot: true,
-          is_online: false,
-          created_by: user.id,
-        };
-      });
+      if (allSlotRows.length === 0) throw new Error('No slots to generate');
+      if (allSlotRows.length > 200) throw new Error('Maximum 200 slots per batch');
 
       const { data, error } = await supabase
         .from('lessons')
@@ -291,9 +295,9 @@ export function useSlotGenerator() {
         {
           after: {
             count: createdIds.length,
-            date: dateStr,
-            teacher_id: config.teacherId,
-            duration_mins: config.durationMins,
+            dates: [...new Set(allDateStrs)],
+            teacher_id: configs[0]?.config.teacherId,
+            duration_mins: configs[0]?.config.durationMins,
             lesson_ids: createdIds,
           },
         }
