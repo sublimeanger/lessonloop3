@@ -776,7 +776,7 @@ export default function Locations() {
                   {/* Bottom action bar */}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
                     <div className="flex items-center gap-0.5">
-                      {(location.address_line_1 || location.city) && (
+                      {location.location_type !== 'online' && (location.address_line_1 || location.city) && (
                         <a
                           href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.address_line_1, location.city, location.postcode].filter(Boolean).join(', '))}`}
                           target="_blank"
