@@ -125,7 +125,7 @@ export function AssignmentDetailDialog({ assignment, open, onOpenChange }: Assig
               </div>
               <div className="space-y-2">
                 <Label>End Date</Label>
-                <Input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} />
+                <DatePicker value={editEndDate} onChange={setEditEndDate} placeholder="End date" />
               </div>
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>

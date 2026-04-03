@@ -501,22 +501,22 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>From Date</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={lessonDateRange.from}
-                    onChange={(e) =>
-                      setLessonDateRange((r) => ({ ...r, from: e.target.value }))
+                    onChange={(v) =>
+                      setLessonDateRange((r) => ({ ...r, from: v }))
                     }
+                    placeholder="From date"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>To Date</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={lessonDateRange.to}
-                    onChange={(e) =>
-                      setLessonDateRange((r) => ({ ...r, to: e.target.value }))
+                    onChange={(v) =>
+                      setLessonDateRange((r) => ({ ...r, to: v }))
                     }
+                    placeholder="To date"
                   />
                 </div>
               </div>

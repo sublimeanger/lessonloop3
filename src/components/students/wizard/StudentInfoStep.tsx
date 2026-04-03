@@ -92,12 +92,12 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
 
       <div className="space-y-2">
         <Label htmlFor="wizard-dob">Date of birth</Label>
-        <Input
+        <DatePicker
           id="wizard-dob"
-          type="date"
           value={data.dob}
-          onChange={(e) => update('dob', e.target.value)}
+          onChange={(v) => update('dob', v)}
           max={new Date().toISOString().split('T')[0]}
+          placeholder="Date of birth"
         />
       </div>
 
