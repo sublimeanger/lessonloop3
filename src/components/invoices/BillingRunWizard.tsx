@@ -300,18 +300,18 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Start Date</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={config.startDate}
-                      onChange={(e) => setConfig((c) => ({ ...c, startDate: e.target.value }))}
+                      onChange={(v) => setConfig((c) => ({ ...c, startDate: v }))}
+                      placeholder="Start date"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>End Date</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={config.endDate}
-                      onChange={(e) => setConfig((c) => ({ ...c, endDate: e.target.value }))}
+                      onChange={(v) => setConfig((c) => ({ ...c, endDate: v }))}
+                      placeholder="End date"
                     />
                   </div>
                 </div>
