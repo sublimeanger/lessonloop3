@@ -156,7 +156,7 @@ export function DateRangeFilter({
               value={localStart}
               max={localEnd}
               onChange={(e) => setLocalStart(e.target.value)}
-              className="w-full sm:w-[180px]"
+              className="w-full sm:w-[180px] h-11 text-base md:text-sm"
             />
             </div>
             <div className="space-y-2">
