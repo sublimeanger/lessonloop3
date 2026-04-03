@@ -214,11 +214,11 @@ export function BookTrialModal({ open, onOpenChange, lead }: BookTrialModalProps
           <Label>
             Date <span className="text-destructive">*</span>
           </Label>
-          <Input
-            type="date"
+          <DatePicker
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={setDate}
             min={new Date().toISOString().slice(0, 10)}
+            placeholder="Pick a date"
           />
         </div>
         <div className="space-y-1.5">
