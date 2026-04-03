@@ -135,7 +135,7 @@ export function InvoiceFiltersBar({
               onChange={(e) =>
                 onFiltersChange({ ...filters, dueDateTo: e.target.value || undefined })
               }
-              className="h-11 w-full text-xs sm:h-8 sm:w-[150px]"
+              className="h-11 w-full text-base md:text-xs sm:h-8 sm:w-[150px]"
             />
           </div>
 

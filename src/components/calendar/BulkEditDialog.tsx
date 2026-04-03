@@ -59,7 +59,7 @@ export function BulkEditDialog({ open, onOpenChange, count, onSubmit, teachers, 
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>Edit {count} {count === 1 ? 'lesson' : 'lessons'}</DialogTitle>
           <DialogDescription>Only changed fields will be applied. Leave blank to keep existing values.</DialogDescription>

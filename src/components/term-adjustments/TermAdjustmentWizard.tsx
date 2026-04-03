@@ -345,6 +345,7 @@ export function TermAdjustmentWizard({
                       type="time"
                       value={newStartTime}
                       onChange={(e) => setNewStartTime(e.target.value)}
+                      className="text-base md:text-sm"
                     />
                   </div>
                 </div>

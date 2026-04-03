@@ -102,7 +102,7 @@ export function AssignmentDetailDialog({ assignment, open, onOpenChange }: Assig
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) setIsEditing(false); onOpenChange(o); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-lg sm:border sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isEditing ? 'Edit Assignment' : assignment.title}

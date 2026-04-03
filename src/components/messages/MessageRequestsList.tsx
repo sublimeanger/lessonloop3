@@ -385,6 +385,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
                       type="time"
                       value={newTime}
                       onChange={(e) => setNewTime(e.target.value)}
+                      className="text-base md:text-sm"
                     />
                   </div>
                 </div>

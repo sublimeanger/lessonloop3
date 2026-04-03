@@ -168,7 +168,7 @@ export function DateRangeFilter({
               min={localStart}
               max={today}
               onChange={(e) => setLocalEnd(e.target.value)}
-              className="w-full sm:w-[180px]"
+              className="w-full sm:w-[180px] h-11 text-base md:text-sm"
             />
             </div>
           </div>

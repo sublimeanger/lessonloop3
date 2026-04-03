@@ -142,6 +142,7 @@ export function OfferSlotDialog({ open, onOpenChange, entry }: OfferSlotDialogPr
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
+            className="text-base md:text-sm"
           />
         </div>
       </div>
