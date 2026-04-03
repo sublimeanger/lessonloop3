@@ -252,9 +252,7 @@ export function useCalendarActions({
           title: 'Lesson rescheduled',
           description: `Moved to ${format(newStart, 'EEE d MMM, HH:mm')}`,
           action: (
-            <button
-              className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              onClick={async () => {
+            <ToastAction altText="Undo reschedule" onClick={async () => {
                 try {
                   if (mode === 'this_and_future' && lesson.recurrence_id) {
                     const reverseOffset = new Date(utcStartAt).getTime() - newStart.getTime();
@@ -288,10 +286,9 @@ export function useCalendarActions({
                   toast({ title: 'Failed to undo', description: 'Please edit the lesson manually.', variant: 'destructive' });
                   refetch();
                 }
-              }}
-            >
+            }}>
               Undo
-            </button>
+            </ToastAction>
           ),
           duration: 5000,
         });
