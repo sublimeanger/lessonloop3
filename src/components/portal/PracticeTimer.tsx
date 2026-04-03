@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { haptics } from '@/lib/native/haptics';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -174,6 +175,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
       toast({ title: 'Please select a student first', variant: 'destructive' });
       return;
     }
+    haptics.tap();
     persistRunning();
     setIsRunning(true);
   };
@@ -218,6 +220,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
       await checkMilestone(selectedStudentId);
 
       storageClear(STORAGE_KEYS);
+      haptics.success();
       toast({ title: `Practice logged: ${durationMinutes} minutes` });
       setElapsedSeconds(0);
       startedAtRef.current = null;

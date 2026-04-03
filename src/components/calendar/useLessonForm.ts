@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { haptics } from '@/lib/native/haptics';
 import { logger } from '@/lib/logger';
 import { format, addMinutes, addDays, addWeeks, setHours, setMinutes, startOfDay, parseISO, eachDayOfInterval } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
@@ -801,6 +802,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           throw batchError;
         }
 
+        haptics.success();
         toast({
           title: isRecurring ? `${lessonsToCreate.length} lessons created` : 'Lesson created',
           description: skippedCount > 0 ? `${skippedCount} skipped due to closure dates` : undefined,

@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
 import { logger } from "@/lib/logger";
 import { toast } from "@/hooks/use-toast";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { OrgProvider, useOrg } from "@/contexts/OrgContext";
 import { LoopAssistProvider } from "@/contexts/LoopAssistContext";
@@ -16,6 +16,8 @@ import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { AppShellSkeleton } from "@/components/shared/LoadingState";
 import { useAndroidBackButton } from "@/hooks/useAndroidBackButton";
 import { initPushNotifications, teardownPushNotifications } from "@/services/pushNotifications";
+import { supabase } from "@/integrations/supabase/client";
+import { platform } from "@/lib/platform";
 import {
   publicAuthRoutes,
   authOnlyRoutes,
@@ -109,6 +111,7 @@ function renderRoutes(routes: RouteConfig[]) {
 
 function NativeInitializer() {
   useAndroidBackButton();
+  const navigate = useNavigate();
 
   const { user } = useAuth();
   const { currentOrg } = useOrg();
@@ -120,9 +123,8 @@ function NativeInitializer() {
     if (nativeInitRef.current) return;
     nativeInitRef.current = true;
     import('@/lib/native/init').then(({ initNativeApp }) => {
-      // Use window.location-based navigation as a fallback
       initNativeApp((path: string) => {
-        window.location.href = path;
+        navigate(path);
       });
     });
   }, []);
@@ -131,13 +133,43 @@ function NativeInitializer() {
   useEffect(() => {
     if (user && currentOrg && !pushInitRef.current) {
       pushInitRef.current = true;
-      initPushNotifications(user.id, currentOrg.id);
+      initPushNotifications(user.id, currentOrg.id, navigate);
     }
     if (!user) {
       pushInitRef.current = false;
       teardownPushNotifications();
     }
   }, [user, currentOrg]);
+
+  // Refresh auth session and invalidate stale data when app returns from background
+  useEffect(() => {
+    if (!platform.isNative) return;
+
+    let listener: { remove: () => void } | null = null;
+
+    import('@capacitor/app').then(({ App: CapApp }) => {
+      CapApp.addListener('appStateChange', async ({ isActive }) => {
+        if (!isActive) return;
+
+        // Refresh auth session (may have expired while backgrounded)
+        try {
+          const { error } = await supabase.auth.getSession();
+          if (error) {
+            console.warn('[resume] Session refresh failed:', error.message);
+          }
+        } catch (e) {
+          console.error('[resume] Auth refresh error:', e);
+        }
+
+        // Invalidate all queries to refresh stale data
+        queryClient.invalidateQueries();
+      }).then((h) => { listener = h; });
+    });
+
+    return () => {
+      listener?.remove();
+    };
+  }, []);
 
   return null;
 }

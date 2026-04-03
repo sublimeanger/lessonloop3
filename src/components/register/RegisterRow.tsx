@@ -23,6 +23,7 @@ import { LessonNotesForm } from '@/components/calendar/LessonNotesForm';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { StudentNotesPopover } from '@/components/register/StudentNotesPopover';
 import { cn } from '@/lib/utils';
+import { haptics } from '@/lib/native/haptics';
 import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from './AbsenceReasonPicker';
 
 interface RegisterRowProps {
@@ -75,6 +76,8 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
           ? (notifiedDates[studentId] || new Date()).toISOString()
           : undefined,
       });
+
+      haptics.success();
 
       // Show undo toast when overwriting an existing status
       if (previousStatus && previousStatus !== status) {

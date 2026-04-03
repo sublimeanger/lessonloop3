@@ -13,7 +13,11 @@ import { logger } from '@/lib/logger';
  *
  * The Capacitor PushNotifications plugin handles both transparently.
  */
-export async function initPushNotifications(userId: string, orgId: string) {
+export async function initPushNotifications(
+  userId: string,
+  orgId: string,
+  navigate: (path: string) => void = (path) => { window.location.href = path; },
+) {
   if (!platform.isNative) return;
 
   try {
@@ -69,20 +73,20 @@ export async function initPushNotifications(userId: string, orgId: string) {
       logger.info('Push notification action:', action);
       const data = action.notification.data;
 
-      // Navigate based on notification type
+      // Navigate based on notification type (uses React Router when available)
       if (data?.type === 'new_message' && data?.conversationId) {
-        window.location.href = `/messages/${data.conversationId}`;
+        navigate(`/messages/${data.conversationId}`);
       } else if (data?.type === 'invoice_overdue' && data?.invoiceId) {
-        window.location.href = `/invoices/${data.invoiceId}`;
+        navigate(`/invoices/${data.invoiceId}`);
       } else if (data?.type === 'lesson_reminder' && data?.lessonId) {
-        window.location.href = `/calendar?lesson=${data.lessonId}`;
+        navigate(`/calendar?lesson=${data.lessonId}`);
       } else if (data?.type === 'attendance_needed') {
-        window.location.href = '/register';
+        navigate('/register');
       } else if (data?.type === 'practice_reminder') {
-        window.location.href = '/portal/practice';
+        navigate('/portal/practice');
       } else if (data?.route) {
         // Fallback: navigate to a specific route if provided
-        window.location.href = data.route;
+        navigate(data.route);
       }
     });
 

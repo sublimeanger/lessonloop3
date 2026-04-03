@@ -31,6 +31,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PullToRefresh } from '@/components/shared/PullToRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnmarkedBacklogView } from '@/components/register/UnmarkedBacklogView';
 
@@ -163,6 +164,7 @@ export default function DailyRegister() {
         ]}
       />
 
+      <PullToRefresh onRefresh={async () => { await refetch(); }}>
       {/* Date Navigation */}
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="flex w-full items-center gap-2 lg:w-auto">
@@ -311,6 +313,7 @@ export default function DailyRegister() {
           ))}
         </div>
       )}
+      </PullToRefresh>
     </AppLayout>
   );
 }
