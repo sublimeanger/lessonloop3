@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -370,11 +371,11 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="new-date" className="text-xs">New Date</Label>
-                    <Input
+                    <DatePicker
                       id="new-date"
-                      type="date"
                       value={newDate}
-                      onChange={(e) => setNewDate(e.target.value)}
+                      onChange={setNewDate}
+                      placeholder="Pick a date"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -384,6 +385,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
                       type="time"
                       value={newTime}
                       onChange={(e) => setNewTime(e.target.value)}
+                      className="text-base md:text-sm"
                     />
                   </div>
                 </div>

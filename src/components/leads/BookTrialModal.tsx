@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -213,11 +214,11 @@ export function BookTrialModal({ open, onOpenChange, lead }: BookTrialModalProps
           <Label>
             Date <span className="text-destructive">*</span>
           </Label>
-          <Input
-            type="date"
+          <DatePicker
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={setDate}
             min={new Date().toISOString().slice(0, 10)}
+            placeholder="Pick a date"
           />
         </div>
         <div className="space-y-1.5">
@@ -228,6 +229,7 @@ export function BookTrialModal({ open, onOpenChange, lead }: BookTrialModalProps
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
+            className="text-base md:text-sm"
           />
         </div>
       </div>

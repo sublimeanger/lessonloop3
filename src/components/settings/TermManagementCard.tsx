@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -345,18 +346,18 @@ export function TermManagementCard() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Start Date</Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={form.start_date}
-                  onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
+                  onChange={(v) => setForm((f) => ({ ...f, start_date: v }))}
+                  placeholder="Start date"
                 />
               </div>
               <div className="space-y-2">
                 <Label>End Date</Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={form.end_date}
-                  onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
+                  onChange={(v) => setForm((f) => ({ ...f, end_date: v }))}
+                  placeholder="End date"
                 />
               </div>
             </div>

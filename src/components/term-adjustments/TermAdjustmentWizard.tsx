@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
@@ -308,10 +309,10 @@ export function TermAdjustmentWizard({
             {recurrenceId && (
               <div className="space-y-2">
                 <Label>Effective From</Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={effectiveDate}
-                  onChange={(e) => setEffectiveDate(e.target.value)}
+                  onChange={setEffectiveDate}
+                  placeholder="Select date"
                 />
                 <p className="text-xs text-muted-foreground">
                   First lesson to cancel. All lessons from this date onwards will be affected.
@@ -344,6 +345,7 @@ export function TermAdjustmentWizard({
                       type="time"
                       value={newStartTime}
                       onChange={(e) => setNewStartTime(e.target.value)}
+                      className="text-base md:text-sm"
                     />
                   </div>
                 </div>

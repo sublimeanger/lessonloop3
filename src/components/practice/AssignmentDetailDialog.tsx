@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -101,7 +102,7 @@ export function AssignmentDetailDialog({ assignment, open, onOpenChange }: Assig
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) setIsEditing(false); onOpenChange(o); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-lg sm:border sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isEditing ? 'Edit Assignment' : assignment.title}
@@ -125,7 +126,7 @@ export function AssignmentDetailDialog({ assignment, open, onOpenChange }: Assig
               </div>
               <div className="space-y-2">
                 <Label>End Date</Label>
-                <Input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} />
+                <DatePicker value={editEndDate} onChange={setEditEndDate} placeholder="End date" />
               </div>
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>

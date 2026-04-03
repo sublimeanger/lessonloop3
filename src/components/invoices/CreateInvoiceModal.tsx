@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -411,7 +412,12 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
             <div className="space-y-2">
               <Label htmlFor="dueDate">Due Date</Label>
-              <Input id="dueDate" type="date" {...register('dueDate', { required: true })} />
+              <DatePicker
+                id="dueDate"
+                value={watch('dueDate') || ''}
+                onChange={(v) => setValue('dueDate', v, { shouldValidate: true })}
+                placeholder="Select due date"
+              />
             </div>
 
             <TabsContent value="manual" className="mt-0 space-y-4">
@@ -495,22 +501,22 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>From Date</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={lessonDateRange.from}
-                    onChange={(e) =>
-                      setLessonDateRange((r) => ({ ...r, from: e.target.value }))
+                    onChange={(v) =>
+                      setLessonDateRange((r) => ({ ...r, from: v }))
                     }
+                    placeholder="From date"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>To Date</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={lessonDateRange.to}
-                    onChange={(e) =>
-                      setLessonDateRange((r) => ({ ...r, to: e.target.value }))
+                    onChange={(v) =>
+                      setLessonDateRange((r) => ({ ...r, to: v }))
                     }
+                    placeholder="To date"
                   />
                 </div>
               </div>

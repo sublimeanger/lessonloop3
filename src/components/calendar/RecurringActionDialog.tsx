@@ -38,7 +38,7 @@ export function RecurringActionDialog({ open, onClose, onSelect, action }: Recur
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
+      <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-lg sm:border sm:p-0 sm:overflow-hidden">
         <div className="bg-primary/5 border-b border-border px-6 pt-6 pb-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2.5 text-lg">

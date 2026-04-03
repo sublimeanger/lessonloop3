@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format, subDays } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -107,20 +108,18 @@ export default function AuditLogTab() {
             </div>
             <div className="space-y-2">
               <Label>From</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="h-11 w-full"
+                onChange={setStartDate}
+                placeholder="From date"
               />
             </div>
             <div className="space-y-2">
               <Label>To</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="h-11 w-full"
+                onChange={setEndDate}
+                placeholder="To date"
               />
             </div>
           </div>

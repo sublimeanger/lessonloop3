@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -299,18 +300,18 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Start Date</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={config.startDate}
-                      onChange={(e) => setConfig((c) => ({ ...c, startDate: e.target.value }))}
+                      onChange={(v) => setConfig((c) => ({ ...c, startDate: v }))}
+                      placeholder="Start date"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>End Date</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={config.endDate}
-                      onChange={(e) => setConfig((c) => ({ ...c, endDate: e.target.value }))}
+                      onChange={(v) => setConfig((c) => ({ ...c, endDate: v }))}
+                      placeholder="End date"
                     />
                   </div>
                 </div>
@@ -322,11 +323,11 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Start Date</Label>
-                  <Input type="date" value={config.startDate} disabled className="bg-muted" />
+                  <div className="h-10 flex items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">{config.startDate ? format(new Date(config.startDate), 'd MMM yyyy') : '—'}</div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">End Date</Label>
-                  <Input type="date" value={config.endDate} disabled className="bg-muted" />
+                  <div className="h-10 flex items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">{config.endDate ? format(new Date(config.endDate), 'd MMM yyyy') : '—'}</div>
                 </div>
               </div>
             ) : null}

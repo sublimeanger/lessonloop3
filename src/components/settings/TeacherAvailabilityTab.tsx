@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -468,19 +469,19 @@ export function TeacherAvailabilityTab({ teacherId, teacherUserId }: TeacherAvai
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Start Date</Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={timeOffForm.start_date}
-                  onChange={(e) => setTimeOffForm(f => ({ ...f, start_date: e.target.value }))}
+                  onChange={(v) => setTimeOffForm(f => ({ ...f, start_date: v }))}
+                  placeholder="Start date"
                 />
               </div>
               <div className="space-y-2">
                 <Label>End Date</Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={timeOffForm.end_date}
+                  onChange={(v) => setTimeOffForm(f => ({ ...f, end_date: v }))}
                   min={timeOffForm.start_date}
-                  onChange={(e) => setTimeOffForm(f => ({ ...f, end_date: e.target.value }))}
+                  placeholder="End date"
                 />
               </div>
             </div>

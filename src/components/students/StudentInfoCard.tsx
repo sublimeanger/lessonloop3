@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -159,7 +160,7 @@ export function StudentInfoCard({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-dob">Date of birth</Label>
-                <Input id="edit-dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} max={new Date().toISOString().split('T')[0]} />
+                <DatePicker id="edit-dob" value={dob} onChange={setDob} max={new Date().toISOString().split('T')[0]} placeholder="Date of birth" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-notes">Notes</Label>

@@ -1,4 +1,5 @@
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -91,12 +92,12 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
 
       <div className="space-y-2">
         <Label htmlFor="wizard-dob">Date of birth</Label>
-        <Input
+        <DatePicker
           id="wizard-dob"
-          type="date"
           value={data.dob}
-          onChange={(e) => update('dob', e.target.value)}
+          onChange={(v) => update('dob', v)}
           max={new Date().toISOString().split('T')[0]}
+          placeholder="Date of birth"
         />
       </div>
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -290,11 +291,11 @@ export function RecurringBillingTab() {
 
             <div className="space-y-2">
               <Label htmlFor="tpl-next-run">Next Run Date</Label>
-              <Input
+              <DatePicker
                 id="tpl-next-run"
-                type="date"
                 value={formNextRunDate}
-                onChange={(e) => setFormNextRunDate(e.target.value)}
+                onChange={setFormNextRunDate}
+                placeholder="Select date"
               />
             </div>
 
