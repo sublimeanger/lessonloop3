@@ -605,6 +605,11 @@ export function SchedulingSettingsTab() {
 
   return (
     <div className="space-y-6">
+      <ContextualHint
+        id="settings-terms"
+        message="Set up your term dates, closure dates, and scheduling preferences here. These settings affect how lessons and billing runs work across your organisation."
+      />
+
       {/* Scheduling Settings */}
       <Card>
         <CardHeader>
