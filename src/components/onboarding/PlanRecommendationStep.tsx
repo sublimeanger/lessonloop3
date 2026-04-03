@@ -90,7 +90,7 @@ export function PlanRecommendationStep({
       />
 
       {/* Navigation */}
-      <div className="mt-8 flex justify-between">
+      <div className="mt-8 flex justify-between sticky bottom-0 bg-gradient-to-t from-background via-background to-transparent pt-4 pb-2 -mb-2 z-10">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back

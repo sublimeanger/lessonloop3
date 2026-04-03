@@ -448,7 +448,7 @@ export function TeachingProfileStep({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.35 }}
-              className="flex justify-between pt-2"
+              className="flex justify-between pt-2 sticky bottom-0 bg-card pb-2 -mb-2 z-10"
             >
               <Button type="button" variant="outline" onClick={onBack}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
