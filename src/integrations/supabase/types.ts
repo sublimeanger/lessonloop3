@@ -6026,6 +6026,13 @@ export type Database = {
         Args: { p_entry_id: string; p_org_id: string; p_teacher_id?: string }
         Returns: Json
       }
+      count_lessons_on_dates: {
+        Args: { _dates: string[]; _org_id: string }
+        Returns: {
+          lesson_count: number
+          lesson_date: string
+        }[]
+      }
       create_invoice_with_items: {
         Args: {
           _credit_ids?: string[]
