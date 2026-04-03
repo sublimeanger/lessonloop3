@@ -14,8 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Check, Music, User, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarWidget } from '@/components/ui/calendar';
+import { Loader2, Check, Music, User, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
 import { usePageMeta } from '@/hooks/usePageMeta';
 
 // ─── Types ───────────────────────────────────────────────
@@ -580,19 +583,46 @@ export default function BookingPage() {
 
             {/* Date input */}
             <div className="space-y-2">
-              <Label htmlFor="booking-date" className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Label className="flex items-center gap-1.5">
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                 Select a date
               </Label>
-              <Input
-                id="booking-date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                min={getTomorrow()}
-                max={getMaxDate(config.advance_booking_days ?? 28)}
-                className="w-full"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="booking-date"
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal',
+                      !selectedDate && 'text-muted-foreground',
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate
+                      ? format(parseISO(selectedDate), 'd MMMM yyyy')
+                      : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarWidget
+                    mode="single"
+                    selected={selectedDate ? parseISO(selectedDate) : undefined}
+                    onSelect={(date) => {
+                      if (date) setSelectedDate(format(date, 'yyyy-MM-dd'));
+                    }}
+                    disabled={(date) => {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      tomorrow.setHours(0, 0, 0, 0);
+                      const maxDate = new Date();
+                      maxDate.setDate(maxDate.getDate() + (config.advance_booking_days ?? 28));
+                      return date < tomorrow || date > maxDate;
+                    }}
+                    initialFocus
+                    className={cn('p-3 pointer-events-auto')}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Slots */}
