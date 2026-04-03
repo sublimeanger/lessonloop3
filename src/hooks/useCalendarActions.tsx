@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
 import { toast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { LessonWithDetails } from '@/components/calendar/types';
 import { RecurringActionMode } from '@/components/calendar/RecurringActionDialog';
 import { useCalendarSync } from '@/hooks/useCalendarSync';
