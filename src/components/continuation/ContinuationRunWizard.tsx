@@ -240,12 +240,12 @@ export function ContinuationRunWizard({
 
             <div className="space-y-2">
               <Label>Notice Deadline</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={config.noticeDeadline}
-                onChange={(e) =>
-                  setConfig((c) => ({ ...c, noticeDeadline: e.target.value }))
+                onChange={(v) =>
+                  setConfig((c) => ({ ...c, noticeDeadline: v }))
                 }
+                placeholder="Select deadline"
               />
               <p className="text-xs text-muted-foreground">
                 Parents must respond by this date

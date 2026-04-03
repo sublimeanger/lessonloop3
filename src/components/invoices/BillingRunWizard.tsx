@@ -323,11 +323,11 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Start Date</Label>
-                  <Input type="date" value={config.startDate} disabled className="bg-muted" />
+                  <div className="h-10 flex items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">{config.startDate ? format(new Date(config.startDate), 'd MMM yyyy') : '—'}</div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">End Date</Label>
-                  <Input type="date" value={config.endDate} disabled className="bg-muted" />
+                  <div className="h-10 flex items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">{config.endDate ? format(new Date(config.endDate), 'd MMM yyyy') : '—'}</div>
                 </div>
               </div>
             ) : null}

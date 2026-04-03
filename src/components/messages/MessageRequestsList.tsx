@@ -371,11 +371,11 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="new-date" className="text-xs">New Date</Label>
-                    <Input
+                    <DatePicker
                       id="new-date"
-                      type="date"
                       value={newDate}
-                      onChange={(e) => setNewDate(e.target.value)}
+                      onChange={setNewDate}
+                      placeholder="Pick a date"
                     />
                   </div>
                   <div className="space-y-1.5">

@@ -309,10 +309,10 @@ export function TermAdjustmentWizard({
             {recurrenceId && (
               <div className="space-y-2">
                 <Label>Effective From</Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={effectiveDate}
-                  onChange={(e) => setEffectiveDate(e.target.value)}
+                  onChange={setEffectiveDate}
+                  placeholder="Select date"
                 />
                 <p className="text-xs text-muted-foreground">
                   First lesson to cancel. All lessons from this date onwards will be affected.

@@ -108,20 +108,18 @@ export default function AuditLogTab() {
             </div>
             <div className="space-y-2">
               <Label>From</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="h-11 w-full"
+                onChange={setStartDate}
+                placeholder="From date"
               />
             </div>
             <div className="space-y-2">
               <Label>To</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="h-11 w-full"
+                onChange={setEndDate}
+                placeholder="To date"
               />
             </div>
           </div>

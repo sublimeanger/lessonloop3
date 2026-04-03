@@ -291,11 +291,11 @@ export function RecurringBillingTab() {
 
             <div className="space-y-2">
               <Label htmlFor="tpl-next-run">Next Run Date</Label>
-              <Input
+              <DatePicker
                 id="tpl-next-run"
-                type="date"
                 value={formNextRunDate}
-                onChange={(e) => setFormNextRunDate(e.target.value)}
+                onChange={setFormNextRunDate}
+                placeholder="Select date"
               />
             </div>
 
