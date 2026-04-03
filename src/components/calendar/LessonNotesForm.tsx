@@ -76,6 +76,7 @@ export function LessonNotesForm({
   const [perStudentMode, setPerStudentMode] = useState(false);
   const [activeStudentTab, setActiveStudentTab] = useState<string>('lesson');
   const [confirmSaveKey, setConfirmSaveKey] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   // Form state: 'lesson' key for whole-lesson, student IDs for per-student
   const [forms, setForms] = useState<Record<string, NoteFormState>>({
@@ -83,6 +84,7 @@ export function LessonNotesForm({
   });
 
   const initializedRef = useRef(false);
+  const initialFormsRef = useRef<Record<string, NoteFormState> | null>(null);
 
   // Initialize form from existing notes
   useEffect(() => {
@@ -124,7 +126,12 @@ export function LessonNotesForm({
       }
     }
 
-    setForms(prev => ({ ...prev, ...newForms }));
+    setForms(prev => {
+      const merged = { ...prev, ...newForms };
+      // Snapshot initial state for dirty tracking
+      initialFormsRef.current = JSON.parse(JSON.stringify(merged));
+      return merged;
+    });
 
     // Auto-open if there are existing notes
     if (existingNotes.length > 0) {
@@ -146,6 +153,21 @@ export function LessonNotesForm({
       });
     }
   }, [perStudentMode, participants]);
+
+  // Dirty tracking: compare current forms to initial snapshot
+  useEffect(() => {
+    if (!initialFormsRef.current) return;
+    const dirty = JSON.stringify(forms) !== JSON.stringify(initialFormsRef.current);
+    setIsDirty(dirty);
+  }, [forms]);
+
+  // Warn on tab close when dirty
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const updateField = useCallback((key: string, field: keyof NoteFormState, value: any) => {
     setForms(prev => ({
@@ -169,6 +191,10 @@ export function LessonNotesForm({
       teacher_private_notes: form.teacherPrivateNotes || null,
       parent_visible: form.parentVisible,
     });
+
+    // Reset dirty tracking after successful save
+    initialFormsRef.current = JSON.parse(JSON.stringify(forms));
+    setIsDirty(false);
   }, [forms, lessonId, saveMutation]);
 
   const handleSave = useCallback(async (key: string) => {
@@ -364,7 +390,12 @@ export function LessonNotesForm({
           <Separator />
 
           {/* Save button */}
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-3">
+            {isDirty && (
+              <span className="text-xs text-muted-foreground font-medium italic">
+                Unsaved changes
+              </span>
+            )}
             <Button
               size="sm"
               onClick={handleSaveAll}
