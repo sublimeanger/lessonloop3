@@ -415,7 +415,14 @@ export default function Locations() {
     if (error) {
       toast({ title: 'Error updating location', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: newArchived ? 'Location archived' : 'Location restored' });
+      if (newArchived && location.is_primary) {
+        toast({
+          title: 'Location archived',
+          description: 'Another location has been automatically set as your primary.',
+        });
+      } else {
+        toast({ title: newArchived ? 'Location archived' : 'Location restored' });
+      }
       invalidateLocations();
     }
   };
