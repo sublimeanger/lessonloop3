@@ -51,7 +51,16 @@ export default function PortalInvoices() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
-  const { data: invoices, isLoading, isError, refetch } = useParentInvoices({ status: statusFilter });
+  const { data: rawInvoices, isLoading, isError, refetch } = useParentInvoices({ status: statusFilter });
+  const { selectedChildId } = useChildFilter();
+
+  // Filter invoices by selected child
+  const invoices = useMemo(() => {
+    if (!selectedChildId || !rawInvoices) return rawInvoices;
+    return rawInvoices.filter(inv =>
+      inv.invoice_items?.some((item: any) => item.student_id === selectedChildId)
+    );
+  }, [rawInvoices, selectedChildId]);
   const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
   const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
