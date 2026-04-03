@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useIOSKeyboardHeight } from '@/hooks/useIOSKeyboardHeight';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,6 +34,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
     clearMessages,
     cancelStreaming,
   } = useParentLoopAssist();
+  const keyboardHeight = useIOSKeyboardHeight();
 
   const [input, setInput] = useState('');
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
@@ -86,7 +88,11 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col p-0 pt-safe sm:max-w-lg max-sm:max-w-full" hideCloseButton>
+       <SheetContent
+          className="flex w-full flex-col p-0 pt-safe sm:max-w-lg max-sm:max-w-full"
+          style={keyboardHeight > 0 ? { paddingBottom: `${keyboardHeight}px` } : undefined}
+          hideCloseButton
+        >
         <SheetHeader className="border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -214,6 +220,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                   value={input}
                   onChange={handleTextareaInput}
                   onKeyDown={handleKeyDown}
+                  onFocus={() => setTimeout(() => chatInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 300)}
                   placeholder="Ask me anything..."
                   disabled={isStreaming}
                   rows={1}

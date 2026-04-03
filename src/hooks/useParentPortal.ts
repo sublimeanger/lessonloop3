@@ -59,6 +59,7 @@ export interface ParentInvoice {
   installment_count: number | null;
   payer_guardian?: { full_name: string } | null;
   payer_student?: { first_name: string; last_name: string } | null;
+  invoice_items?: { description: string; quantity: number; unit_price_minor: number; amount_minor: number; student_id: string | null }[] | null;
 }
 
 export interface MessageRequest {
@@ -375,7 +376,7 @@ export function useParentInvoices(options?: { status?: string }) {
           installment_count,
           payer_guardian:guardians(full_name),
           payer_student:students(first_name, last_name),
-          invoice_items(description, quantity, unit_price_minor, amount_minor)
+          invoice_items(description, quantity, unit_price_minor, amount_minor, student_id)
         `)
         .eq('org_id', currentOrg.id)
         .eq('payer_guardian_id', guardianId)

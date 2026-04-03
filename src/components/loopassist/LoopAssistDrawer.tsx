@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useIOSKeyboardHeight } from '@/hooks/useIOSKeyboardHeight';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -60,6 +61,7 @@ type DrawerView = 'landing' | 'chat' | 'history';
 
 export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) {
   const { pageContext, consumePendingMessage } = useLoopAssistUI();
+  const keyboardHeight = useIOSKeyboardHeight();
   const { showIntro, setShowIntro, checkAndShowIntro } = useLoopAssistIntro();
   const { alerts } = useProactiveAlerts();
   const { proactiveMessage, dismissProactiveMessage } = useLoopAssistFirstRun();
@@ -206,7 +208,11 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col p-0 pt-safe sm:max-w-lg max-sm:max-w-full" hideCloseButton>
+       <SheetContent
+          className="flex w-full flex-col p-0 pt-safe sm:max-w-lg max-sm:max-w-full"
+          style={keyboardHeight > 0 ? { paddingBottom: `${keyboardHeight}px` } : undefined}
+          hideCloseButton
+        >
         <SheetHeader className="border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -395,6 +401,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                   value={input}
                   onChange={handleTextareaInput}
                   onKeyDown={handleKeyDown}
+                  onFocus={() => setTimeout(() => chatInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 300)}
                   placeholder="Ask LoopAssist..."
                   disabled={isStreaming}
                   rows={1}

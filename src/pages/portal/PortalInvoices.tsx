@@ -1,5 +1,6 @@
 import { usePageMeta } from '@/hooks/usePageMeta';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useChildFilter } from '@/contexts/ChildFilterContext';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { useSearchParams } from 'react-router-dom';
@@ -50,7 +51,16 @@ export default function PortalInvoices() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
-  const { data: invoices, isLoading, isError, refetch } = useParentInvoices({ status: statusFilter });
+  const { data: rawInvoices, isLoading, isError, refetch } = useParentInvoices({ status: statusFilter });
+  const { selectedChildId } = useChildFilter();
+
+  // Filter invoices by selected child
+  const invoices = useMemo(() => {
+    if (!selectedChildId || !rawInvoices) return rawInvoices;
+    return rawInvoices.filter(inv =>
+      inv.invoice_items?.some((item: any) => item.student_id === selectedChildId)
+    );
+  }, [rawInvoices, selectedChildId]);
   const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
   const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
@@ -470,7 +480,7 @@ interface InvoiceCardProps {
     paid_minor?: number | null;
     payer_guardian?: { full_name: string } | null;
     payer_student?: { first_name: string; last_name: string } | null;
-    invoice_items?: { description: string; quantity: number; unit_price_minor: number; amount_minor: number }[] | null;
+    invoice_items?: { description: string; quantity: number; unit_price_minor: number; amount_minor: number; student_id?: string | null }[] | null;
   };
   currencyCode: string;
   getStatusBadge: (status: string, dueDate: string) => JSX.Element;
