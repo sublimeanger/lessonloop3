@@ -1009,6 +1009,11 @@ export default function Locations() {
               <Label>Capacity (optional)</Label>
               <Input type="number" min="1" step="1" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value.replace(/[^0-9]/g, ''))} placeholder="4" />
             </div>
+            <div className="space-y-2">
+              <Label>Description / Equipment (optional)</Label>
+              <Textarea value={roomDescription} onChange={(e) => setRoomDescription(e.target.value)} placeholder="Upright piano, 4 music stands, whiteboard..." rows={2} maxLength={300} />
+              <p className={cn('text-micro text-right', roomDescription.length > 300 ? 'text-destructive' : 'text-muted-foreground')}>{roomDescription.length}/300</p>
+            </div>
           </div>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setIsRoomDialogOpen(false)}>Cancel</Button>
