@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { useTerms, useCreateTerm, useUpdateTerm, useDeleteTerm, type Term } from '@/hooks/useTerms';
+import { useOrg } from '@/contexts/OrgContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Pencil, Loader2, GraduationCap } from 'lucide-react';
 
@@ -39,12 +41,21 @@ export function TermManagementCard() {
   const createTerm = useCreateTerm();
   const updateTerm = useUpdateTerm();
   const deleteTerm = useDeleteTerm();
+  const { currentOrg } = useOrg();
   const { toast } = useToast();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTerm, setEditingTerm] = useState<Term | null>(null);
   const [form, setForm] = useState({ name: '', start_date: '', end_date: '' });
   const [presetYear, setPresetYear] = useState<string>('');
+
+  // S3-L1: Delete confirmation with continuation/billing check
+  const [termToDelete, setTermToDelete] = useState<Term | null>(null);
+  const [deleteCheckResult, setDeleteCheckResult] = useState<{
+    continuationRuns: number;
+    billingRuns: number;
+    isChecking: boolean;
+  } | null>(null);
 
   const currentYear = new Date().getFullYear();
   const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
@@ -59,6 +70,35 @@ export function TermManagementCard() {
     setEditingTerm(term);
     setForm({ name: term.name, start_date: term.start_date, end_date: term.end_date });
     setIsDialogOpen(true);
+  };
+
+  // S3-L1: Initiate delete with pre-check
+  const initiateDelete = async (term: Term) => {
+    setTermToDelete(term);
+    setDeleteCheckResult({ continuationRuns: 0, billingRuns: 0, isChecking: true });
+
+    const [contResult, billResult] = await Promise.all([
+      (supabase.from as any)('term_continuation_runs')
+        .select('id', { count: 'exact', head: true })
+        .or(`current_term_id.eq.${term.id},next_term_id.eq.${term.id}`),
+      supabase
+        .from('billing_runs')
+        .select('id', { count: 'exact', head: true })
+        .eq('term_id', term.id),
+    ]);
+
+    setDeleteCheckResult({
+      continuationRuns: contResult.count || 0,
+      billingRuns: billResult.count || 0,
+      isChecking: false,
+    });
+  };
+
+  const confirmDelete = () => {
+    if (!termToDelete) return;
+    deleteTerm.mutate(termToDelete.id);
+    setTermToDelete(null);
+    setDeleteCheckResult(null);
   };
 
   const handleSave = async () => {
@@ -84,6 +124,24 @@ export function TermManagementCard() {
       return;
     }
 
+    // S3-L2: Warn if shortening end date with lessons outside new range
+    if (editingTerm && form.end_date < editingTerm.end_date && currentOrg) {
+      const { count } = await supabase
+        .from('lessons')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', currentOrg.id)
+        .gt('start_at', `${form.end_date}T23:59:59`)
+        .lte('start_at', `${editingTerm.end_date}T23:59:59`)
+        .neq('status', 'cancelled');
+
+      if (count && count > 0) {
+        toast({
+          title: 'Warning: lessons outside new term dates',
+          description: `${count} lesson${count !== 1 ? 's are' : ' is'} scheduled after the new end date. These lessons will remain but fall outside this term.`,
+        });
+      }
+    }
+
     if (editingTerm) {
       await updateTerm.mutateAsync({ id: editingTerm.id, ...form });
     } else {
@@ -92,13 +150,22 @@ export function TermManagementCard() {
     setIsDialogOpen(false);
   };
 
+  // S3-L4: Batch preset creation with Promise.all
   const handlePresetAdd = async () => {
     if (!presetYear) return;
     const presets = getUKTermPresets(parseInt(presetYear));
-    for (const preset of presets) {
-      // Skip if a term with same name already exists
-      if (terms.some((t) => t.name === preset.name)) continue;
-      await createTerm.mutateAsync(preset);
+    const newPresets = presets.filter(preset => !terms.some(t => t.name === preset.name));
+
+    if (newPresets.length === 0) {
+      toast({ title: 'All terms for this year already exist' });
+      setPresetYear('');
+      return;
+    }
+
+    try {
+      await Promise.all(newPresets.map(preset => createTerm.mutateAsync(preset)));
+    } catch {
+      // Individual errors handled by mutation's onError
     }
     setPresetYear('');
   };
@@ -168,36 +235,16 @@ export function TermManagementCard() {
                       <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" aria-label={`Edit term ${term.name}`} onClick={() => openEdit(term)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="min-h-11 text-destructive hover:text-destructive sm:min-h-9"
-                            aria-label={`Delete term ${term.name}`}
-                            disabled={deleteTerm.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete term?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{term.name}"? Any billing runs linked to this term will lose their term reference.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteTerm.mutate(term.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-11 text-destructive hover:text-destructive sm:min-h-9"
+                        aria-label={`Delete term ${term.name}`}
+                        disabled={deleteTerm.isPending}
+                        onClick={() => initiateDelete(term)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 );
@@ -231,6 +278,51 @@ export function TermManagementCard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* S3-L1: Delete confirmation with impact check */}
+      <AlertDialog open={!!termToDelete} onOpenChange={(open) => { if (!open) { setTermToDelete(null); setDeleteCheckResult(null); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete term?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                Are you sure you want to delete &ldquo;{termToDelete?.name}&rdquo;?
+                {deleteCheckResult?.isChecking && (
+                  <span className="block mt-2 text-muted-foreground">Checking linked data…</span>
+                )}
+                {!deleteCheckResult?.isChecking && deleteCheckResult && deleteCheckResult.continuationRuns > 0 && (
+                  <span className="block mt-2 text-destructive font-medium">
+                    ⚠️ {deleteCheckResult.continuationRuns} continuation run{deleteCheckResult.continuationRuns !== 1 ? 's' : ''} will be permanently deleted, including all parent responses.
+                  </span>
+                )}
+                {!deleteCheckResult?.isChecking && deleteCheckResult && deleteCheckResult.billingRuns > 0 && (
+                  <span className="block mt-1">
+                    {deleteCheckResult.billingRuns} billing run{deleteCheckResult.billingRuns !== 1 ? 's' : ''} will lose their term reference.
+                  </span>
+                )}
+                {!deleteCheckResult?.isChecking && deleteCheckResult && !deleteCheckResult.continuationRuns && !deleteCheckResult.billingRuns && (
+                  <span className="block mt-1">This action cannot be undone.</span>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteCheckResult?.isChecking}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteCheckResult?.isChecking ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {deleteCheckResult && deleteCheckResult.continuationRuns > 0
+                ? 'Delete Term & Continuation Data'
+                : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

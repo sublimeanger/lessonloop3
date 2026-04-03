@@ -134,14 +134,20 @@ export function useClosureDateSettings() {
   const checkLessonsOnDates = async (dates: string[]): Promise<{ date: string; count: number }[]> => {
     if (!currentOrg) return [];
     const uniqueDates = [...new Set(dates)];
-    const { data, error } = await supabase.rpc('count_lessons_on_dates', {
+
+    const { data, error } = await (supabase.rpc as any)('count_lessons_on_dates', {
       _org_id: currentOrg.id,
       _dates: uniqueDates,
     });
-    if (error || !data) return [];
-    return (data as { lesson_date: string; lesson_count: number }[]).map(row => ({
+
+    if (error) {
+      console.error('Error checking lessons on dates:', error);
+      return [];
+    }
+
+    return (data || []).map((row: any) => ({
       date: row.lesson_date,
-      count: row.lesson_count,
+      count: Number(row.lesson_count),
     }));
   };
 
