@@ -343,6 +343,13 @@ export default function Students() {
 
       <StudentsOverdueBanner />
 
+      {students.length === 0 && !isLoading && (
+        <ContextualHint
+          id="students-add-first"
+          message="Start by adding your first student. You can add them one at a time or import from a CSV file."
+        />
+      )}
+
       <div className="mb-4 flex flex-col gap-3" data-hint="student-filters">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />

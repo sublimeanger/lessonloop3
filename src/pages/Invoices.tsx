@@ -235,6 +235,13 @@ export default function Invoices() {
         }
       />
 
+      <ContextualHint
+        id="invoices-billing-run"
+        message="Use Billing Run to automatically generate invoices for completed lessons. You can also create invoices manually."
+        position="bottom"
+        targetSelector="[data-hint='billing-run-button']"
+      />
+
       {/* Inline stats bar */}
       {!isParent && (
         <div className="mb-4" data-hint="invoice-stats">

@@ -46,6 +46,11 @@ export default function Practice() {
         }
       />
 
+      <ContextualHint
+        id="practice-assignments"
+        message="Create practice assignments for your students. They can log their practice sessions from the parent portal, and you can review their progress here."
+      />
+
       {/* Stats */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
         <Card>
