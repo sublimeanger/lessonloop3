@@ -79,7 +79,7 @@ export function Header() {
         )}
         onClick={() => setIsOpen(true)}
         title="LoopAssist (Space or Cmd+J)"
-        data-tour="loopassist-button"
+        data-hint="loopassist-button"
       >
         <Sparkles className="h-4 w-4" />
         <span className="hidden sm:inline text-sm">LoopAssist</span>

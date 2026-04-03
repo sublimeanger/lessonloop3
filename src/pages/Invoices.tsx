@@ -220,12 +220,12 @@ export default function Invoices() {
                 <span className="hidden sm:inline">Export</span>
               </Button>
               {(currentRole === 'owner' || currentRole === 'admin') && (
-                <Button variant="outline" size="sm" className="min-h-11 gap-1.5 sm:min-h-9" onClick={() => setBillingRunOpen(true)} data-tour="billing-run-button">
+                <Button variant="outline" size="sm" className="min-h-11 gap-1.5 sm:min-h-9" onClick={() => setBillingRunOpen(true)} data-hint="billing-run-button">
                   <PlayCircle className="h-4 w-4" />
                   <span className="hidden sm:inline">Billing Run</span>
                 </Button>
               )}
-              <Button size="sm" className="min-h-11 gap-1.5 sm:min-h-9" onClick={() => setCreateModalOpen(true)} data-tour="create-invoice-button">
+              <Button size="sm" className="min-h-11 gap-1.5 sm:min-h-9" onClick={() => setCreateModalOpen(true)} data-hint="create-invoice-button">
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Create Invoice</span>
               </Button>
@@ -236,7 +236,7 @@ export default function Invoices() {
 
       {/* Inline stats bar */}
       {!isParent && (
-        <div className="mb-4" data-tour="invoice-stats">
+        <div className="mb-4" data-hint="invoice-stats">
           <InvoiceStatsWidget onFilterStatus={(status) => { handleFiltersChange({ ...filters, status: status as any }); }} />
         </div>
       )}
@@ -300,7 +300,7 @@ export default function Invoices() {
                 onSecondaryAction={() => setCreateModalOpen(true)}
               />
             ) : (
-              <div className="rounded-xl border bg-card" data-tour="invoice-list">
+              <div className="rounded-xl border bg-card" data-hint="invoice-list">
                 <InvoiceList
                   invoices={invoices}
                   totalCount={totalCount}
@@ -340,7 +340,7 @@ export default function Invoices() {
               description="You don't have any invoices yet. They will appear here when your teacher creates them."
             />
           ) : (
-            <div className="rounded-xl border bg-card" data-tour="invoice-list">
+            <div className="rounded-xl border bg-card" data-hint="invoice-list">
               <InvoiceList
                 invoices={invoices}
                 totalCount={totalCount}

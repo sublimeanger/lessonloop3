@@ -126,7 +126,7 @@ export function CalendarDesktopLayout({
         actions={
           !isParent && (
             <div className="flex items-center gap-1.5">
-              <Button onClick={() => actions.openNewLessonModal()} className="gap-2" data-tour="create-lesson-button" disabled={!isOnline}>
+              <Button onClick={() => actions.openNewLessonModal()} className="gap-2" data-hint="create-lesson-button" disabled={!isOnline}>
                 <Plus className="h-4 w-4" />
                 New Lesson <span className="ml-1 text-micro opacity-60 bg-primary-foreground/20 px-1 rounded">N</span>
               </Button>
@@ -168,7 +168,7 @@ export function CalendarDesktopLayout({
 
           <div className="flex items-center gap-1 shrink-0">
             {!isParent && <MarkDayCompleteButton currentDate={currentDate} lessons={lessons} onComplete={refetch} />}
-            <ToggleGroup type="single" value={view} onValueChange={(v) => { if (v && ['day', 'stacked', 'week', 'agenda'].includes(v)) setView(v as CalendarView); }} data-tour="calendar-view-toggle">
+            <ToggleGroup type="single" value={view} onValueChange={(v) => { if (v && ['day', 'stacked', 'week', 'agenda'].includes(v)) setView(v as CalendarView); }} data-hint="calendar-view-toggle">
               <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="day" aria-label="Day view" className="h-8 w-8 p-0"><Calendar className="h-3.5 w-3.5" /></ToggleGroupItem></TooltipTrigger><TooltipContent side="bottom" className="text-xs">Day view</TooltipContent></Tooltip>
               <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="stacked" aria-label="Stacked view" className="h-8 w-8 p-0"><Columns3 className="h-3.5 w-3.5" /></ToggleGroupItem></TooltipTrigger><TooltipContent side="bottom" className="text-xs">Stacked view</TooltipContent></Tooltip>
               <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="week" aria-label="Week view" className="h-8 w-8 p-0"><LayoutGrid className="h-3.5 w-3.5" /></ToggleGroupItem></TooltipTrigger><TooltipContent side="bottom" className="text-xs">Week view</TooltipContent></Tooltip>
@@ -201,7 +201,7 @@ export function CalendarDesktopLayout({
 
         <WeekContextStrip currentDate={currentDate} onDayClick={setCurrentDate} lessonsByDay={lessonsByDay} view={view} />
 
-        <div data-tour="calendar-filters">
+        <div data-hint="calendar-filters">
           <CalendarFiltersBar filters={filters} onChange={setFilters} teachers={teachers} locations={locations} rooms={rooms} instruments={instruments} teachersWithColours={teachersWithColours} lessons={lessons} currentDate={currentDate} />
         </div>
       </div>
@@ -243,7 +243,7 @@ export function CalendarDesktopLayout({
                 isParent={isParent} compact={isCompact}
               />
             ) : (
-              <div data-tour="calendar-grid" data-hint="calendar-grid">
+              <div data-hint="calendar-grid" data-hint="calendar-grid">
                 <WeekTimeGrid
                   currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
                   onLessonClick={handleLessonClickOrSelect} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}

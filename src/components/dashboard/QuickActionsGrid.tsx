@@ -49,7 +49,7 @@ export function QuickActionsGrid({ variant = 'solo', className }: QuickActionsGr
     : soloActions;
 
   return (
-    <Card className={cn('', className)} data-tour="quick-actions">
+    <Card className={cn('', className)} data-hint="quick-actions">
       <CardHeader className="pb-2 sm:pb-3">
         <CardTitle className="text-body-strong">Quick Actions</CardTitle>
       </CardHeader>
