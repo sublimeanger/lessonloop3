@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
   // Handle CORS preflight
   const preflightResponse = handleCorsPreflightRequest(req);
   if (preflightResponse) return preflightResponse;
-  
+
   const corsHeaders = getCorsHeaders(req);
 
   try {
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     // User client to verify token
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -66,24 +66,6 @@ Deno.serve(async (req) => {
     const rlResult = await checkRateLimit(user.id, "onboarding-setup");
     if (!rlResult.allowed) {
       return rateLimitResponse(corsHeaders, rlResult);
-    }
-
-    // Idempotency guard: check if user already onboarded
-    const adminClientEarly = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
-    const { data: existingCheck } = await adminClientEarly
-      .from('profiles')
-      .select('has_completed_onboarding, current_org_id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (existingCheck?.has_completed_onboarding && existingCheck?.current_org_id) {
-      console.log('[onboarding-setup] Already onboarded, returning existing org:', existingCheck.current_org_id);
-      return new Response(
-        JSON.stringify({ success: true, org_id: existingCheck.current_org_id, message: 'Already onboarded — returning existing organisation' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
 
     // Parse request body
@@ -142,77 +124,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Determine plan limits - unlimited students for all plans
+    // Determine plan limits
     const plan = subscription_plan || 'solo_teacher';
     const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.solo_teacher;
 
-    // Use service role client to bypass RLS
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
-
-    // Generate org ID
-    const orgId = crypto.randomUUID();
-    console.log('[onboarding-setup] Creating organisation:', orgId, org_name, org_type);
-
-    // Step 0: Ensure profile exists (self-healing for edge cases)
-    const { data: existingProfile } = await adminClient
-      .from('profiles')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (!existingProfile) {
-      console.log('[onboarding-setup] Profile missing - creating it');
-      const { error: createProfileError } = await adminClient
-        .from('profiles')
-        .insert({
-          id: user.id,
-          email: user.email,
-          full_name,
-          phone: phone || null,
-          has_completed_onboarding: false,
-        });
-      
-      if (createProfileError && createProfileError.code !== '23505') {
-        console.error('[onboarding-setup] Profile creation failed:', createProfileError);
-        return new Response(
-          JSON.stringify({ error: "An internal error occurred. Please try again." }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Owner role is assigned via org_memberships when the org is created below
-    } else {
-      // Step 1: Update existing profile with name
-      const { error: profileError } = await adminClient
-        .from('profiles')
-        .update({ 
-          full_name,
-          phone: phone || null,
-        })
-        .eq('id', user.id);
-
-      if (profileError) {
-        console.error('[onboarding-setup] Profile update failed:', profileError);
-        return new Response(
-          JSON.stringify({ error: "An internal error occurred. Please try again." }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-    console.log('[onboarding-setup] Profile ready');
-
-    // Step 2: Create organisation with subscription details
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
-
     // Set smart defaults for parent reschedule policy based on org type
     const policyDefaults: Record<string, string> = {
-      solo_teacher: 'self_service', // Solo teachers want max automation
-      studio: 'request_only',       // Studios want balanced control
-      academy: 'request_only',      // Academies want balanced control
-      agency: 'admin_locked',       // Agencies in schools need full control
+      solo_teacher: 'self_service',
+      studio: 'request_only',
+      academy: 'request_only',
+      agency: 'admin_locked',
     };
     const parentReschedulePolicy = policyDefaults[org_type] || 'request_only';
 
@@ -232,104 +153,45 @@ Deno.serve(async (req) => {
       ? { country: 'AU', currency: 'AUD' }
       : tzCountryMap[tz] || { country: 'GB', currency: 'GBP' };
 
-    const { error: orgError } = await adminClient
-      .from('organisations')
-      .insert({
-        id: orgId,
-        name: org_name,
-        org_type,
-        country_code: detected.country,
-        currency_code: detected.currency,
-        timezone: tz,
-        created_by: user.id,
-        subscription_plan: plan,
-        subscription_status: 'trialing',
-        trial_ends_at: trialEndsAt.toISOString(),
-        max_students: limits.max_students,
-        max_teachers: limits.max_teachers,
-        parent_reschedule_policy: parentReschedulePolicy,
-      });
+    // Use service role client for the atomic RPC call
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
 
-    if (orgError) {
-      console.error('[onboarding-setup] Organisation creation failed:', orgError);
+    console.log('[onboarding-setup] Calling complete_onboarding RPC for org:', org_name, org_type);
+
+    // Single atomic RPC call — all steps run in one transaction.
+    // If any step fails, everything rolls back. No partial state.
+    const { data: result, error: rpcError } = await adminClient.rpc('complete_onboarding', {
+      _user_id: user.id,
+      _user_email: user.email,
+      _full_name: full_name,
+      _phone: phone || null,
+      _org_name: org_name,
+      _org_type: org_type,
+      _country_code: detected.country,
+      _currency_code: detected.currency,
+      _timezone: tz,
+      _subscription_plan: plan,
+      _max_students: limits.max_students,
+      _max_teachers: limits.max_teachers,
+      _parent_reschedule_policy: parentReschedulePolicy,
+      _trial_days: TRIAL_DAYS,
+      _also_teaches: also_teaches || false,
+    });
+
+    if (rpcError) {
+      console.error('[onboarding-setup] RPC failed:', rpcError);
       return new Response(
-        JSON.stringify({ error: "An internal error occurred. Please try again." }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    console.log('[onboarding-setup] Organisation created with policy:', parentReschedulePolicy);
-
-    // Wait for trigger-created membership (max 3 attempts, 200ms apart)
-    let membershipExists = false;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const { count } = await adminClient
-        .from('org_memberships')
-        .select('id', { count: 'exact', head: true })
-        .eq('org_id', orgId)
-        .eq('user_id', user.id);
-      if ((count || 0) > 0) {
-        membershipExists = true;
-        break;
-      }
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    if (!membershipExists) {
-      console.warn('[onboarding-setup] Membership not created by trigger — creating manually');
-      await adminClient.from('org_memberships').insert({
-        org_id: orgId, user_id: user.id, role: 'owner', status: 'active'
-      });
-    }
-
-    // Step 3.5: Create a teacher record for the owner when applicable
-    // - solo_teacher: always (the owner IS the teacher)
-    // - studio/academy: only if they indicated they also teach
-    const shouldCreateTeacher = org_type === 'solo_teacher' || (also_teaches && (org_type === 'studio' || org_type === 'academy'));
-    if (shouldCreateTeacher) {
-      console.log('[onboarding-setup] Creating teacher record for owner (org_type:', org_type, ', also_teaches:', also_teaches, ')');
-      
-      const { error: teacherError } = await adminClient
-        .from('teachers')
-        .insert({
-          org_id: orgId,
-          user_id: user.id,
-          display_name: full_name,
-          email: user.email,
-          status: 'active',
-        });
-
-      if (teacherError && teacherError.code !== '23505') {
-        console.error('[onboarding-setup] Teacher creation failed:', teacherError);
-        // Non-fatal - log but don't fail onboarding
-      } else {
-        console.log('[onboarding-setup] Teacher record created');
-      }
-    }
-
-    // Step 4: Mark onboarding complete and ensure current_org_id is set
-    const { error: completeError } = await adminClient
-      .from('profiles')
-      .update({ 
-        current_org_id: orgId,
-        has_completed_onboarding: true,
-      })
-      .eq('id', user.id);
-
-    if (completeError) {
-      console.error('[onboarding-setup] Complete update failed:', completeError);
-      return new Response(
-        JSON.stringify({ error: 'Organisation created but completion flag failed. Please refresh and try again.' }),
+        JSON.stringify({ error: 'An internal error occurred. Please try again.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('[onboarding-setup] Setup complete, org_id:', orgId);
+    console.log('[onboarding-setup] RPC result:', result);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        org_id: orgId,
-        message: 'Organisation created successfully' 
-      }),
+      JSON.stringify(result),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
