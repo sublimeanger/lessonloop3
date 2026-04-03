@@ -388,6 +388,11 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       >
+        <ContextualHint
+          id="teacher-my-schedule"
+          message="This is your personal dashboard. View today's lessons, mark attendance, and manage your schedule — all in one place."
+        />
+
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
             <DashboardHero
