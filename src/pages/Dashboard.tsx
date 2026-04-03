@@ -256,6 +256,11 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       >
+        <ContextualHint
+          id="dashboard-welcome"
+          message="Welcome to LessonLoop! This is your academy dashboard — monitor KPIs, today's schedule across all teachers, and run billing. Explore each section to get started."
+        />
+
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
             <DashboardHero
