@@ -243,7 +243,7 @@ export function CalendarDesktopLayout({
                 isParent={isParent} compact={isCompact}
               />
             ) : (
-              <div data-hint="calendar-grid" data-hint="calendar-grid">
+              <div data-hint="calendar-grid">
                 <WeekTimeGrid
                   currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
                   onLessonClick={handleLessonClickOrSelect} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
