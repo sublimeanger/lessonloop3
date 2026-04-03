@@ -241,10 +241,17 @@ function TokenResponse() {
 function PortalContinuationList() {
   const { currentOrg } = useOrg();
   const {
-    data: pendingResponses = [],
+    data: allPendingResponses = [],
     isLoading,
   } = useParentContinuationPending();
   const respondMutation = useParentRespondToContinuation();
+  const { selectedChildId } = useChildFilter();
+
+  // Filter by selected child
+  const pendingResponses = useMemo(() => {
+    if (!selectedChildId) return allPendingResponses;
+    return allPendingResponses.filter((r: any) => r.student_id === selectedChildId);
+  }, [allPendingResponses, selectedChildId]);
 
   const [withdrawingStudentId, setWithdrawingStudentId] = useState<string | null>(null);
   const [withdrawalReason, setWithdrawalReason] = useState('');
