@@ -23,6 +23,7 @@ import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import ForgotPassword from '@/pages/ForgotPassword';
 import Dashboard from '@/pages/Dashboard';
+import CalendarPage from '@/pages/CalendarPage';
 
 // ─── Lazy: Auth ──────────────────────────────────────────
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -32,7 +33,6 @@ const VerifyEmail = lazy(() => import('@/pages/VerifyEmail'));
 const ZoomOAuthCallback = lazy(() => import('@/pages/ZoomOAuthCallback'));
 
 // ─── Lazy: App ───────────────────────────────────────────
-const CalendarPage = lazy(() => import('@/pages/CalendarPage'));
 const Students = lazy(() => import('@/pages/Students'));
 const StudentDetail = lazy(() => import('@/pages/StudentDetail'));
 const StudentsImport = lazy(() => import('@/pages/StudentsImport'));
