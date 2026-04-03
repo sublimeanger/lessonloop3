@@ -76,6 +76,7 @@ export function LessonNotesForm({
   const [perStudentMode, setPerStudentMode] = useState(false);
   const [activeStudentTab, setActiveStudentTab] = useState<string>('lesson');
   const [confirmSaveKey, setConfirmSaveKey] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   // Form state: 'lesson' key for whole-lesson, student IDs for per-student
   const [forms, setForms] = useState<Record<string, NoteFormState>>({
@@ -83,6 +84,7 @@ export function LessonNotesForm({
   });
 
   const initializedRef = useRef(false);
+  const initialFormsRef = useRef<Record<string, NoteFormState> | null>(null);
 
   // Initialize form from existing notes
   useEffect(() => {
