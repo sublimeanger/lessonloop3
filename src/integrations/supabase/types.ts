@@ -1519,6 +1519,35 @@ export type Database = {
           },
         ]
       }
+      hint_completions: {
+        Row: {
+          dismissed_at: string
+          hint_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          hint_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          hint_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hint_completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instruments: {
         Row: {
           category: string

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useHint } from '@/hooks/useContextualHints';
+import { useHint, HINT_REGISTRY } from '@/hooks/useContextualHints';
+import { useFeatureGate, type Feature } from '@/hooks/useFeatureGate';
 import { cn } from '@/lib/utils';
 
 interface ContextualHintProps {
@@ -19,7 +20,37 @@ export function ContextualHint({
   message,
   position = 'bottom',
   targetSelector,
-  autoDismissMs = 5000,
+  autoDismissMs,
+  className,
+}: ContextualHintProps) {
+  const config = HINT_REGISTRY[id];
+  const featureKey = config?.feature as Feature | undefined;
+
+  // Feature gate check — if no feature configured, this returns hasAccess: true
+  // We always call the hook (rules of hooks) with a fallback feature that everyone has access to
+  const { hasAccess } = useFeatureGate((featureKey || 'resource_library') as Feature);
+
+  // If feature-gated and user doesn't have access, don't render
+  if (featureKey && !hasAccess) return null;
+
+  return (
+    <ContextualHintInner
+      id={id}
+      message={message}
+      position={position}
+      targetSelector={targetSelector}
+      autoDismissMs={autoDismissMs}
+      className={className}
+    />
+  );
+}
+
+function ContextualHintInner({
+  id,
+  message,
+  position = 'bottom',
+  targetSelector,
+  autoDismissMs,
   className,
 }: ContextualHintProps) {
   const { isVisible, dismiss } = useHint(id, autoDismissMs);
