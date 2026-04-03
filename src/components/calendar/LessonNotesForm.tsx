@@ -377,7 +377,7 @@ export function LessonNotesForm({
           {/* Save button */}
           <div className="flex items-center justify-end gap-3">
             {isDirty && (
-              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+              <span className="text-xs text-muted-foreground font-medium italic">
                 Unsaved changes
               </span>
             )}
