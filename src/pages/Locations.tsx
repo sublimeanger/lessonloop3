@@ -656,6 +656,11 @@ export default function Locations() {
         }
       />
 
+      <ContextualHint
+        id="locations-add-room"
+        message="Add rooms to your locations to track which room each lesson takes place in. This helps avoid double-bookings."
+      />
+
       {/* Multi-location upgrade prompt */}
       {!hasMultiLocation && locations.length >= 1 && (
         <div className="mb-4">
