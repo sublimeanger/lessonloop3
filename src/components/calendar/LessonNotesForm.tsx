@@ -154,6 +154,21 @@ export function LessonNotesForm({
     }
   }, [perStudentMode, participants]);
 
+  // Dirty tracking: compare current forms to initial snapshot
+  useEffect(() => {
+    if (!initialFormsRef.current) return;
+    const dirty = JSON.stringify(forms) !== JSON.stringify(initialFormsRef.current);
+    setIsDirty(dirty);
+  }, [forms]);
+
+  // Warn on tab close when dirty
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
   const updateField = useCallback((key: string, field: keyof NoteFormState, value: any) => {
     setForms(prev => ({
       ...prev,
