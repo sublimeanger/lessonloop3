@@ -352,7 +352,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
     const cleanEmail = email.trim().toLowerCase();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
       options: {
@@ -360,6 +360,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: `${window.location.origin}/verify-email`,
       },
     });
+
+    // Detect Supabase's duplicate email obfuscation:
+    // When "Confirm email" is ON and the email already exists,
+    // Supabase returns success but with identities: []
+    if (!error && data?.user?.identities?.length === 0) {
+      return {
+        error: new Error('An account with this email may already exist. Please try logging in or resetting your password.'),
+      };
+    }
+
     return { error: error as Error | null };
   }, []);
 
