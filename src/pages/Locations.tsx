@@ -499,10 +499,12 @@ export default function Locations() {
       setEditingRoom(room);
       setRoomName(room.name);
       setRoomCapacity(room.capacity?.toString() || '');
+      setRoomDescription(room.description || '');
     } else {
       setEditingRoom(null);
       setRoomName('');
       setRoomCapacity('');
+      setRoomDescription('');
     }
     setIsRoomDialogOpen(true);
   };
