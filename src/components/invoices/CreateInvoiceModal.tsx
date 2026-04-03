@@ -412,7 +412,12 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
             <div className="space-y-2">
               <Label htmlFor="dueDate">Due Date</Label>
-              <Input id="dueDate" type="date" {...register('dueDate', { required: true })} />
+              <DatePicker
+                id="dueDate"
+                value={watch('dueDate') || ''}
+                onChange={(v) => setValue('dueDate', v, { shouldValidate: true })}
+                placeholder="Select due date"
+              />
             </div>
 
             <TabsContent value="manual" className="mt-0 space-y-4">
