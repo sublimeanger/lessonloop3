@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'; // force HMR refresh
+import { useEffect, useState } from 'react';
 import { ContextualHint } from '@/components/shared/ContextualHint';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { StatsGrid } from '@/components/shared/StatsGrid';
