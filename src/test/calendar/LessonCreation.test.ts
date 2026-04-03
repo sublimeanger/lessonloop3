@@ -74,7 +74,7 @@ describe('LL-SCH-P0-02: Lesson Creation', () => {
 
       const lesson = {
         org_id: orgId,
-        lesson_type: 'individual' as const,
+        lesson_type: 'private' as const,
         teacher_user_id: userId,
         teacher_id: 'teacher-001',
         location_id: 'loc-001',
@@ -99,8 +99,8 @@ describe('LL-SCH-P0-02: Lesson Creation', () => {
       expect(lesson.notes_shared).toBe('Focus on scales');
     });
 
-    it('generates correct title for individual lesson', () => {
-      expect(generateTitle('individual', ['Alice Smith'], 'Mr Jones')).toBe('Alice Smith — Lesson');
+    it('generates correct title for private lesson', () => {
+      expect(generateTitle('private', ['Alice Smith'], 'Mr Jones')).toBe('Alice Smith — Lesson');
     });
 
     it('generates correct title for group lesson', () => {
@@ -108,11 +108,11 @@ describe('LL-SCH-P0-02: Lesson Creation', () => {
     });
 
     it('generates correct title for multi-student', () => {
-      expect(generateTitle('individual', ['Alice', 'Bob', 'Charlie'], null)).toBe('Alice + 2 more — Lesson');
+      expect(generateTitle('private', ['Alice', 'Bob', 'Charlie'], null)).toBe('Alice + 2 more — Lesson');
     });
 
     it('generates fallback title with no students', () => {
-      expect(generateTitle('individual', [], 'Mr Jones')).toBe('Lesson — Mr Jones');
+      expect(generateTitle('private', [], 'Mr Jones')).toBe('Lesson — Mr Jones');
     });
   });
 
