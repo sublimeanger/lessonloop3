@@ -59,6 +59,7 @@ export interface ParentInvoice {
   installment_count: number | null;
   payer_guardian?: { full_name: string } | null;
   payer_student?: { first_name: string; last_name: string } | null;
+  invoice_items?: { description: string; quantity: number; unit_price_minor: number; amount_minor: number; student_id: string | null }[] | null;
 }
 
 export interface MessageRequest {
