@@ -208,7 +208,11 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col p-0 pt-safe sm:max-w-lg max-sm:max-w-full" hideCloseButton>
+       <SheetContent
+          className="flex w-full flex-col p-0 pt-safe sm:max-w-lg max-sm:max-w-full"
+          style={keyboardHeight > 0 ? { paddingBottom: `${keyboardHeight}px` } : undefined}
+          hideCloseButton
+        >
         <SheetHeader className="border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
