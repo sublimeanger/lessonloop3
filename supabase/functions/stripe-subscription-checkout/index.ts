@@ -108,8 +108,8 @@ serve(async (req) => {
       .eq("status", "active")
       .single();
 
-    if (!membership || !["owner", "admin"].includes(membership.role)) {
-      throw new Error("Only org owners/admins can manage subscriptions");
+    if (!membership || membership.role !== "owner") {
+      throw new Error("Only the organisation owner can manage subscriptions");
     }
 
     // Fetch org details
