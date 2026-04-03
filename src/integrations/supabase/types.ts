@@ -5991,6 +5991,26 @@ export type Database = {
         Returns: Json
       }
       complete_expired_assignments: { Args: never; Returns: undefined }
+      complete_onboarding: {
+        Args: {
+          _also_teaches?: boolean
+          _country_code?: string
+          _currency_code?: string
+          _full_name: string
+          _max_students?: number
+          _max_teachers?: number
+          _org_name?: string
+          _org_type?: string
+          _parent_reschedule_policy?: string
+          _phone?: string
+          _subscription_plan?: string
+          _timezone?: string
+          _trial_days?: number
+          _user_email: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       confirm_makeup_booking: {
         Args: { _org_id: string; _waitlist_id: string }
         Returns: Json
