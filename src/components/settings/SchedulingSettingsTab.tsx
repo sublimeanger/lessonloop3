@@ -648,6 +648,10 @@ export function SchedulingSettingsTab() {
       </Card>
 
       {/* Make-Up Policy */}
+      <ContextualHint
+        id="settings-make-up-policy"
+        message="Configure how make-up credits work for different absence types. You can set eligibility rules and credit limits per term."
+      />
       <MakeUpPolicySettings />
 
       {/* Closure Dates */}
