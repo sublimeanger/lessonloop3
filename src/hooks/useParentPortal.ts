@@ -375,7 +375,7 @@ export function useParentInvoices(options?: { status?: string }) {
           installment_count,
           payer_guardian:guardians(full_name),
           payer_student:students(first_name, last_name),
-          invoice_items(description, quantity, unit_price_minor, amount_minor)
+          invoice_items(description, quantity, unit_price_minor, amount_minor, student_id)
         `)
         .eq('org_id', currentOrg.id)
         .eq('payer_guardian_id', guardianId)
