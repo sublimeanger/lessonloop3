@@ -864,6 +864,9 @@ export default function Locations() {
                                 <span className="text-sm font-medium truncate">{room.name}</span>
                                 {room.capacity && <span className="text-xs text-muted-foreground shrink-0">· {room.capacity} cap</span>}
                               </div>
+                              {room.description && (
+                                <p className="text-micro text-muted-foreground mt-0.5 ml-5 truncate">{room.description}</p>
+                              )}
                               <div className="text-micro mt-0.5 ml-5">
                                 {(locationStats?.roomBookings?.[room.id] ?? 0) > 0 ? (
                                   <span className="text-muted-foreground">{locationStats?.roomBookings?.[room.id]} upcoming</span>
