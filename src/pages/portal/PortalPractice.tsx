@@ -73,6 +73,11 @@ export default function PortalPractice() {
         title="Practice"
         description="Track practice sessions and view progress"
       />
+
+      <ContextualHint
+        id="portal-practice"
+        message="Use the timer to log practice sessions. Your teacher can see how much your child practises and track their progress over time."
+      />
       
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">

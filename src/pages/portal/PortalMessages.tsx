@@ -294,6 +294,11 @@ export default function PortalMessages() {
         }
       />
 
+      <ContextualHint
+        id="portal-messages"
+        message="Send messages and requests to your teacher. You can request reschedules, cancellations, or ask general questions."
+      />
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="rounded-full bg-muted/60 p-1 h-auto">
           <TabsTrigger value="inbox" className={cn('rounded-full px-5 py-2 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-2', pulseInbox && 'animate-pulse')}>
