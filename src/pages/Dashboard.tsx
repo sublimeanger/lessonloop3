@@ -142,6 +142,11 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       >
+        <ContextualHint
+          id="dashboard-welcome"
+          message="Welcome to LessonLoop! This is your dashboard — a snapshot of your teaching day, students, and finances. Explore each section to get started."
+        />
+
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
             <DashboardHero
