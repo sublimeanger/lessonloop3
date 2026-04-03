@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useIOSKeyboardHeight } from '@/hooks/useIOSKeyboardHeight';
+import { platform } from '@/lib/platform';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -210,7 +211,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     <Sheet open={open} onOpenChange={onOpenChange}>
        <SheetContent
           className="flex w-full flex-col p-0 pt-safe sm:max-w-lg max-sm:max-w-full"
-          style={keyboardHeight > 0 ? { paddingBottom: `${keyboardHeight}px` } : undefined}
+          style={keyboardHeight > 0 && platform.isNative ? { paddingBottom: `${keyboardHeight}px` } : undefined}
           hideCloseButton
         >
         <SheetHeader className="border-b px-4 py-3">
