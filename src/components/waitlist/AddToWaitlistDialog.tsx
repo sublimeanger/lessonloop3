@@ -352,6 +352,7 @@ export function AddToWaitlistDialog({ open, onOpenChange, leadData }: AddToWaitl
               type="time"
               value={preferredTimeEarliest}
               onChange={(e) => setPreferredTimeEarliest(e.target.value)}
+              className="text-base md:text-sm"
             />
           </div>
           <div className="space-y-2">
