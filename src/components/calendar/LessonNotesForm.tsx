@@ -375,7 +375,12 @@ export function LessonNotesForm({
           <Separator />
 
           {/* Save button */}
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-3">
+            {isDirty && (
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                Unsaved changes
+              </span>
+            )}
             <Button
               size="sm"
               onClick={handleSaveAll}
