@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { useRealtimeInvoices } from '@/hooks/useRealtimeInvoices';
