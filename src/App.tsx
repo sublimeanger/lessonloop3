@@ -8,7 +8,6 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-route
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { OrgProvider, useOrg } from "@/contexts/OrgContext";
 import { LoopAssistProvider } from "@/contexts/LoopAssistContext";
-import { TourProvider } from "@/components/tours/TourProvider";
 import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
@@ -202,7 +201,6 @@ const App = () => {
               <OrgProvider>
                 <NativeInitializer />
                 <LoopAssistProvider>
-                  <TourProvider>
                     <ScrollToTop />
                     <OfflineBanner />
                     <Toaster />
@@ -232,7 +230,6 @@ const App = () => {
                         <Route path={notFoundRoute.path} element={<notFoundRoute.component />} />
                       </Routes>
                     </Suspense>
-                  </TourProvider>
                 </LoopAssistProvider>
               </OrgProvider>
             </AuthProvider>
