@@ -541,6 +541,7 @@ export default function Locations() {
       name: roomName.trim(),
       capacity: parsedCapacity,
       max_capacity: parsedCapacity,
+      description: roomDescription.trim() || null,
     };
     
     if (editingRoom) {
