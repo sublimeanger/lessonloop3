@@ -34,6 +34,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
     clearMessages,
     cancelStreaming,
   } = useParentLoopAssist();
+  const keyboardHeight = useIOSKeyboardHeight();
 
   const [input, setInput] = useState('');
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
