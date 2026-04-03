@@ -374,10 +374,10 @@ export default function Locations() {
     const data = {
       name: locName.trim(),
       location_type: locType,
-      address_line_1: locAddress1.trim() || null,
-      address_line_2: locAddress2.trim() || null,
-      city: locCity.trim() || null,
-      postcode: locPostcode.trim() || null,
+      address_line_1: locType === 'online' ? null : locAddress1.trim() || null,
+      address_line_2: locType === 'online' ? null : locAddress2.trim() || null,
+      city: locType === 'online' ? null : locCity.trim() || null,
+      postcode: locType === 'online' ? null : locPostcode.trim() || null,
       notes: locNotes.trim() || null,
       country_code: locCountry,
     };
