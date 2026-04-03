@@ -179,6 +179,8 @@ export default function Locations() {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [roomName, setRoomName] = useState('');
   const [roomCapacity, setRoomCapacity] = useState('');
+  const [roomDescription, setRoomDescription] = useState('');
+  const [countryOpen, setCountryOpen] = useState(false);
 
   // Delete validation state for locations
   const [deleteLocDialog, setDeleteLocDialog] = useState<{
