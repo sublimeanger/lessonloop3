@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { format, eachDayOfInterval, parseISO } from 'date-fns';
 import { getUKHolidayPresets } from '@/lib/holidayPresets';
 import { useClosureDateSettings } from '@/hooks/useClosureDateSettings';
