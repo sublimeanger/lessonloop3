@@ -923,42 +923,61 @@ export default function Locations() {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Address Line 1{locType !== 'online' && <span className="text-destructive ml-0.5">*</span>}</Label>
-              <Input value={locAddress1} onChange={(e) => setLocAddress1(e.target.value)} placeholder="123 High Street" />
-            </div>
-            <div className="space-y-2">
-              <Label>Address Line 2</Label>
-              <Input value={locAddress2} onChange={(e) => setLocAddress2(e.target.value)} placeholder="Suite 4" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>City</Label>
-                <Input value={locCity} onChange={(e) => setLocCity(e.target.value)} placeholder="London" />
+            {locType !== 'online' ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Address Line 1 <span className="text-destructive ml-0.5">*</span></Label>
+                  <Input value={locAddress1} onChange={(e) => setLocAddress1(e.target.value)} placeholder="123 High Street" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Address Line 2</Label>
+                  <Input value={locAddress2} onChange={(e) => setLocAddress2(e.target.value)} placeholder="Suite 4" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>City</Label>
+                    <Input value={locCity} onChange={(e) => setLocCity(e.target.value)} placeholder="London" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Postcode</Label>
+                    <Input value={locPostcode} onChange={(e) => setLocPostcode(e.target.value)} placeholder="SW1A 1AA" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" aria-expanded={countryOpen} className="w-full justify-between font-normal">
+                        {COUNTRIES.find(c => c.code === locCountry)?.name || 'Select country...'}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search country..." />
+                        <CommandList>
+                          <CommandEmpty>No country found.</CommandEmpty>
+                          {COUNTRIES.map(c => (
+                            <CommandItem
+                              key={c.code}
+                              value={c.name}
+                              onSelect={() => { setLocCountry(c.code); setCountryOpen(false); }}
+                            >
+                              <Check className={cn('mr-2 h-4 w-4', locCountry === c.code ? 'opacity-100' : 'opacity-0')} />
+                              {c.name}
+                            </CommandItem>
+                          ))}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                Online locations don't need a physical address. Students will join lessons via a link shared in their lesson details.
               </div>
-              <div className="space-y-2">
-                <Label>Postcode</Label>
-                <Input value={locPostcode} onChange={(e) => setLocPostcode(e.target.value)} placeholder="SW1A 1AA" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Country</Label>
-              <Select value={locCountry} onValueChange={setLocCountry}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GB">United Kingdom</SelectItem>
-                  <SelectItem value="IE">Ireland</SelectItem>
-                  <SelectItem value="US">United States</SelectItem>
-                  <SelectItem value="CA">Canada</SelectItem>
-                  <SelectItem value="AU">Australia</SelectItem>
-                  <SelectItem value="NZ">New Zealand</SelectItem>
-                  <SelectItem value="DE">Germany</SelectItem>
-                  <SelectItem value="FR">France</SelectItem>
-                  <SelectItem value="ES">Spain</SelectItem>
-                  <SelectItem value="IT">Italy</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            )}
             <div className="space-y-1">
               <Label>Notes</Label>
               <Textarea value={locNotes} onChange={(e) => setLocNotes(e.target.value)} placeholder="Parking available behind building..." rows={3} maxLength={500} />
