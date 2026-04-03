@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link } from 'react-router-dom';
@@ -165,6 +166,10 @@ export default function DailyRegister() {
       />
 
       <PullToRefresh onRefresh={async () => { await refetch(); }}>
+      <ContextualHint
+        id="register-keyboard-shortcuts"
+        message="Use the daily register to mark each student's attendance. Navigate dates with the arrows, and use Batch Mode for marking multiple lessons at once."
+      />
       {/* Date Navigation */}
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="flex w-full items-center gap-2 lg:w-auto">

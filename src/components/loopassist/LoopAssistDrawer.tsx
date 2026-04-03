@@ -248,7 +248,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
         {/* Context indicator */}
         {pageContext.type !== 'general' && (
-          <div className="border-b bg-muted/50 px-4 py-2" data-tour="loopassist-context">
+          <div className="border-b bg-muted/50 px-4 py-2" data-hint="loopassist-context">
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Context:</span>
               <Badge variant="secondary" className="capitalize">
@@ -394,7 +394,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
             </ScrollArea>
 
             {/* Chat Input */}
-            <div className="border-t p-4 pb-safe sticky bottom-0 bg-background" data-tour="loopassist-input">
+            <div className="border-t p-4 pb-safe sticky bottom-0 bg-background" data-hint="loopassist-input">
               <div className="flex gap-3 items-end">
                 <Textarea
                   ref={chatInputRef}
@@ -508,7 +508,7 @@ function LandingView({
             </div>
 
             {/* Quick input */}
-            <div className="flex gap-2 items-end" data-tour="loopassist-input">
+            <div className="flex gap-2 items-end" data-hint="loopassist-input">
               <Textarea
                 ref={inputRef}
                 value={input}
@@ -530,7 +530,7 @@ function LandingView({
 
             {/* Suggested prompts */}
             {suggestedPrompts.length > 0 && (
-              <div className="flex flex-wrap gap-2 justify-center" data-tour="loopassist-prompts">
+              <div className="flex flex-wrap gap-2 justify-center" data-hint="loopassist-prompts">
                 {suggestedPrompts.map((prompt, i) => (
                   <Button
                     key={i}

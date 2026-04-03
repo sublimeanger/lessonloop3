@@ -1,4 +1,5 @@
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useMemo } from 'react';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
@@ -71,6 +72,11 @@ export default function PortalPractice() {
       <PageHeader
         title="Practice"
         description="Track practice sessions and view progress"
+      />
+
+      <ContextualHint
+        id="portal-practice"
+        message="Use the timer to log practice sessions. Your teacher can see how much your child practises and track their progress over time."
       />
       
       <div className="grid gap-6 lg:grid-cols-2">

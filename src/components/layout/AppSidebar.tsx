@@ -353,7 +353,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-sidebar-border" data-tour="sidebar">
+    <Sidebar className="border-r border-sidebar-border" data-hint="sidebar">
       <SidebarContent className="pt-3">
         {/* Logo area */}
         <div className={cn('px-4 pb-2', collapsed && 'px-2 flex justify-center')}>

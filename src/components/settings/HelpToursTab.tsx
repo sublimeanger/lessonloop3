@@ -1,24 +1,61 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useContextualHints } from '@/hooks/useContextualHints';
+import { useContextualHints, HINT_REGISTRY } from '@/hooks/useContextualHints';
 import { RotateCcw, HelpCircle, BookOpen, Lightbulb } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 export function HelpToursTab() {
   const { resetAllHints, seenHints } = useContextualHints();
-  const dismissedCount = Object.keys(seenHints).length;
+  const { toast } = useToast();
+
+  const totalHints = Object.keys(HINT_REGISTRY).length;
+  const seenCount = Object.keys(seenHints).length;
+
+  const handleReset = () => {
+    resetAllHints();
+    toast({ title: 'Hints reset', description: 'All contextual hints will appear again as you navigate the app.' });
+  };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
+            <Lightbulb className="h-5 w-5" />
+            Contextual Hints
+          </CardTitle>
+          <CardDescription>
+            Helpful tips appear as you use the app for the first time. They only show once per feature.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            You've seen {seenCount} of {totalHints} available hints.
+          </p>
+
+          {seenCount > 0 && (
+            <div className="pt-2 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handleReset}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Reset all hints
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
             <HelpCircle className="h-5 w-5" />
             Help Centre
           </CardTitle>
-          <CardDescription>
-            Access documentation and guides for using LessonLoop
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Link to="/help">
@@ -27,46 +64,6 @@ export function HelpToursTab() {
               Open Help Centre
             </Button>
           </Link>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5" />
-            Contextual Hints
-          </CardTitle>
-          <CardDescription>
-            Helpful tips that appear throughout the app to guide you through features.
-            {dismissedCount > 0 && (
-              <span className="ml-1 text-muted-foreground">
-                ({dismissedCount} dismissed)
-              </span>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Contextual hints appear automatically as you explore different parts of LessonLoop.
-            If you&apos;d like to see them again, you can reset all dismissed hints below.
-          </p>
-
-          {dismissedCount > 0 && (
-            <div className="pt-2 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={resetAllHints}
-              >
-                <RotateCcw className="h-4 w-4" />
-                Reset All Hints
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">
-                This will allow all contextual hints to appear again across the app.
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

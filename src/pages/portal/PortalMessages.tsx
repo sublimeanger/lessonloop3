@@ -1,4 +1,5 @@
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ListSkeleton } from '@/components/shared/LoadingState';
@@ -291,6 +292,11 @@ export default function PortalMessages() {
             </Button>
           )
         }
+      />
+
+      <ContextualHint
+        id="portal-messages"
+        message="Send messages and requests to your teacher. You can request reschedules, cancellations, or ask general questions."
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

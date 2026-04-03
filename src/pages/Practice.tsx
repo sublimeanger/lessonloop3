@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -43,6 +44,11 @@ export default function Practice() {
             New Assignment
           </Button>
         }
+      />
+
+      <ContextualHint
+        id="practice-assignments"
+        message="Create practice assignments for your students. They can log their practice sessions from the parent portal, and you can review their progress here."
       />
 
       {/* Stats */}

@@ -127,7 +127,7 @@ function ContextualHintInner({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0" aria-label="Dismiss hint"
+              className="h-11 w-11 sm:h-8 sm:w-8 shrink-0" aria-label="Dismiss hint"
               onClick={dismiss}
             >
               <X className="h-3 w-3" />
@@ -158,7 +158,7 @@ function ContextualHintInner({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0" aria-label="Dismiss hint"
+            className="h-11 w-11 sm:h-8 sm:w-8 shrink-0" aria-label="Dismiss hint"
             onClick={dismiss}
           >
             <X className="h-3 w-3" />

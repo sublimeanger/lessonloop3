@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -330,7 +331,7 @@ export default function Students() {
                   <span className="hidden sm:inline">Import</span>
                 </Button>
               </Link>
-              <Button onClick={openAddWizard} size="sm" className="min-h-11 sm:min-h-9 gap-1.5" disabled={!canAddStudent} data-tour="add-student-button">
+              <Button onClick={openAddWizard} size="sm" className="min-h-11 sm:min-h-9 gap-1.5" disabled={!canAddStudent} data-hint="add-student-button">
                 {!canAddStudent && <Lock className="h-4 w-4" />}
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add Student</span>
@@ -342,7 +343,14 @@ export default function Students() {
 
       <StudentsOverdueBanner />
 
-      <div className="mb-4 flex flex-col gap-3" data-tour="student-filters">
+      {students.length === 0 && !isLoading && (
+        <ContextualHint
+          id="students-add-first"
+          message="Start by adding your first student. You can add them one at a time or import from a CSV file."
+        />
+      )}
+
+      <div className="mb-4 flex flex-col gap-3" data-hint="student-filters">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
@@ -398,7 +406,7 @@ export default function Students() {
           onSecondaryAction={searchQuery ? undefined : () => navigate('/students/import')}
         />
       ) : (
-        <div data-tour="student-list">
+        <div data-hint="student-list">
           <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
             <Table>
               <TableHeader>

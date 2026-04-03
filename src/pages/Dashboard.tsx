@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { StatsGrid } from '@/components/shared/StatsGrid';
 import { useRealtimeInvoices } from '@/hooks/useRealtimeInvoices';
@@ -142,6 +143,11 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       >
+        <ContextualHint
+          id="dashboard-welcome"
+          message="Welcome to LessonLoop! This is your dashboard — a snapshot of your teaching day, students, and finances. Explore each section to get started."
+        />
+
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
             <DashboardHero
@@ -250,6 +256,11 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       >
+        <ContextualHint
+          id="dashboard-welcome"
+          message="Welcome to LessonLoop! This is your academy dashboard — monitor KPIs, today's schedule across all teachers, and run billing. Explore each section to get started."
+        />
+
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
             <DashboardHero
@@ -377,6 +388,11 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       >
+        <ContextualHint
+          id="teacher-my-schedule"
+          message="This is your personal dashboard. View today's lessons, mark attendance, and manage your schedule — all in one place."
+        />
+
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
             <DashboardHero

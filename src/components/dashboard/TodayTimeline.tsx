@@ -128,7 +128,7 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
     : (lessons || []).slice(0, 6);
 
   return (
-    <Card className={cn('', className)} data-tour="today-timeline">
+    <Card className={cn('', className)} data-hint="today-timeline">
       <CardHeader className="pb-2 sm:pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-body-strong">Today's Schedule</CardTitle>

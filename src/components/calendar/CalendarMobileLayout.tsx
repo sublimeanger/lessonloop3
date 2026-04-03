@@ -123,7 +123,7 @@ export function CalendarMobileLayout({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <div data-tour="calendar-filters">
+        <div data-hint="calendar-filters">
           <CalendarFiltersBar filters={filters} onChange={setFilters} teachers={teachers} locations={locations} rooms={rooms} instruments={instruments} teachersWithColours={teachersWithColours} lessons={lessons} currentDate={currentDate} />
         </div>
       </div>

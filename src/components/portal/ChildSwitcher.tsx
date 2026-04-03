@@ -37,7 +37,7 @@ export function ChildSwitcher({ className, compact }: ChildSwitcherProps) {
       value={selectedChildId || '__all__'}
       onValueChange={(v) => setSelectedChildId(v === '__all__' ? null : v)}
     >
-      <SelectTrigger className={cn('bg-background', compact ? 'h-11 text-sm w-full' : 'w-48', className)}>
+      <SelectTrigger className={cn('bg-background', compact ? 'h-11 text-sm w-full' : 'w-48', className)} data-hint="child-switcher">
         <div className="flex items-center gap-2 truncate">
           <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <SelectValue placeholder="All children" />

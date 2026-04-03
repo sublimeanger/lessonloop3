@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { STALE_STABLE } from '@/config/query-stale-times';
@@ -653,6 +654,11 @@ export default function Locations() {
             </Button>
           )
         }
+      />
+
+      <ContextualHint
+        id="locations-add-room"
+        message="Add rooms to your locations to track which room each lesson takes place in. This helps avoid double-bookings."
       />
 
       {/* Multi-location upgrade prompt */}

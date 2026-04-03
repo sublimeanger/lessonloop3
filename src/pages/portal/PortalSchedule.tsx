@@ -1,4 +1,5 @@
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
@@ -472,6 +473,11 @@ export default function PortalSchedule() {
   return (
     <PortalLayout>
       <PageHeader title="Schedule" description="View your children's lesson schedule" />
+
+      <ContextualHint
+        id="portal-schedule"
+        message="View upcoming and past lessons here. Tap a lesson to see notes and attendance. You can also subscribe to a calendar feed to see lessons in your phone's calendar."
+      />
 
       {/* Calendar Subscribe Card */}
       {guardianId && (

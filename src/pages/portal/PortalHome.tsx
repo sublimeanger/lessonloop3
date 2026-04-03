@@ -1,4 +1,5 @@
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { logger } from '@/lib/logger';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
@@ -314,6 +315,10 @@ export default function PortalHome() {
   return (
     <PortalLayout>
       <div className="space-y-6">
+        <ContextualHint
+          id="portal-welcome"
+          message="Welcome to the parent portal! Here you can view your children's lessons, pay invoices, track practice, and communicate with teachers."
+        />
         {profile?.id && <PortalWelcomeDialog userId={profile.id} academyName={currentOrg?.name || 'your academy'} />}
         {/* 1. Hero Greeting */}
         <div className={cn(

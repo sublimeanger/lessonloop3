@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { format, eachDayOfInterval, parseISO } from 'date-fns';
 import { getUKHolidayPresets } from '@/lib/holidayPresets';
 import { useClosureDateSettings } from '@/hooks/useClosureDateSettings';
@@ -604,6 +605,11 @@ export function SchedulingSettingsTab() {
 
   return (
     <div className="space-y-6">
+      <ContextualHint
+        id="settings-terms"
+        message="Set up your term dates, closure dates, and scheduling preferences here. These settings affect how lessons and billing runs work across your organisation."
+      />
+
       {/* Scheduling Settings */}
       <Card>
         <CardHeader>
@@ -642,6 +648,10 @@ export function SchedulingSettingsTab() {
       </Card>
 
       {/* Make-Up Policy */}
+      <ContextualHint
+        id="settings-make-up-policy"
+        message="Configure how make-up credits work for different absence types. You can set eligibility rules and credit limits per term."
+      />
       <MakeUpPolicySettings />
 
       {/* Closure Dates */}
