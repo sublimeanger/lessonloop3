@@ -126,7 +126,12 @@ export function LessonNotesForm({
       }
     }
 
-    setForms(prev => ({ ...prev, ...newForms }));
+    setForms(prev => {
+      const merged = { ...prev, ...newForms };
+      // Snapshot initial state for dirty tracking
+      initialFormsRef.current = JSON.parse(JSON.stringify(merged));
+      return merged;
+    });
 
     // Auto-open if there are existing notes
     if (existingNotes.length > 0) {
