@@ -61,6 +61,7 @@ type DrawerView = 'landing' | 'chat' | 'history';
 
 export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) {
   const { pageContext, consumePendingMessage } = useLoopAssistUI();
+  const keyboardHeight = useIOSKeyboardHeight();
   const { showIntro, setShowIntro, checkAndShowIntro } = useLoopAssistIntro();
   const { alerts } = useProactiveAlerts();
   const { proactiveMessage, dismissProactiveMessage } = useLoopAssistFirstRun();
