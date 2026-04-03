@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { STALE_STABLE } from '@/config/query-stale-times';
@@ -8,6 +8,9 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from '@/components/ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -36,6 +39,7 @@ interface Room {
   name: string;
   capacity: number | null;
   max_capacity: number | null;
+  description: string | null;
   location_id: string;
   org_id: string;
   created_at: string;
@@ -56,6 +60,44 @@ interface Location {
   is_archived: boolean;
   rooms?: Room[];
 }
+
+const COUNTRIES = [
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'US', name: 'United States' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'NZ', name: 'New Zealand' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'ZA', name: 'South Africa' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'HK', name: 'Hong Kong' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'IN', name: 'India' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'IL', name: 'Israel' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'AR', name: 'Argentina' },
+  { code: 'CL', name: 'Chile' },
+  { code: 'PH', name: 'Philippines' },
+  { code: 'MY', name: 'Malaysia' },
+  { code: 'TH', name: 'Thailand' },
+].sort((a, b) => a.name.localeCompare(b.name));
 
 const LOCATION_TYPE_ICONS: Record<LocationType, string> = {
   online: '🌐',
@@ -137,6 +179,8 @@ export default function Locations() {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [roomName, setRoomName] = useState('');
   const [roomCapacity, setRoomCapacity] = useState('');
+  const [roomDescription, setRoomDescription] = useState('');
+  const [countryOpen, setCountryOpen] = useState(false);
 
   // Delete validation state for locations
   const [deleteLocDialog, setDeleteLocDialog] = useState<{
@@ -330,10 +374,10 @@ export default function Locations() {
     const data = {
       name: locName.trim(),
       location_type: locType,
-      address_line_1: locAddress1.trim() || null,
-      address_line_2: locAddress2.trim() || null,
-      city: locCity.trim() || null,
-      postcode: locPostcode.trim() || null,
+      address_line_1: locType === 'online' ? null : locAddress1.trim() || null,
+      address_line_2: locType === 'online' ? null : locAddress2.trim() || null,
+      city: locType === 'online' ? null : locCity.trim() || null,
+      postcode: locType === 'online' ? null : locPostcode.trim() || null,
       notes: locNotes.trim() || null,
       country_code: locCountry,
     };
@@ -371,7 +415,14 @@ export default function Locations() {
     if (error) {
       toast({ title: 'Error updating location', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: newArchived ? 'Location archived' : 'Location restored' });
+      if (newArchived && location.is_primary) {
+        toast({
+          title: 'Location archived',
+          description: 'Another location has been automatically set as your primary.',
+        });
+      } else {
+        toast({ title: newArchived ? 'Location archived' : 'Location restored' });
+      }
       invalidateLocations();
     }
   };
@@ -448,10 +499,12 @@ export default function Locations() {
       setEditingRoom(room);
       setRoomName(room.name);
       setRoomCapacity(room.capacity?.toString() || '');
+      setRoomDescription(room.description || '');
     } else {
       setEditingRoom(null);
       setRoomName('');
       setRoomCapacity('');
+      setRoomDescription('');
     }
     setIsRoomDialogOpen(true);
   };
@@ -488,6 +541,7 @@ export default function Locations() {
       name: roomName.trim(),
       capacity: parsedCapacity,
       max_capacity: parsedCapacity,
+      description: roomDescription.trim() || null,
     };
     
     if (editingRoom) {
@@ -722,7 +776,7 @@ export default function Locations() {
                   {/* Bottom action bar */}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
                     <div className="flex items-center gap-0.5">
-                      {(location.address_line_1 || location.city) && (
+                      {location.location_type !== 'online' && (location.address_line_1 || location.city) && (
                         <a
                           href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.address_line_1, location.city, location.postcode].filter(Boolean).join(', '))}`}
                           target="_blank"
@@ -810,6 +864,9 @@ export default function Locations() {
                                 <span className="text-sm font-medium truncate">{room.name}</span>
                                 {room.capacity && <span className="text-xs text-muted-foreground shrink-0">· {room.capacity} cap</span>}
                               </div>
+                              {room.description && (
+                                <p className="text-micro text-muted-foreground mt-0.5 ml-5 truncate">{room.description}</p>
+                              )}
                               <div className="text-micro mt-0.5 ml-5">
                                 {(locationStats?.roomBookings?.[room.id] ?? 0) > 0 ? (
                                   <span className="text-muted-foreground">{locationStats?.roomBookings?.[room.id]} upcoming</span>
@@ -866,42 +923,61 @@ export default function Locations() {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Address Line 1{locType !== 'online' && <span className="text-destructive ml-0.5">*</span>}</Label>
-              <Input value={locAddress1} onChange={(e) => setLocAddress1(e.target.value)} placeholder="123 High Street" />
-            </div>
-            <div className="space-y-2">
-              <Label>Address Line 2</Label>
-              <Input value={locAddress2} onChange={(e) => setLocAddress2(e.target.value)} placeholder="Suite 4" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>City</Label>
-                <Input value={locCity} onChange={(e) => setLocCity(e.target.value)} placeholder="London" />
+            {locType !== 'online' ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Address Line 1 <span className="text-destructive ml-0.5">*</span></Label>
+                  <Input value={locAddress1} onChange={(e) => setLocAddress1(e.target.value)} placeholder="123 High Street" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Address Line 2</Label>
+                  <Input value={locAddress2} onChange={(e) => setLocAddress2(e.target.value)} placeholder="Suite 4" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>City</Label>
+                    <Input value={locCity} onChange={(e) => setLocCity(e.target.value)} placeholder="London" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Postcode</Label>
+                    <Input value={locPostcode} onChange={(e) => setLocPostcode(e.target.value)} placeholder="SW1A 1AA" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" aria-expanded={countryOpen} className="w-full justify-between font-normal">
+                        {COUNTRIES.find(c => c.code === locCountry)?.name || 'Select country...'}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search country..." />
+                        <CommandList>
+                          <CommandEmpty>No country found.</CommandEmpty>
+                          {COUNTRIES.map(c => (
+                            <CommandItem
+                              key={c.code}
+                              value={c.name}
+                              onSelect={() => { setLocCountry(c.code); setCountryOpen(false); }}
+                            >
+                              <Check className={cn('mr-2 h-4 w-4', locCountry === c.code ? 'opacity-100' : 'opacity-0')} />
+                              {c.name}
+                            </CommandItem>
+                          ))}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                Online locations don't need a physical address. Students will join lessons via a link shared in their lesson details.
               </div>
-              <div className="space-y-2">
-                <Label>Postcode</Label>
-                <Input value={locPostcode} onChange={(e) => setLocPostcode(e.target.value)} placeholder="SW1A 1AA" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Country</Label>
-              <Select value={locCountry} onValueChange={setLocCountry}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GB">United Kingdom</SelectItem>
-                  <SelectItem value="IE">Ireland</SelectItem>
-                  <SelectItem value="US">United States</SelectItem>
-                  <SelectItem value="CA">Canada</SelectItem>
-                  <SelectItem value="AU">Australia</SelectItem>
-                  <SelectItem value="NZ">New Zealand</SelectItem>
-                  <SelectItem value="DE">Germany</SelectItem>
-                  <SelectItem value="FR">France</SelectItem>
-                  <SelectItem value="ES">Spain</SelectItem>
-                  <SelectItem value="IT">Italy</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            )}
             <div className="space-y-1">
               <Label>Notes</Label>
               <Textarea value={locNotes} onChange={(e) => setLocNotes(e.target.value)} placeholder="Parking available behind building..." rows={3} maxLength={500} />
@@ -932,6 +1008,11 @@ export default function Locations() {
             <div className="space-y-2">
               <Label>Capacity (optional)</Label>
               <Input type="number" min="1" step="1" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value.replace(/[^0-9]/g, ''))} placeholder="4" />
+            </div>
+            <div className="space-y-2">
+              <Label>Description / Equipment (optional)</Label>
+              <Textarea value={roomDescription} onChange={(e) => setRoomDescription(e.target.value)} placeholder="Upright piano, 4 music stands, whiteboard..." rows={2} maxLength={300} />
+              <p className={cn('text-micro text-right', roomDescription.length > 300 ? 'text-destructive' : 'text-muted-foreground')}>{roomDescription.length}/300</p>
             </div>
           </div>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">

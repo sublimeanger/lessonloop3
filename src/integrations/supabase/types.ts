@@ -4573,6 +4573,7 @@ export type Database = {
         Row: {
           capacity: number | null
           created_at: string
+          description: string | null
           id: string
           location_id: string
           max_capacity: number | null
@@ -4583,6 +4584,7 @@ export type Database = {
         Insert: {
           capacity?: number | null
           created_at?: string
+          description?: string | null
           id?: string
           location_id: string
           max_capacity?: number | null
@@ -4593,6 +4595,7 @@ export type Database = {
         Update: {
           capacity?: number | null
           created_at?: string
+          description?: string | null
           id?: string
           location_id?: string
           max_capacity?: number | null
