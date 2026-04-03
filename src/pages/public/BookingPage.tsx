@@ -14,8 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Check, Music, User, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarWidget } from '@/components/ui/calendar';
+import { Loader2, Check, Music, User, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
 import { usePageMeta } from '@/hooks/usePageMeta';
 
 // ─── Types ───────────────────────────────────────────────
