@@ -146,7 +146,7 @@ export function CalendarMobileLayout({
         )}
       </SectionErrorBoundary>
 
-      {!isParent && (
+      {!isParent && !bulk.selectionMode && (
         <button
           onClick={() => {
             const d = new Date(currentDate);

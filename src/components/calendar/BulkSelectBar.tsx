@@ -57,28 +57,28 @@ export function BulkSelectBar({
         ) : (
           <>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-background hover:text-background/80 hover:bg-background/10" onClick={onExit}>
+              <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8 text-background hover:text-background/80 hover:bg-background/10" onClick={onExit}>
                 <X className="h-4 w-4" />
               </Button>
               <span className="text-sm font-semibold">{count} selected</span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto max-w-[60vw] sm:max-w-none">
               {onSelectAll && totalVisible && totalVisible > count && (
-                <Button variant="ghost" size="sm" className="text-background hover:text-background/80 hover:bg-background/10 gap-1.5" onClick={onSelectAll}>
+                <Button variant="ghost" size="sm" className="shrink-0 text-background hover:text-background/80 hover:bg-background/10 gap-1.5" onClick={onSelectAll}>
                   <CheckSquare className="h-3.5 w-3.5" />
                   All ({totalVisible})
                 </Button>
               )}
-              <Button variant="ghost" size="sm" className="text-background hover:text-background/80 hover:bg-background/10 gap-1.5" onClick={onClear} disabled={count === 0}>
+              <Button variant="ghost" size="sm" className="shrink-0 text-background hover:text-background/80 hover:bg-background/10 gap-1.5" onClick={onClear} disabled={count === 0}>
                 Clear
               </Button>
-              <Button variant="ghost" size="sm" className="text-background hover:text-background/80 hover:bg-background/10 gap-1.5" onClick={() => setEditOpen(true)} disabled={count === 0}>
+              <Button variant="ghost" size="sm" className="shrink-0 text-background hover:text-background/80 hover:bg-background/10 gap-1.5" onClick={() => setEditOpen(true)} disabled={count === 0}>
                 <Edit className="h-3.5 w-3.5" />
                 Edit
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5" disabled={count === 0}>
+                  <Button variant="ghost" size="sm" className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5" disabled={count === 0}>
                     <Trash2 className="h-3.5 w-3.5" />
                     Cancel All
                   </Button>
