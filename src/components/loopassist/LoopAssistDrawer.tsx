@@ -401,6 +401,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                   value={input}
                   onChange={handleTextareaInput}
                   onKeyDown={handleKeyDown}
+                  onFocus={() => setTimeout(() => chatInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 300)}
                   placeholder="Ask LoopAssist..."
                   disabled={isStreaming}
                   rows={1}

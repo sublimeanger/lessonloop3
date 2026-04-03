@@ -220,6 +220,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                   value={input}
                   onChange={handleTextareaInput}
                   onKeyDown={handleKeyDown}
+                  onFocus={() => setTimeout(() => chatInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 300)}
                   placeholder="Ask me anything..."
                   disabled={isStreaming}
                   rows={1}
