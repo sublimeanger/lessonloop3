@@ -24,7 +24,10 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
-  const [isOAuthCallback, setIsOAuthCallback] = useState(false);
+  const [isOAuthCallback, setIsOAuthCallback] = useState(() => {
+    return window.location.hash.includes('access_token') || 
+           window.location.search.includes('code=');
+  });
   const [loginFailed, setLoginFailed] = useState(false);
 
   const anyLoading = isLoading || isGoogleLoading || isAppleLoading;

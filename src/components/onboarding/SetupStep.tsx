@@ -272,9 +272,22 @@ function SuccessScreen({ fullName, orgType, selectedPlan, importResult, onNaviga
         >
           Go to Dashboard
         </Button>
-        <p className="text-xs text-center text-muted-foreground">
-          Don't worry, we'll guide you every step of the way
-        </p>
+      </motion.div>
+
+      {/* Quick start checklist */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-sm rounded-xl border bg-card p-4 sm:p-5 shadow-card"
+      >
+        <p className="text-sm font-semibold text-foreground mb-3">Quick start checklist:</p>
+        <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+          <li>Add your teaching locations</li>
+          <li>Set up your first term dates</li>
+          <li>Create your lesson schedule</li>
+          <li>Invite your students &amp; parents</li>
+        </ol>
       </motion.div>
     </div>
   );

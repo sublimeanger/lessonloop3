@@ -164,6 +164,9 @@ export default function Signup() {
             <CardDescription>
               We've sent a verification link to <span className="font-medium text-foreground">{email}</span>. Click the link to activate your account.
             </CardDescription>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Can't find it? Check your <span className="font-medium text-foreground">spam</span> or <span className="font-medium text-foreground">junk</span> folder. The email comes from <span className="font-medium text-foreground">noreply@lessonloop.net</span>.
+            </p>
           </CardHeader>
           <CardFooter className="flex flex-col gap-4">
             <Button
