@@ -22,10 +22,8 @@ const STATUSES = [
 ] as const;
 
 const LESSON_TYPES = [
-  { value: 'individual', label: 'Individual' },
+  { value: 'private', label: 'Private' },
   { value: 'group', label: 'Group' },
-  { value: 'paired', label: 'Paired' },
-  { value: 'ensemble', label: 'Ensemble' },
 ] as const;
 
 export function BulkEditDialog({ open, onOpenChange, count, onSubmit, teachers, locations, rooms }: BulkEditDialogProps) {

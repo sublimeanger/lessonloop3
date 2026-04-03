@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
 import { toast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { LessonWithDetails } from '@/components/calendar/types';
 import { RecurringActionMode } from '@/components/calendar/RecurringActionDialog';
 import { useCalendarSync } from '@/hooks/useCalendarSync';
@@ -250,6 +251,46 @@ export function useCalendarActions({
         toast({
           title: 'Lesson rescheduled',
           description: `Moved to ${format(newStart, 'EEE d MMM, HH:mm')}`,
+          action: (
+            <ToastAction altText="Undo reschedule" onClick={async () => {
+                try {
+                  if (mode === 'this_and_future' && lesson.recurrence_id) {
+                    const reverseOffset = new Date(utcStartAt).getTime() - newStart.getTime();
+                    const originalDuration = new Date(utcEndAt).getTime() - new Date(utcStartAt).getTime();
+                    await supabase.from('lessons').update({
+                      start_at: utcStartAt,
+                      end_at: utcEndAt,
+                    }).eq('id', lesson.id);
+                    if (reverseOffset !== 0) {
+                      await (supabase.rpc as any)('shift_recurring_lesson_times', {
+                        p_recurrence_id: lesson.recurrence_id,
+                        p_after_start_at: newStart.toISOString(),
+                        p_offset_ms: reverseOffset,
+                        p_new_duration_ms: originalDuration,
+                        p_exclude_lesson_id: lesson.id,
+                      });
+                    }
+                  } else {
+                    await supabase.from('lessons').update({
+                      start_at: originalStartAt,
+                      end_at: originalEndAt,
+                    }).eq('id', lesson.id);
+                  }
+                  setLessons(prev => prev.map(l => {
+                    const original = originalPositions.get(l.id);
+                    return original ? { ...l, ...original } : l;
+                  }));
+                  refetch();
+                  toast({ title: 'Lesson restored to original time' });
+                } catch {
+                  toast({ title: 'Failed to undo', description: 'Please edit the lesson manually.', variant: 'destructive' });
+                  refetch();
+                }
+            }}>
+              Undo
+            </ToastAction>
+          ),
+          duration: 5000,
         });
 
         // Fire-and-forget calendar + Zoom sync for all affected lessons
