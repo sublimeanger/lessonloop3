@@ -1,5 +1,6 @@
 import { usePageMeta } from '@/hooks/usePageMeta';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useChildFilter } from '@/contexts/ChildFilterContext';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { useSearchParams } from 'react-router-dom';
