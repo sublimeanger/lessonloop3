@@ -210,7 +210,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     <Sheet open={open} onOpenChange={onOpenChange}>
        <SheetContent
           className="flex w-full flex-col p-0 pt-safe sm:max-w-lg max-sm:max-w-full"
-          style={keyboardHeight > 0 ? { paddingBottom: `${keyboardHeight}px` } : undefined}
+          style={keyboardHeight > 0 && platform.isNative ? { paddingBottom: `${keyboardHeight}px` } : undefined}
           hideCloseButton
         >
         <SheetHeader className="border-b px-4 py-3">
