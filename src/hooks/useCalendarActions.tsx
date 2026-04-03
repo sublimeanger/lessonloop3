@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { haptics } from '@/lib/native/haptics';
 import { logger } from '@/lib/logger';
 import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -248,6 +249,7 @@ export function useCalendarActions({
           });
         }
 
+        haptics.impact();
         toast({
           title: 'Lesson rescheduled',
           description: `Moved to ${format(newStart, 'EEE d MMM, HH:mm')}`,
