@@ -176,6 +176,10 @@ export function LessonNotesForm({
       teacher_private_notes: form.teacherPrivateNotes || null,
       parent_visible: form.parentVisible,
     });
+
+    // Reset dirty tracking after successful save
+    initialFormsRef.current = JSON.parse(JSON.stringify(forms));
+    setIsDirty(false);
   }, [forms, lessonId, saveMutation]);
 
   const handleSave = useCallback(async (key: string) => {
