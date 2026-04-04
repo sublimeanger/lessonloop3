@@ -130,7 +130,7 @@ export default function PortalPractice() {
             <Card className="rounded-2xl shadow-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Flame className="h-5 w-5 text-orange-500" />
+                  <Flame className="h-5 w-5 text-warning" />
                   Practice Streaks
                 </CardTitle>
               </CardHeader>
