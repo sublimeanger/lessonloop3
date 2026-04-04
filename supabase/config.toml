@@ -126,6 +126,9 @@ verify_jwt = false
 [functions.auto-pay-upcoming-reminder]
 verify_jwt = false
 
+[functions.send-lesson-reminders]
+verify_jwt = false
+
 # ── Seed/test functions ─────────────────────────────────────────
 # seed-demo-data is intentionally NOT deployed to production.
 # Run it locally only: supabase functions serve seed-demo-data
