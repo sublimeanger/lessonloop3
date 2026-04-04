@@ -1,10 +1,12 @@
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTodayLessons, TodayLesson } from '@/hooks/useTodayLessons';
+import { usePreviousLessonNotes, PreviousLessonNote } from '@/hooks/usePreviousLessonNotes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, CheckCircle2, ArrowRight, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, CheckCircle2, ArrowRight, Sparkles, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +14,79 @@ interface TodayTimelineProps {
   className?: string;
 }
 
-function LessonRow({ lesson }: { lesson: TodayLesson }) {
+/* ── Previous-note inline block ──────────────────────────────── */
+
+function PreviousNoteBlock({ note }: { note: PreviousLessonNote }) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Build a combined text summary
+  const parts: string[] = [];
+  if (note.contentCovered) parts.push(note.contentCovered);
+  if (note.homework) parts.push(`HW: ${note.homework}`);
+  if (note.focusAreas) parts.push(`Focus: ${note.focusAreas}`);
+  if (note.teacherPrivateNotes) parts.push(`🔒 ${note.teacherPrivateNotes}`);
+  const summary = parts.join(' · ');
+
+  if (!summary) return null;
+
+  return (
+    <div className="text-xs text-muted-foreground">
+      <div className={cn(!expanded && 'line-clamp-2')}>
+        {summary}
+      </div>
+      {summary.length > 120 && (
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpanded(!expanded); }}
+          className="text-primary hover:underline mt-0.5"
+        >
+          {expanded ? 'show less' : 'show more'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function LastLessonSection({ studentNotes }: { studentNotes: PreviousLessonNote[] }) {
+  const [open, setOpen] = useState(false);
+
+  if (studentNotes.length === 0) return null;
+
+  return (
+    <div className="mt-1">
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <span>📝 Last lesson</span>
+        <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-2 border-l-2 border-primary/20 pl-2.5">
+          {studentNotes.map((note) => (
+            <div key={note.studentId}>
+              <p className="text-xs font-medium text-muted-foreground">
+                {format(parseISO(note.lessonStartAt), 'dd MMM')} — {note.lessonTitle}
+              </p>
+              <PreviousNoteBlock note={note} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NoNotesSection() {
+  return (
+    <div className="mt-1">
+      <span className="text-xs text-muted-foreground/60">📝 No previous notes</span>
+    </div>
+  );
+}
+
+/* ── Lesson Row ──────────────────────────────────────────────── */
+
+function LessonRow({ lesson, notesMap }: { lesson: TodayLesson; notesMap?: Map<string, PreviousLessonNote> }) {
   const isNow = lesson.status === 'in-progress';
   const isCancelled = lesson.status === 'cancelled';
   const isCompleted = lesson.status === 'completed';
@@ -20,63 +94,85 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
   const lessonDate = format(lesson.startAt, 'yyyy-MM-dd');
   const studentName = isOpen ? 'Open Slot' : (lesson.students[0]?.name || lesson.title);
 
+  // Collect notes for this lesson's students
+  const studentNotes = useMemo(() => {
+    if (!notesMap || lesson.students.length === 0) return [];
+    return lesson.students
+      .map(s => notesMap.get(s.id))
+      .filter((n): n is PreviousLessonNote => !!n);
+  }, [notesMap, lesson.students]);
+
+  const hasStudents = lesson.students.length > 0 && !isOpen;
+  const hasAnyNotes = studentNotes.length > 0;
+
   return (
-    <Link
-      to={`/calendar?date=${lessonDate}`}
-      className={cn(
-        'group flex min-h-11 items-stretch gap-0 rounded-xl px-1 py-2.5 sm:py-3 transition-colors hover:bg-muted/50',
-        isCancelled && 'opacity-40',
-        isOpen && 'border border-dashed border-primary/30',
-      )}
-    >
-      {/* Time */}
-      <div className="w-12 sm:w-14 shrink-0 text-right pr-2 sm:pr-3 pt-0.5">
-        <span className="text-caption font-semibold text-foreground tabular-nums">
-          {format(lesson.startAt, 'H:mm')}
-        </span>
-      </div>
-
-      {/* Color bar */}
-      <div
+    <div>
+      <Link
+        to={`/calendar?date=${lessonDate}`}
         className={cn(
-          'w-[3px] rounded-full shrink-0 self-stretch',
-          isNow ? 'bg-primary' : isCompleted ? 'bg-success' : isOpen ? 'bg-primary/40' : 'bg-primary/20',
+          'group flex min-h-11 items-stretch gap-0 rounded-xl px-1 py-2.5 sm:py-3 transition-colors hover:bg-muted/50',
+          isCancelled && 'opacity-40',
+          isOpen && 'border border-dashed border-primary/30',
         )}
-      />
-
-      {/* Content */}
-      <div className="flex-1 min-w-0 pl-2 sm:pl-3">
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <span className={cn(
-            'text-body-strong text-foreground truncate',
-            isCancelled && 'line-through',
-          )}>
-            {studentName}
+      >
+        {/* Time */}
+        <div className="w-12 sm:w-14 shrink-0 text-right pr-2 sm:pr-3 pt-0.5">
+          <span className="text-caption font-semibold text-foreground tabular-nums">
+            {format(lesson.startAt, 'H:mm')}
           </span>
-          {isOpen && (
-            <span className="text-micro font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
-              Open
-            </span>
+        </div>
+
+        {/* Color bar */}
+        <div
+          className={cn(
+            'w-[3px] rounded-full shrink-0 self-stretch',
+            isNow ? 'bg-primary' : isCompleted ? 'bg-success' : isOpen ? 'bg-primary/40' : 'bg-primary/20',
           )}
-          {isCompleted && !isOpen && (
-            <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-success shrink-0" />
-          )}
-          {isNow && (
-            <span className="text-micro font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
-              NOW
+        />
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 pl-2 sm:pl-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className={cn(
+              'text-body-strong text-foreground truncate',
+              isCancelled && 'line-through',
+            )}>
+              {studentName}
             </span>
+            {isOpen && (
+              <span className="text-micro font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
+                Open
+              </span>
+            )}
+            {isCompleted && !isOpen && (
+              <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-success shrink-0" />
+            )}
+            {isNow && (
+              <span className="text-micro font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
+                NOW
+              </span>
+            )}
+          </div>
+          <p className="text-micro text-muted-foreground line-clamp-2 mt-0.5">
+            {lesson.title !== studentName ? `${lesson.title} · ` : ''}
+            {lesson.duration}min
+            {lesson.teacherName && ` · ${lesson.teacherName}`}
+            {lesson.location && ` · ${lesson.location.name}`}
+          </p>
+
+          {/* Previous lesson notes */}
+          {!isCancelled && !isOpen && hasStudents && (
+            hasAnyNotes
+              ? <LastLessonSection studentNotes={studentNotes} />
+              : <NoNotesSection />
           )}
         </div>
-        <p className="text-micro text-muted-foreground line-clamp-2 mt-0.5">
-          {lesson.title !== studentName ? `${lesson.title} · ` : ''}
-          {lesson.duration}min
-          {lesson.teacherName && ` · ${lesson.teacherName}`}
-          {lesson.location && ` · ${lesson.location.name}`}
-        </p>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
+
+/* ── Empty / All-done states ─────────────────────────────────── */
 
 function EmptyTimeline() {
   const { openDrawerWithMessage } = useLoopAssistUI();
@@ -113,8 +209,24 @@ function AllDone({ completedCount }: { completedCount: number }) {
   );
 }
 
+/* ── Main Component ──────────────────────────────────────────── */
+
 export function TodayTimeline({ className }: TodayTimelineProps) {
   const { data: lessons, isLoading, isError, refetch } = useTodayLessons();
+
+  // Collect all unique student IDs from today's lessons for the batch notes query
+  const studentIds = useMemo(() => {
+    if (!lessons) return [];
+    const ids = new Set<string>();
+    for (const l of lessons) {
+      for (const s of l.students) {
+        ids.add(s.id);
+      }
+    }
+    return Array.from(ids);
+  }, [lessons]);
+
+  const { data: notesMap } = usePreviousLessonNotes(studentIds);
 
   const activeLessons = lessons?.filter(l => l.status !== 'cancelled') || [];
   const nonSlotLessons = activeLessons.filter(l => !l.isOpenSlot);
@@ -172,7 +284,7 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
         ) : (
           <div className="divide-y divide-border">
             {displayLessons.map((lesson) => (
-              <LessonRow key={lesson.id} lesson={lesson} />
+              <LessonRow key={lesson.id} lesson={lesson} notesMap={notesMap} />
             ))}
           </div>
         )}
