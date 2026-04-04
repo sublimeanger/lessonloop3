@@ -46,6 +46,10 @@ interface CalendarMobileLayoutProps {
   actions: ReturnType<typeof useCalendarActions>;
   bulk: ReturnType<typeof useBulkLessonActions>;
   refetch: () => void;
+  busyBlocks: BusyBlock[];
+  syncInfo: CalendarSyncInfo | null;
+  showExternalEvents: boolean;
+  setShowExternalEvents: (v: boolean) => void;
 }
 
 export function CalendarMobileLayout({
