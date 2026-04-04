@@ -92,7 +92,26 @@ export default function CalendarPage() {
 
   useEffect(() => { safeSetItem('ll-calendar-compact', isCompact ? '1' : '0'); }, [isCompact]);
 
+  // Compute date range for both lessons and busy blocks queries
+  const { rangeStartIso, rangeEndIso } = useMemo(() => {
+    const tz = currentOrg?.timezone || 'Europe/London';
+    const zonedDate = toZonedTime(currentDate, tz);
+    let start: Date, end: Date;
+    if (view === 'day' || view === 'week' || view === 'stacked') {
+      start = fromZonedTime(startOfWeek(zonedDate, { weekStartsOn: 1 }), tz);
+      end = fromZonedTime(endOfWeek(zonedDate, { weekStartsOn: 1 }), tz);
+    } else {
+      start = fromZonedTime(startOfDay(zonedDate), tz);
+      end = fromZonedTime(endOfDay(addDays(zonedDate, 14)), tz);
+    }
+    return { rangeStartIso: start.toISOString(), rangeEndIso: end.toISOString() };
+  }, [currentDate, view, currentOrg?.timezone]);
+
   const { lessons, setLessons, isLoading, isCapReached, refetch } = useCalendarData(currentDate, view, filters);
+
+  // External busy blocks (Google Calendar etc.)
+  const [showExternalEvents, setShowExternalEvents] = useShowExternalEvents();
+  const { busyBlocks, syncInfo } = useExternalBusyBlocks(rangeStartIso, rangeEndIso, filters.teacher_id);
 
   const actions = useCalendarActions({
     lessons, setLessons, refetch,
