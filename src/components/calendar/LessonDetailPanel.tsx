@@ -117,7 +117,8 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
 
   const handleAttendanceChange = async (studentId: string, status: AttendanceStatus) => {
     if (!currentOrg || !user) return;
-    
+
+    const prevStatus = getAttendanceStatus(studentId);
     setSavingAttendance(studentId);
     // Optimistic local update for instant visual feedback
     setLocalAttendance(prev => ({ ...prev, [studentId]: status }));
@@ -127,6 +128,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         lessonId: lesson.id,
         studentId,
         status,
+        previousStatus: prevStatus,
       });
       
       toast({ title: 'Attendance saved', description: `Marked as ${status.replace(/_/g, ' ')}` });

@@ -86,6 +86,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
         absenceNotifiedAt: needsAbsenceReason(status)
           ? (notifiedDates[studentId] || new Date()).toISOString()
           : undefined,
+        previousStatus: previousStatus || null,
       });
 
       haptics.success();

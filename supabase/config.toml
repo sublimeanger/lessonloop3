@@ -44,6 +44,9 @@ verify_jwt = false
 [functions.send-cancellation-notification]
 verify_jwt = false
 
+[functions.send-absence-notification]
+verify_jwt = false
+
 [functions.profile-ensure]
 verify_jwt = false
 

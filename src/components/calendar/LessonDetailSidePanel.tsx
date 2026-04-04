@@ -62,6 +62,7 @@ export function LessonDetailSidePanel({
 
   const handleAttendanceChange = useCallback(async (studentId: string, status: AttendanceStatus) => {
     if (!currentOrg || !user || !lesson) return;
+    const prevStatus = getStudentAttendance(studentId);
     setSavingAttendance(studentId);
     // Optimistic local update for instant visual feedback
     setLocalAttendance(prev => ({ ...prev, [studentId]: status }));
@@ -70,6 +71,7 @@ export function LessonDetailSidePanel({
         lessonId: lesson.id,
         studentId,
         status,
+        previousStatus: prevStatus,
       });
       toast({ title: 'Attendance saved', description: `Marked as ${status.replace(/_/g, ' ')}` });
     } catch {
@@ -83,7 +85,7 @@ export function LessonDetailSidePanel({
     } finally {
       setSavingAttendance(null);
     }
-  }, [currentOrg, user, lesson, updateAttendance, toast]);
+  }, [currentOrg, user, lesson, updateAttendance, toast, getStudentAttendance]);
 
   const getStudentAttendance = useCallback((studentId: string): AttendanceStatus | null => {
     // Local optimistic state takes priority over server data

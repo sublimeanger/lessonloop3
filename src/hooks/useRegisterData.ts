@@ -224,6 +224,7 @@ export function useUpdateAttendance() {
       notes,
       absenceReason,
       absenceNotifiedAt,
+      previousStatus,
     }: {
       lessonId: string;
       studentId: string;
@@ -231,13 +232,14 @@ export function useUpdateAttendance() {
       notes?: string;
       absenceReason?: string;
       absenceNotifiedAt?: string;
+      previousStatus?: AttendanceStatus | null;
     }) => {
       if (!currentOrg || !user) throw new Error('No organisation or user');
 
       // Authorisation guard: verify user is the lesson's teacher or an admin
       const { data: lesson, error: lessonErr } = await supabase
         .from('lessons')
-        .select('teacher_user_id, start_at')
+        .select('teacher_user_id, start_at, title')
         .eq('id', lessonId)
         .single();
       if (lessonErr) throw lessonErr;
@@ -285,6 +287,24 @@ export function useUpdateAttendance() {
         );
 
       if (error) throw error;
+
+      // Send absence notification when newly marked absent
+      if (status === 'absent' && previousStatus !== 'absent') {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          supabase.functions.invoke('send-absence-notification', {
+            body: {
+              org_id: currentOrg.id,
+              student_id: studentId,
+              lesson_id: lessonId,
+              lesson_title: lesson.title,
+              lesson_date: lesson.start_at,
+            },
+          }).catch((err: unknown) => {
+            console.error('Absence notification failed:', err);
+          });
+        }
+      }
 
       // Auto-complete the lesson once every participant has an attendance record
       const { data: participants } = await supabase
@@ -573,6 +593,28 @@ export function useSaveBatchAttendance(dateKey: string) {
         .upsert(upserts satisfies AttendanceRecordInsert[], { onConflict: 'lesson_id,student_id' });
 
       if (error) throw error;
+
+      // Send absence notifications for newly absent students (fire-and-forget)
+      for (const lesson of lessons) {
+        const lessonMap = attendance.get(lesson.id);
+        if (!lessonMap) continue;
+        for (const p of lesson.participants) {
+          const newStatus = lessonMap.get(p.student_id);
+          if (newStatus === 'absent' && p.current_status !== 'absent') {
+            supabase.functions.invoke('send-absence-notification', {
+              body: {
+                org_id: currentOrg.id,
+                student_id: p.student_id,
+                lesson_id: lesson.id,
+                lesson_title: lesson.title,
+                lesson_date: lesson.start_at,
+              },
+            }).catch((err: unknown) => {
+              console.error('Absence notification failed:', err);
+            });
+          }
+        }
+      }
 
       // Auto-complete lessons where all participants now have attendance
       const fullyAttendedIds = lessons
