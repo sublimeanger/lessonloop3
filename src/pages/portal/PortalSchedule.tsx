@@ -31,6 +31,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useParentLessonNotes } from '@/hooks/useLessonNotes';
 import { LessonNoteCard } from '@/components/portal/LessonNoteCard';
 import { RequestModal } from '@/components/portal/RequestModal';
+import { LessonChangeSheet } from '@/components/portal/LessonChangeSheet';
 import { RescheduleSlotPicker } from '@/components/portal/RescheduleSlotPicker';
 import { useToast } from '@/hooks/use-toast';
 import { useCalendarConnections } from '@/hooks/useCalendarConnections';
@@ -57,6 +58,12 @@ export default function PortalSchedule() {
   const { selectedChildId } = useChildFilter();
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<{ id: string; title: string } | null>(null);
+  const [changeSheetOpen, setChangeSheetOpen] = useState(false);
+  const [changeSheetLesson, setChangeSheetLesson] = useState<{
+    id: string; title: string; start_at: string; end_at: string;
+    teacher_name: string | null; location_name: string | null; student_names: string;
+  } | null>(null);
+  const [requestedLessonIds, setRequestedLessonIds] = useState<Set<string>>(new Set());
   const [pastOpen, setPastOpen] = useState(false);
   const [calSyncOpen, setCalSyncOpen] = useState(false);
   const [icalUrl, setIcalUrl] = useState<string | null>(null);
@@ -121,9 +128,33 @@ export default function PortalSchedule() {
   const canReschedule = reschedulePolicy !== 'admin_locked';
   const showSlotPicker = reschedulePolicy === 'self_service';
 
-  const handleRequestChange = (lesson: { id: string; title: string }) => {
-    setSelectedLesson(lesson);
-    setRequestModalOpen(true);
+  const handleRequestChange = (lesson: Lesson) => {
+    setChangeSheetLesson({
+      id: lesson.id,
+      title: lesson.title,
+      start_at: lesson.start_at,
+      end_at: lesson.end_at,
+      teacher_name: lesson.teacher_name || null,
+      location_name: lesson.location?.name || null,
+      student_names: lesson.students.map(s => `${s.first_name} ${s.last_name}`).join(', '),
+    });
+    setChangeSheetOpen(true);
+  };
+
+  const handleChangeSheetSubmit = async (data: {
+    request_type: 'cancellation' | 'reschedule';
+    subject: string;
+    message: string;
+    lesson_id: string;
+  }) => {
+    await createRequest.mutateAsync({
+      request_type: data.request_type,
+      subject: data.subject,
+      message: data.message,
+      lesson_id: data.lesson_id,
+    });
+    setRequestedLessonIds(prev => new Set(prev).add(data.lesson_id));
+    toast({ title: 'Request sent — the academy will confirm shortly' });
   };
 
   const handleRescheduleClick = (lesson: {
@@ -273,6 +304,11 @@ export default function PortalSchedule() {
                   {lesson.title}
                 </h3>
                 {getStatusBadge(lesson.status)}
+                {requestedLessonIds.has(lesson.id) && (
+                  <Badge variant="warning" className="text-xs gap-1">
+                    <CalendarClock className="h-3 w-3" /> Change requested
+                  </Badge>
+                )}
               </div>
 
               <div className="space-y-1 text-sm text-muted-foreground">
@@ -416,7 +452,7 @@ export default function PortalSchedule() {
                         <DropdownMenuItem
                           onClick={() => showSlotPicker
                             ? handleRescheduleClick({ id: lesson.id, title: lesson.title, start_at: lesson.start_at, end_at: lesson.end_at, teacher_id: lesson.teacher_id })
-                            : handleRequestChange({ id: lesson.id, title: lesson.title })
+                            : handleRequestChange(lesson)
                           }
                         >
                           {showSlotPicker ? 'Reschedule' : 'Request Change'}
@@ -453,7 +489,7 @@ export default function PortalSchedule() {
                       aria-label={showSlotPicker ? 'Reschedule lesson' : 'Request change'}
                       onClick={() => showSlotPicker
                         ? handleRescheduleClick({ id: lesson.id, title: lesson.title, start_at: lesson.start_at, end_at: lesson.end_at, teacher_id: lesson.teacher_id })
-                        : handleRequestChange({ id: lesson.id, title: lesson.title })
+                        : handleRequestChange(lesson)
                       }
                     >
                       <CalendarClock className="h-4 w-4" />
@@ -631,6 +667,15 @@ export default function PortalSchedule() {
           )}
         </div>
       )}
+
+      <LessonChangeSheet
+        open={changeSheetOpen}
+        onOpenChange={setChangeSheetOpen}
+        lesson={changeSheetLesson}
+        tz={tz}
+        onSubmit={handleChangeSheetSubmit}
+        isSubmitting={createRequest.isPending}
+      />
 
       <RequestModal
         open={requestModalOpen}
