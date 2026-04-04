@@ -144,7 +144,7 @@ function TeacherFormFields({ showPayRate = false }: { showPayRate?: boolean }) {
                   <FormMessage />
                 </FormItem>
               )} />
-            ) : null
+            ) : <></>
           )} />
         </>
       )}
