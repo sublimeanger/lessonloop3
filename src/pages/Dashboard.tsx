@@ -466,6 +466,13 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
           )}
         </motion.div>
 
+        {/* Availability Card */}
+        <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="Teacher Availability">
+            <TeacherAvailabilityCard />
+          </SectionErrorBoundary>
+        </motion.div>
+
         {/* Main Content Grid */}
         <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-5">
           <SectionErrorBoundary name="Today's Timeline">
