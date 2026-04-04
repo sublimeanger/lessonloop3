@@ -31,8 +31,18 @@ export const teacherSchema = z.object({
   phone: optionalPhone,
   instruments: z.string().trim().optional(), // comma-separated, parsed by caller
   employment_type: z.enum(['contractor', 'employee']).default('contractor'),
+  pay_rate_type: z.enum(['per_lesson', 'hourly', 'percentage']).nullable().optional(),
+  pay_rate_value: z.coerce.number().min(0).optional(),
   bio: z.string().trim().max(2000).optional(),
-});
+}).refine(
+  (data) => {
+    if (data.pay_rate_type === 'percentage' && data.pay_rate_value != null) {
+      return data.pay_rate_value >= 1 && data.pay_rate_value <= 100;
+    }
+    return true;
+  },
+  { message: 'Percentage must be between 1 and 100.', path: ['pay_rate_value'] },
+);
 
 export type TeacherFormValues = z.infer<typeof teacherSchema>;
 

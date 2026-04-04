@@ -208,8 +208,9 @@ function TeacherPeekSheet({ teacherId, open, onOpenChange }: { teacherId: string
                 <div>
                   <p className="text-xs text-muted-foreground">Pay Rate</p>
                   <p className="text-sm text-foreground">
-                    {formatCurrencyMinor(Math.round((teacher.pay_rate_value ?? 0) * 100), currentOrg?.currency_code)}{' '}
-                    {teacher.pay_rate_type === 'per_lesson' ? '/ lesson' : teacher.pay_rate_type === 'hourly' ? '/ hour' : '(%)'}
+                    {teacher.pay_rate_type === 'percentage'
+                      ? `${teacher.pay_rate_value}% of lesson fees`
+                      : `${formatCurrencyMinor(Math.round((teacher.pay_rate_value ?? 0) * 100), currentOrg?.currency_code)} / ${teacher.pay_rate_type === 'per_lesson' ? 'lesson' : 'hour'}`}
                   </p>
                 </div>
               </div>

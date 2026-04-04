@@ -74,25 +74,24 @@ export function usePayroll(startDate: string, endDate: string) {
       const { data: lessons, error: lessonsError } = await lessonsQuery.limit(10000);
       if (lessonsError) throw lessonsError;
 
-      // Fetch invoice line items for percentage-rate revenue lookups
+      // Fetch lesson participant rates for percentage-rate revenue lookups
       const lessonIds = (lessons || []).map(l => l.id);
-      const invoiceItemsMap = new Map<string, number>();
+      const lessonRateMap = new Map<string, number>();
       if (lessonIds.length > 0) {
         // Batch in chunks of 500 to stay within PostgREST in() limits
         const CHUNK_SIZE = 500;
         for (let i = 0; i < lessonIds.length; i += CHUNK_SIZE) {
           const chunk = lessonIds.slice(i, i + CHUNK_SIZE);
-          const { data: invoiceItems } = await supabase
-            .from('invoice_items')
-            .select('linked_lesson_id, amount_minor')
-            .eq('org_id', currentOrg.id)
-            .in('linked_lesson_id', chunk);
+          const { data: participants } = await supabase
+            .from('lesson_participants')
+            .select('lesson_id, rate_minor')
+            .in('lesson_id', chunk);
 
-          for (const item of invoiceItems || []) {
-            if (item.linked_lesson_id) {
-              invoiceItemsMap.set(
-                item.linked_lesson_id,
-                (invoiceItemsMap.get(item.linked_lesson_id) || 0) + item.amount_minor
+          for (const p of participants || []) {
+            if (p.lesson_id && p.rate_minor != null) {
+              lessonRateMap.set(
+                p.lesson_id,
+                (lessonRateMap.get(p.lesson_id) || 0) + p.rate_minor
               );
             }
           }
@@ -141,7 +140,7 @@ export function usePayroll(startDate: string, endDate: string) {
           });
         }
         
-        return calculatePayroll(lessons || [], teacherMap, startDate, endDate, invoiceItemsMap);
+        return calculatePayroll(lessons || [], teacherMap, startDate, endDate, lessonRateMap);
       }
 
       // Build teacher map
@@ -161,7 +160,7 @@ export function usePayroll(startDate: string, endDate: string) {
         });
       }
 
-      return calculatePayroll(lessons || [], teacherMap, startDate, endDate, invoiceItemsMap);
+      return calculatePayroll(lessons || [], teacherMap, startDate, endDate, lessonRateMap);
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
   });
@@ -181,7 +180,7 @@ function calculatePayroll(
   teacherMap: Map<string, { name: string; payRateType: 'per_lesson' | 'hourly' | 'percentage' | null; payRateValue: number }>,
   startDate: string,
   endDate: string,
-  invoiceItemsMap: Map<string, number> = new Map()
+  lessonRateMap: Map<string, number> = new Map()
 ): PayrollData {
   const teacherIds = [...teacherMap.keys()];
   const teacherSummaries: TeacherPayrollSummary[] = [];
@@ -209,9 +208,9 @@ function calculatePayroll(
           calculatedPay = (durationMins / 60) * teacherInfo.payRateValue;
           break;
         case 'percentage': {
-          const lessonRevenue = invoiceItemsMap.get(lesson.id);
-          if (lessonRevenue !== undefined) {
-            calculatedPay = Math.round((teacherInfo.payRateValue / 100) * lessonRevenue);
+          const lessonRateMinor = lessonRateMap.get(lesson.id);
+          if (lessonRateMinor !== undefined) {
+            calculatedPay = Math.round(lessonRateMinor * teacherInfo.payRateValue / 100);
           } else {
             calculatedPay = 0;
             hasWarning = true;

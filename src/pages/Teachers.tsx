@@ -56,7 +56,7 @@ function getTeacherColourIndex(teachers: Teacher[], teacherId: string): number {
 }
 
 // Shared form fields for create/edit
-function TeacherFormFields() {
+function TeacherFormFields({ showPayRate = false }: { showPayRate?: boolean }) {
   return (
     <div className="space-y-4 py-4">
       <FormField name="display_name" render={({ field }) => (
@@ -102,6 +102,52 @@ function TeacherFormFields() {
           <FormMessage />
         </FormItem>
       )} />
+      {showPayRate && (
+        <>
+          <FormField name="pay_rate_type" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Pay Rate Type (optional)</FormLabel>
+              <Select value={field.value ?? '_none'} onValueChange={(v) => field.onChange(v === '_none' ? null : v)}>
+                <FormControl><SelectTrigger><SelectValue placeholder="Not set" /></SelectTrigger></FormControl>
+                <SelectContent>
+                  <SelectItem value="_none">Not set</SelectItem>
+                  <SelectItem value="per_lesson">Per lesson</SelectItem>
+                  <SelectItem value="hourly">Hourly</SelectItem>
+                  <SelectItem value="percentage">Percentage of lesson fee</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField name="pay_rate_type" render={({ field: typeField }) => (
+            typeField.value ? (
+              <FormField name="pay_rate_value" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{typeField.value === 'percentage' ? 'Percentage (%)' : 'Pay Rate'}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step={typeField.value === 'percentage' ? '1' : '0.01'}
+                      min={typeField.value === 'percentage' ? '1' : '0'}
+                      max={typeField.value === 'percentage' ? '100' : undefined}
+                      {...field}
+                      placeholder={typeField.value === 'percentage' ? '60' : '25.00'}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {typeField.value === 'percentage'
+                      ? 'Teacher receives this percentage of each lesson\'s fee.'
+                      : typeField.value === 'hourly'
+                        ? 'Amount per hour.'
+                        : 'Amount per lesson.'}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            ) : null
+          )} />
+        </>
+      )}
       <FormField name="bio" render={({ field }) => (
         <FormItem>
           <FormLabel>Bio (optional)</FormLabel>
@@ -149,7 +195,7 @@ export default function Teachers() {
   // Create teacher form
   const createForm = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherSchema),
-    defaultValues: { display_name: '', email: '', phone: '', instruments: '', employment_type: 'contractor', bio: '' },
+    defaultValues: { display_name: '', email: '', phone: '', instruments: '', employment_type: 'contractor', pay_rate_type: null, pay_rate_value: 0, bio: '' },
   });
 
   // Edit teacher state
@@ -157,7 +203,7 @@ export default function Teachers() {
   const [editTeacher, setEditTeacher] = useState<Teacher | null>(null);
   const editForm = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherSchema),
-    defaultValues: { display_name: '', email: '', phone: '', instruments: '', employment_type: 'contractor', bio: '' },
+    defaultValues: { display_name: '', email: '', phone: '', instruments: '', employment_type: 'contractor', pay_rate_type: null, pay_rate_value: 0, bio: '' },
   });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -246,6 +292,8 @@ export default function Teachers() {
         phone: values.phone || undefined,
         instruments: values.instruments ? values.instruments.split(',').map(s => s.trim()).filter(Boolean) : undefined,
         employment_type: values.employment_type,
+        pay_rate_type: values.pay_rate_type || undefined,
+        pay_rate_value: values.pay_rate_type ? (values.pay_rate_value ?? 0) : undefined,
         bio: values.bio || undefined,
       });
 
@@ -301,6 +349,8 @@ export default function Teachers() {
       phone: teacher.phone || '',
       instruments: teacher.instruments?.join(', ') || '',
       employment_type: (teacher.employment_type as 'contractor' | 'employee') || 'contractor',
+      pay_rate_type: teacher.pay_rate_type || null,
+      pay_rate_value: teacher.pay_rate_value ?? 0,
       bio: teacher.bio || '',
     });
     setEditDialogOpen(true);
@@ -317,6 +367,8 @@ export default function Teachers() {
         phone: values.phone || null,
         instruments: values.instruments ? values.instruments.split(',').map(s => s.trim()).filter(Boolean) : [],
         employment_type: values.employment_type,
+        pay_rate_type: values.pay_rate_type || null,
+        pay_rate_value: values.pay_rate_type ? (values.pay_rate_value ?? 0) : null,
         bio: values.bio || null,
       });
       setEditDialogOpen(false);
@@ -660,7 +712,7 @@ export default function Teachers() {
           </DialogHeader>
           <Form {...createForm}>
             <form onSubmit={createForm.handleSubmit(handleCreateTeacher)}>
-              <TeacherFormFields />
+              <TeacherFormFields showPayRate={isOrgAdmin} />
 
               {/* Send login invite toggle */}
               <div className="rounded-lg border bg-muted/30 p-3 sm:p-4">
@@ -707,7 +759,7 @@ export default function Teachers() {
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(handleEditTeacher)}>
-              <TeacherFormFields />
+              <TeacherFormFields showPayRate={isOrgAdmin} />
               <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" type="button" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={isEditing}>

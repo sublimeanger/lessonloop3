@@ -62,11 +62,11 @@ export default function PayrollReport() {
   const getPayRateLabel = (type: string | null, value: number) => {
     switch (type) {
       case 'per_lesson':
-        return `${fmtCurrency(value)} per lesson`;
+        return `${fmtCurrency(value)}/lesson`;
       case 'hourly':
-        return `${fmtCurrency(value)}/hr`;
+        return `${fmtCurrency(value)}/hour`;
       case 'percentage':
-        return `${value}% of revenue`;
+        return `${value}% of lesson fees`;
       default:
         return 'Not configured';
     }
@@ -259,7 +259,7 @@ function PayrollTeacherList({
                   {teacher.payRateType === 'percentage' && teacher.lessons.some(l => l.hasWarning) && (
                     <p className="text-xs text-warning flex items-center gap-1 mt-0.5">
                       <AlertTriangle className="h-3 w-3" />
-                      Revenue data needed — ensure lessons have been invoiced.
+                      Lesson rate data missing — ensure participants have rates set.
                     </p>
                   )}
                 </div>
@@ -310,7 +310,7 @@ function PayrollTeacherList({
                           {lesson.hasWarning ? (
                             <span className="text-warning text-xs flex items-center justify-end gap-1">
                               <AlertTriangle className="h-3 w-3" />
-                              {fmtCurrency(0)} — no invoice linked yet
+                              {fmtCurrency(0)} — no participant rate set
                             </span>
                           ) : (
                             fmtCurrency(lesson.calculatedPay)
