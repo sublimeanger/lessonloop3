@@ -55,6 +55,7 @@ export function DayTimelineView({
   onLessonResize,
   isParent,
   savingLessonIds = EMPTY_SAVING_SET,
+  busyBlocks = [],
 }: DayTimelineViewProps) {
   const { currentOrg } = useOrg();
   const { selectionMode, selectedIds } = useBulkSelection();
