@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { RegisterLesson, useUpdateAttendance, useMarkLessonComplete, AttendanceStatus } from '@/hooks/useRegisterData';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showNotesForm, setShowNotesForm] = useState(false);
   const [savingStudent, setSavingStudent] = useState<string | null>(null);
+  const [attendanceMarkedThisSession, setAttendanceMarkedThisSession] = useState(false);
   const updateAttendance = useUpdateAttendance();
   const markComplete = useMarkLessonComplete();
   const { toast } = useToast();
@@ -53,6 +54,16 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
   const isCompleted = lesson.status === 'completed';
   const isCancelled = lesson.status === 'cancelled';
   const allMarked = lesson.participants.every(p => p.attendance_status !== null);
+  const hasNotes = !!(lesson.notes_shared || lesson.notes_private);
+
+  // Track when allMarked transitions to true during this session
+  const prevAllMarked = useRef(allMarked);
+  useEffect(() => {
+    if (allMarked && !prevAllMarked.current) {
+      setAttendanceMarkedThisSession(true);
+    }
+    prevAllMarked.current = allMarked;
+  }, [allMarked]);
 
   // Track per-student absence reason & notified date locally
   const [absenceReasons, setAbsenceReasons] = useState<Record<string, AbsenceReasonValue | null>>({});
@@ -78,6 +89,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
       });
 
       haptics.success();
+      setAttendanceMarkedThisSession(true);
 
       // Show undo toast when overwriting an existing status
       if (previousStatus && previousStatus !== status) {
@@ -201,6 +213,28 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
             </Button>
           </CollapsibleTrigger>
         </div>
+
+        {/* Notes prompt — shown after attendance marked, outside expanded content */}
+        {!isCancelled && attendanceMarkedThisSession && !isExpanded && (
+          <div className="px-4 pb-3">
+            {hasNotes ? (
+              <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                📝 Notes added
+              </span>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(true);
+                  setShowNotesForm(true);
+                }}
+                className="text-xs text-primary hover:underline flex items-center gap-1.5 min-h-[44px] sm:min-h-0"
+              >
+                ✏️ Add notes for this lesson →
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Expanded Content */}
         <CollapsibleContent>
