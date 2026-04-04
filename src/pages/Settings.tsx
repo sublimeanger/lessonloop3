@@ -24,6 +24,7 @@ import { MessagingSettingsTab } from '@/components/settings/MessagingSettingsTab
 import { BookingPageTab } from '@/components/settings/BookingPageTab';
 import { DataImportTab } from '@/components/settings/DataImportTab';
 import { ContinuationSettingsTab } from '@/components/settings/ContinuationSettingsTab';
+import { AccountingTab } from '@/components/settings/AccountingTab';
 import { SettingsLayout } from '@/components/settings/SettingsLayout';
 import { useOrg } from '@/contexts/OrgContext';
 import { useTeachers } from '@/hooks/useTeachers';
@@ -116,6 +117,8 @@ function SettingsContent({ activeTab, isOrgAdmin }: { activeTab: string; isOrgAd
       return <HelpToursTab />;
     case 'continuation':
       return <ContinuationSettingsTab />;
+    case 'accounting':
+      return <AccountingTab />;
     default:
       return <ProfileTab />;
   }
@@ -125,7 +128,7 @@ export default function Settings() {
   usePageMeta('Settings | LessonLoop', 'Manage your account, organisation, and subscription settings');
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOrgAdmin } = useOrg();
-  const adminTabs = ['organisation', 'branding', 'members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'messaging', 'booking-page', 'billing', 'loopassist', 'data-import', 'continuation'];
+  const adminTabs = ['organisation', 'branding', 'members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'messaging', 'booking-page', 'billing', 'loopassist', 'data-import', 'continuation', 'accounting'];
 
   const rawTab = searchParams.get('tab');
   // On desktop, default to profile. On mobile, null means show nav list.

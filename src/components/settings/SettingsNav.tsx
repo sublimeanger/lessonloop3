@@ -20,6 +20,7 @@ import {
   Sparkles,
   Shield,
   FileText,
+  FileSpreadsheet,
   ChevronRight,
   ArrowLeft,
   Globe,
@@ -86,6 +87,7 @@ export const SETTINGS_NAV_GROUPS: NavGroup[] = [
       { value: 'booking-page', label: 'Booking Page', icon: Globe, adminOnly: true },
       { value: 'loopassist', label: 'LoopAssist AI', icon: Sparkles, adminOnly: true },
       { value: 'continuation', label: 'Continuation', icon: ArrowRightLeft, adminOnly: true },
+      { value: 'accounting', label: 'Accounting', icon: FileSpreadsheet, adminOnly: true },
     ],
   },
   {
