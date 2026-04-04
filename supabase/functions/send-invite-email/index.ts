@@ -100,27 +100,61 @@ serve(async (req: Request): Promise<Response> => {
     // deno-lint-ignore no-explicit-any
     const orgName = (invite.organisations as any).name as string;
     const recipientEmail = invite.email;
-    const recipientRole = invite.role;
     const inviteToken = invite.token;
     const orgId = invite.org_id;
-    const inviterName = orgName; // Use org name as inviter
 
     // Build invite URL
     const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
     const inviteUrl = `${frontendUrl}/accept-invite?token=${inviteToken}`;
 
+    // Look up guardian name if guardianId provided
+    let guardianName = "there";
+    if (guardianId) {
+      const { data: guardian } = await supabase
+        .from("guardians")
+        .select("full_name")
+        .eq("id", guardianId)
+        .maybeSingle();
+      if (guardian?.full_name) {
+        guardianName = guardian.full_name;
+      }
+    }
+
     // Sending invite email
 
-    const subject = `You've been invited to join ${escapeHtml(orgName)}`;
-    const body = `
-      <h2>You're invited!</h2>
-      <p>${escapeHtml(inviterName)} has invited you to join <strong>${escapeHtml(orgName)}</strong> as a <strong>${escapeHtml(recipientRole)}</strong>.</p>
-      <p>Click the link below to accept the invitation and set up your account:</p>
-      <p><a href="${inviteUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Accept Invitation</a></p>
-      <p>Or copy this link: ${escapeHtml(inviteUrl)}</p>
-      <p>This invitation will expire in 7 days.</p>
-      <p>If you didn't expect this invitation, you can safely ignore this email.</p>
-    `;
+    const subject = `${escapeHtml(orgName)} has invited you to the parent portal`;
+    const body = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#f9fafb;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;">
+    <tr>
+      <td style="padding:24px 32px;border-bottom:2px solid #e2e8f0;">
+        <h1 style="margin:0;font-size:20px;color:#0d9488;">${escapeHtml(orgName)}</h1>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:32px;">
+        <p style="margin:0 0 16px;font-size:16px;color:#1a202c;">Hi ${escapeHtml(guardianName)},</p>
+        <p style="margin:0 0 24px;font-size:16px;color:#4a5568;line-height:1.6;">${escapeHtml(orgName)} has set up a parent portal for you. It&#39;s your one place to stay connected with your child&#39;s music lessons.</p>
+        <div style="background:#f0fdfa;border-radius:12px;padding:20px 24px;margin:0 0 28px;">
+          <p style="margin:0 0 12px;font-size:15px;color:#1a202c;">&#x1F4C5; View your child&#39;s lesson schedule</p>
+          <p style="margin:0 0 12px;font-size:15px;color:#1a202c;">&#x1F4B3; Pay invoices online</p>
+          <p style="margin:0 0 12px;font-size:15px;color:#1a202c;">&#x1F3B5; Track practice progress</p>
+          <p style="margin:0;font-size:15px;color:#1a202c;">&#x1F4AC; Message teachers directly</p>
+        </div>
+        <p style="text-align:center;margin:0 0 32px;">
+          <a href="${inviteUrl}" style="background-color:#0d9488;color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;display:inline-block;font-size:16px;font-weight:600;">Set Up Your Portal Account</a>
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px 32px;text-align:center;">
+        <p style="margin:0;font-size:13px;color:#a0aec0;">This invitation was sent by ${escapeHtml(orgName)} via LessonLoop.</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
     // Log the message regardless of email provider status
     const { error: logError } = await supabase.from("message_log").insert({
