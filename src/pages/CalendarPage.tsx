@@ -12,6 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { CalendarView, CalendarFilters, LessonWithDetails } from '@/components/calendar/types';
+import { useExternalBusyBlocks, useShowExternalEvents } from '@/hooks/useExternalBusyBlocks';
 import { buildTeacherColourMap } from '@/components/calendar/teacherColours';
 import { CalendarMobileLayout } from '@/components/calendar/CalendarMobileLayout';
 import { CalendarDesktopLayout } from '@/components/calendar/CalendarDesktopLayout';
