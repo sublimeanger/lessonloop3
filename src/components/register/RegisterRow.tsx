@@ -89,6 +89,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
       });
 
       haptics.success();
+      setAttendanceMarkedThisSession(true);
 
       // Show undo toast when overwriting an existing status
       if (previousStatus && previousStatus !== status) {
