@@ -204,12 +204,16 @@ export default function CalendarPage() {
     }
   }, [searchParams, isParent, actions]);
 
+  const visibleBusyBlocks = showExternalEvents ? busyBlocks : [];
+
   const sharedProps = {
     currentDate, setCurrentDate, goToToday,
     lessons, lessonsByDay, isLoading, isParent, isOnline,
     filters, setFilters, teachers, locations, rooms, instruments,
     teachersWithColours, teacherColourMap, actions,
     bulk, refetch,
+    busyBlocks: visibleBusyBlocks,
+    syncInfo, showExternalEvents, setShowExternalEvents,
   };
 
   const bulkCtx = useMemo(() => ({
