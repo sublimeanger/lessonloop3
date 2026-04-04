@@ -99,12 +99,10 @@ Deno.serve(async (req) => {
       'profile',
       'email',
       'offline_access',
-      'accounting.transactions.read',
-      'accounting.transactions.create',
-      'accounting.transactions.update',
-      'accounting.contacts.read',
-      'accounting.contacts.create',
-      'accounting.contacts.update',
+      'accounting.invoices',
+      'accounting.payments',
+      'accounting.contacts',
+      'accounting.settings.read',
     ];
 
     const callbackUrl = `${supabaseUrl}/functions/v1/xero-oauth-callback`;
