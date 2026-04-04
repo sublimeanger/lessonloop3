@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { BusyBlock, CalendarSyncInfo } from '@/hooks/useExternalBusyBlocks';
 import { useOrg } from '@/contexts/OrgContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
