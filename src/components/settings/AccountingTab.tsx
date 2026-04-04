@@ -343,7 +343,8 @@ function ConnectedState({
 
 // ─── Main Tab ───
 export function AccountingTab() {
-  const { orgId } = useOrg();
+  const { currentOrg } = useOrg();
+  const orgId = currentOrg?.id;
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Handle OAuth callback params
