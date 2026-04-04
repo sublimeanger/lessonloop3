@@ -35,11 +35,11 @@ const milestones: MilestoneDef[] = [
         weekMap.get(ws)!.add(log.practice_date);
       }
       let earliest: string | null = null;
-      for (const [ws, days] of weekMap) {
+      weekMap.forEach((days, ws) => {
         if (days.size >= 5) {
           if (!earliest || ws < earliest) earliest = ws;
         }
-      }
+      });
       return earliest;
     },
   },
