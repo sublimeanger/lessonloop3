@@ -5,14 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  CheckCircle2, Users, Calendar, Receipt, 
-  Building, ChevronRight, X, Sparkles, PartyPopper, 
-  UserPlus, Settings
+import {
+  CheckCircle2, Users, Calendar, Receipt,
+  Building, ChevronRight, X, Sparkles, PartyPopper,
+  UserPlus, Settings, Mail
 } from 'lucide-react';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboardingProgress, OnboardingStatus } from '@/hooks/useOnboardingProgress';
+import { useFirstRunExperience } from '@/hooks/useFirstRunExperience';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -43,12 +44,15 @@ const CHECKLIST_CONFIG: Record<OrgType, ChecklistConfigItem[]> = {
   solo_teacher: [
     { id: 'add-student', title: 'Add your first student', description: 'Start managing your student roster', href: '/students', icon: Users, checkKey: 'hasStudents' },
     { id: 'schedule-lesson', title: 'Schedule a lesson', description: 'Create your first lesson in the calendar', href: '/calendar', icon: Calendar, checkKey: 'hasLessons' },
+    { id: 'invite-parent', title: 'Invite parents to the portal', description: 'Send a parent their login to view lessons', href: '/students', icon: Mail, checkKey: 'hasGuardianInvites' },
     { id: 'create-invoice', title: 'Create your first invoice', description: 'Bill your students for lessons', href: '/invoices', icon: Receipt, checkKey: 'hasInvoices' },
   ],
   studio: [
     { id: 'add-location', title: 'Set up your studio', description: 'Add your teaching location with rooms', href: '/locations', icon: Building, checkKey: 'hasLocations' },
     { id: 'invite-teacher', title: 'Invite a teacher', description: 'Build your team', href: '/teachers', icon: UserPlus, checkKey: 'hasTeachers' },
     { id: 'add-student', title: 'Add students', description: 'Start enrolling students', href: '/students', icon: Users, checkKey: 'hasStudents' },
+    { id: 'schedule-lesson', title: 'Schedule a lesson', description: 'Create your first lesson in the calendar', href: '/calendar', icon: Calendar, checkKey: 'hasLessons' },
+    { id: 'invite-parent', title: 'Invite parents to the portal', description: 'Send parents their login to view lessons', href: '/students', icon: Mail, checkKey: 'hasGuardianInvites' },
     { id: 'run-billing', title: 'Run your first billing', description: 'Generate invoices for lessons', href: '/invoices', icon: Receipt, checkKey: 'hasInvoices' },
   ],
   academy: [
@@ -56,12 +60,14 @@ const CHECKLIST_CONFIG: Record<OrgType, ChecklistConfigItem[]> = {
     { id: 'invite-team', title: 'Invite your team', description: 'Add teachers and admin staff', href: '/teachers', icon: UserPlus, checkKey: 'hasTeachers' },
     { id: 'add-students', title: 'Enrol students', description: 'Add students individually or import', href: '/students', icon: Users, checkKey: 'hasStudents' },
     { id: 'schedule-lessons', title: 'Schedule lessons', description: 'Create your timetable', href: '/calendar', icon: Calendar, checkKey: 'hasLessons' },
+    { id: 'invite-parent', title: 'Invite parents to the portal', description: 'Send parents their login to view lessons', href: '/students', icon: Mail, checkKey: 'hasGuardianInvites' },
   ],
   agency: [
     { id: 'add-client-sites', title: 'Add client schools', description: 'Set up schools where teachers work', href: '/locations', icon: Building, checkKey: 'hasLocations' },
     { id: 'invite-teachers', title: 'Invite teachers', description: 'Build your team of peripatetic teachers', href: '/teachers', icon: UserPlus, checkKey: 'hasTeachers' },
-    { id: 'configure-policy', title: 'Set scheduling policy', description: 'Control how parents request changes', href: '/settings', icon: Settings, checkKey: 'hasPolicyConfigured' },
     { id: 'add-students', title: 'Add students', description: 'Enrol students at client sites', href: '/students', icon: Users, checkKey: 'hasStudents' },
+    { id: 'schedule-lessons', title: 'Schedule lessons', description: 'Create lessons at client sites', href: '/calendar', icon: Calendar, checkKey: 'hasLessons' },
+    { id: 'configure-policy', title: 'Set scheduling policy', description: 'Control how parents request changes', href: '/settings', icon: Settings, checkKey: 'hasPolicyConfigured' },
   ],
 };
 
@@ -109,6 +115,7 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
   const { currentOrg } = useOrg();
   const { profile, user } = useAuth();
   const { data: status, isLoading } = useOnboardingProgress();
+  const { isFirstRun } = useFirstRunExperience();
   const storageKey = `ll-checklist-dismissed-${currentOrg?.id}`;
   const [isDismissed, setIsDismissed] = useState(() => 
     safeGetItem(storageKey) === 'true' || !!profile?.first_run_completed
@@ -167,7 +174,7 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
     onDismiss?.();
   };
 
-  if (isDismissed || isLoading || items.length === 0) {
+  if (isDismissed || isLoading || items.length === 0 || isFirstRun) {
     return null;
   }
 
