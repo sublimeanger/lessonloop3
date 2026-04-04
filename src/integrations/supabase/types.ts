@@ -3518,6 +3518,7 @@ export type Database = {
           parent_reschedule_policy: string | null
           past_due_since: string | null
           payment_methods_enabled: string[] | null
+          payment_reminder_settings: Json | null
           platform_fee_percent: number | null
           schedule_end_hour: number
           schedule_start_hour: number
@@ -3590,6 +3591,7 @@ export type Database = {
           parent_reschedule_policy?: string | null
           past_due_since?: string | null
           payment_methods_enabled?: string[] | null
+          payment_reminder_settings?: Json | null
           platform_fee_percent?: number | null
           schedule_end_hour?: number
           schedule_start_hour?: number
@@ -3662,6 +3664,7 @@ export type Database = {
           parent_reschedule_policy?: string | null
           past_due_since?: string | null
           payment_methods_enabled?: string[] | null
+          payment_reminder_settings?: Json | null
           platform_fee_percent?: number | null
           schedule_end_hour?: number
           schedule_start_hour?: number
