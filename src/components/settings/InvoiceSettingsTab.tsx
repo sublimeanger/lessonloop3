@@ -86,6 +86,7 @@ export function InvoiceSettingsTab() {
   const [planThreshold, setPlanThreshold] = useState('');
   const [planInstallments, setPlanInstallments] = useState('3');
   const [planFrequency, setPlanFrequency] = useState('monthly');
+  const [reminderSettings, setReminderSettings] = useState<PaymentReminderSettings>(DEFAULT_REMINDER_SETTINGS);
 
   if (settingsData && !hydrated) {
     setVatRegistered(settingsData.vat_enabled || false);
@@ -99,8 +100,21 @@ export function InvoiceSettingsTab() {
     setPlanThreshold(sd.default_plan_threshold_minor ? (sd.default_plan_threshold_minor / 100).toString() : '');
     setPlanInstallments((sd.default_plan_installments || 3).toString());
     setPlanFrequency(sd.default_plan_frequency || 'monthly');
+    setReminderSettings({ ...DEFAULT_REMINDER_SETTINGS, ...(sd.payment_reminder_settings || {}) });
     setHydrated(true);
   }
+
+  const updateReminder = <K extends keyof PaymentReminderSettings>(key: K, value: PaymentReminderSettings[K]) => {
+    setReminderSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const buildReminderScheduleText = () => {
+    const parts: string[] = [];
+    if (reminderSettings.pre_due_enabled) parts.push(`${reminderSettings.pre_due_days} day${reminderSettings.pre_due_days !== 1 ? 's' : ''} before due`);
+    if (reminderSettings.overdue_enabled) parts.push(`${reminderSettings.overdue_days} day${reminderSettings.overdue_days !== 1 ? 's' : ''} overdue`);
+    if (reminderSettings.escalation_enabled) parts.push(`${reminderSettings.escalation_days} day${reminderSettings.escalation_days !== 1 ? 's' : ''} overdue (escalation)`);
+    return parts.length > 0 ? parts.join(' → ') : 'No reminders configured';
+  };
 
   const addReminderDay = (day: number) => {
     if (day < 1 || day > 365) return;
