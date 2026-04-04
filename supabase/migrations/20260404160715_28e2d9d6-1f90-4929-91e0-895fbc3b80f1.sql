@@ -1,0 +1,2 @@
+ALTER TABLE public.organisations 
+ADD COLUMN IF NOT EXISTS payment_reminder_settings jsonb DEFAULT '{"pre_due_enabled": true, "pre_due_days": 3, "overdue_enabled": true, "overdue_days": 1, "escalation_enabled": true, "escalation_days": 7, "reminder_tone": "friendly"}'::jsonb;

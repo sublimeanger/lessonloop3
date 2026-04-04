@@ -17,8 +17,40 @@ import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, X, Bell, Clock, AlertTriangle } from 'lucide-react';
 import { currencySymbol } from '@/lib/utils';
+
+interface PaymentReminderSettings {
+  pre_due_enabled: boolean;
+  pre_due_days: number;
+  overdue_enabled: boolean;
+  overdue_days: number;
+  escalation_enabled: boolean;
+  escalation_days: number;
+  reminder_tone: 'friendly' | 'firm' | 'final_notice';
+}
+
+const DEFAULT_REMINDER_SETTINGS: PaymentReminderSettings = {
+  pre_due_enabled: true,
+  pre_due_days: 3,
+  overdue_enabled: true,
+  overdue_days: 1,
+  escalation_enabled: true,
+  escalation_days: 7,
+  reminder_tone: 'friendly',
+};
+
+const TONE_LABELS: Record<PaymentReminderSettings['reminder_tone'], string> = {
+  friendly: 'Friendly',
+  firm: 'Firm',
+  final_notice: 'Final notice',
+};
+
+const TONE_DESCRIPTIONS: Record<PaymentReminderSettings['reminder_tone'], string> = {
+  friendly: 'Gentle reminder with a warm, understanding tone',
+  firm: 'Professional and direct — clearly states the amount owed',
+  final_notice: 'Urgent language indicating potential consequences',
+};
 
 const COMMON_REMINDER_PRESETS = [7, 14, 21, 30, 60, 90];
 
@@ -35,7 +67,7 @@ export function InvoiceSettingsTab() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('organisations')
-        .select('vat_enabled, vat_rate, vat_registration_number, default_payment_terms_days, overdue_reminder_days, default_plan_threshold_minor, default_plan_installments, default_plan_frequency')
+        .select('vat_enabled, vat_rate, vat_registration_number, default_payment_terms_days, overdue_reminder_days, default_plan_threshold_minor, default_plan_installments, default_plan_frequency, payment_reminder_settings')
         .eq('id', currentOrg!.id)
         .single();
       if (error) throw error;
@@ -54,6 +86,7 @@ export function InvoiceSettingsTab() {
   const [planThreshold, setPlanThreshold] = useState('');
   const [planInstallments, setPlanInstallments] = useState('3');
   const [planFrequency, setPlanFrequency] = useState('monthly');
+  const [reminderSettings, setReminderSettings] = useState<PaymentReminderSettings>(DEFAULT_REMINDER_SETTINGS);
 
   if (settingsData && !hydrated) {
     setVatRegistered(settingsData.vat_enabled || false);
@@ -67,8 +100,21 @@ export function InvoiceSettingsTab() {
     setPlanThreshold(sd.default_plan_threshold_minor ? (sd.default_plan_threshold_minor / 100).toString() : '');
     setPlanInstallments((sd.default_plan_installments || 3).toString());
     setPlanFrequency(sd.default_plan_frequency || 'monthly');
+    setReminderSettings({ ...DEFAULT_REMINDER_SETTINGS, ...(sd.payment_reminder_settings || {}) });
     setHydrated(true);
   }
+
+  const updateReminder = <K extends keyof PaymentReminderSettings>(key: K, value: PaymentReminderSettings[K]) => {
+    setReminderSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const buildReminderScheduleText = () => {
+    const parts: string[] = [];
+    if (reminderSettings.pre_due_enabled) parts.push(`${reminderSettings.pre_due_days} day${reminderSettings.pre_due_days !== 1 ? 's' : ''} before due`);
+    if (reminderSettings.overdue_enabled) parts.push(`${reminderSettings.overdue_days} day${reminderSettings.overdue_days !== 1 ? 's' : ''} overdue`);
+    if (reminderSettings.escalation_enabled) parts.push(`${reminderSettings.escalation_days} day${reminderSettings.escalation_days !== 1 ? 's' : ''} overdue (escalation)`);
+    return parts.length > 0 ? parts.join(' → ') : 'No reminders configured';
+  };
 
   const addReminderDay = (day: number) => {
     if (day < 1 || day > 365) return;
@@ -101,6 +147,7 @@ export function InvoiceSettingsTab() {
           default_plan_threshold_minor: planThreshold ? Math.round(parseFloat(planThreshold) * 100) : null,
           default_plan_installments: parseInt(planInstallments) || 3,
           default_plan_frequency: planFrequency,
+          payment_reminder_settings: reminderSettings,
         } as any)
         .eq('id', currentOrg!.id);
       if (error) throw error;
@@ -312,6 +359,148 @@ export function InvoiceSettingsTab() {
           </div>
         </div>
 
+        <Separator />
+
+        {/* Payment Reminders */}
+        <div className="space-y-4">
+          <div>
+            <Label className="text-base">Payment Reminders</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Configure automatic email reminders for upcoming and overdue invoices. The cron jobs use these settings to determine when to send each reminder.
+            </p>
+          </div>
+
+          {/* Pre-due reminder */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <div className="font-medium text-sm">Send reminder before due date</div>
+                  <p className="text-xs text-muted-foreground">Gives parents a heads-up before payment is due</p>
+                </div>
+              </div>
+              <Switch
+                checked={reminderSettings.pre_due_enabled}
+                onCheckedChange={(v) => updateReminder('pre_due_enabled', v)}
+                disabled={!canEdit}
+              />
+            </div>
+            {reminderSettings.pre_due_enabled && (
+              <div className="flex items-center gap-2 pl-6">
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={reminderSettings.pre_due_days}
+                  onChange={(e) => updateReminder('pre_due_days', Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-20 h-8"
+                  disabled={!canEdit}
+                />
+                <span className="text-sm text-muted-foreground">days before due date</span>
+              </div>
+            )}
+          </div>
+
+          {/* Overdue reminder */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <div className="font-medium text-sm">Send overdue reminder</div>
+                  <p className="text-xs text-muted-foreground">First nudge after the invoice becomes overdue</p>
+                </div>
+              </div>
+              <Switch
+                checked={reminderSettings.overdue_enabled}
+                onCheckedChange={(v) => updateReminder('overdue_enabled', v)}
+                disabled={!canEdit}
+              />
+            </div>
+            {reminderSettings.overdue_enabled && (
+              <div className="flex items-center gap-2 pl-6">
+                <Input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={reminderSettings.overdue_days}
+                  onChange={(e) => updateReminder('overdue_days', Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-20 h-8"
+                  disabled={!canEdit}
+                />
+                <span className="text-sm text-muted-foreground">days after due date</span>
+              </div>
+            )}
+          </div>
+
+          {/* Escalation reminder */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <div className="font-medium text-sm">Send escalation reminder</div>
+                  <p className="text-xs text-muted-foreground">Stronger follow-up for invoices still unpaid after the first reminder</p>
+                </div>
+              </div>
+              <Switch
+                checked={reminderSettings.escalation_enabled}
+                onCheckedChange={(v) => updateReminder('escalation_enabled', v)}
+                disabled={!canEdit}
+              />
+            </div>
+            {reminderSettings.escalation_enabled && (
+              <div className="flex items-center gap-2 pl-6">
+                <Input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={reminderSettings.escalation_days}
+                  onChange={(e) => updateReminder('escalation_days', Math.max(1, parseInt(e.target.value) || 7))}
+                  className="w-20 h-8"
+                  disabled={!canEdit}
+                />
+                <span className="text-sm text-muted-foreground">days after due date</span>
+              </div>
+            )}
+          </div>
+
+          {/* Reminder tone */}
+          <div className="space-y-2">
+            <Label>Reminder email tone</Label>
+            <Select
+              value={reminderSettings.reminder_tone}
+              onValueChange={(v) => updateReminder('reminder_tone', v as PaymentReminderSettings['reminder_tone'])}
+              disabled={!canEdit}
+            >
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(TONE_LABELS) as Array<PaymentReminderSettings['reminder_tone']>).map((tone) => (
+                  <SelectItem key={tone} value={tone}>
+                    <div>
+                      <span>{TONE_LABELS[tone]}</span>
+                      <span className="text-xs text-muted-foreground ml-2">— {TONE_DESCRIPTIONS[tone]}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Controls the language used in each reminder email template
+            </p>
+          </div>
+
+          {/* Schedule preview */}
+          {(reminderSettings.pre_due_enabled || reminderSettings.overdue_enabled || reminderSettings.escalation_enabled) && (
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Your reminder schedule</p>
+              <p className="text-sm">{buildReminderScheduleText()}</p>
+            </div>
+          )}
+        </div>
 
         {canEdit && (
           <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
