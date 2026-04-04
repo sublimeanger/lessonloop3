@@ -3520,6 +3520,14 @@ export type Database = {
           payment_methods_enabled: string[] | null
           payment_reminder_settings: Json | null
           platform_fee_percent: number | null
+          reminder_before_due_days: number | null
+          reminder_before_due_enabled: boolean | null
+          reminder_escalation_days: number | null
+          reminder_escalation_enabled: boolean | null
+          reminder_lesson_enabled: boolean | null
+          reminder_lesson_hours: number | null
+          reminder_overdue_days: number | null
+          reminder_overdue_enabled: boolean | null
           schedule_end_hour: number
           schedule_start_hour: number
           stripe_connect_account_id: string | null
@@ -3593,6 +3601,14 @@ export type Database = {
           payment_methods_enabled?: string[] | null
           payment_reminder_settings?: Json | null
           platform_fee_percent?: number | null
+          reminder_before_due_days?: number | null
+          reminder_before_due_enabled?: boolean | null
+          reminder_escalation_days?: number | null
+          reminder_escalation_enabled?: boolean | null
+          reminder_lesson_enabled?: boolean | null
+          reminder_lesson_hours?: number | null
+          reminder_overdue_days?: number | null
+          reminder_overdue_enabled?: boolean | null
           schedule_end_hour?: number
           schedule_start_hour?: number
           stripe_connect_account_id?: string | null
@@ -3666,6 +3682,14 @@ export type Database = {
           payment_methods_enabled?: string[] | null
           payment_reminder_settings?: Json | null
           platform_fee_percent?: number | null
+          reminder_before_due_days?: number | null
+          reminder_before_due_enabled?: boolean | null
+          reminder_escalation_days?: number | null
+          reminder_escalation_enabled?: boolean | null
+          reminder_lesson_enabled?: boolean | null
+          reminder_lesson_hours?: number | null
+          reminder_overdue_days?: number | null
+          reminder_overdue_enabled?: boolean | null
           schedule_end_hour?: number
           schedule_start_hour?: number
           stripe_connect_account_id?: string | null
