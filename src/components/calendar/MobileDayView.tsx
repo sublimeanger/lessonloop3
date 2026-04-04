@@ -160,8 +160,11 @@ export function MobileDayView({
               )}
               {/* Time column */}
               <div className="w-14 shrink-0 flex flex-col items-end justify-start pr-3 pt-0.5">
-                <span className="text-sm font-semibold tabular-nums text-foreground leading-tight">
+                <span className="text-sm font-semibold tabular-nums text-foreground leading-tight flex items-center gap-0.5">
                   {format(startTime, 'HH:mm')}
+                  {hasConflict(lesson) && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0" title="Overlaps with external event" />
+                  )}
                 </span>
                 <span className="text-micro tabular-nums text-muted-foreground leading-tight">
                   {format(endTime, 'HH:mm')}
