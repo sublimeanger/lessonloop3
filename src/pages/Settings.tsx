@@ -24,6 +24,7 @@ import { MessagingSettingsTab } from '@/components/settings/MessagingSettingsTab
 import { BookingPageTab } from '@/components/settings/BookingPageTab';
 import { DataImportTab } from '@/components/settings/DataImportTab';
 import { ContinuationSettingsTab } from '@/components/settings/ContinuationSettingsTab';
+import { AccountingTab } from '@/components/settings/AccountingTab';
 import { SettingsLayout } from '@/components/settings/SettingsLayout';
 import { useOrg } from '@/contexts/OrgContext';
 import { useTeachers } from '@/hooks/useTeachers';

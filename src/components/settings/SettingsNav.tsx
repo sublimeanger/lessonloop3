@@ -20,6 +20,7 @@ import {
   Sparkles,
   Shield,
   FileText,
+  FileSpreadsheet,
   ChevronRight,
   ArrowLeft,
   Globe,
