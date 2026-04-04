@@ -7,10 +7,12 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { PracticeTimer } from '@/components/portal/PracticeTimer';
 import { PracticeHistory } from '@/components/portal/PracticeHistory';
 import { WeeklyProgressCard } from '@/components/portal/WeeklyProgressCard';
+import { WeeklyGoalCard } from '@/components/portal/WeeklyGoalCard';
+import { PracticeMilestones } from '@/components/portal/PracticeMilestones';
 import { PracticeTrendsChart } from '@/components/practice/PracticeTrendsChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChildrenStreaks, PracticeStreak } from '@/hooks/usePracticeStreaks';
-import { useParentPracticeAssignments } from '@/hooks/usePractice';
+import { useParentPracticeAssignments, useParentPracticeLogs, PracticeLog } from '@/hooks/usePractice';
 import { StreakDisplay } from '@/components/practice/StreakBadge';
 import { Flame } from 'lucide-react';
 import { useChildFilter } from '@/contexts/ChildFilterContext';
@@ -24,6 +26,13 @@ export default function PortalPractice() {
   const { selectedChildId } = useChildFilter();
   const { data: streaks = [], isError: streaksError, isLoading: streaksLoading, refetch: refetchStreaks } = useChildrenStreaks();
   const { data: assignments = [], isError: assignmentsError, isLoading: assignmentsLoading, refetch: refetchAssignments } = useParentPracticeAssignments();
+  const { data: logsData } = useParentPracticeLogs(selectedChildId || undefined);
+
+  // Flatten all loaded practice logs for goal/milestone calculations
+  const allLogs: PracticeLog[] = useMemo(
+    () => logsData?.pages.flatMap(p => p.data) ?? [],
+    [logsData]
+  );
   
   // Log any errors for debugging
   if (streaksError) logger.error('Streaks fetch error:', streaksError);
@@ -47,6 +56,12 @@ export default function PortalPractice() {
       return [];
     }
   }, [streaks, selectedChildId]);
+
+  // Current streak value for the selected child (or first child)
+  const currentStreak = useMemo(() => {
+    if (activeStreaks.length === 0) return 0;
+    return activeStreaks[0]?.current_streak ?? 0;
+  }, [activeStreaks]);
 
   if (!practiceEnabled) {
     return (
@@ -78,6 +93,33 @@ export default function PortalPractice() {
         id="portal-practice"
         message="Use the timer to log practice sessions. Your teacher can see how much your child practises and track their progress over time."
       />
+
+      {/* Engagement section: Weekly Goal + Streak */}
+      <div className="grid gap-4 sm:grid-cols-2 mb-6">
+        <WeeklyGoalCard childId={selectedChildId ?? undefined} logs={allLogs} />
+
+        <Card className="rounded-2xl shadow-card">
+          <CardContent className="pt-6 flex flex-col items-center justify-center gap-2 h-full">
+            {currentStreak > 0 ? (
+              <>
+                <span className="text-3xl">🔥</span>
+                <p className="text-lg font-bold">{currentStreak} day streak</p>
+                <p className="text-xs text-muted-foreground">Keep it going!</p>
+              </>
+            ) : (
+              <>
+                <span className="text-3xl">🔥</span>
+                <p className="text-sm text-muted-foreground">Start a streak today!</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Milestones */}
+      <div className="mb-6">
+        <PracticeMilestones logs={allLogs} />
+      </div>
       
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
