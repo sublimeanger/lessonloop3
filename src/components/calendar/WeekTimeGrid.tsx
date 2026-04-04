@@ -70,6 +70,7 @@ interface WeekTimeGridProps {
   isParent: boolean;
   /** Set of lesson IDs currently being saved (optimistic update in progress) */
   savingLessonIds?: Set<string>;
+  busyBlocks?: BusyBlock[];
 }
 
 export function WeekTimeGrid({

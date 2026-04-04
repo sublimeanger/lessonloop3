@@ -35,6 +35,7 @@ interface DayTimelineViewProps {
   onLessonResize?: (lesson: LessonWithDetails, newEnd: Date) => void;
   isParent: boolean;
   savingLessonIds?: Set<string>;
+  busyBlocks?: BusyBlock[];
 }
 
 function roundTo15(minutes: number): number {
