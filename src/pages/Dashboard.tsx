@@ -39,6 +39,7 @@ import { differenceInDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { PaymentAnalyticsCard } from '@/components/dashboard/PaymentAnalyticsCard';
 import { WaitlistDashboardWidget } from '@/components/waitlist/WaitlistDashboardWidget';
+import { TeacherAvailabilityCard } from '@/components/dashboard/TeacherAvailabilityCard';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 8 },
