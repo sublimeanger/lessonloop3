@@ -31,6 +31,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useParentLessonNotes } from '@/hooks/useLessonNotes';
 import { LessonNoteCard } from '@/components/portal/LessonNoteCard';
 import { RequestModal } from '@/components/portal/RequestModal';
+import { LessonChangeSheet } from '@/components/portal/LessonChangeSheet';
 import { RescheduleSlotPicker } from '@/components/portal/RescheduleSlotPicker';
 import { useToast } from '@/hooks/use-toast';
 import { useCalendarConnections } from '@/hooks/useCalendarConnections';
