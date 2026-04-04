@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { RegisterLesson, useUpdateAttendance, useMarkLessonComplete, AttendanceStatus } from '@/hooks/useRegisterData';
 import { Button } from '@/components/ui/button';
