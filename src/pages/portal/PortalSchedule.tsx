@@ -484,7 +484,7 @@ export default function PortalSchedule() {
                       aria-label={showSlotPicker ? 'Reschedule lesson' : 'Request change'}
                       onClick={() => showSlotPicker
                         ? handleRescheduleClick({ id: lesson.id, title: lesson.title, start_at: lesson.start_at, end_at: lesson.end_at, teacher_id: lesson.teacher_id })
-                        : handleRequestChange({ id: lesson.id, title: lesson.title })
+                        : handleRequestChange(lesson)
                       }
                     >
                       <CalendarClock className="h-4 w-4" />
