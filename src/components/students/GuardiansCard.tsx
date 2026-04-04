@@ -138,15 +138,20 @@ export function GuardiansCard({
 
                       if (!inviteStatus || inviteStatus.inviteStatus === 'none') {
                         return (
-                          <Button variant="outline" size="sm" onClick={() => handleInviteGuardian(sg.guardian!)} disabled={isInviting} className="gap-1">
-                            {isInviting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                            Invite
-                          </Button>
+                          <div className="flex flex-col gap-1">
+                            <Button variant="outline" size="sm" onClick={() => handleInviteGuardian(sg.guardian!)} disabled={isInviting} className="gap-1">
+                              {isInviting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                              Invite to Portal
+                            </Button>
+                            <p className="text-[11px] leading-tight text-muted-foreground max-w-[280px]">
+                              Sends an email invitation — once accepted, this parent can view schedules, pay invoices, track practice, and message teachers from their own portal.
+                            </p>
+                          </div>
                         );
                       } else if (inviteStatus.inviteStatus === 'pending') {
                         return (
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="secondary" className="text-xs">Invite Pending</Badge>
+                            <Badge variant="warning" className="text-xs">Invite Pending</Badge>
                             {inviteStatus.token && (
                               <Button variant="ghost" size="sm" onClick={() => handleCopyInviteLink(inviteStatus.token!)} className="gap-1 text-xs">
                                 <Copy className="h-3 w-3" />
