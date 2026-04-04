@@ -26,7 +26,7 @@ import { DataImportTab } from '@/components/settings/DataImportTab';
 import { ContinuationSettingsTab } from '@/components/settings/ContinuationSettingsTab';
 import { AccountingTab } from '@/components/settings/AccountingTab';
 import { SettingsLayout } from '@/components/settings/SettingsLayout';
-import { MigrationStatusCheck } from '@/components/settings/MigrationStatusCheck';
+
 import { useOrg } from '@/contexts/OrgContext';
 import { useTeachers } from '@/hooks/useTeachers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -158,10 +158,6 @@ export default function Settings() {
           { label: 'Settings' },
         ]}
       />
-
-      <div className="mb-4 px-4 sm:px-0">
-        <MigrationStatusCheck />
-      </div>
 
       <SettingsLayout
         activeTab={activeTab}
