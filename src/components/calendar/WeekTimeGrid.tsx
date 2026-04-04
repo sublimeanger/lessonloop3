@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
+import type { BusyBlock } from '@/hooks/useExternalBusyBlocks';
 import { useClosureDates } from '@/hooks/useCalendarData';
 import {
   format,
