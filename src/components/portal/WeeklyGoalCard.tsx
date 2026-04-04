@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { startOfWeek, endOfWeek, parseISO, isWithinInterval } from 'date-fns';
@@ -24,28 +24,6 @@ function getStoredGoal(childId: string | undefined): number {
 }
 
 export function WeeklyGoalCard({ childId, logs }: WeeklyGoalCardProps) {
-  const goal = getStoredGoal(childId);
-
-  const cycleGoal = useCallback(() => {
-    const idx = GOAL_OPTIONS.indexOf(goal);
-    const next = GOAL_OPTIONS[(idx + 1) % GOAL_OPTIONS.length];
-    safeSetItem(getGoalKey(childId), String(next));
-    // Force re-render by dispatching storage event won't work same-tab,
-    // so we use a simple page-level trick: update via state
-    window.dispatchEvent(new Event('storage'));
-  }, [goal, childId]);
-
-  // Listen for storage changes to re-render
-  const [currentGoal, setCurrentGoal] = useMemo(() => [goal, null], [goal]);
-
-  // Actually, let's use state properly
-  return <WeeklyGoalCardInner childId={childId} logs={logs} />;
-}
-
-// Inner component with proper state
-import { useState, useEffect } from 'react';
-
-function WeeklyGoalCardInner({ childId, logs }: WeeklyGoalCardProps) {
   const [goal, setGoal] = useState(() => getStoredGoal(childId));
 
   useEffect(() => {
