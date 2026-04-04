@@ -117,6 +117,8 @@ function SettingsContent({ activeTab, isOrgAdmin }: { activeTab: string; isOrgAd
       return <HelpToursTab />;
     case 'continuation':
       return <ContinuationSettingsTab />;
+    case 'accounting':
+      return <AccountingTab />;
     default:
       return <ProfileTab />;
   }
