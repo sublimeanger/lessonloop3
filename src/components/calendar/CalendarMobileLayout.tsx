@@ -151,7 +151,7 @@ export function CalendarMobileLayout({
             {!isParent && <p className="text-sm mt-1">Tap + to create a lesson</p>}
           </div>
         ) : (
-          <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={bulk.selectionMode ? (l: LessonWithDetails) => bulk.toggleSelection(l.id) : actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} onLongPress={!isParent ? (l: LessonWithDetails) => { bulk.enterSelectionMode(); bulk.toggleSelection(l.id); } : undefined} />
+          <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={bulk.selectionMode ? (l: LessonWithDetails) => bulk.toggleSelection(l.id) : actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} onLongPress={!isParent ? (l: LessonWithDetails) => { bulk.enterSelectionMode(); bulk.toggleSelection(l.id); } : undefined} busyBlocks={busyBlocks} />
         )}
       </SectionErrorBoundary>
 
