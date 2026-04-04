@@ -7,6 +7,7 @@ import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teach
 import { computeOverlapLayout } from './overlapLayout';
 import { useDragLesson } from './useDragLesson';
 import { useResizeLesson } from './useResizeLesson';
+import { BusyBlockOverlay } from './BusyBlockOverlay';
 import { DEFAULT_START_HOUR, DEFAULT_END_HOUR } from './calendarConstants';
 import { useOrg } from '@/contexts/OrgContext';
 import { useClosureDates } from '@/hooks/useCalendarData';
