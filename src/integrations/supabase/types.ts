@@ -5705,6 +5705,139 @@ export type Database = {
           },
         ]
       }
+      xero_connections: {
+        Row: {
+          access_token: string
+          auto_sync_invoices: boolean
+          auto_sync_payments: boolean
+          created_at: string
+          error_message: string | null
+          id: string
+          last_sync_at: string | null
+          org_id: string
+          refresh_token: string
+          sync_enabled: boolean
+          sync_status: string
+          tenant_id: string
+          tenant_name: string | null
+          token_expires_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          auto_sync_invoices?: boolean
+          auto_sync_payments?: boolean
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_at?: string | null
+          org_id: string
+          refresh_token: string
+          sync_enabled?: boolean
+          sync_status?: string
+          tenant_id: string
+          tenant_name?: string | null
+          token_expires_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          auto_sync_invoices?: boolean
+          auto_sync_payments?: boolean
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_at?: string | null
+          org_id?: string
+          refresh_token?: string
+          sync_enabled?: boolean
+          sync_status?: string
+          tenant_id?: string
+          tenant_name?: string | null
+          token_expires_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xero_connections_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xero_connections_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xero_entity_mappings: {
+        Row: {
+          connection_id: string
+          created_at: string
+          entity_type: string
+          error_message: string | null
+          id: string
+          last_synced_at: string
+          local_id: string
+          org_id: string
+          sync_status: string
+          xero_id: string
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          entity_type: string
+          error_message?: string | null
+          id?: string
+          last_synced_at?: string
+          local_id: string
+          org_id: string
+          sync_status?: string
+          xero_id: string
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          entity_type?: string
+          error_message?: string | null
+          id?: string
+          last_synced_at?: string
+          local_id?: string
+          org_id?: string
+          sync_status?: string
+          xero_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xero_entity_mappings_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "xero_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xero_entity_mappings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xero_entity_mappings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zoom_meeting_mappings: {
         Row: {
           connection_id: string
