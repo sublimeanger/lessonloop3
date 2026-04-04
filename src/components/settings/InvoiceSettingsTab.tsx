@@ -147,6 +147,7 @@ export function InvoiceSettingsTab() {
           default_plan_threshold_minor: planThreshold ? Math.round(parseFloat(planThreshold) * 100) : null,
           default_plan_installments: parseInt(planInstallments) || 3,
           default_plan_frequency: planFrequency,
+          payment_reminder_settings: reminderSettings,
         } as any)
         .eq('id', currentOrg!.id);
       if (error) throw error;
