@@ -214,6 +214,28 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
           </CollapsibleTrigger>
         </div>
 
+        {/* Notes prompt — shown after attendance marked, outside expanded content */}
+        {!isCancelled && attendanceMarkedThisSession && !isExpanded && (
+          <div className="px-4 pb-3">
+            {hasNotes ? (
+              <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                📝 Notes added
+              </span>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(true);
+                  setShowNotesForm(true);
+                }}
+                className="text-xs text-primary hover:underline flex items-center gap-1.5 min-h-[44px] sm:min-h-0"
+              >
+                ✏️ Add notes for this lesson →
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Expanded Content */}
         <CollapsibleContent>
           <div className="border-t px-4 py-3 space-y-3">
