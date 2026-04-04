@@ -211,8 +211,11 @@ export function CalendarDesktopLayout({
 
         <WeekContextStrip currentDate={currentDate} onDayClick={setCurrentDate} lessonsByDay={lessonsByDay} view={view} />
 
-        <div data-hint="calendar-filters">
-          <CalendarFiltersBar filters={filters} onChange={setFilters} teachers={teachers} locations={locations} rooms={rooms} instruments={instruments} teachersWithColours={teachersWithColours} lessons={lessons} currentDate={currentDate} />
+        <div data-hint="calendar-filters" className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <CalendarFiltersBar filters={filters} onChange={setFilters} teachers={teachers} locations={locations} rooms={rooms} instruments={instruments} teachersWithColours={teachersWithColours} lessons={lessons} currentDate={currentDate} />
+          </div>
+          <ExternalEventsSyncBadge syncInfo={syncInfo} showExternal={showExternalEvents} onToggle={setShowExternalEvents} />
         </div>
       </div>
 
