@@ -346,6 +346,37 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
       console.error("Failed to trigger receipt email:", err);
     }
   }
+
+  // Best-effort Xero payment sync
+  if (resolvedOrgId && paymentId) {
+    try {
+      const { data: xeroConn } = await supabase
+        .from("xero_connections")
+        .select("sync_enabled, auto_sync_payments")
+        .eq("org_id", resolvedOrgId)
+        .maybeSingle();
+
+      if (xeroConn?.sync_enabled && xeroConn?.auto_sync_payments) {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        await fetch(`${supabaseUrl}/functions/v1/xero-sync-payment`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${supabaseServiceKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ payment_id: paymentId }),
+        }).catch((err) => {
+          console.error(`[stripe-webhook] Xero payment sync failed (non-critical):`, err);
+        });
+        log(`Xero auto-sync triggered for payment ${truncate(paymentId)}`);
+      } else {
+        log("Xero sync skipped — no active connection or auto_sync_payments disabled");
+      }
+    } catch (err) {
+      console.error("[stripe-webhook] Xero payment sync failed (non-critical):", err);
+    }
+  }
 }
 
 async function handleCheckoutExpired(supabase: any, session: Stripe.Checkout.Session) {
@@ -722,6 +753,37 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
       });
     } catch (err) {
       console.error("Failed to trigger receipt email:", err);
+    }
+  }
+
+  // Best-effort Xero payment sync
+  if (resolvedOrgId && paymentId) {
+    try {
+      const { data: xeroConn } = await supabase
+        .from("xero_connections")
+        .select("sync_enabled, auto_sync_payments")
+        .eq("org_id", resolvedOrgId)
+        .maybeSingle();
+
+      if (xeroConn?.sync_enabled && xeroConn?.auto_sync_payments) {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        await fetch(`${supabaseUrl}/functions/v1/xero-sync-payment`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${supabaseServiceKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ payment_id: paymentId }),
+        }).catch((err) => {
+          console.error(`[stripe-webhook] Xero payment sync failed (non-critical):`, err);
+        });
+        log(`Xero auto-sync triggered for payment ${truncate(paymentId)}`);
+      } else {
+        log("Xero sync skipped — no active connection or auto_sync_payments disabled");
+      }
+    } catch (err) {
+      console.error("[stripe-webhook] Xero payment sync failed (non-critical):", err);
     }
   }
 }

@@ -854,6 +854,42 @@ async function executeBillingLogic(
     }
   }
 
+  // ── Best-effort Xero invoice sync ──
+  if (invoiceIds.length > 0) {
+    try {
+      const { data: xeroConn } = await client
+        .from("xero_connections")
+        .select("sync_enabled, auto_sync_invoices")
+        .eq("org_id", orgId)
+        .maybeSingle();
+
+      if (xeroConn?.sync_enabled && xeroConn?.auto_sync_invoices) {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+        await Promise.all(
+          invoiceIds.map((invoiceId) =>
+            fetch(`${supabaseUrl}/functions/v1/xero-sync-invoice`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${serviceRoleKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ invoice_id: invoiceId }),
+            }).catch((err) => {
+              console.error(`[BillingRun] Xero sync failed for invoice ${invoiceId} (non-critical):`, err);
+            })
+          )
+        );
+        console.log(`[BillingRun] Xero auto-sync triggered for ${invoiceIds.length} invoices`);
+      } else {
+        console.log("[BillingRun] Xero sync skipped — no active connection or auto_sync_invoices disabled");
+      }
+    } catch (err) {
+      console.error("[BillingRun] Xero sync failed (non-critical):", err);
+    }
+  }
+
   return {
     invoiceIds,
     totalAmount,
