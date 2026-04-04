@@ -359,6 +359,148 @@ export function InvoiceSettingsTab() {
           </div>
         </div>
 
+        <Separator />
+
+        {/* Payment Reminders */}
+        <div className="space-y-4">
+          <div>
+            <Label className="text-base">Payment Reminders</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Configure automatic email reminders for upcoming and overdue invoices. The cron jobs use these settings to determine when to send each reminder.
+            </p>
+          </div>
+
+          {/* Pre-due reminder */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <div className="font-medium text-sm">Send reminder before due date</div>
+                  <p className="text-xs text-muted-foreground">Gives parents a heads-up before payment is due</p>
+                </div>
+              </div>
+              <Switch
+                checked={reminderSettings.pre_due_enabled}
+                onCheckedChange={(v) => updateReminder('pre_due_enabled', v)}
+                disabled={!canEdit}
+              />
+            </div>
+            {reminderSettings.pre_due_enabled && (
+              <div className="flex items-center gap-2 pl-6">
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={reminderSettings.pre_due_days}
+                  onChange={(e) => updateReminder('pre_due_days', Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-20 h-8"
+                  disabled={!canEdit}
+                />
+                <span className="text-sm text-muted-foreground">days before due date</span>
+              </div>
+            )}
+          </div>
+
+          {/* Overdue reminder */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <div className="font-medium text-sm">Send overdue reminder</div>
+                  <p className="text-xs text-muted-foreground">First nudge after the invoice becomes overdue</p>
+                </div>
+              </div>
+              <Switch
+                checked={reminderSettings.overdue_enabled}
+                onCheckedChange={(v) => updateReminder('overdue_enabled', v)}
+                disabled={!canEdit}
+              />
+            </div>
+            {reminderSettings.overdue_enabled && (
+              <div className="flex items-center gap-2 pl-6">
+                <Input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={reminderSettings.overdue_days}
+                  onChange={(e) => updateReminder('overdue_days', Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-20 h-8"
+                  disabled={!canEdit}
+                />
+                <span className="text-sm text-muted-foreground">days after due date</span>
+              </div>
+            )}
+          </div>
+
+          {/* Escalation reminder */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <div className="font-medium text-sm">Send escalation reminder</div>
+                  <p className="text-xs text-muted-foreground">Stronger follow-up for invoices still unpaid after the first reminder</p>
+                </div>
+              </div>
+              <Switch
+                checked={reminderSettings.escalation_enabled}
+                onCheckedChange={(v) => updateReminder('escalation_enabled', v)}
+                disabled={!canEdit}
+              />
+            </div>
+            {reminderSettings.escalation_enabled && (
+              <div className="flex items-center gap-2 pl-6">
+                <Input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={reminderSettings.escalation_days}
+                  onChange={(e) => updateReminder('escalation_days', Math.max(1, parseInt(e.target.value) || 7))}
+                  className="w-20 h-8"
+                  disabled={!canEdit}
+                />
+                <span className="text-sm text-muted-foreground">days after due date</span>
+              </div>
+            )}
+          </div>
+
+          {/* Reminder tone */}
+          <div className="space-y-2">
+            <Label>Reminder email tone</Label>
+            <Select
+              value={reminderSettings.reminder_tone}
+              onValueChange={(v) => updateReminder('reminder_tone', v as PaymentReminderSettings['reminder_tone'])}
+              disabled={!canEdit}
+            >
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(TONE_LABELS) as Array<PaymentReminderSettings['reminder_tone']>).map((tone) => (
+                  <SelectItem key={tone} value={tone}>
+                    <div>
+                      <span>{TONE_LABELS[tone]}</span>
+                      <span className="text-xs text-muted-foreground ml-2">— {TONE_DESCRIPTIONS[tone]}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Controls the language used in each reminder email template
+            </p>
+          </div>
+
+          {/* Schedule preview */}
+          {(reminderSettings.pre_due_enabled || reminderSettings.overdue_enabled || reminderSettings.escalation_enabled) && (
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Your reminder schedule</p>
+              <p className="text-sm">{buildReminderScheduleText()}</p>
+            </div>
+          )}
+        </div>
 
         {canEdit && (
           <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
