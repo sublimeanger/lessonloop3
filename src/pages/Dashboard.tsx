@@ -39,6 +39,7 @@ import { differenceInDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { PaymentAnalyticsCard } from '@/components/dashboard/PaymentAnalyticsCard';
 import { WaitlistDashboardWidget } from '@/components/waitlist/WaitlistDashboardWidget';
+import { TeacherAvailabilityCard } from '@/components/dashboard/TeacherAvailabilityCard';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 8 },
@@ -463,6 +464,13 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
               <StatCard title="Hours (Week)" value={`${stats?.hoursThisWeek ?? 0}h`} subtitle="Teaching hours" icon={TrendingUp} variant="emerald" />
             </StatsGrid>
           )}
+        </motion.div>
+
+        {/* Availability Card */}
+        <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="Teacher Availability">
+            <TeacherAvailabilityCard />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Main Content Grid */}
