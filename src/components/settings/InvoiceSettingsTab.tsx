@@ -67,7 +67,7 @@ export function InvoiceSettingsTab() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('organisations')
-        .select('vat_enabled, vat_rate, vat_registration_number, default_payment_terms_days, overdue_reminder_days, default_plan_threshold_minor, default_plan_installments, default_plan_frequency')
+        .select('vat_enabled, vat_rate, vat_registration_number, default_payment_terms_days, overdue_reminder_days, default_plan_threshold_minor, default_plan_installments, default_plan_frequency, payment_reminder_settings')
         .eq('id', currentOrg!.id)
         .single();
       if (error) throw error;
