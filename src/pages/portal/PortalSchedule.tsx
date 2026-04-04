@@ -668,6 +668,15 @@ export default function PortalSchedule() {
         </div>
       )}
 
+      <LessonChangeSheet
+        open={changeSheetOpen}
+        onOpenChange={setChangeSheetOpen}
+        lesson={changeSheetLesson}
+        tz={tz}
+        onSubmit={handleChangeSheetSubmit}
+        isSubmitting={createRequest.isPending}
+      />
+
       <RequestModal
         open={requestModalOpen}
         onOpenChange={setRequestModalOpen}
