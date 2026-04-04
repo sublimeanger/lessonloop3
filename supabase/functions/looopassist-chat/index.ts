@@ -1,6 +1,7 @@
 // Note: Function name has legacy typo "looopassist" — keep for backward compatibility
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Pool } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, checkLoopAssistDailyCap, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { sanitiseMessage } from "../_shared/sanitise-ai-input.ts";
@@ -992,6 +993,83 @@ async function executeToolCall(
       return result;
     }
 
+    case "query_org_data": {
+      const { sql: rawSql, explanation } = toolInput;
+
+      if (!rawSql || typeof rawSql !== "string") {
+        return "Invalid query: SQL is required.";
+      }
+
+      // Must reference org_id for tenant isolation
+      if (!rawSql.includes(":org_id")) {
+        return "Query rejected: must include WHERE org_id = :org_id filter for security.";
+      }
+
+      // Must start with SELECT or WITH (CTEs)
+      const trimmedSql = rawSql.trim();
+      if (!/^(SELECT|WITH)\b/i.test(trimmedSql)) {
+        return "Query rejected: must be a SELECT query.";
+      }
+
+      // No multiple statements
+      if (trimmedSql.includes(";")) {
+        return "Query rejected: multiple statements not allowed.";
+      }
+
+      // Reject mutation keywords
+      const forbidden = /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE)\b/i;
+      if (forbidden.test(rawSql)) {
+        return "Query rejected: only read-only SELECT queries are allowed.";
+      }
+
+      // Replace :org_id with parameterised placeholder $1
+      const paramSql = rawSql.replace(/:org_id/g, "$1");
+
+      // Enforce max 100 rows
+      let finalSql = paramSql;
+      const limitMatch = paramSql.match(/\bLIMIT\s+(\d+)/i);
+      if (limitMatch) {
+        const existingLimit = parseInt(limitMatch[1]);
+        if (existingLimit > 100) {
+          finalSql = paramSql.replace(/\bLIMIT\s+\d+/i, "LIMIT 100");
+        }
+      } else {
+        finalSql = `${paramSql} LIMIT 100`;
+      }
+
+      const dbUrl = Deno.env.get("SUPABASE_DB_URL");
+      if (!dbUrl) return "Database connection not configured.";
+
+      const pool = new Pool(dbUrl, 1);
+      try {
+        const conn = await pool.connect();
+        try {
+          await conn.queryObject("BEGIN TRANSACTION READ ONLY");
+          await conn.queryObject("SET LOCAL statement_timeout = '5000'");
+          const result = await conn.queryObject(finalSql, [orgId]);
+          await conn.queryObject("ROLLBACK");
+
+          if (!result.rows || result.rows.length === 0) {
+            return `Query: ${explanation}\nNo results found.`;
+          }
+
+          const rows = result.rows.slice(0, 100);
+          return `Query: ${explanation}\nResults (${rows.length} row${rows.length === 1 ? "" : "s"}):\n${JSON.stringify(rows, null, 2)}`;
+        } finally {
+          conn.release();
+        }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("query_org_data error:", msg);
+        if (msg.includes("statement timeout") || msg.includes("canceling statement")) {
+          return "Query timed out (5s limit). Try a simpler query or add more specific filters.";
+        }
+        return "Query failed. Try rephrasing with simpler filters or a different approach.";
+      } finally {
+        await pool.end();
+      }
+    }
+
     default:
       return `Unknown tool: ${toolName}`;
   }
@@ -1193,6 +1271,24 @@ const TOOLS = [
         student_id: { type: "string", description: "The student's UUID" }
       },
       required: ["student_id"]
+    }
+  },
+  {
+    name: "query_org_data",
+    description: "Query the organisation's data to answer questions about students, lessons, revenue, attendance, teachers, leads, and invoices. Always use this tool when the user asks about their data, stats, or metrics.",
+    input_schema: {
+      type: "object",
+      properties: {
+        sql: {
+          type: "string",
+          description: "A read-only SELECT SQL query. Must include WHERE org_id = :org_id filter. Only SELECT queries allowed."
+        },
+        explanation: {
+          type: "string",
+          description: "Brief explanation of what this query does"
+        }
+      },
+      required: ["sql", "explanation"]
     }
   }
 ];
@@ -1557,6 +1653,7 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
       get_at_risk_students: "Identifying at-risk students...",
       get_practice_history: "Loading practice history...",
       get_term_adjustments: "Checking term adjustments...",
+      query_org_data: "Running data query...",
     };
 
     // Use a TransformStream so we can push progress events during tool use
