@@ -263,6 +263,7 @@ export function CalendarDesktopLayout({
                   onLessonClick={handleLessonClickOrSelect} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
                   onLessonDrop={!isParent && !bulk.selectionMode ? actions.handleLessonDrop : undefined} onLessonResize={!isParent && !bulk.selectionMode ? actions.handleLessonResize : undefined}
                   isParent={isParent} savingLessonIds={actions.savingLessonIds}
+                  busyBlocks={busyBlocks}
                 />
                 {!isParent && (
                   <ContextualHint id="calendar-create-lesson" message="Click any time slot to create a lesson, or drag to set the duration. Grab a lesson card to reschedule it." position="top" targetSelector="[data-hint='calendar-grid']" />
