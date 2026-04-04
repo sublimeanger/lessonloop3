@@ -34,6 +34,7 @@ export function MobileDayView({
   onLessonClick,
   savingLessonIds,
   onLongPress,
+  busyBlocks = [],
 }: MobileDayViewProps) {
   const { selectionMode, selectedIds } = useBulkSelection();
   const { data: closures } = useClosureDates(currentDate, currentDate);
