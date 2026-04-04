@@ -32,7 +32,7 @@
   }
 
   var accentColor = script.getAttribute('data-color') || '#6366f1';
-  var buttonText = script.getAttribute('data-text') || 'Book a Trial Lesson';
+  var buttonText = script.getAttribute('data-text') || 'Book or Enquire';
   var position = script.getAttribute('data-position') || 'bottom-right';
 
   // Detect base URL from script src, or use data-base-url override
