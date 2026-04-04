@@ -104,6 +104,10 @@ export function CalendarDesktopLayout({
   actions,
   bulk,
   refetch,
+  busyBlocks,
+  syncInfo,
+  showExternalEvents,
+  setShowExternalEvents,
 }: CalendarDesktopLayoutProps) {
   const { isOrgAdmin, currentRole } = useOrg();
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
