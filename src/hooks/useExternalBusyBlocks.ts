@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { STALE_VOLATILE, GC_DEFAULT } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,8 +10,8 @@ import { safeGetItem, safeSetItem } from '@/lib/storage';
 export interface BusyBlock {
   id: string;
   user_id: string;
-  start_at: string; // org-local ISO
-  end_at: string;   // org-local ISO
+  start_at: string;
+  end_at: string;
   title: string | null;
 }
 
@@ -42,8 +42,6 @@ export function useExternalBusyBlocks(startIso: string, endIso: string, teacherF
         .lt('start_at', endIso)
         .gt('end_at', startIso);
 
-      // If filtered to a specific teacher, we need to find their user_id
-      // teacher_id filter maps to teachers.id, but busy blocks use user_id
       if (teacherFilter) {
         const { data: teacher } = await supabase
           .from('teachers')
@@ -73,7 +71,6 @@ export function useExternalBusyBlocks(startIso: string, endIso: string, teacherF
     gcTime: GC_DEFAULT,
   });
 
-  // Fetch sync info for the badge
   const { data: syncInfo } = useQuery({
     queryKey: ['calendar-sync-info', currentOrg?.id],
     queryFn: async () => {
@@ -89,7 +86,7 @@ export function useExternalBusyBlocks(startIso: string, endIso: string, teacherF
       return data[0] as CalendarSyncInfo;
     },
     enabled: !!currentOrg,
-    staleTime: 60_000, // 1 minute
+    staleTime: 60_000,
     gcTime: GC_DEFAULT,
   });
 
@@ -99,7 +96,7 @@ export function useExternalBusyBlocks(startIso: string, endIso: string, teacherF
 const SHOW_EXTERNAL_KEY = 'll-show-external-events';
 
 export function useShowExternalEvents() {
-  const initial = safeGetItem(SHOW_EXTERNAL_KEY) !== '0'; // default on
+  const initial = safeGetItem(SHOW_EXTERNAL_KEY) !== '0';
   const [show, setShowRaw] = useState(initial);
 
   function setShow(v: boolean) {
@@ -109,6 +106,3 @@ export function useShowExternalEvents() {
 
   return [show, setShow] as const;
 }
-
-// Need to import useState
-import { useState } from 'react';
