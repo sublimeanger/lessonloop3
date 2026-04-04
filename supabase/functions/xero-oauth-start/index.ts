@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       'accounting.invoices',
       'accounting.payments',
       'accounting.contacts',
-      'accounting.settings.read',
+      'accounting.settings',
     ];
 
     const callbackUrl = `${supabaseUrl}/functions/v1/xero-oauth-callback`;
