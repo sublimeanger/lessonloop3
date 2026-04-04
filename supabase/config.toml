@@ -107,6 +107,23 @@ verify_jwt = false
 [functions.zoom-sync-lesson]
 verify_jwt = false
 
+# ── Xero accounting integration ───────────────────────────────────
+
+[functions.xero-oauth-start]
+verify_jwt = false
+
+[functions.xero-oauth-callback]
+verify_jwt = false
+
+[functions.xero-disconnect]
+verify_jwt = false
+
+[functions.xero-sync-invoice]
+verify_jwt = false
+
+[functions.xero-sync-payment]
+verify_jwt = false
+
 # ── Continuation deadline processing ────────────────────────────────
 # CRON REQUIRED: Schedule in Supabase Dashboard → Edge Functions → Schedules
 # Schedule: Daily at 8am UTC (0 8 * * *)
