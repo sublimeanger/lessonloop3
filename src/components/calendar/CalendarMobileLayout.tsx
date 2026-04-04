@@ -73,6 +73,10 @@ export function CalendarMobileLayout({
   actions,
   bulk,
   refetch,
+  busyBlocks,
+  syncInfo,
+  showExternalEvents,
+  setShowExternalEvents,
 }: CalendarMobileLayoutProps) {
   const { isOrgAdmin, currentRole } = useOrg();
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
