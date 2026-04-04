@@ -14,7 +14,7 @@ interface FirstRunStep {
   description: string;
   cta: string;
   href: string;
-  icon: 'users' | 'calendar' | 'building' | 'user-plus' | 'settings';
+  icon: 'users' | 'calendar' | 'building' | 'user-plus' | 'settings' | 'mail';
 }
 
 interface FirstRunState {
@@ -55,6 +55,14 @@ const SOLO_STEPS: FirstRunStep[] = [
     href: '/calendar',
     icon: 'calendar',
   },
+  {
+    id: 'invite-parent',
+    title: "Invite parents to the portal",
+    description: "Send a parent their login so they can view lessons and pay invoices.",
+    cta: 'Invite Parent',
+    href: '/students',
+    icon: 'mail',
+  },
 ];
 
 const STUDIO_STEPS: FirstRunStep[] = [
@@ -81,6 +89,22 @@ const STUDIO_STEPS: FirstRunStep[] = [
     cta: 'Add Student',
     href: '/students',
     icon: 'users',
+  },
+  {
+    id: 'schedule-lesson',
+    title: "Schedule a lesson",
+    description: "Create your first lesson in the calendar.",
+    cta: 'Open Calendar',
+    href: '/calendar',
+    icon: 'calendar',
+  },
+  {
+    id: 'invite-parent',
+    title: "Invite parents to the portal",
+    description: "Send parents their login so they can view lessons and pay invoices.",
+    cta: 'Invite Parent',
+    href: '/students',
+    icon: 'mail',
   },
 ];
 
@@ -109,6 +133,22 @@ const ACADEMY_STEPS: FirstRunStep[] = [
     href: '/students',
     icon: 'users',
   },
+  {
+    id: 'schedule-lesson',
+    title: "Schedule lessons",
+    description: "Create your timetable in the calendar.",
+    cta: 'Open Calendar',
+    href: '/calendar',
+    icon: 'calendar',
+  },
+  {
+    id: 'invite-parent',
+    title: "Invite parents to the portal",
+    description: "Send parents their login so they can view lessons and pay invoices.",
+    cta: 'Invite Parent',
+    href: '/students',
+    icon: 'mail',
+  },
 ];
 
 const AGENCY_STEPS: FirstRunStep[] = [
@@ -127,6 +167,22 @@ const AGENCY_STEPS: FirstRunStep[] = [
     cta: 'Invite Teachers',
     href: '/teachers',
     icon: 'user-plus',
+  },
+  {
+    id: 'add-students',
+    title: "Add students",
+    description: "Enrol students at your client schools.",
+    cta: 'Add Students',
+    href: '/students',
+    icon: 'users',
+  },
+  {
+    id: 'schedule-lesson',
+    title: "Schedule lessons",
+    description: "Create lessons for your teachers at client sites.",
+    cta: 'Open Calendar',
+    href: '/calendar',
+    icon: 'calendar',
   },
   {
     id: 'configure-policy',
@@ -158,22 +214,29 @@ function getPathFromOrgType(orgType: OrgType): FirstRunPath {
   }
 }
 
-function deriveCurrentStep(orgType: OrgType, steps: FirstRunStep[], has: { students: boolean; lessons: boolean; locations: boolean; teachers: boolean }): FirstRunStep | null {
+function deriveCurrentStep(orgType: OrgType, steps: FirstRunStep[], has: { students: boolean; lessons: boolean; locations: boolean; teachers: boolean; guardianInvites: boolean }): FirstRunStep | null {
   if (orgType === 'solo_teacher') {
     if (!has.locations) return steps.find(s => s.id === 'add-location') || null;
     if (!has.students) return steps.find(s => s.id === 'add-student') || null;
     if (!has.lessons) return steps.find(s => s.id === 'schedule-lesson') || null;
+    if (!has.guardianInvites) return steps.find(s => s.id === 'invite-parent') || null;
   } else if (orgType === 'studio') {
     if (!has.locations) return steps.find(s => s.id === 'add-location') || null;
     if (!has.teachers) return steps.find(s => s.id === 'invite-teacher') || null;
     if (!has.students) return steps.find(s => s.id === 'add-student') || null;
+    if (!has.lessons) return steps.find(s => s.id === 'schedule-lesson') || null;
+    if (!has.guardianInvites) return steps.find(s => s.id === 'invite-parent') || null;
   } else if (orgType === 'academy') {
     if (!has.locations) return steps.find(s => s.id === 'add-locations') || null;
     if (!has.teachers) return steps.find(s => s.id === 'invite-team') || null;
     if (!has.students) return steps.find(s => s.id === 'add-students') || null;
+    if (!has.lessons) return steps.find(s => s.id === 'schedule-lesson') || null;
+    if (!has.guardianInvites) return steps.find(s => s.id === 'invite-parent') || null;
   } else if (orgType === 'agency') {
     if (!has.locations) return steps.find(s => s.id === 'add-client-sites') || null;
     if (!has.teachers) return steps.find(s => s.id === 'invite-teachers') || null;
+    if (!has.students) return steps.find(s => s.id === 'add-students') || null;
+    if (!has.lessons) return steps.find(s => s.id === 'schedule-lesson') || null;
     return steps.find(s => s.id === 'configure-policy') || null;
   }
   return null;
@@ -200,6 +263,7 @@ export function useFirstRunExperience(): FirstRunState & {
       hasLessons: onboardingStatus.hasLessons,
       hasLocations: onboardingStatus.hasLocations,
       hasTeachers: onboardingStatus.hasTeachers,
+      hasGuardianInvites: onboardingStatus.hasGuardianInvites,
     };
   }, [onboardingStatus]);
 
@@ -226,6 +290,7 @@ export function useFirstRunExperience(): FirstRunState & {
       lessons: data.hasLessons,
       locations: data.hasLocations,
       teachers: data.hasTeachers,
+      guardianInvites: data.hasGuardianInvites,
     });
 
     return {

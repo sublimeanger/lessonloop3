@@ -10,6 +10,7 @@ export interface OnboardingStatus {
   hasLocations: boolean;
   hasTeachers: boolean;
   hasPolicyConfigured: boolean;
+  hasGuardianInvites: boolean;
 }
 
 export function useOnboardingProgress() {
@@ -20,7 +21,7 @@ export function useOnboardingProgress() {
     queryFn: async (): Promise<OnboardingStatus> => {
       if (!currentOrg) throw new Error('No org');
 
-      const [studentsResult, lessonsResult, invoicesResult, locationsResult, teachersResult] = await Promise.all([
+      const [studentsResult, lessonsResult, invoicesResult, locationsResult, teachersResult, guardiansResult] = await Promise.all([
         supabase
           .from('students')
           .select('id', { count: 'exact', head: true })
@@ -44,6 +45,11 @@ export function useOnboardingProgress() {
           .eq('org_id', currentOrg.id)
           .eq('status', 'active')
           .in('role', ['teacher', 'admin']),
+        supabase
+          .from('guardians')
+          .select('id', { count: 'exact', head: true })
+          .eq('org_id', currentOrg.id)
+          .not('user_id', 'is', null),
       ]);
 
       return {
@@ -53,6 +59,7 @@ export function useOnboardingProgress() {
         hasLocations: (locationsResult.count || 0) > 0,
         hasTeachers: (teachersResult.count || 0) > 1,
         hasPolicyConfigured: (currentOrg.parent_reschedule_policy ?? 'request_only') !== 'request_only',
+        hasGuardianInvites: (guardiansResult.count || 0) > 0,
       };
     },
     enabled: !!currentOrg,

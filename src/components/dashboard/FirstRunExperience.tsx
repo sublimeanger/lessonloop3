@@ -3,9 +3,9 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Users, Calendar, Building2, UserPlus, Settings, 
-  X, Rocket, ArrowRight
+import {
+  Users, Calendar, Building2, UserPlus, Settings,
+  X, Rocket, ArrowRight, Mail
 } from 'lucide-react';
 import { useFirstRunExperience } from '@/hooks/useFirstRunExperience';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   building: Building2,
   'user-plus': UserPlus,
   settings: Settings,
+  mail: Mail,
 };
 
 const pathLabels: Record<string, string> = {
