@@ -123,7 +123,7 @@ export function GuardiansCard({
                       <Badge variant="outline" className="text-xs capitalize">{sg.relationship}</Badge>
                       {sg.is_primary_payer && <Badge className="text-xs">Primary Payer</Badge>}
                       {sg.guardian?.user_id && (
-                        <Badge variant="secondary" className="text-xs">Portal Access</Badge>
+                        <Badge variant="success" className="text-xs">Portal Active</Badge>
                       )}
                     </div>
                     <div className="mt-1 flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:gap-4">
