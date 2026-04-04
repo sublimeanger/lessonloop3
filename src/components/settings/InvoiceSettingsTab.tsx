@@ -17,8 +17,40 @@ import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, X, Bell, Clock, AlertTriangle } from 'lucide-react';
 import { currencySymbol } from '@/lib/utils';
+
+interface PaymentReminderSettings {
+  pre_due_enabled: boolean;
+  pre_due_days: number;
+  overdue_enabled: boolean;
+  overdue_days: number;
+  escalation_enabled: boolean;
+  escalation_days: number;
+  reminder_tone: 'friendly' | 'firm' | 'final_notice';
+}
+
+const DEFAULT_REMINDER_SETTINGS: PaymentReminderSettings = {
+  pre_due_enabled: true,
+  pre_due_days: 3,
+  overdue_enabled: true,
+  overdue_days: 1,
+  escalation_enabled: true,
+  escalation_days: 7,
+  reminder_tone: 'friendly',
+};
+
+const TONE_LABELS: Record<PaymentReminderSettings['reminder_tone'], string> = {
+  friendly: 'Friendly',
+  firm: 'Firm',
+  final_notice: 'Final notice',
+};
+
+const TONE_DESCRIPTIONS: Record<PaymentReminderSettings['reminder_tone'], string> = {
+  friendly: 'Gentle reminder with a warm, understanding tone',
+  firm: 'Professional and direct — clearly states the amount owed',
+  final_notice: 'Urgent language indicating potential consequences',
+};
 
 const COMMON_REMINDER_PRESETS = [7, 14, 21, 30, 60, 90];
 
