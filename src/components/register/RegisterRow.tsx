@@ -45,6 +45,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showNotesForm, setShowNotesForm] = useState(false);
   const [savingStudent, setSavingStudent] = useState<string | null>(null);
+  const [attendanceMarkedThisSession, setAttendanceMarkedThisSession] = useState(false);
   const updateAttendance = useUpdateAttendance();
   const markComplete = useMarkLessonComplete();
   const { toast } = useToast();
@@ -53,6 +54,16 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
   const isCompleted = lesson.status === 'completed';
   const isCancelled = lesson.status === 'cancelled';
   const allMarked = lesson.participants.every(p => p.attendance_status !== null);
+  const hasNotes = !!(lesson.notes_shared || lesson.notes_private);
+
+  // Track when allMarked transitions to true during this session
+  const prevAllMarked = useRef(allMarked);
+  useEffect(() => {
+    if (allMarked && !prevAllMarked.current) {
+      setAttendanceMarkedThisSession(true);
+    }
+    prevAllMarked.current = allMarked;
+  }, [allMarked]);
 
   // Track per-student absence reason & notified date locally
   const [absenceReasons, setAbsenceReasons] = useState<Record<string, AbsenceReasonValue | null>>({});
