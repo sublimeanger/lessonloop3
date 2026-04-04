@@ -128,9 +128,33 @@ export default function PortalSchedule() {
   const canReschedule = reschedulePolicy !== 'admin_locked';
   const showSlotPicker = reschedulePolicy === 'self_service';
 
-  const handleRequestChange = (lesson: { id: string; title: string }) => {
-    setSelectedLesson(lesson);
-    setRequestModalOpen(true);
+  const handleRequestChange = (lesson: Lesson) => {
+    setChangeSheetLesson({
+      id: lesson.id,
+      title: lesson.title,
+      start_at: lesson.start_at,
+      end_at: lesson.end_at,
+      teacher_name: lesson.teacher_name || null,
+      location_name: lesson.location?.name || null,
+      student_names: lesson.students.map(s => `${s.first_name} ${s.last_name}`).join(', '),
+    });
+    setChangeSheetOpen(true);
+  };
+
+  const handleChangeSheetSubmit = async (data: {
+    request_type: 'cancellation' | 'reschedule';
+    subject: string;
+    message: string;
+    lesson_id: string;
+  }) => {
+    await createRequest.mutateAsync({
+      request_type: data.request_type,
+      subject: data.subject,
+      message: data.message,
+      lesson_id: data.lesson_id,
+    });
+    setRequestedLessonIds(prev => new Set(prev).add(data.lesson_id));
+    toast({ title: 'Request sent — the academy will confirm shortly' });
   };
 
   const handleRescheduleClick = (lesson: {
