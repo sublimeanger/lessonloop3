@@ -55,11 +55,11 @@ const milestones: MilestoneDef[] = [
         monthMap.get(ms)!.add(log.practice_date);
       }
       let earliest: string | null = null;
-      for (const [ms, days] of monthMap) {
+      monthMap.forEach((days, ms) => {
         if (days.size >= 20) {
           if (!earliest || ms < earliest) earliest = ms;
         }
-      }
+      });
       return earliest;
     },
   },
