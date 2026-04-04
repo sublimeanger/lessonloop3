@@ -99,7 +99,8 @@ Deno.serve(async (req) => {
       'profile',
       'email',
       'offline_access',
-      'accounting.transactions',
+      'accounting.invoices',
+      'accounting.payments',
       'accounting.contacts',
       'accounting.settings.read',
     ];
