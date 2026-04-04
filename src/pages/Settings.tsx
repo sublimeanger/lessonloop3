@@ -159,10 +159,6 @@ export default function Settings() {
         ]}
       />
 
-      <div className="mb-4 px-4 sm:px-0">
-        <MigrationStatusCheck />
-      </div>
-
       <SettingsLayout
         activeTab={activeTab}
         onTabChange={handleTabChange}
