@@ -110,6 +110,14 @@ register:
     - Marking absent with eligible reason → auto_issue_credit_on_absence trigger fires
     - on_slot_released trigger → find_waitlist_matches() → auto-matches waiting students
     - Cancellation notification email sent to affected parents
+  register_to_note:
+    - Inline flow: after marking attendance, tap a student row to add lesson notes directly from the register
+    - No need to navigate away — notes are saved to the lesson record immediately
+    - Notes are split: notes_shared (visible to parents in portal) and notes_private (staff only)
+  absence_notifications:
+    - When a student is marked absent, an automatic notification email is sent to their parent/guardian
+    - Email includes lesson details, absence reason, and make-up credit info if applicable
+    - Respects guardian notification preferences
   navigation: /register
 
 students:
@@ -138,6 +146,8 @@ students:
     - is_primary_payer flag → determines who receives invoices
     - One guardian can be linked to multiple students (siblings)
     - Guardians can have portal login (user_id link)
+    - Guardian portal status badges: "Portal Active" (guardian has logged in), "Invite Pending" (invitation sent but not yet accepted)
+    - Branded invitation email sent when guardian is invited to portal (uses org logo and accent colour)
   teacher_assignments:
     - Students assigned to specific teachers for scheduling and reporting
   deletion:
@@ -162,7 +172,24 @@ teachers:
     - Date range blocks (e.g., holiday, sick leave)
     - Optional reason field
     - Blocks scheduling during these periods
+  pay_rates:
+    - Pay rate type: fixed (per lesson), hourly, or percentage (of lesson fee)
+    - Fixed: flat amount per lesson regardless of duration
+    - Hourly: calculated from lesson duration
+    - Percentage: teacher receives a percentage of what the student pays (e.g., 60%)
+    - Pay rate used in payroll report calculations
   navigation: /teachers
+
+teacher_tools:
+  daily_summary:
+    - Teachers see a daily summary of their upcoming lessons
+    - Includes previous lesson notes for each student so teachers can pick up where they left off
+    - Shows attendance history and any flagged concerns for each student
+  self_service_availability:
+    - Teachers can manage their own weekly availability blocks directly
+    - Set available days and time windows without needing an admin
+    - Changes feed into conflict detection and booking page slot availability
+    - Time-off requests also self-service with optional admin approval workflow
 
 locations_and_rooms:
   locations:
@@ -221,7 +248,11 @@ payments:
     - Record cash, bank transfer, cheque payments
     - Updates invoice status to paid with payment method noted
   overdue_reminders:
-    - Automated cron sends reminders for overdue invoices (configurable)
+    - Automated cron sends reminders for overdue invoices
+    - Configurable dunning schedule: set which days after due date to send reminders (e.g., 7, 14, 30 days)
+    - Payment reminder settings: configurable via Settings → Invoice Settings
+    - Reminder content includes invoice details, amount owed, and payment link
+    - Escalation: tone can progress from friendly to firm across reminder stages
     - Manual "Chase up" via LoopAssist action proposals
     - Respects notification preferences (parents can opt out)
   navigation: /invoices (payment tracking), /portal/invoices (parent payment)
@@ -327,6 +358,7 @@ booking_page:
     - Creates lead in 'trial_booked' stage with trial date/time
     - Sends confirmation email to parent + notification to academy admins
     - Rate limiting: 20 slot queries/min, 5 form submissions/hour per IP
+    - Enquiry-only mode: booking page can be configured as an enquiry form instead of slot booking. Parents submit name, email, phone, instrument interest, and a message. Creates a lead in 'enquiry' stage. Useful for academies that prefer to manually schedule trials.
   navigation: Settings → Booking Page tab
 
 practice_tracking:
@@ -343,6 +375,11 @@ practice_tracking:
     - Auto-calculated by database trigger when practice_log inserted
     - Tracks: current streak, longest streak, last practice date
     - Streak badges and celebrations shown in portal
+  goals_and_milestones:
+    - Weekly practice goal: configurable target minutes per week, displayed as a progress ring in the portal
+    - Goal ring shows percentage complete, updates in real-time as practice is logged
+    - Milestones: achievements unlocked at key thresholds (e.g., 7-day streak, 30-day streak, 100 hours total)
+    - Milestone celebrations shown as badges in the portal with congratulatory messages
   weekly_progress:
     - Minutes practiced per day (chart)
     - Assignment completion tracking
@@ -395,13 +432,28 @@ parent_portal:
     - Teacher email/phone hidden from parents
   navigation: /portal/home (all portal pages under /portal/)
 
+parent_requests:
+  reschedule_and_cancel:
+    - Parents can request lesson reschedules or cancellations from the portal
+    - Request includes reason and preferred alternative time (for reschedules)
+    - Requests appear as pending notifications for admin/teacher to approve or decline
+    - Admin can approve with one click or suggest an alternative
+    - Notification sent to parent on approval or decline
+    - Navigate: Portal → Schedule → lesson card → "Request Change" button
+
 reports:
   available_reports:
     - Revenue summary: paid vs outstanding vs overdue by period
     - Lessons delivered: completed vs scheduled vs cancelled with rates
     - Cancellation report: reasons, frequency, trends by student/teacher
-    - Payroll report: lessons per teacher, rates, total pay calculation
+    - Payroll report: lessons per teacher, rates, total pay calculation (supports fixed and percentage-based rates)
     - Outstanding report: unpaid invoices by age bucket (30/60/90 days)
+    - Attendance report: attendance rates by student, teacher, location, and period
+    - Utilisation report: room and teacher utilisation percentages across locations
+    - Teacher performance: lessons taught, attendance rates, cancellation rates, revenue generated per teacher
+  export:
+    - All 8 reports support CSV export via download button
+    - Export respects current filters and date range selections
   navigation: /reports
 
 calendar_integrations:
@@ -419,6 +471,17 @@ calendar_integrations:
     - Meeting URL stored on lesson, visible to parents in portal
     - Syncs on lesson create/update/delete
 
+xero_integration:
+  purpose: Sync invoices and payments with Xero accounting software
+  features:
+    - OAuth2 connection flow: connect your Xero organisation from Settings → Accounting
+    - Invoice sync: push LessonLoop invoices to Xero as sales invoices
+    - Contact sync: LessonLoop guardians mapped to Xero contacts automatically
+    - Payment sync: payments recorded in LessonLoop pushed to Xero (availability dependent on Xero API scope)
+    - Entity mapping: each LessonLoop record linked to its Xero counterpart to prevent duplicates
+    - Disconnect and reconnect at any time without losing mapping history
+  navigation: Settings → Accounting tab
+
 settings:
   organisation: name, timezone, currency, org type, schedule hours, default lesson length, travel buffer
   members: invite (admin/teacher/finance roles), role changes, remove/disable
@@ -435,6 +498,22 @@ subscription_plans:
   academy: small-medium academies, multi-location, advanced reports, payroll
   agency: large organisations, API access, priority support
   custom: enterprise, negotiated terms
+
+onboarding:
+  post_signup_checklist:
+    - New users see a guided checklist after completing onboarding
+    - Steps include: add your first teacher, create a location, set up rate cards, add students, configure billing, connect Stripe, customise branding
+    - Progress tracked per org, checklist dismissible once key steps completed
+    - Accessible from dashboard until dismissed
+
+automated_lesson_reminders:
+  purpose: Notify parents and students before upcoming lessons
+  features:
+    - Cron job runs hourly to check for upcoming lessons
+    - Configurable reminder timing (e.g., 24 hours before, 1 hour before)
+    - Email includes lesson time, teacher, location, and any notes
+    - Respects notification preferences per guardian
+    - Navigate: Settings → Notifications to configure timing
 
 ---
 
