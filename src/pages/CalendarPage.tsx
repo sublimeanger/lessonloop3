@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useSyncExternalStore, useCallback } from 
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useSearchParams } from 'react-router-dom';
-import { format, addWeeks, subWeeks, addDays, subDays, parseISO } from 'date-fns';
+import { format, addWeeks, subWeeks, addDays, subDays, parseISO, startOfWeek, endOfWeek, startOfDay, endOfDay } from 'date-fns';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCalendarData, useTeachersAndLocations } from '@/hooks/useCalendarData';
