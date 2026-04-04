@@ -84,6 +84,7 @@ export function WeekTimeGrid({
   onLessonResize,
   isParent,
   savingLessonIds,
+  busyBlocks = [],
 }: WeekTimeGridProps) {
   const { currentOrg } = useOrg();
   const ORG_START = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
