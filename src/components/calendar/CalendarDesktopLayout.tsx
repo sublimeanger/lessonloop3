@@ -247,6 +247,7 @@ export function CalendarDesktopLayout({
                 onLessonClick={handleLessonClickOrSelect} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
                 onLessonDrop={!isParent && !bulk.selectionMode ? actions.handleLessonDrop : undefined} onLessonResize={!isParent && !bulk.selectionMode ? actions.handleLessonResize : undefined}
                 isParent={isParent} savingLessonIds={actions.savingLessonIds}
+                busyBlocks={busyBlocks}
               />
             ) : view === 'stacked' ? (
               <StackedWeekView
