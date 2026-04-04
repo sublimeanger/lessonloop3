@@ -447,7 +447,7 @@ export default function PortalSchedule() {
                         <DropdownMenuItem
                           onClick={() => showSlotPicker
                             ? handleRescheduleClick({ id: lesson.id, title: lesson.title, start_at: lesson.start_at, end_at: lesson.end_at, teacher_id: lesson.teacher_id })
-                            : handleRequestChange({ id: lesson.id, title: lesson.title })
+                            : handleRequestChange(lesson)
                           }
                         >
                           {showSlotPicker ? 'Reschedule' : 'Request Change'}
