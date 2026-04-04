@@ -47,6 +47,23 @@ export function MobileDayView({
       .sort((a, b) => a.start_at.localeCompare(b.start_at));
   }, [lessons, currentDate]);
 
+  // Check if a lesson overlaps with any busy block
+  const hasConflict = useCallback((lesson: LessonWithDetails) => {
+    if (busyBlocks.length === 0) return false;
+    const lStart = parseISO(lesson.start_at).getTime();
+    const lEnd = parseISO(lesson.end_at).getTime();
+    return busyBlocks.some(b => {
+      const bStart = parseISO(b.start_at).getTime();
+      const bEnd = parseISO(b.end_at).getTime();
+      return bStart < lEnd && bEnd > lStart;
+    });
+  }, [busyBlocks]);
+
+  // Get busy blocks for today (not overlapping a lesson) for standalone display
+  const standaloneBusyBlocks = useMemo(() => {
+    return busyBlocks.filter(b => isSameDay(parseISO(b.start_at), currentDate));
+  }, [busyBlocks, currentDate]);
+
   const closureBanner = closure ? (
     <div className="px-3 py-1.5 bg-warning/15 border-b border-warning/30 text-sm text-warning-foreground flex items-center gap-2">
       <Badge variant="outline" className="text-micro px-1.5 py-0 bg-warning/20 text-warning-foreground border-warning/30">
