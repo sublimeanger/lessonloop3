@@ -482,7 +482,10 @@ export function WeekTimeGrid({
                       );
                     })}
 
-                    {/* Now indicator */}
+                    {/* External busy blocks */}
+                    <BusyBlockOverlay busyBlocks={busyBlocks} day={day} startHour={START_HOUR} hourHeight={HOUR_HEIGHT} />
+
+
                     {today && showNowLine && (
                       <div
                         className="absolute left-0 right-0 z-10 pointer-events-none flex items-center"

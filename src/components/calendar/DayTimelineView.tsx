@@ -277,6 +277,9 @@ export function DayTimelineView({
             />
           ))}
 
+          {/* External busy blocks */}
+          <BusyBlockOverlay busyBlocks={busyBlocks} day={currentDate} startHour={startHour} hourHeight={DAY_HOUR_HEIGHT} />
+
           {/* Now indicator */}
           {nowTop !== null && (
             <div className="absolute left-0 right-0 z-30 pointer-events-none" style={{ top: nowTop }}>
