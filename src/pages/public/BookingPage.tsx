@@ -107,6 +107,7 @@ export default function BookingPage() {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [enquiryOnly, setEnquiryOnly] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -226,7 +227,7 @@ export default function BookingPage() {
   // ── Submit ─────────────────────────────────────────────
 
   const handleSubmit = useCallback(async () => {
-    if (!config || !selectedSlot) return;
+    if (!config || (!selectedSlot && !enquiryOnly)) return;
 
     setSubmitting(true);
     setSubmitError(null);
@@ -235,11 +236,16 @@ export default function BookingPage() {
       const { error: invokeError } = await supabase.functions.invoke('booking-submit', {
         body: {
           booking_page_id: config.id,
-          slot: {
-            date: selectedSlot.date,
-            time: selectedSlot.time,
-            teacher_id: selectedSlot.teacher_id,
-          },
+          enquiry_only: enquiryOnly,
+          ...(selectedSlot && !enquiryOnly
+            ? {
+                slot: {
+                  date: selectedSlot.date,
+                  time: selectedSlot.time,
+                  teacher_id: selectedSlot.teacher_id,
+                },
+              }
+            : {}),
           contact: {
             name: contact.name.trim(),
             email: contact.email.trim(),
@@ -268,7 +274,7 @@ export default function BookingPage() {
 
     setSubmitting(false);
     goNext();
-  }, [config, selectedSlot, contact, children, notes, isEmbed, goNext]);
+  }, [config, selectedSlot, enquiryOnly, contact, children, notes, isEmbed, goNext]);
 
   // ─── Loading state ─────────────────────────────────────
 
@@ -581,6 +587,20 @@ export default function BookingPage() {
               </p>
             </div>
 
+            {/* Enquiry-only option */}
+            <button
+              onClick={() => {
+                setEnquiryOnly(true);
+                setSelectedSlot(null);
+                goNext();
+              }}
+              className="w-full rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50 p-4 text-center transition-all hover:shadow-sm active:scale-[0.99] touch-manipulation"
+            >
+              <p className="text-sm font-medium text-muted-foreground">
+                Not sure about a time yet? <span style={{ color: accentColor }} className="font-semibold">Just enquire</span>
+              </p>
+            </button>
+
             {/* Date input */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
@@ -643,6 +663,7 @@ export default function BookingPage() {
                     selectedSlot={selectedSlot}
                     onSelect={(slot) => {
                       setSelectedSlot(slot);
+                      setEnquiryOnly(false);
                       goNext();
                     }}
                     accentColor={accentColor}
@@ -823,6 +844,8 @@ export default function BookingPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Submitting...
                 </span>
+              ) : enquiryOnly ? (
+                'Send Enquiry'
               ) : (
                 'Submit Booking Request'
               )}
@@ -839,6 +862,7 @@ export default function BookingPage() {
             selectedTeacherId={selectedTeacherId}
             accentColor={accentColor}
             isEmbed={isEmbed}
+            enquiryOnly={enquiryOnly}
           />
         )}
       </div>
@@ -893,6 +917,7 @@ function ConfirmationStep({
   selectedTeacherId,
   accentColor,
   isEmbed,
+  enquiryOnly,
 }: {
   config: PublicBookingPageData;
   selectedSlot: TimeSlot | null;
@@ -900,6 +925,7 @@ function ConfirmationStep({
   selectedTeacherId: string | null;
   accentColor: string;
   isEmbed: boolean;
+  enquiryOnly: boolean;
 }) {
   const [phase, setPhase] = useState(0);
 
@@ -964,7 +990,7 @@ function ConfirmationStep({
           phase >= 2 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2',
         )}
       >
-        Booking Request Received!
+        {enquiryOnly ? 'Enquiry Received!' : 'Booking Request Received!'}
       </h2>
 
       {/* Message */}
@@ -974,8 +1000,10 @@ function ConfirmationStep({
           phase >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2',
         )}
       >
-        {config.confirmation_message ||
-          "Thank you for your booking request. We'll review it and confirm your lesson shortly."}
+        {enquiryOnly
+          ? "Thank you for your enquiry. We'll be in touch shortly to discuss lesson options."
+          : config.confirmation_message ||
+            "Thank you for your booking request. We'll review it and confirm your lesson shortly."}
       </p>
 
       {/* Summary */}
@@ -986,7 +1014,7 @@ function ConfirmationStep({
         )}
       >
         <h3 className="text-sm font-medium text-muted-foreground mb-3">
-          Booking Summary
+          {enquiryOnly ? 'Enquiry Summary' : 'Booking Summary'}
         </h3>
         <dl className="space-y-2 text-sm">
           {dateDisplay && (

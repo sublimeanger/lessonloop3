@@ -29,7 +29,8 @@ interface BookingChild {
 
 interface BookingRequest {
   slug: string;
-  slot: {
+  enquiry_only?: boolean;
+  slot?: {
     date: string;
     start_time: string;
     teacher_id?: string;
@@ -73,19 +74,25 @@ Deno.serve(async (req) => {
     }
 
     const body: BookingRequest = await req.json();
-    const { slug, slot, contact, children, notes } = body;
+    const { slug, enquiry_only, slot, contact, children, notes } = body;
 
-    // Validate required fields — accept teacher_id (UUID) or teacher_ref (opaque)
-    if (!slug || !slot?.date || !slot?.start_time || (!slot?.teacher_id && !slot?.teacher_ref)) {
-      return new Response(JSON.stringify({ error: 'Missing slot information' }), { status: 400, headers: jsonHeaders });
+    // Validate required fields — slot is optional for enquiry-only submissions
+    if (!enquiry_only) {
+      if (!slug || !slot?.date || !slot?.start_time || (!slot?.teacher_id && !slot?.teacher_ref)) {
+        return new Response(JSON.stringify({ error: 'Missing slot information' }), { status: 400, headers: jsonHeaders });
+      }
+    } else if (!slug) {
+      return new Response(JSON.stringify({ error: 'Missing booking page slug' }), { status: 400, headers: jsonHeaders });
     }
 
     // Resolve opaque teacher ref back to UUID if needed
-    const rawTeacherRef = slot.teacher_ref || slot.teacher_id || '';
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (rawTeacherRef && !UUID_RE.test(rawTeacherRef) && /^[0-9a-f]{32}$/i.test(rawTeacherRef)) {
-      const r = rawTeacherRef;
-      slot.teacher_id = `${r.slice(0,8)}-${r.slice(8,12)}-${r.slice(12,16)}-${r.slice(16,20)}-${r.slice(20)}`;
+    if (slot) {
+      const rawTeacherRef = slot.teacher_ref || slot.teacher_id || '';
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (rawTeacherRef && !UUID_RE.test(rawTeacherRef) && /^[0-9a-f]{32}$/i.test(rawTeacherRef)) {
+        const r = rawTeacherRef;
+        slot.teacher_id = `${r.slice(0,8)}-${r.slice(8,12)}-${r.slice(12,16)}-${r.slice(16,20)}-${r.slice(20)}`;
+      }
     }
     if (!contact?.name || !contact?.email) {
       return new Response(JSON.stringify({ error: 'Name and email are required' }), { status: 400, headers: jsonHeaders });
@@ -119,36 +126,38 @@ Deno.serve(async (req) => {
     const orgId = bookingPage.org_id;
     const orgName = (bookingPage as any).org?.name || bookingPage.title || 'the studio';
 
-    // Re-validate slot availability before creating lead
-    const { data: bookingPageFull } = await supabase
-      .from('booking_pages')
-      .select('lesson_duration_mins')
-      .eq('id', bookingPage.id)
-      .single();
+    // Re-validate slot availability before creating lead (skip for enquiry-only)
+    if (!enquiry_only && slot) {
+      const { data: bookingPageFull } = await supabase
+        .from('booking_pages')
+        .select('lesson_duration_mins')
+        .eq('id', bookingPage.id)
+        .single();
 
-    const durationMins = bookingPageFull?.lesson_duration_mins || 60;
-    const slotStartTime = `${slot.date}T${slot.start_time}:00Z`;
-    const slotEndMins = parseInt(slot.start_time.split(':')[0]) * 60 +
-      parseInt(slot.start_time.split(':')[1]) + durationMins;
-    const endHH = String(Math.floor(slotEndMins / 60)).padStart(2, '0');
-    const endMM = String(slotEndMins % 60).padStart(2, '0');
-    const slotEndTime = `${slot.date}T${endHH}:${endMM}:00Z`;
+      const durationMins = bookingPageFull?.lesson_duration_mins || 60;
+      const slotStartTime = `${slot.date}T${slot.start_time}:00Z`;
+      const slotEndMins = parseInt(slot.start_time.split(':')[0]) * 60 +
+        parseInt(slot.start_time.split(':')[1]) + durationMins;
+      const endHH = String(Math.floor(slotEndMins / 60)).padStart(2, '0');
+      const endMM = String(slotEndMins % 60).padStart(2, '0');
+      const slotEndTime = `${slot.date}T${endHH}:${endMM}:00Z`;
 
-    const { data: conflictingLessons } = await supabase
-      .from('lessons')
-      .select('id')
-      .eq('org_id', orgId)
-      .eq('teacher_id', slot.teacher_id)
-      .neq('status', 'cancelled')
-      .lt('start_at', slotEndTime)
-      .gt('end_at', slotStartTime)
-      .limit(1);
+      const { data: conflictingLessons } = await supabase
+        .from('lessons')
+        .select('id')
+        .eq('org_id', orgId)
+        .eq('teacher_id', slot.teacher_id)
+        .neq('status', 'cancelled')
+        .lt('start_at', slotEndTime)
+        .gt('end_at', slotStartTime)
+        .limit(1);
 
-    if (conflictingLessons && conflictingLessons.length > 0) {
-      return new Response(
-        JSON.stringify({ error: 'This slot is no longer available. Please refresh and choose another time.' }),
-        { status: 409, headers: jsonHeaders }
-      );
+      if (conflictingLessons && conflictingLessons.length > 0) {
+        return new Response(
+          JSON.stringify({ error: 'This slot is no longer available. Please refresh and choose another time.' }),
+          { status: 409, headers: jsonHeaders }
+        );
+      }
     }
 
     // 2. Create lead
@@ -159,11 +168,11 @@ Deno.serve(async (req) => {
         contact_name: contact.name,
         contact_email: contact.email,
         contact_phone: contact.phone || null,
-        stage: 'trial_booked',
+        stage: enquiry_only ? 'new' : 'trial_booked',
         source: 'booking_page',
         source_detail: slug,
         preferred_instrument: children[0]?.instrument || null,
-        trial_date: `${slot.date}T${slot.start_time}:00`,
+        trial_date: slot ? `${slot.date}T${slot.start_time}:00` : null,
         notes: notes || null,
       })
       .select('id')
@@ -188,28 +197,71 @@ Deno.serve(async (req) => {
     await supabase.from('lead_students').insert(studentInserts);
 
     // 4. Create activity entries
-    await supabase.from('lead_activities').insert([
+    const activities = [
       {
         lead_id: lead.id,
         org_id: orgId,
         activity_type: 'created',
-        description: `New enquiry via booking page (${slug})`,
-        metadata: { source: 'booking_page', slot },
+        description: enquiry_only
+          ? `New enquiry via booking page (${slug})`
+          : `New booking request via booking page (${slug})`,
+        metadata: { source: 'booking_page', slot: slot || null, enquiry_only: !!enquiry_only },
       },
-      {
+    ];
+    if (!enquiry_only && slot) {
+      activities.push({
         lead_id: lead.id,
         org_id: orgId,
         activity_type: 'trial_booked',
         description: `Trial requested for ${slot.date} at ${slot.start_time}`,
-        metadata: { slot },
-      },
-    ]);
+        metadata: { slot, enquiry_only: false },
+      });
+    }
+    await supabase.from('lead_activities').insert(activities);
 
     // 5. Send confirmation email to the contact
     if (RESEND_API_KEY) {
       try {
         const childNames = children.map(c => c.first_name).join(', ');
-        const formatted = formatBookingDate(slot.date, slot.start_time);
+        const emailSubject = enquiry_only
+          ? `Enquiry received - ${orgName}`
+          : `Trial lesson request received - ${orgName}`;
+
+        let emailBody: string;
+        if (enquiry_only) {
+          emailBody = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #0d9488;">Enquiry Received</h2>
+              <p>Hi ${escapeHtml(contact.name)},</p>
+              <p>Thank you for your interest in ${escapeHtml(orgName)}! We've received your enquiry.</p>
+              <div style="background: #f0fdfa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${escapeHtml(childNames)}</p>
+                ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${escapeHtml(notes)}</p>` : ''}
+              </div>
+              <p>A member of the team will be in touch shortly to discuss lesson options and availability.</p>
+              ${bookingPage.confirmation_message ? `<p style="color: #666; font-style: italic;">${escapeHtml(bookingPage.confirmation_message)}</p>` : ''}
+              <p style="color: #999; font-size: 12px; margin-top: 32px;">This email was sent by LessonLoop on behalf of ${escapeHtml(orgName)}.</p>
+            </div>
+          `;
+        } else {
+          const formatted = formatBookingDate(slot!.date, slot!.start_time);
+          emailBody = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #0d9488;">Trial Lesson Request Received</h2>
+              <p>Hi ${escapeHtml(contact.name)},</p>
+              <p>Thank you for your interest in ${escapeHtml(orgName)}! We've received your trial lesson request.</p>
+              <div style="background: #f0fdfa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                <p style="margin: 4px 0;"><strong>Date:</strong> ${formatted.date}</p>
+                <p style="margin: 4px 0;"><strong>Time:</strong> ${formatted.time}</p>
+                <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${escapeHtml(childNames)}</p>
+              </div>
+              <p>The team will review your request and confirm the booking shortly. You'll receive another email once confirmed.</p>
+              ${bookingPage.confirmation_message ? `<p style="color: #666; font-style: italic;">${escapeHtml(bookingPage.confirmation_message)}</p>` : ''}
+              <p style="color: #999; font-size: 12px; margin-top: 32px;">This email was sent by LessonLoop on behalf of ${escapeHtml(orgName)}.</p>
+            </div>
+          `;
+        }
+
         await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -219,35 +271,21 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: `${sanitiseFromName(orgName)} <noreply@lessonloop.net>`,
             to: [contact.email],
-            subject: `Trial lesson request received - ${orgName}`,
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #0d9488;">Trial Lesson Request Received</h2>
-                <p>Hi ${escapeHtml(contact.name)},</p>
-                <p>Thank you for your interest in ${escapeHtml(orgName)}! We've received your trial lesson request.</p>
-                <div style="background: #f0fdfa; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                  <p style="margin: 4px 0;"><strong>Date:</strong> ${formatted.date}</p>
-                  <p style="margin: 4px 0;"><strong>Time:</strong> ${formatted.time}</p>
-                  <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${escapeHtml(childNames)}</p>
-                </div>
-                <p>The team will review your request and confirm the booking shortly. You'll receive another email once confirmed.</p>
-                ${bookingPage.confirmation_message ? `<p style="color: #666; font-style: italic;">${escapeHtml(bookingPage.confirmation_message)}</p>` : ''}
-                <p style="color: #999; font-size: 12px; margin-top: 32px;">This email was sent by LessonLoop on behalf of ${escapeHtml(orgName)}.</p>
-              </div>
-            `,
+            subject: emailSubject,
+            html: emailBody,
           }),
         });
         // Log to message_log
         await supabase.from('message_log').insert({
           org_id: orgId,
           channel: 'email',
-          subject: `Trial lesson request received - ${orgName}`,
+          subject: emailSubject,
           body: '',
           sender_user_id: null,
           recipient_type: 'guardian',
           recipient_email: contact.email,
           recipient_name: contact.name,
-          message_type: 'booking_confirmation',
+          message_type: enquiry_only ? 'enquiry_confirmation' : 'booking_confirmation',
           status: 'sent',
           sent_at: new Date().toISOString(),
         });
@@ -273,7 +311,41 @@ Deno.serve(async (req) => {
 
         if (adminEmails.length > 0) {
           const childSummary = children.map(c => `${c.first_name}${c.instrument ? ` (${c.instrument})` : ''}`).join(', ');
-          const adminFormatted = formatBookingDate(slot.date, slot.start_time);
+          const adminSubject = enquiry_only
+            ? `New enquiry from ${contact.name}`
+            : `New trial booking request from ${contact.name}`;
+
+          let adminHtmlBody: string;
+          if (enquiry_only) {
+            adminHtmlBody = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #0d9488;">New Enquiry</h2>
+                <p>A new enquiry has been submitted via your booking page.</p>
+                <div style="background: #f0fdfa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                  <p style="margin: 4px 0;"><strong>Contact:</strong> ${escapeHtml(contact.name)} (${escapeHtml(contact.email)}${contact.phone ? `, ${escapeHtml(contact.phone)}` : ''})</p>
+                  <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${escapeHtml(childSummary)}</p>
+                  ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${escapeHtml(notes)}</p>` : ''}
+                </div>
+                <p>Head to the <a href="https://app.lessonloop.net/leads" style="color: #0d9488;">Leads</a> page to follow up.</p>
+              </div>
+            `;
+          } else {
+            const adminFormatted = formatBookingDate(slot!.date, slot!.start_time);
+            adminHtmlBody = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #0d9488;">New Trial Lesson Request</h2>
+                <p>A new trial lesson has been requested via your booking page.</p>
+                <div style="background: #f0fdfa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                  <p style="margin: 4px 0;"><strong>Contact:</strong> ${escapeHtml(contact.name)} (${escapeHtml(contact.email)}${contact.phone ? `, ${escapeHtml(contact.phone)}` : ''})</p>
+                  <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${escapeHtml(childSummary)}</p>
+                  <p style="margin: 4px 0;"><strong>Requested:</strong> ${adminFormatted.date} at ${adminFormatted.time}</p>
+                  ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${escapeHtml(notes)}</p>` : ''}
+                </div>
+                <p>Head to the <a href="https://app.lessonloop.net/leads" style="color: #0d9488;">Leads</a> page to review and confirm.</p>
+              </div>
+            `;
+          }
+
           await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
@@ -283,20 +355,8 @@ Deno.serve(async (req) => {
             body: JSON.stringify({
               from: `${sanitiseFromName(orgName)} <noreply@lessonloop.net>`,
               to: adminEmails,
-              subject: `New trial booking request from ${contact.name}`,
-              html: `
-                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #0d9488;">New Trial Lesson Request</h2>
-                  <p>A new trial lesson has been requested via your booking page.</p>
-                  <div style="background: #f0fdfa; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                    <p style="margin: 4px 0;"><strong>Contact:</strong> ${escapeHtml(contact.name)} (${escapeHtml(contact.email)}${contact.phone ? `, ${escapeHtml(contact.phone)}` : ''})</p>
-                    <p style="margin: 4px 0;"><strong>Student${children.length > 1 ? 's' : ''}:</strong> ${escapeHtml(childSummary)}</p>
-                    <p style="margin: 4px 0;"><strong>Requested:</strong> ${adminFormatted.date} at ${adminFormatted.time}</p>
-                    ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${escapeHtml(notes)}</p>` : ''}
-                  </div>
-                  <p>Head to the <a href="https://app.lessonloop.net/leads" style="color: #0d9488;">Leads</a> page to review and confirm.</p>
-                </div>
-              `,
+              subject: adminSubject,
+              html: adminHtmlBody,
             }),
           });
         }
