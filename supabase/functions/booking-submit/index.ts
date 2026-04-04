@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
         org_id: orgId,
         activity_type: 'trial_booked',
         description: `Trial requested for ${slot.date} at ${slot.start_time}`,
-        metadata: { slot, enquiry_only: false },
+        metadata: { source: 'booking_page', slot, enquiry_only: false },
       });
     }
     await supabase.from('lead_activities').insert(activities);
