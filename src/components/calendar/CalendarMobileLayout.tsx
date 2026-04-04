@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import type { BusyBlock, CalendarSyncInfo } from '@/hooks/useExternalBusyBlocks';
 import { useOrg } from '@/contexts/OrgContext';
 import { format, addWeeks, subWeeks } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
