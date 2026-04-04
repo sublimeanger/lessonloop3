@@ -58,6 +58,12 @@ export default function PortalSchedule() {
   const { selectedChildId } = useChildFilter();
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<{ id: string; title: string } | null>(null);
+  const [changeSheetOpen, setChangeSheetOpen] = useState(false);
+  const [changeSheetLesson, setChangeSheetLesson] = useState<{
+    id: string; title: string; start_at: string; end_at: string;
+    teacher_name: string | null; location_name: string | null; student_names: string;
+  } | null>(null);
+  const [requestedLessonIds, setRequestedLessonIds] = useState<Set<string>>(new Set());
   const [pastOpen, setPastOpen] = useState(false);
   const [calSyncOpen, setCalSyncOpen] = useState(false);
   const [icalUrl, setIcalUrl] = useState<string | null>(null);
