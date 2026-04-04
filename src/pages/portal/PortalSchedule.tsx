@@ -304,6 +304,11 @@ export default function PortalSchedule() {
                   {lesson.title}
                 </h3>
                 {getStatusBadge(lesson.status)}
+                {requestedLessonIds.has(lesson.id) && (
+                  <Badge variant="warning" className="text-xs gap-1">
+                    <CalendarClock className="h-3 w-3" /> Change requested
+                  </Badge>
+                )}
               </div>
 
               <div className="space-y-1 text-sm text-muted-foreground">
