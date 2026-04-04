@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { BusyBlock, CalendarSyncInfo } from '@/hooks/useExternalBusyBlocks';
 import { useOrg } from '@/contexts/OrgContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -19,7 +20,8 @@ import { CalendarSkeleton } from '@/components/shared/LoadingState';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
 import { useUrgentActions } from '@/hooks/useUrgentActions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Columns3, Minimize2, Users, AlertTriangle, Calendar, Zap, CheckSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Columns3, Minimize2, Users, AlertTriangle, Calendar, Zap, CheckSquare, Eye, EyeOff } from 'lucide-react';
+import { ExternalEventsSyncBadge } from './ExternalEventsSyncBadge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Toggle } from '@/components/ui/toggle';
@@ -66,6 +68,10 @@ interface CalendarDesktopLayoutProps {
   actions: ReturnType<typeof useCalendarActions>;
   bulk: ReturnType<typeof useBulkLessonActions>;
   refetch: () => void;
+  busyBlocks: BusyBlock[];
+  syncInfo: CalendarSyncInfo | null;
+  showExternalEvents: boolean;
+  setShowExternalEvents: (v: boolean) => void;
 }
 
 export function CalendarDesktopLayout({
@@ -98,6 +104,10 @@ export function CalendarDesktopLayout({
   actions,
   bulk,
   refetch,
+  busyBlocks,
+  syncInfo,
+  showExternalEvents,
+  setShowExternalEvents,
 }: CalendarDesktopLayoutProps) {
   const { isOrgAdmin, currentRole } = useOrg();
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
@@ -201,8 +211,11 @@ export function CalendarDesktopLayout({
 
         <WeekContextStrip currentDate={currentDate} onDayClick={setCurrentDate} lessonsByDay={lessonsByDay} view={view} />
 
-        <div data-hint="calendar-filters">
-          <CalendarFiltersBar filters={filters} onChange={setFilters} teachers={teachers} locations={locations} rooms={rooms} instruments={instruments} teachersWithColours={teachersWithColours} lessons={lessons} currentDate={currentDate} />
+        <div data-hint="calendar-filters" className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <CalendarFiltersBar filters={filters} onChange={setFilters} teachers={teachers} locations={locations} rooms={rooms} instruments={instruments} teachersWithColours={teachersWithColours} lessons={lessons} currentDate={currentDate} />
+          </div>
+          <ExternalEventsSyncBadge syncInfo={syncInfo} showExternal={showExternalEvents} onToggle={setShowExternalEvents} />
         </div>
       </div>
 
@@ -234,6 +247,7 @@ export function CalendarDesktopLayout({
                 onLessonClick={handleLessonClickOrSelect} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
                 onLessonDrop={!isParent && !bulk.selectionMode ? actions.handleLessonDrop : undefined} onLessonResize={!isParent && !bulk.selectionMode ? actions.handleLessonResize : undefined}
                 isParent={isParent} savingLessonIds={actions.savingLessonIds}
+                busyBlocks={busyBlocks}
               />
             ) : view === 'stacked' ? (
               <StackedWeekView
@@ -249,6 +263,7 @@ export function CalendarDesktopLayout({
                   onLessonClick={handleLessonClickOrSelect} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
                   onLessonDrop={!isParent && !bulk.selectionMode ? actions.handleLessonDrop : undefined} onLessonResize={!isParent && !bulk.selectionMode ? actions.handleLessonResize : undefined}
                   isParent={isParent} savingLessonIds={actions.savingLessonIds}
+                  busyBlocks={busyBlocks}
                 />
                 {!isParent && (
                   <ContextualHint id="calendar-create-lesson" message="Click any time slot to create a lesson, or drag to set the duration. Grab a lesson card to reschedule it." position="top" targetSelector="[data-hint='calendar-grid']" />

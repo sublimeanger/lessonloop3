@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import type { BusyBlock } from '@/hooks/useExternalBusyBlocks';
 import { format, parseISO, isSameDay, setHours, setMinutes, startOfDay, differenceInMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LessonWithDetails } from './types';
@@ -6,6 +7,7 @@ import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teach
 import { computeOverlapLayout } from './overlapLayout';
 import { useDragLesson } from './useDragLesson';
 import { useResizeLesson } from './useResizeLesson';
+import { BusyBlockOverlay } from './BusyBlockOverlay';
 import { DEFAULT_START_HOUR, DEFAULT_END_HOUR } from './calendarConstants';
 import { useOrg } from '@/contexts/OrgContext';
 import { useClosureDates } from '@/hooks/useCalendarData';
@@ -34,6 +36,7 @@ interface DayTimelineViewProps {
   onLessonResize?: (lesson: LessonWithDetails, newEnd: Date) => void;
   isParent: boolean;
   savingLessonIds?: Set<string>;
+  busyBlocks?: BusyBlock[];
 }
 
 function roundTo15(minutes: number): number {
@@ -53,6 +56,7 @@ export function DayTimelineView({
   onLessonResize,
   isParent,
   savingLessonIds = EMPTY_SAVING_SET,
+  busyBlocks = [],
 }: DayTimelineViewProps) {
   const { currentOrg } = useOrg();
   const { selectionMode, selectedIds } = useBulkSelection();
@@ -272,6 +276,9 @@ export function DayTimelineView({
               style={{ top: (hour - startHour) * DAY_HOUR_HEIGHT }}
             />
           ))}
+
+          {/* External busy blocks */}
+          <BusyBlockOverlay busyBlocks={busyBlocks} day={currentDate} startHour={startHour} hourHeight={DAY_HOUR_HEIGHT} />
 
           {/* Now indicator */}
           {nowTop !== null && (

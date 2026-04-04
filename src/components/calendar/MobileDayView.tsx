@@ -1,4 +1,5 @@
 import { useMemo, useRef, useCallback } from 'react';
+import type { BusyBlock } from '@/hooks/useExternalBusyBlocks';
 import { format, parseISO, differenceInMinutes, isSameDay } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
@@ -23,6 +24,7 @@ interface MobileDayViewProps {
   onLessonClick: (lesson: LessonWithDetails) => void;
   savingLessonIds?: Set<string>;
   onLongPress?: (lesson: LessonWithDetails) => void;
+  busyBlocks?: BusyBlock[];
 }
 
 export function MobileDayView({
@@ -32,6 +34,7 @@ export function MobileDayView({
   onLessonClick,
   savingLessonIds,
   onLongPress,
+  busyBlocks = [],
 }: MobileDayViewProps) {
   const { selectionMode, selectedIds } = useBulkSelection();
   const { data: closures } = useClosureDates(currentDate, currentDate);
@@ -43,6 +46,23 @@ export function MobileDayView({
       .filter((l) => isSameDay(parseISO(l.start_at), currentDate))
       .sort((a, b) => a.start_at.localeCompare(b.start_at));
   }, [lessons, currentDate]);
+
+  // Check if a lesson overlaps with any busy block
+  const hasConflict = useCallback((lesson: LessonWithDetails) => {
+    if (busyBlocks.length === 0) return false;
+    const lStart = parseISO(lesson.start_at).getTime();
+    const lEnd = parseISO(lesson.end_at).getTime();
+    return busyBlocks.some(b => {
+      const bStart = parseISO(b.start_at).getTime();
+      const bEnd = parseISO(b.end_at).getTime();
+      return bStart < lEnd && bEnd > lStart;
+    });
+  }, [busyBlocks]);
+
+  // Get busy blocks for today (not overlapping a lesson) for standalone display
+  const standaloneBusyBlocks = useMemo(() => {
+    return busyBlocks.filter(b => isSameDay(parseISO(b.start_at), currentDate));
+  }, [busyBlocks, currentDate]);
 
   const closureBanner = closure ? (
     <div className="px-3 py-1.5 bg-warning/15 border-b border-warning/30 text-sm text-warning-foreground flex items-center gap-2">
@@ -140,8 +160,11 @@ export function MobileDayView({
               )}
               {/* Time column */}
               <div className="w-14 shrink-0 flex flex-col items-end justify-start pr-3 pt-0.5">
-                <span className="text-sm font-semibold tabular-nums text-foreground leading-tight">
+                <span className="text-sm font-semibold tabular-nums text-foreground leading-tight flex items-center gap-0.5">
                   {format(startTime, 'HH:mm')}
+                  {hasConflict(lesson) && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0" title="Overlaps with external event" />
+                  )}
                 </span>
                 <span className="text-micro tabular-nums text-muted-foreground leading-tight">
                   {format(endTime, 'HH:mm')}

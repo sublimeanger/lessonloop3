@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
+import type { BusyBlock } from '@/hooks/useExternalBusyBlocks';
 import { useClosureDates } from '@/hooks/useCalendarData';
 import {
   format,
@@ -28,6 +29,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileWeekView } from './MobileWeekView';
 import { useDragLesson } from './useDragLesson';
+import { BusyBlockOverlay } from './BusyBlockOverlay';
 import { useResizeLesson } from './useResizeLesson';
 
 import { HOUR_HEIGHT, DEFAULT_START_HOUR, DEFAULT_END_HOUR } from './calendarConstants';
@@ -69,6 +71,7 @@ interface WeekTimeGridProps {
   isParent: boolean;
   /** Set of lesson IDs currently being saved (optimistic update in progress) */
   savingLessonIds?: Set<string>;
+  busyBlocks?: BusyBlock[];
 }
 
 export function WeekTimeGrid({
@@ -82,6 +85,7 @@ export function WeekTimeGrid({
   onLessonResize,
   isParent,
   savingLessonIds,
+  busyBlocks = [],
 }: WeekTimeGridProps) {
   const { currentOrg } = useOrg();
   const ORG_START = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
@@ -478,7 +482,10 @@ export function WeekTimeGrid({
                       );
                     })}
 
-                    {/* Now indicator */}
+                    {/* External busy blocks */}
+                    <BusyBlockOverlay busyBlocks={busyBlocks} day={day} startHour={START_HOUR} hourHeight={HOUR_HEIGHT} />
+
+
                     {today && showNowLine && (
                       <div
                         className="absolute left-0 right-0 z-10 pointer-events-none flex items-center"

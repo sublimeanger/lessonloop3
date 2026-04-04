@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useSyncExternalStore, useCallback } from 
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useSearchParams } from 'react-router-dom';
-import { format, addWeeks, subWeeks, addDays, subDays, parseISO } from 'date-fns';
+import { format, addWeeks, subWeeks, addDays, subDays, parseISO, startOfWeek, endOfWeek, startOfDay, endOfDay } from 'date-fns';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCalendarData, useTeachersAndLocations } from '@/hooks/useCalendarData';
@@ -12,6 +13,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { CalendarView, CalendarFilters, LessonWithDetails } from '@/components/calendar/types';
+import { useExternalBusyBlocks, useShowExternalEvents } from '@/hooks/useExternalBusyBlocks';
 import { buildTeacherColourMap } from '@/components/calendar/teacherColours';
 import { CalendarMobileLayout } from '@/components/calendar/CalendarMobileLayout';
 import { CalendarDesktopLayout } from '@/components/calendar/CalendarDesktopLayout';
@@ -90,7 +92,26 @@ export default function CalendarPage() {
 
   useEffect(() => { safeSetItem('ll-calendar-compact', isCompact ? '1' : '0'); }, [isCompact]);
 
+  // Compute date range for both lessons and busy blocks queries
+  const { rangeStartIso, rangeEndIso } = useMemo(() => {
+    const tz = currentOrg?.timezone || 'Europe/London';
+    const zonedDate = toZonedTime(currentDate, tz);
+    let start: Date, end: Date;
+    if (view === 'day' || view === 'week' || view === 'stacked') {
+      start = fromZonedTime(startOfWeek(zonedDate, { weekStartsOn: 1 }), tz);
+      end = fromZonedTime(endOfWeek(zonedDate, { weekStartsOn: 1 }), tz);
+    } else {
+      start = fromZonedTime(startOfDay(zonedDate), tz);
+      end = fromZonedTime(endOfDay(addDays(zonedDate, 14)), tz);
+    }
+    return { rangeStartIso: start.toISOString(), rangeEndIso: end.toISOString() };
+  }, [currentDate, view, currentOrg?.timezone]);
+
   const { lessons, setLessons, isLoading, isCapReached, refetch } = useCalendarData(currentDate, view, filters);
+
+  // External busy blocks (Google Calendar etc.)
+  const [showExternalEvents, setShowExternalEvents] = useShowExternalEvents();
+  const { busyBlocks, syncInfo } = useExternalBusyBlocks(rangeStartIso, rangeEndIso, filters.teacher_id);
 
   const actions = useCalendarActions({
     lessons, setLessons, refetch,
@@ -183,12 +204,16 @@ export default function CalendarPage() {
     }
   }, [searchParams, isParent, actions]);
 
+  const visibleBusyBlocks = showExternalEvents ? busyBlocks : [];
+
   const sharedProps = {
     currentDate, setCurrentDate, goToToday,
     lessons, lessonsByDay, isLoading, isParent, isOnline,
     filters, setFilters, teachers, locations, rooms, instruments,
     teachersWithColours, teacherColourMap, actions,
     bulk, refetch,
+    busyBlocks: visibleBusyBlocks,
+    syncInfo, showExternalEvents, setShowExternalEvents,
   };
 
   const bulkCtx = useMemo(() => ({

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import type { BusyBlock, CalendarSyncInfo } from '@/hooks/useExternalBusyBlocks';
 import { useOrg } from '@/contexts/OrgContext';
 import { format, addWeeks, subWeeks } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -45,6 +46,10 @@ interface CalendarMobileLayoutProps {
   actions: ReturnType<typeof useCalendarActions>;
   bulk: ReturnType<typeof useBulkLessonActions>;
   refetch: () => void;
+  busyBlocks: BusyBlock[];
+  syncInfo: CalendarSyncInfo | null;
+  showExternalEvents: boolean;
+  setShowExternalEvents: (v: boolean) => void;
 }
 
 export function CalendarMobileLayout({
@@ -68,6 +73,10 @@ export function CalendarMobileLayout({
   actions,
   bulk,
   refetch,
+  busyBlocks,
+  syncInfo,
+  showExternalEvents,
+  setShowExternalEvents,
 }: CalendarMobileLayoutProps) {
   const { isOrgAdmin, currentRole } = useOrg();
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
@@ -142,7 +151,7 @@ export function CalendarMobileLayout({
             {!isParent && <p className="text-sm mt-1">Tap + to create a lesson</p>}
           </div>
         ) : (
-          <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={bulk.selectionMode ? (l: LessonWithDetails) => bulk.toggleSelection(l.id) : actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} onLongPress={!isParent ? (l: LessonWithDetails) => { bulk.enterSelectionMode(); bulk.toggleSelection(l.id); } : undefined} />
+          <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={bulk.selectionMode ? (l: LessonWithDetails) => bulk.toggleSelection(l.id) : actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} onLongPress={!isParent ? (l: LessonWithDetails) => { bulk.enterSelectionMode(); bulk.toggleSelection(l.id); } : undefined} busyBlocks={busyBlocks} />
         )}
       </SectionErrorBoundary>
 
