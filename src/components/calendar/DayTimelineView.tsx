@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import type { BusyBlock } from '@/hooks/useExternalBusyBlocks';
 import { format, parseISO, isSameDay, setHours, setMinutes, startOfDay, differenceInMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LessonWithDetails } from './types';
