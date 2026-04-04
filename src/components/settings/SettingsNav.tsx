@@ -88,6 +88,7 @@ export const SETTINGS_NAV_GROUPS: NavGroup[] = [
       { value: 'loopassist', label: 'LoopAssist AI', icon: Sparkles, adminOnly: true },
       { value: 'continuation', label: 'Continuation', icon: ArrowRightLeft, adminOnly: true },
       { value: 'accounting', label: 'Accounting', icon: FileSpreadsheet, adminOnly: true },
+    ],
   },
   {
     title: 'Compliance',
