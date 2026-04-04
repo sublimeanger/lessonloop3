@@ -24,6 +24,7 @@ interface MobileDayViewProps {
   onLessonClick: (lesson: LessonWithDetails) => void;
   savingLessonIds?: Set<string>;
   onLongPress?: (lesson: LessonWithDetails) => void;
+  busyBlocks?: BusyBlock[];
 }
 
 export function MobileDayView({
