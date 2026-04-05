@@ -14,6 +14,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useRef } from "react";
+import { makeupsReal } from "@/assets/marketing";
+import { BrowserFrameLight } from "@/components/marketing/BrowserFrame";
 
 const features = [
   {
@@ -156,7 +158,7 @@ export function MakeUpDeepDive() {
             </div>
           </motion.div>
 
-          {/* Right: Animated Flow Diagram */}
+          {/* Right: Real product screenshot */}
           <motion.div
             ref={flowRef}
             initial={{ opacity: 0, x: 30 }}
@@ -165,50 +167,39 @@ export function MakeUpDeepDive() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="relative"
           >
-            {/* Vertical connector line */}
-            <div className="absolute left-[24px] top-[20px] bottom-[20px] w-px bg-gradient-to-b from-destructive/20 via-border to-success/20 pointer-events-none" />
-            
-            <div className="space-y-3">
-              {flowSteps.map((step, i) => (
-                <motion.div
-                  key={step.label}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }}
-                  transition={{ delay: i * 0.3, duration: 0.5 }}
-                  className={`bg-card border ${step.border} rounded-xl p-4 relative ml-6`}
-                >
-                  {/* Step dot on the line */}
-                  <div className={`absolute -left-[30px] top-1/2 -translate-y-1/2 w-[13px] h-[13px] rounded-full ${step.bg} border-2 border-card z-10`}>
-                    <div className={`w-full h-full rounded-full ${step.bg}`} />
+            <BrowserFrameLight url="app.lessonloop.net/make-ups">
+              <img
+                src={makeupsReal}
+                alt="LessonLoop make-up lesson management showing credits, available slots, and automatic parent notifications"
+                className="w-full h-auto block"
+                loading="lazy"
+              />
+            </BrowserFrameLight>
+
+            {/* Floating flow summary */}
+            <motion.div
+              className="absolute -bottom-4 -left-4 z-10 hidden sm:block"
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.8 }}
+            >
+              <motion.div
+                className="bg-card border border-border rounded-xl p-3 shadow-xl"
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-success/20 flex items-center justify-center">
+                    <Check className="w-4 h-4 text-success" />
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg ${step.bg} flex items-center justify-center flex-shrink-0`}>
-                      <step.icon className={`w-5 h-5 ${step.color}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{step.label}</p>
-                      <p className="text-xs text-muted-foreground">{step.detail}</p>
-                    </div>
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Make-up booked</p>
+                    <p className="text-[10px] text-muted-foreground">Emma accepted Wed 3pm</p>
                   </div>
-                  {step.names && (
-                    <div className="mt-3 ml-[52px] space-y-1">
-                      {step.names.map((name) => (
-                        <div
-                          key={name}
-                          className="flex items-center gap-2 text-xs text-muted-foreground"
-                        >
-                          <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-foreground">
-                            {name[0]}
-                          </div>
-                          {name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
+                </div>
+              </motion.div>
+            </motion.div>
           </motion.div>
         </div>
       </div>

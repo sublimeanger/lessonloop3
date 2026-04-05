@@ -9,6 +9,8 @@ import {
   FileText, Download, PieChart, Users, CalendarDays, Filter,
   Calendar, Receipt, Sparkles, ArrowRight, ChevronRight,
 } from "lucide-react";
+import { revenueReal, dashboardReal } from "@/assets/marketing";
+import { BrowserFrameLight } from "@/components/marketing/BrowserFrame";
 
 /* ─── FAQ data ─── */
 const faqs = [
@@ -420,6 +422,60 @@ export default function FeatureReports() {
               See how attendance tracking feeds reports <ChevronRight className="w-4 h-4" />
             </Link>
           </motion.div>
+        </div>
+      </section>
+
+      {/* ═══ SEE IT IN ACTION ═══ */}
+      <section className="py-24 lg:py-32 bg-muted/20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,hsl(var(--primary)/0.06),transparent_60%)] pointer-events-none" />
+        <div className="container relative mx-auto px-5 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-primary block mb-4">See it in action</span>
+            <h2 className="text-3xl lg:text-[2.75rem] font-bold text-foreground">
+              Real dashboards, real data
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              Revenue trends, attendance rates, and outstanding balances — all visualised beautifully and always up to date.
+            </p>
+          </motion.div>
+
+          <div className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7 }}
+            >
+              <BrowserFrameLight url="app.lessonloop.net/dashboard" animate={false}>
+                <img
+                  src={dashboardReal}
+                  alt="LessonLoop analytics dashboard showing revenue charts, lesson counts, and key metrics"
+                  className="w-full h-auto block"
+                  loading="lazy"
+                />
+              </BrowserFrameLight>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, delay: 0.15 }}
+            >
+              <BrowserFrameLight url="app.lessonloop.net/reports/revenue" animate={false}>
+                <img
+                  src={revenueReal}
+                  alt="LessonLoop revenue report showing monthly earnings breakdown and outstanding payments"
+                  className="w-full h-auto block"
+                  loading="lazy"
+                />
+              </BrowserFrameLight>
+            </motion.div>
+          </div>
         </div>
       </section>
 

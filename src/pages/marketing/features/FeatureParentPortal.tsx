@@ -12,6 +12,8 @@ import {
   ChevronRight, Smartphone, Star, Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parentPortal } from "@/assets/marketing";
+import { BrowserFrameLight } from "@/components/marketing/BrowserFrame";
 
 const faqs = [
   { question: "What can parents see in the portal?", answer: "Parents can view upcoming lessons, attendance history, invoices, payment status, practice assignments, and messages from teachers." },
@@ -442,6 +444,46 @@ export default function FeatureParentPortal() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SEE IT IN ACTION — Real product screenshot
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section className="py-24 lg:py-32 bg-muted/20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,hsl(var(--violet)/0.06),transparent_60%)] pointer-events-none" />
+        <div className="container relative mx-auto px-5 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-violet block mb-4">See it in action</span>
+            <h2 className="text-3xl lg:text-[2.75rem] font-bold text-foreground">
+              This is what parents actually see
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              A professional, branded portal — not a clunky add-on. Parents love it from day one.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="max-w-5xl mx-auto"
+          >
+            <BrowserFrameLight url="app.lessonloop.net/portal" animate={false}>
+              <img
+                src={parentPortal}
+                alt="LessonLoop parent portal showing upcoming lessons, invoices, practice tracking, and messaging"
+                className="w-full h-auto block"
+                loading="lazy"
+              />
+            </BrowserFrameLight>
+          </motion.div>
         </div>
       </section>
 
