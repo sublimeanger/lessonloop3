@@ -82,7 +82,7 @@ export function UKDifferentiator() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.4 }}
-                className={`group relative rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm p-6 transition-all duration-300 ${ac.border} ${ac.glow}`}
+                className={`group relative rounded-2xl border border-white/[0.08] bg-white/5 p-6 transition-all duration-300 ${ac.border} ${ac.glow}`}
               >
                 {/* Icon */}
                 <div className={`w-11 h-11 rounded-xl ${ac.iconBg} flex items-center justify-center mb-4`}>
