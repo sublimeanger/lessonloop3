@@ -12,6 +12,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { invoicesList } from "@/assets/marketing";
 
 const features = [
   { icon: Zap, title: "Bulk Invoice Generation", description: "Create invoices for all students in one click." },
@@ -94,119 +95,55 @@ export function BillingDeepDive() {
             </Link>
           </motion.div>
 
-          {/* Right column: invoice demo */}
+          {/* Right column: real product screenshot */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="lg:col-span-7"
+            className="lg:col-span-7 relative"
           >
-            <div className="relative bg-white/[0.04] backdrop-blur-sm rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden p-6 lg:p-8">
-              {/* Invoice header */}
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h3 className="font-semibold text-white">Invoice #247</h3>
-                  <p className="text-sm text-white/40">Emma Smith — Piano Lessons</p>
+            <div className="relative rounded-2xl border border-white/[0.08] bg-white/[0.04] shadow-2xl overflow-hidden">
+              {/* Browser chrome */}
+              <div className="flex items-center gap-2 px-4 py-3 bg-white/[0.04] border-b border-white/[0.08]">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-destructive/50" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-warning/50" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-success/50" />
                 </div>
-                <div className="text-right">
-                  <p className="text-3xl font-bold text-white">£180.00</p>
-                  <p className="text-xs text-white/30">Inc. VAT</p>
-                </div>
-              </div>
-
-              {/* Status flow */}
-              <div className="relative mb-8">
-                <div className="flex items-center justify-between relative z-10">
-                  {invoiceStages.map((stage, index) => (
-                    <motion.div
-                      key={stage.label}
-                      className="flex flex-col items-center"
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.3 + index * 0.2 }}
-                    >
-                      <motion.div
-                        className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center mb-2 ring-2 ring-offset-2 ring-offset-[hsl(var(--ink))]",
-                          stage.color === "success" 
-                            ? "bg-success text-white ring-success/30" 
-                            : stage.color === "teal"
-                              ? "bg-teal text-white ring-teal/30"
-                              : stage.color === "primary"
-                                ? "bg-primary text-white ring-primary/30"
-                                : "bg-white/20 text-white/60 ring-white/10"
-                        )}
-                        animate={index === 3 ? { scale: [1, 1.1, 1] } : {}}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      >
-                        <Check className="w-5 h-5" />
-                      </motion.div>
-                      <span className="text-xs font-medium text-white/70">{stage.label}</span>
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="absolute top-5 left-5 right-5 h-0.5 bg-white/10 -z-0">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-primary via-teal to-success"
-                    initial={{ width: "0%" }}
-                    whileInView={{ width: "100%" }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.5, duration: 1.5, ease: "easeOut" }}
-                  />
-                </div>
-              </div>
-
-              {/* Line items */}
-              <div className="space-y-3 mb-6">
-                {[
-                  { desc: "Piano Lesson — 60 mins (4 sessions)", amount: "£150.00" },
-                  { desc: "VAT @ 20%", amount: "£30.00" },
-                ].map((item, index) => (
-                  <motion.div
-                    key={item.desc}
-                    className="flex items-center justify-between py-3 border-b border-white/[0.06]"
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.8 + index * 0.1 }}
-                  >
-                    <span className="text-sm text-white/50">{item.desc}</span>
-                    <span className="font-medium text-white">{item.amount}</span>
-                  </motion.div>
-                ))}
-              </div>
-
-              <div className="flex gap-3">
-                <div className="flex-1 py-3 rounded-xl bg-white/10 text-white text-sm font-medium text-center hover:bg-white/15 transition-colors cursor-default">
-                  Download PDF
-                </div>
-                <div className="flex-1 py-3 rounded-xl bg-success text-white text-sm font-medium text-center">
-                  Record Payment
-                </div>
-              </div>
-
-              {/* Floating payment toast */}
-              <motion.div
-                className="absolute -top-4 -right-4 z-10"
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                whileInView={{ opacity: 1, scale: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 1.5 }}
-              >
-                <motion.div
-                  className="bg-success text-white rounded-xl p-4 shadow-xl shadow-success/20"
-                  animate={{ y: [0, -5, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4" />
-                    <span className="text-sm font-medium">Payment received!</span>
+                <div className="flex-1 flex justify-center">
+                  <div className="bg-white/10 rounded-lg px-4 py-1 text-xs text-white/40 font-mono">
+                    app.lessonloop.net/invoices
                   </div>
-                </motion.div>
-              </motion.div>
+                </div>
+              </div>
+              <img
+                src={invoicesList}
+                alt="LessonLoop invoice dashboard showing GBP billing, payment status, and batch billing controls"
+                className="w-full h-auto block"
+                loading="lazy"
+              />
             </div>
+
+            {/* Floating payment toast */}
+            <motion.div
+              className="absolute -top-4 -right-4 z-10"
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 1.0 }}
+            >
+              <motion.div
+                className="bg-success text-white rounded-xl p-4 shadow-xl shadow-success/20"
+                animate={{ y: [0, -5, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  <span className="text-sm font-medium">Payment received!</span>
+                </div>
+              </motion.div>
+            </motion.div>
           </motion.div>
         </div>
       </div>
