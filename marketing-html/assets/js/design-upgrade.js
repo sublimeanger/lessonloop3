@@ -1,30 +1,7 @@
 /* ============================================
    LESSONLOOP DESIGN SYSTEM UPGRADE — JS
-   GSAP ScrollTrigger + Lenis + Counters
+   GSAP ScrollTrigger + Counters
    ============================================ */
-
-// --- Lenis Smooth Scroll ---
-(function() {
-  if (typeof Lenis !== 'undefined') {
-    const lenis = new Lenis({
-      duration: 1.2,
-      smoothWheel: true,
-      wheelMultiplier: 0.8
-    });
-    function raf(time) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    }
-    requestAnimationFrame(raf);
-
-    // Sync Lenis with GSAP ScrollTrigger if available
-    if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
-      lenis.on('scroll', ScrollTrigger.update);
-      gsap.ticker.add((time) => lenis.raf(time * 1000));
-      gsap.ticker.lagSmoothing(0);
-    }
-  }
-})();
 
 // --- GSAP Animations ---
 (function() {
