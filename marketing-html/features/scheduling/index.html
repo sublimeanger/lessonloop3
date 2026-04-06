@@ -639,12 +639,13 @@
   });
 
   /* ─── 5. Scroll Animations (IntersectionObserver) ─── */
-  var els=document.querySelectorAll('.animate-on-scroll');
+  var els=document.querySelectorAll('.animate-on-scroll, .reveal, .reveal-scale');
   if(els.length&&'IntersectionObserver' in window){
     var obs=new IntersectionObserver(function(entries){
       entries.forEach(function(entry){
         if(entry.isIntersecting){
           entry.target.classList.add('is-visible');
+          entry.target.classList.add('visible');
           obs.unobserve(entry.target);
         }
       });
@@ -652,20 +653,11 @@
     els.forEach(function(el){obs.observe(el)});
   }else{
     /* Fallback: just show everything */
-    els.forEach(function(el){el.classList.add('is-visible')});
+    els.forEach(function(el){el.classList.add('is-visible');el.classList.add('visible')});
   }
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script><script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script><script src="/assets/js/design-upgrade.js" defer></script>
-
-</body>
-</html>
-<script>
-(function(){
-  var o=new IntersectionObserver(function(e){e.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible')})},{threshold:.1,rootMargin:'0px 0px -40px 0px'});
-  document.querySelectorAll('.reveal,.reveal-scale').forEach(function(e){e.classList.remove('visible');o.observe(e)});
-})();
-</script>
 
 </body>
 </html>
