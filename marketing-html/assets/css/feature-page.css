@@ -1016,7 +1016,8 @@
     transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.reveal.is-visible {
+.reveal.is-visible,
+.reveal.visible {
   opacity: 1;
   transform: translateY(0);
 }
@@ -1029,7 +1030,8 @@
     transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.reveal-scale.is-visible {
+.reveal-scale.is-visible,
+.reveal-scale.visible {
   opacity: 1;
   transform: scale(1) translateY(0);
 }
