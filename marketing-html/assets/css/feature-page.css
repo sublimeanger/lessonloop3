@@ -46,6 +46,12 @@
 .section-tag.coral { color: hsl(var(--coral)); }
 .section-tag.teal { color: hsl(var(--teal-light)); }
 
+.section-tag-violet {
+  background: hsla(263, 70%, 58%, 0.1);
+  color: hsl(var(--violet));
+  border-color: hsla(263, 70%, 58%, 0.2);
+}
+
 .section-tag-light {
   background: hsl(var(--background) / 0.15);
   color: hsl(var(--background));
@@ -427,6 +433,8 @@
   justify-content: center;
   margin-bottom: 1rem;
   color: white;
+  background: linear-gradient(135deg, hsl(var(--teal)), hsl(var(--teal-dark)));
+  box-shadow: 0 4px 12px hsla(167, 72%, 43%, 0.25);
 }
 
 .feature-icon.teal {
@@ -447,11 +455,6 @@
 .feature-icon.emerald {
   background: linear-gradient(135deg, hsl(var(--emerald)), hsl(160, 84%, 30%));
   box-shadow: 0 4px 12px hsla(160, 84%, 39%, 0.25);
-}
-
-.feature-card:nth-child(even) .feature-icon {
-  background: linear-gradient(135deg, hsl(var(--coral)) 0%, hsl(var(--coral-dark)) 100%);
-  box-shadow: 0 4px 12px hsl(var(--coral) / 0.25);
 }
 
 .feature-card h3 {
@@ -500,6 +503,20 @@
   grid-template-columns: 1fr 1fr;
   gap: 3rem;
   align-items: start;
+}
+
+.detail-text h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: hsl(var(--foreground));
+}
+
+.detail-text p {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1.5rem;
 }
 
 .detail-content h3 {
@@ -646,6 +663,15 @@
   transform: translateY(-4px);
 }
 
+.step-hint {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--teal-light));
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .step-number {
   display: flex;
   align-items: center;
@@ -671,7 +697,7 @@
 .step p {
   font-size: 0.9375rem;
   line-height: 1.65;
-  color: hsl(var(--muted-foreground));
+  color: hsla(0, 0%, 100%, 0.55);
 }
 
 /* ===========================================
@@ -931,6 +957,24 @@
 .detail-link:hover { text-decoration: underline; }
 
 /* --- Accent Text Variants --- */
+.problem-heading {
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  margin-bottom: 1rem;
+  color: hsl(var(--foreground));
+  text-align: center;
+}
+
+.problem-sub {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto 3.5rem;
+}
+
+.muted { color: hsla(0, 0%, 100%, 0.4); }
+
 .accent { color: hsl(var(--coral)); }
 .accent-violet { color: hsl(var(--violet)); }
 .accent-teal { color: hsl(var(--teal-light)); }
