@@ -43,6 +43,9 @@
   border-color: hsl(var(--coral) / 0.2);
 }
 
+.section-tag.coral { color: hsl(var(--coral)); }
+.section-tag.teal { color: hsl(var(--teal-light)); }
+
 .section-tag-light {
   background: hsl(var(--background) / 0.15);
   color: hsl(var(--background));
@@ -126,7 +129,7 @@
 .hero p {
   font-size: 1.125rem;
   line-height: 1.7;
-  color: hsl(var(--muted-foreground));
+  color: hsla(0, 0%, 100%, 0.6);
   margin-bottom: 2rem;
   max-width: 520px;
 }
@@ -391,11 +394,11 @@
 }
 
 .feature-card:hover {
-  border-color: hsl(var(--teal) / 0.25);
+  border-color: hsla(167, 72%, 43%, 0.25);
   box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.05),
-    0 0 40px -12px hsl(var(--teal) / 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    0 4px 20px rgba(0,0,0,0.05),
+    0 0 40px -12px hsla(167, 72%, 43%, 0.12),
+    inset 0 1px 0 rgba(255,255,255,0.7);
   transform: translateY(-4px);
 }
 
@@ -408,25 +411,42 @@
 }
 
 .feature-card:nth-child(even):hover {
-  border-color: hsl(var(--coral) / 0.25);
+  border-color: hsla(12, 76%, 61%, 0.25);
   box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.05),
-    0 0 40px -12px hsl(var(--coral) / 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    0 4px 20px rgba(0,0,0,0.05),
+    0 0 40px -12px hsla(12, 76%, 61%, 0.12),
+    inset 0 1px 0 rgba(255,255,255,0.7);
 }
 
 .feature-icon {
   width: 3rem;
   height: 3rem;
+  border-radius: 0.875rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.75rem;
-  background: linear-gradient(135deg, hsl(var(--teal)) 0%, hsl(var(--teal-dark)) 100%);
-  box-shadow: 0 4px 12px hsl(var(--teal) / 0.25);
+  margin-bottom: 1rem;
   color: white;
-  margin-bottom: 1.25rem;
-  font-size: 1.25rem;
+}
+
+.feature-icon.teal {
+  background: linear-gradient(135deg, hsl(var(--teal)), hsl(var(--teal-dark)));
+  box-shadow: 0 4px 12px hsla(167, 72%, 43%, 0.25);
+}
+
+.feature-icon.coral {
+  background: linear-gradient(135deg, hsl(var(--coral)), hsl(var(--coral-dark)));
+  box-shadow: 0 4px 12px hsla(12, 76%, 61%, 0.25);
+}
+
+.feature-icon.violet {
+  background: linear-gradient(135deg, hsl(var(--violet)), hsl(263, 70%, 45%));
+  box-shadow: 0 4px 12px hsla(263, 70%, 58%, 0.25);
+}
+
+.feature-icon.emerald {
+  background: linear-gradient(135deg, hsl(var(--emerald)), hsl(160, 84%, 30%));
+  box-shadow: 0 4px 12px hsla(160, 84%, 39%, 0.25);
 }
 
 .feature-card:nth-child(even) .feature-icon {
@@ -881,10 +901,11 @@
   background-clip: text;
 }
 
-.cta p {
+.cta p,
+.cta-sub {
   font-size: 1.125rem;
   line-height: 1.7;
-  color: hsl(var(--muted-foreground));
+  color: hsla(0, 0%, 100%, 0.5);
   max-width: 540px;
   margin: 0 auto 2rem;
 }
@@ -895,6 +916,24 @@
   gap: 1rem;
   flex-wrap: wrap;
 }
+
+/* --- Detail Link --- */
+.detail-link {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(var(--teal));
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail-link:hover { text-decoration: underline; }
+
+/* --- Accent Text Variants --- */
+.accent { color: hsl(var(--coral)); }
+.accent-violet { color: hsl(var(--violet)); }
+.accent-teal { color: hsl(var(--teal-light)); }
 
 /* ===========================================
    BUTTONS
