@@ -149,3 +149,9 @@ verify_jwt = false
 # ── Seed/test functions ─────────────────────────────────────────
 # seed-demo-data is intentionally NOT deployed to production.
 # Run it locally only: supabase functions serve seed-demo-data
+
+[functions.seed-demo-agency]
+verify_jwt = false
+
+[functions.seed-demo-solo]
+verify_jwt = false
