@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
       vat_enabled: true, vat_rate: 20, org_type: "agency",
       cancellation_notice_hours: 24, overdue_reminder_days: [7, 14, 30],
       continuation_notice_weeks: 4, continuation_assumed_continuing: true,
-      parent_can_message_teacher: true, subscription_status: "active", subscription_plan: "agency",
+      subscription_status: "active", subscription_plan: "agency",
       max_students: 9999, max_teachers: 9999, default_lesson_length_mins: 30,
     });
     if (orgErr) throw new Error(`Org: ${orgErr.message}`);

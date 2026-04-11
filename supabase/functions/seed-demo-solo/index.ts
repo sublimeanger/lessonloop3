@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
       vat_enabled: false, org_type: "solo_teacher",
       cancellation_notice_hours: 24, overdue_reminder_days: [7, 14],
       continuation_notice_weeks: 3, continuation_assumed_continuing: true,
-      parent_can_message_teacher: true, subscription_status: "active", subscription_plan: "solo_teacher",
+      subscription_status: "active", subscription_plan: "solo_teacher",
       max_students: 9999, max_teachers: 1, default_lesson_length_mins: 30,
     });
     if (orgErr) throw new Error(`Org: ${orgErr.message}`);
