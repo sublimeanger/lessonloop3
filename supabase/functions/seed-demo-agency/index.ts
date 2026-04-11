@@ -10,8 +10,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const ALLOW_SEED = Deno.env.get("ALLOW_SEED");
-  console.log("ALLOW_SEED value:", JSON.stringify(ALLOW_SEED));
-  if (ALLOW_SEED !== "true") return new Response("Seed disabled, ALLOW_SEED=" + JSON.stringify(ALLOW_SEED), { status: 403, headers: corsHeaders });
+  if (!ALLOW_SEED) return new Response("Seed disabled", { status: 403, headers: corsHeaders });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -72,24 +71,46 @@ Deno.serve(async (req) => {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 1. ORG
+    // 1. CREATE OWNER USER FIRST (needed for created_by)
+    // ═══════════════════════════════════════════════════════════════
+    const ownerEmail = "demo-agency-owner@lessonloop.test";
+    const ownerPassword = "DemoAgency2026!";
+    const ownerName = "Victoria Hargreaves";
+    let ownerUid: string;
+    {
+      const { data: existing } = await admin.auth.admin.listUsers();
+      const found = existing?.users?.find((u: any) => u.email === ownerEmail);
+      if (found) { ownerUid = found.id; }
+      else {
+        const { data, error } = await admin.auth.admin.createUser({ email: ownerEmail, password: ownerPassword, email_confirm: true });
+        if (error) throw new Error(`Create owner: ${error.message}`);
+        ownerUid = data.user.id;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 2. ORG
     // ═══════════════════════════════════════════════════════════════
     const ORG_ID = crypto.randomUUID();
     const { error: orgErr } = await admin.from("organisations").insert({
       id: ORG_ID, name: "Crescendo Music Agency", timezone: "Europe/London", currency_code: "GBP",
-      vat_enabled: true, vat_rate: 20, org_type: "agency",
+      vat_enabled: true, vat_rate: 20, org_type: "agency", created_by: ownerUid,
       cancellation_notice_hours: 24, overdue_reminder_days: [7, 14, 30],
       continuation_notice_weeks: 4, continuation_assumed_continuing: true,
-      parent_can_message_teacher: true, subscription_status: "active", subscription_plan: "agency",
+      subscription_status: "active", subscription_plan: "agency",
       max_students: 9999, max_teachers: 9999, default_lesson_length_mins: 30,
     });
     if (orgErr) throw new Error(`Org: ${orgErr.message}`);
     L(`1. Org created: ${ORG_ID}`);
 
     // ═══════════════════════════════════════════════════════════════
-    // 2. USERS — Owner, Admin, 5 Teachers, 10 Parents
+    // 3. REMAINING USERS — Owner membership, Admin, 5 Teachers, 10 Parents
     // ═══════════════════════════════════════════════════════════════
-    const ownerUid = await ensureUser("demo-agency-owner@lessonloop.test", "DemoAgency2026!", "Victoria Hargreaves", ORG_ID, "owner");
+    // Now set up owner's profile + membership
+    await admin.from("profiles").upsert({ id: ownerUid, full_name: ownerName, has_completed_onboarding: true, current_org_id: ORG_ID }, { onConflict: "id" });
+    const { data: ownerMem } = await admin.from("org_memberships").select("id").eq("org_id", ORG_ID).eq("user_id", ownerUid).maybeSingle();
+    if (!ownerMem) await admin.from("org_memberships").insert({ org_id: ORG_ID, user_id: ownerUid, role: "owner", status: "active" });
+
     const adminUid = await ensureUser("demo-agency-admin@lessonloop.test", "DemoAgency2026!", "Daniel Cooper", ORG_ID, "admin");
 
     const teacherEmails = [
@@ -682,15 +703,15 @@ Deno.serve(async (req) => {
     // 14. BILLING RUNS
     // ═══════════════════════════════════════════════════════════════
     await findOrInsert("billing_runs", { org_id: ORG_ID, start_date: "2025-09-01", end_date: "2025-12-19" }, {
-      created_by: ownerUid, status: "completed", run_type: "standard", billing_mode: "upfront", term_id: t1,
+      created_by: ownerUid, status: "completed", run_type: "term", billing_mode: "upfront", term_id: t1,
       summary: { total_invoices: invCount, total_amount_minor: invCount * 50000 },
     });
     await findOrInsert("billing_runs", { org_id: ORG_ID, start_date: "2026-01-05", end_date: "2026-03-27" }, {
-      created_by: ownerUid, status: "completed", run_type: "standard", billing_mode: "upfront", term_id: t2,
+      created_by: ownerUid, status: "completed", run_type: "term", billing_mode: "upfront", term_id: t2,
       summary: { total_invoices: springInvCount, total_amount_minor: springInvCount * 50000 },
     });
     await findOrInsert("billing_runs", { org_id: ORG_ID, start_date: "2026-04-20", end_date: "2026-07-17" }, {
-      created_by: ownerUid, status: "draft", run_type: "standard", billing_mode: "upfront", term_id: t3,
+      created_by: ownerUid, status: "pending", run_type: "term", billing_mode: "upfront", term_id: t3,
       summary: { total_invoices: 8, total_amount_minor: 400000 },
     });
     L("14. Billing runs done");
