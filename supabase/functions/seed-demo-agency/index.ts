@@ -10,7 +10,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const ALLOW_SEED = Deno.env.get("ALLOW_SEED");
-  if (ALLOW_SEED !== "true") return new Response("Seed disabled", { status: 403, headers: corsHeaders });
+  console.log("ALLOW_SEED value:", JSON.stringify(ALLOW_SEED));
+  if (ALLOW_SEED !== "true") return new Response("Seed disabled, ALLOW_SEED=" + JSON.stringify(ALLOW_SEED), { status: 403, headers: corsHeaders });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
