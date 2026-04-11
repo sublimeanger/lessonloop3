@@ -703,15 +703,15 @@ Deno.serve(async (req) => {
     // 14. BILLING RUNS
     // ═══════════════════════════════════════════════════════════════
     await findOrInsert("billing_runs", { org_id: ORG_ID, start_date: "2025-09-01", end_date: "2025-12-19" }, {
-      created_by: ownerUid, status: "completed", run_type: "standard", billing_mode: "upfront", term_id: t1,
+      created_by: ownerUid, status: "completed", run_type: "term", billing_mode: "upfront", term_id: t1,
       summary: { total_invoices: invCount, total_amount_minor: invCount * 50000 },
     });
     await findOrInsert("billing_runs", { org_id: ORG_ID, start_date: "2026-01-05", end_date: "2026-03-27" }, {
-      created_by: ownerUid, status: "completed", run_type: "standard", billing_mode: "upfront", term_id: t2,
+      created_by: ownerUid, status: "completed", run_type: "term", billing_mode: "upfront", term_id: t2,
       summary: { total_invoices: springInvCount, total_amount_minor: springInvCount * 50000 },
     });
     await findOrInsert("billing_runs", { org_id: ORG_ID, start_date: "2026-04-20", end_date: "2026-07-17" }, {
-      created_by: ownerUid, status: "draft", run_type: "standard", billing_mode: "upfront", term_id: t3,
+      created_by: ownerUid, status: "draft", run_type: "term", billing_mode: "upfront", term_id: t3,
       summary: { total_invoices: 8, total_amount_minor: 400000 },
     });
     L("14. Billing runs done");
