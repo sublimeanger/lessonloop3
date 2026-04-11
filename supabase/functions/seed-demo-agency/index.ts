@@ -71,12 +71,30 @@ Deno.serve(async (req) => {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 1. ORG
+    // 1. CREATE OWNER USER FIRST (needed for created_by)
+    // ═══════════════════════════════════════════════════════════════
+    const ownerEmail = "demo-agency-owner@lessonloop.test";
+    const ownerPassword = "DemoAgency2026!";
+    const ownerName = "Victoria Hargreaves";
+    let ownerUid: string;
+    {
+      const { data: existing } = await admin.auth.admin.listUsers();
+      const found = existing?.users?.find((u: any) => u.email === ownerEmail);
+      if (found) { ownerUid = found.id; }
+      else {
+        const { data, error } = await admin.auth.admin.createUser({ email: ownerEmail, password: ownerPassword, email_confirm: true });
+        if (error) throw new Error(`Create owner: ${error.message}`);
+        ownerUid = data.user.id;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 2. ORG
     // ═══════════════════════════════════════════════════════════════
     const ORG_ID = crypto.randomUUID();
     const { error: orgErr } = await admin.from("organisations").insert({
       id: ORG_ID, name: "Crescendo Music Agency", timezone: "Europe/London", currency_code: "GBP",
-      vat_enabled: true, vat_rate: 20, org_type: "agency",
+      vat_enabled: true, vat_rate: 20, org_type: "agency", created_by: ownerUid,
       cancellation_notice_hours: 24, overdue_reminder_days: [7, 14, 30],
       continuation_notice_weeks: 4, continuation_assumed_continuing: true,
       subscription_status: "active", subscription_plan: "agency",
@@ -86,9 +104,13 @@ Deno.serve(async (req) => {
     L(`1. Org created: ${ORG_ID}`);
 
     // ═══════════════════════════════════════════════════════════════
-    // 2. USERS — Owner, Admin, 5 Teachers, 10 Parents
+    // 3. REMAINING USERS — Owner membership, Admin, 5 Teachers, 10 Parents
     // ═══════════════════════════════════════════════════════════════
-    const ownerUid = await ensureUser("demo-agency-owner@lessonloop.test", "DemoAgency2026!", "Victoria Hargreaves", ORG_ID, "owner");
+    // Now set up owner's profile + membership
+    await admin.from("profiles").upsert({ id: ownerUid, full_name: ownerName, has_completed_onboarding: true, current_org_id: ORG_ID }, { onConflict: "id" });
+    const { data: ownerMem } = await admin.from("org_memberships").select("id").eq("org_id", ORG_ID).eq("user_id", ownerUid).maybeSingle();
+    if (!ownerMem) await admin.from("org_memberships").insert({ org_id: ORG_ID, user_id: ownerUid, role: "owner", status: "active" });
+
     const adminUid = await ensureUser("demo-agency-admin@lessonloop.test", "DemoAgency2026!", "Daniel Cooper", ORG_ID, "admin");
 
     const teacherEmails = [
