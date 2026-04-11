@@ -421,8 +421,8 @@ Deno.serve(async (req) => {
       if (!ex) await admin.from("availability_blocks").insert({ org_id: ORG_ID, teacher_id: teacherId, teacher_user_id: ownerUid, day_of_week: day, start_time_local: "09:00", end_time_local: "15:00" });
     }
 
-    await findOrInsert("billing_runs", { org_id: ORG_ID, start_date: "2025-09-01", end_date: "2025-12-19" }, { created_by: ownerUid, status: "completed", run_type: "standard", billing_mode: "upfront", term_id: t1, summary: { total_invoices: 8, total_amount_minor: 288000 } });
-    await findOrInsert("billing_runs", { org_id: ORG_ID, start_date: "2026-01-05", end_date: "2026-03-27" }, { created_by: ownerUid, status: "completed", run_type: "standard", billing_mode: "upfront", term_id: t2, summary: { total_invoices: 8, total_amount_minor: 264000 } });
+    await findOrInsert("billing_runs", { org_id: ORG_ID, start_date: "2025-09-01", end_date: "2025-12-19" }, { created_by: ownerUid, status: "completed", run_type: "term", billing_mode: "upfront", term_id: t1, summary: { total_invoices: 8, total_amount_minor: 288000 } });
+    await findOrInsert("billing_runs", { org_id: ORG_ID, start_date: "2026-01-05", end_date: "2026-03-27" }, { created_by: ownerUid, status: "completed", run_type: "term", billing_mode: "upfront", term_id: t2, summary: { total_invoices: 8, total_amount_minor: 264000 } });
     L("12. Leads, resources, availability, billing runs done");
 
     // ═══════════════════════════════════════════════════════════════
