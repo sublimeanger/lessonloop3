@@ -205,37 +205,17 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       if (selectedOrg) {
         Sentry.setTag('org_id', selectedOrg.id);
 
-        // Prefetch dashboard data while the route is still resolving.
-        // This means the Dashboard component renders with cached data
-        // instead of showing loading skeletons.
+        // Prefetch invoice stats for the invoice page (uses a distinct
+        // query key so it won't clash with the dashboard-stats key which
+        // has a richer shape populated by useDashboardStats).
         const orgId = selectedOrg.id;
-        const orgTz = selectedOrg.timezone || 'Europe/London';
         queryClient.prefetchQuery({
-          queryKey: ['dashboard-stats', orgId],
+          queryKey: ['invoice-stats', orgId],
           queryFn: async () => {
             const { data } = await supabase.rpc('get_invoice_stats', { _org_id: orgId });
             return data;
           },
           staleTime: STALE_SEMI_STABLE,
-        });
-        queryClient.prefetchQuery({
-          queryKey: ['today-lessons', orgId],
-          queryFn: async () => {
-            const { format } = await import('date-fns');
-            const { fromZonedTime } = await import('date-fns-tz');
-            const todayStr = format(new Date(), 'yyyy-MM-dd');
-            const todayStart = fromZonedTime(new Date(`${todayStr}T00:00:00`), orgTz).toISOString();
-            const todayEnd = fromZonedTime(new Date(`${todayStr}T23:59:59`), orgTz).toISOString();
-            const { data } = await supabase
-              .from('lessons')
-              .select('id, start_at, end_at, status, teacher_id')
-              .eq('org_id', orgId)
-              .gte('start_at', todayStart)
-              .lte('start_at', todayEnd)
-              .neq('status', 'cancelled');
-            return data;
-          },
-          staleTime: STALE_VOLATILE,
         });
       }
     } catch (error) {
