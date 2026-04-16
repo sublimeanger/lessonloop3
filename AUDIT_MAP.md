@@ -536,3 +536,50 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** MEDIUM
 
 ---
+
+## Section 1.G — Xero Sync
+
+### G1. Xero OAuth connect
+- **Actor:** owner | admin
+- **Entry:** `/settings` → Accounting tab (`AccountingTab.tsx`) → "Connect Xero"
+- **Touchpoints:** `xero-oauth-start` edge fn → Xero consent → `xero-oauth-callback` (exchanges code, stores refresh+access in `xero_connections` for the org + tenant)
+- **Scopes:** `openid profile email offline_access accounting.contacts accounting.invoices` (payments scope pending)
+- **Priority:** CRITICAL (third-party auth; token custody)
+
+### G2. Xero disconnect
+- **Actor:** owner | admin
+- **Entry:** `AccountingTab` → "Disconnect"
+- **Touchpoints:** `xero-disconnect` edge fn → deletes `xero_connections` row, optionally `xero_entity_mappings`
+- **Priority:** HIGH (cleanup; may leave orphan mappings)
+
+### G3. Invoice sync (manual)
+- **Actor:** owner | admin
+- **Entry:** `AccountingTab` → bulk sync OR invoice-level action
+- **Touchpoints:** `xero-sync-invoice` edge fn → `_shared/xero-auth.ts` `getValidXeroToken` (refresh) → Xero `/Contacts` upsert from `guardians` → Xero `/Invoices` create/update → store `xero_entity_mappings` for dedup; status mapping draft→DRAFT, sent/paid→AUTHORISED, voided→VOIDED
+- **Priority:** CRITICAL (dedup on re-sync; external state mirror)
+
+### G4. Invoice sync (auto on billing run)
+- **Actor:** system
+- **Entry:** `create-billing-run` edge fn completion
+- **Touchpoints:** after generating invoices, POSTs to `xero-sync-invoice` per invoice (fire-and-forget `fetch`)
+- **Priority:** CRITICAL (silent failure risk — fire-and-forget)
+
+### G5. Payment sync (auto on Stripe webhook) — BLOCKED by scope
+- **Actor:** system
+- **Entry:** `stripe-webhook` handlers for `payment_intent.succeeded` and `charge.refunded`
+- **Touchpoints:** fetch to `xero-sync-payment` edge fn → **currently blocked** until `accounting.payments` scope available
+- **Priority:** CRITICAL when unblocked; currently FAILING SILENTLY
+
+### G6. Contact sync (ensure Xero contact exists for guardian)
+- **Actor:** system (within `xero-sync-invoice`)
+- **Entry:** inline
+- **Touchpoints:** uses `xero_entity_mappings` to dedup contact creation
+- **Priority:** HIGH
+
+### G7. Sync stats / health display
+- **Actor:** owner | admin
+- **Entry:** `AccountingTab` sync stats section
+- **Touchpoints:** reads `xero_entity_mappings` counts, last-sync timestamps on `xero_connections`
+- **Priority:** LOW
+
+---
