@@ -1587,3 +1587,49 @@ Claude.md warns: Lovable does NOT reliably apply Claude Code's SQL migrations. A
 3. For every new column (`pay_rate_type` percentage, `rooms.description`, dunning cols), if not live, writes silently drop the column
 
 ---
+
+## Section 2.6 — Cron / Scheduled Functions
+
+Per claude.md two cron jobs are explicitly named (14 + 15). The migrations directory shows at least two `cron.schedule` entries. All other "cron-flavoured" edge functions exist but their pg_cron schedule isn't declared in an in-repo migration — they're likely scheduled via Supabase dashboard (needs live-DB inspection in Phase 2).
+
+### Confirmed via migration
+| Edge fn | Schedule | Migration | Auth |
+|---|---|---|---|
+| `calendar-refresh-busy` | `*/30 * * * *` (every 30 min — note: claude.md says 15 min, drift) | `20260223100000_calsync_cron_guardian_health.sql` | `x-cron-secret` header via `_shared/cron-auth.ts` |
+| `invoice-overdue-check` | `30 5 * * *` (05:30 daily) | `20260223174041_*.sql` | `x-cron-secret` via vault |
+
+### Claude.md-declared
+| Job # | Function | Schedule | Auth |
+|---|---|---|---|
+| 14 | `send-lesson-reminders` | Hourly | service_role_key |
+| 15 | `calendar-refresh-busy` | Every 15 min (claude.md) | service_role_key |
+
+**Discrepancy flag:** claude.md says "Every 15 minutes" but migration schedules `*/30 * * * *`. Needs live-DB confirmation.
+
+### Edge functions that *appear* cron-driven (no declared schedule in repo)
+These have no-JWT cron-style auth and mass-mailer patterns; Phase 2 must check Supabase dashboard:
+- `auto-pay-upcoming-reminder` — prompts auto-pay
+- `credit-expiry` — expires `make_up_credits`
+- `credit-expiry-warning` — pre-expiry notice
+- `enrolment-offer-expiry` — expires enrolment waitlist offers
+- `installment-overdue-check` — payment plan dunning
+- `installment-upcoming-reminder` — pre-installment reminder
+- `invoice-overdue-check` — confirmed (see above)
+- `overdue-reminders` — aged-invoice dunning
+- `send-lesson-reminders` — cron 14 (claude.md)
+- `calendar-refresh-busy` — cron 15 (claude.md)
+- `streak-notification` — practice streak push
+- `ical-expiry-reminder` — iCal token near-expiry
+- `trial-expired`, `trial-reminder-1day`, `trial-reminder-3day`, `trial-reminder-7day`, `trial-winback` — trial lifecycle (5 distinct schedules)
+- `waitlist-expiry` — expires makeup waitlist
+
+### Cron auth
+- `_shared/cron-auth.ts` — `x-cron-secret` header verification (vault-stored)
+- Alternative: `verify_jwt=false` on these functions at config.toml level → called with `service_role_key` bearer token from pg_cron net.http_post
+
+### Risks for Phase 2
+- Drift between declared schedule (repo migration) and live pg_cron (dashboard) — see 30 vs 15 min calendar discrepancy
+- Cron secret rotation path
+- Per-org throttling not obvious — a cron that fans out to all orgs concurrently could thundering-herd Stripe/Resend/Xero
+
+---
