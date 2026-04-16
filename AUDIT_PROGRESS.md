@@ -12,7 +12,7 @@ Branch: `audit/phase-1-map`
 - [x] 1.B Academy setup (org, teachers, locations, students)
 - [x] 1.C Scheduling (lessons, calendar, slots, recurrence)
 - [x] 1.D Attendance & registers
-- [ ] 1.E Billing & invoicing
+- [x] 1.E Billing & invoicing
 - [ ] 1.F Payments (Stripe Connect, payment plans, auto-pay, refunds)
 - [ ] 1.G Xero sync
 - [ ] 1.H Term continuation

@@ -378,3 +378,88 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** LOW
 
 ---
+
+## Section 1.E — Billing & Invoicing
+
+### E1. Billing run (bulk invoice generation)
+- **Actor:** owner | admin | finance
+- **Entry:** `/invoices` → Billing Runs → `BillingRunWizard`
+- **Touchpoints:** `useBillingRuns` → `create-billing-run` edge fn (rate-limited, dedup) → inserts `billing_runs`, `invoices`, `invoice_items` from `lesson_participants.rate_minor` snapshots → auto-sync to Xero via `xero-sync-invoice` if connected
+- **Exits:** success → invoices in `draft`; failure → partial run (dedup should prevent duplicates)
+- **Referenced audits:** `audit-feature-11-billing-runs.md`
+- **Priority:** CRITICAL (bulk money; idempotency; Xero sync)
+
+### E2. Billing run delete (with paid-invoice guard)
+- **Actor:** owner | admin
+- **Entry:** `BillingRunHistory`
+- **Touchpoints:** `delete_billing_run` RPC (rejects if any child invoice is paid/void)
+- **Priority:** CRITICAL (destructive; guard correctness)
+
+### E3. Manual invoice create
+- **Actor:** owner | admin | finance
+- **Entry:** `/invoices` → `CreateInvoiceModal`
+- **Touchpoints:** direct insert `invoices` + `invoice_items` (status draft)
+- **Priority:** HIGH
+
+### E4. Invoice edit (draft only)
+- **Actor:** owner | admin | finance
+- **Entry:** `/invoices/:id` (`InvoiceDetail`)
+- **Touchpoints:** update `invoices` / `invoice_items`; DB trigger enforces status transitions
+- **Priority:** HIGH
+
+### E5. Invoice send (email)
+- **Actor:** owner | admin | finance
+- **Entry:** `SendInvoiceModal`
+- **Touchpoints:** `send-invoice-email` edge fn → Resend → transitions `invoices.status` draft→sent → records dispatch
+- **Priority:** HIGH (email delivery, branded PDF, payment plan schedule)
+
+### E6. Invoice PDF download
+- **Actor:** staff or parent (their own)
+- **Entry:** `useInvoicePdf`
+- **Touchpoints:** client-side PDF render (jsPDF) from invoice data
+- **Priority:** MEDIUM (content correctness — total/paid/remaining)
+
+### E7. Payment plan setup
+- **Actor:** owner | admin | finance
+- **Entry:** `PaymentPlanSetup` / `PaymentPlanToggle` on invoice
+- **Touchpoints:** update `invoices.plan_enabled`, `installment_count`, `installment_frequency` → derives `invoice_installments` (migration-created)
+- **Priority:** CRITICAL (money schedule)
+
+### E8. Installment auto-pay collection
+- **Actor:** system (cron/scheduled)
+- **Entry:** scheduled trigger
+- **Touchpoints:** `stripe-auto-pay-installment` edge fn → Stripe off-session PI on saved PM → `payments` record → invoice `paid_minor` update; `installment-upcoming-reminder` and `installment-overdue-check` edge fns for dunning
+- **Priority:** CRITICAL (autonomous money movement)
+
+### E9. Manual payment record
+- **Actor:** owner | admin | finance
+- **Entry:** `RecordPaymentModal` on invoice
+- **Touchpoints:** insert `payments` → trigger updates `invoices.paid_minor` → status transition on paid-in-full
+- **Priority:** HIGH
+
+### E10. Invoice overdue / dunning reminder
+- **Actor:** system (cron)
+- **Entry:** cron schedule
+- **Touchpoints:** `invoice-overdue-check`, `overdue-reminders` edge fns → email via Resend; respects org dunning config on `organisations`
+- **Priority:** HIGH
+
+### E11. Term adjustment (pro-rate mid-term invoice fixes)
+- **Actor:** owner | admin
+- **Entry:** `TermAdjustmentWizard`
+- **Touchpoints:** `useTermAdjustment` → `process-term-adjustment` edge fn → adjusts or issues new invoices
+- **Priority:** HIGH
+
+### E12. Invoice status lifecycle (draft → sent → paid → voided)
+- **Actor:** system + staff
+- **Entry:** all invoice transitions
+- **Touchpoints:** DB trigger on `invoices` blocks invalid transitions; void path separate from refund (refunds don't auto-void)
+- **Referenced audits:** `audit-feature-12-invoices.md`
+- **Priority:** CRITICAL (state machine)
+
+### E13. Invoice list filters / sorting / export
+- **Actor:** owner | admin | finance
+- **Entry:** `/invoices`
+- **Touchpoints:** `useInvoices` query + `InvoiceFiltersBar` + CSV export
+- **Priority:** MEDIUM
+
+---
