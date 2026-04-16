@@ -927,3 +927,44 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** LOW
 
 ---
+
+## Section 1.M — Notes
+
+### M1. Lesson note save (teacher)
+- **Actor:** owner | admin | teacher (lesson teacher)
+- **Entry:** `LessonNotesForm` on `LessonDetailPanel`
+- **Touchpoints:** `useLessonNotes` → direct insert/update on `lesson_notes` (RLS + `can_edit_lesson()`); column-level privacy (`teacher_private_notes` never exposed to parents) enforced by RPC-only read access
+- **Referenced audits:** `audit-feature-19-lesson-notes.md`
+- **Priority:** CRITICAL (column-level privacy)
+
+### M2. Notes notification to parent on save
+- **Actor:** system
+- **Entry:** on lesson note save (from `useLessonForm`)
+- **Touchpoints:** `useNotesNotification` → `send-notes-notification` edge fn → Resend
+- **Priority:** HIGH (parent data exposure vector if non-private fields leak)
+
+### M3. Staff notes explorer (cross-student search)
+- **Actor:** owner | admin | teacher
+- **Entry:** `/notes` (`NotesExplorer`)
+- **Touchpoints:** `useNotesExplorer` → `get_lesson_notes_for_staff` RPC (returns full notes including `teacher_private_notes`) → `NoteCard`, `NotesFilterBar`, `NotesStatsBar`
+- **Priority:** HIGH
+
+### M4. Parent view of lesson notes
+- **Actor:** parent
+- **Entry:** `/portal/schedule` or child detail
+- **Touchpoints:** `get_parent_lesson_notes` RPC (REDACTS `teacher_private_notes`)
+- **Priority:** CRITICAL (RPC-only privacy boundary)
+
+### M5. Student quick-note popover (register)
+- **Actor:** owner | admin | teacher
+- **Entry:** register row → `StudentNotesPopover`
+- **Touchpoints:** `useStudentQuickNotes` → reads recent notes for student (via RPC)
+- **Priority:** MEDIUM
+
+### M6. Student lesson-note history on student detail
+- **Actor:** owner | admin | teacher
+- **Entry:** `/students/:id` → notes tab
+- **Touchpoints:** `useStudentLessonNotes` / `useStudentDetail`
+- **Priority:** MEDIUM
+
+---
