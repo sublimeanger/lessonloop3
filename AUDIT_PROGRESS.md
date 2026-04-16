@@ -8,7 +8,7 @@ Branch: `audit/phase-1-map`
 - [x] Commit scaffolding
 
 ## Section 1: Flow Inventory (one cluster per commit)
-- [ ] 1.A Auth & onboarding
+- [x] 1.A Auth & onboarding
 - [ ] 1.B Academy setup (org, teachers, locations, students)
 - [ ] 1.C Scheduling (lessons, calendar, slots, recurrence)
 - [ ] 1.D Attendance & registers
