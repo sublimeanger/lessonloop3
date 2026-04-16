@@ -30,7 +30,7 @@ Branch: `audit/phase-1-map`
 - [x] 1.T Marketing site → app
 
 ## Section 2: Cross-cutting concerns (one per commit)
-- [ ] 2.1 Authn/Authz
+- [x] 2.1 Authn/Authz
 - [ ] 2.2 Money handling
 - [ ] 2.3 State machine enforcement
 - [ ] 2.4 Idempotency

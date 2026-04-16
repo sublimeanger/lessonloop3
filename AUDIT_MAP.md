@@ -1286,3 +1286,75 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** MEDIUM
 
 ---
+
+## Section 2.1 — Authn/Authz
+
+### Frontend auth boundary
+- `src/contexts/AuthContext.tsx` — `useAuth`, `signIn/signUp/signOut`, profile load, session watcher
+- `src/contexts/OrgContext.tsx` — current org + role resolution, role switcher
+- `src/components/auth/RouteGuard.tsx` — `RouteGuard`, `PublicRoute` (3s profile grace, 5s role grace, email-verified check, invite-return allowlist)
+- `src/config/routes.ts` — declarative `allowedRoles` per route
+- `src/hooks/useSubscription.ts`, `src/hooks/useFeatureGate.ts` — plan gating
+
+### Role check helpers (client-side, DO NOT trust for sensitive writes)
+- `AuthContext.hasRole`, `isOwnerOrAdmin`, `isTeacher`, `isParent`
+- `OrgContext.currentRole`
+- `canRoleAccess(path, role)` in `src/config/routes.ts`
+
+### Edge function JWT verification
+- `supabase/config.toml` — 40 functions explicitly `verify_jwt = false` (platform flag disabled because it's incompatible with the signing-keys system per comment); all must perform manual JWT check with `supabaseAuth.auth.getUser()` against the `Authorization` header, then org-membership + role check
+- **Enforcement burden:** every edge fn in the 40-list must individually: read auth header → create scoped client with anon key → `getUser()` → check `org_memberships` → check role
+- Functions that run on cron use `service_role` directly via `_shared/cron-auth.ts`
+- Stripe/Xero/public (booking, iCal, continuation-respond via token) intentionally bypass JWT — must enforce via signature or token verification
+
+### RLS helper functions (SECURITY DEFINER)
+Referenced across 83+ migrations:
+- `is_org_admin(org_id)` — owner/admin check
+- `is_org_staff(org_id)` — owner/admin/teacher/finance check
+- `is_lesson_teacher(lesson_id)` — checks direct `teacher_user_id` AND indirect `teacher_id → teachers.user_id`
+- `can_edit_lesson(lesson_id)` — combines admin + lesson teacher
+- `is_parent_of_student(student_id)` — auth.uid → guardians.user_id → student_guardians → students chain
+- Claude.md warning: PostgreSQL grants EXECUTE to PUBLIC by default; every SECURITY DEFINER fn MUST have internal auth check OR `REVOKE EXECUTE FROM authenticated`
+
+### RLS policies by table (98 migrations touch policies)
+Tables with RLS: all tables per claude.md. Group by domain:
+- **Auth/org:** `organisations`, `org_memberships`, `profiles`, `org_invitations`
+- **Academy:** `students`, `student_guardians`, `guardians`, `teachers`, `teacher_availability`, `teacher_instruments`, `locations`, `rooms`, `instruments`, `terms`, `closure_dates`, `rate_cards`
+- **Scheduling:** `lessons`, `lesson_participants`, `recurrence_rules`, `external_busy_blocks`, `calendar_connections`, `zoom_connections`
+- **Attendance:** `attendance_records`
+- **Billing:** `billing_runs`, `invoices`, `invoice_items`, `invoice_installments`, `payments`, `refunds`
+- **Stripe/Xero:** `stripe_webhook_events`, `xero_connections`, `xero_entity_mappings`
+- **Continuation:** `term_continuation_runs`, `term_continuation_responses`
+- **Credits/waitlist:** `make_up_credits`, `make_up_waitlist`, `enrolment_waitlist`
+- **Notes/resources:** `lesson_notes`, `resources`, `resource_shares`, `resource_categories`
+- **Messaging:** `internal_messages`, `payment_notifications`, `notification_preferences`
+- **Pipeline:** `leads`, `lead_students`, `lead_activities`, `lead_follow_ups`, `booking_pages`, `booking_page_teachers`, `booking_page_instruments`
+- **Practice:** `practice_logs`, `practice_assignments`
+- **LoopAssist:** chat history, daily-cap counter tables
+- **Meta:** audit log, banner_dismissals, hint_completions
+
+### Key RLS patterns (to verify consistency per-table in Phase 2)
+1. Org isolation via `org_memberships` lookup
+2. `USING(true)` / `WITH CHECK(true)` explicitly banned on sensitive tables
+3. `refunds` has no INSERT/UPDATE/DELETE for `authenticated` — service_role only via edge fn
+4. `payment_notifications` INSERT restricted to service_role
+5. `lesson_notes` read path forces RPC (column-level privacy)
+6. `students.notes` restricted from parents at RPC level
+7. Recent migration `20260401000000_auth_rls_hardening.sql` reinforces all of the above
+
+### Route RBAC (from claude.md + routes.ts)
+| Path | Allowed roles |
+|---|---|
+| `/settings` | owner, admin |
+| `/dashboard` | owner, admin, teacher, finance |
+| `/calendar` | owner, admin, teacher |
+| `/invoices` | owner, admin, finance |
+| `/teachers`, `/locations`, `/students/import`, `/make-ups`, `/leads`, `/waitlist`, `/continuation`, `/reports/cancellations`, `/reports/utilisation`, `/reports/teacher-performance` | owner, admin |
+| `/reports/payroll` | owner, admin, teacher, finance |
+| `/reports/revenue`, `/reports/outstanding` | owner, admin, finance |
+| `/reports/lessons`, `/reports/attendance`, `/students`, `/practice`, `/resources`, `/register`, `/batch-attendance`, `/notes` | owner, admin, teacher |
+| `/messages` | owner, admin, teacher, finance |
+| `/portal/*` | parent |
+| `/help` | all authenticated |
+
+---
