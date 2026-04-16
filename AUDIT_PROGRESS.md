@@ -10,7 +10,7 @@ Branch: `audit/phase-1-map`
 ## Section 1: Flow Inventory (one cluster per commit)
 - [x] 1.A Auth & onboarding
 - [x] 1.B Academy setup (org, teachers, locations, students)
-- [ ] 1.C Scheduling (lessons, calendar, slots, recurrence)
+- [x] 1.C Scheduling (lessons, calendar, slots, recurrence)
 - [ ] 1.D Attendance & registers
 - [ ] 1.E Billing & invoicing
 - [ ] 1.F Payments (Stripe Connect, payment plans, auto-pay, refunds)

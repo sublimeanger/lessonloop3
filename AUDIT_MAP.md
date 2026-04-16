@@ -212,3 +212,109 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** MEDIUM (footgun if ever runnable against live org)
 
 ---
+
+## Section 1.C — Scheduling (Lessons, Calendar, Slots, Recurrence)
+
+### C1. Single lesson create
+- **Actor:** owner | admin | teacher
+- **Entry:** Calendar drag-to-create, `QuickCreatePopover`, or `LessonModal`
+- **Touchpoints:** `useLessonForm` → insert `lessons` + `lesson_participants` (rate snapshot via rate-card resolution) → optional `calendar-sync-lesson` + `zoom-sync-lesson` → query invalidation
+- **Exits:** success → lesson visible on grid; failure → conflict toast (overlap/closure check).
+- **Referenced audits:** `audit-feature-07-lessons-calendar.md`, `core-loop-audit-part1.md`
+- **Priority:** HIGH (rate snapshot correctness, overlap)
+
+### C2. Lesson edit (single instance)
+- **Actor:** owner | admin | lesson teacher
+- **Entry:** `LessonDetailPanel` / `LessonDetailSidePanel`
+- **Touchpoints:** update `lessons` (CHECK `end_at > start_at`), `lesson_participants`; `can_edit_lesson()` RPC guard; drag/resize via `useDragLesson` / `useResizeLesson`; `can_edit_lesson` re-check server-side
+- **Priority:** HIGH
+
+### C3. Recurring lesson create (rule + materialised occurrences)
+- **Actor:** owner | admin | teacher
+- **Entry:** `RecurrenceSection` in `LessonFormBody`
+- **Touchpoints:** insert `recurrence_rules` (DST-safe via date-fns-tz, 200-lesson cap) → insert `lessons` batch
+- **Priority:** HIGH (DST + cap + bulk write)
+
+### C4. Recurring edit — "this & following" / all-future time shift
+- **Actor:** owner | admin | lesson teacher
+- **Entry:** `RecurringEditDialog`
+- **Touchpoints:** `shift_recurring_lesson_times` RPC → updates `recurrence_rules` + affected `lessons`
+- **Priority:** HIGH (state-divergence risk across series)
+
+### C5. Recurring delete (single / series)
+- **Actor:** owner | admin
+- **Entry:** `RecurringActionDialog`
+- **Touchpoints:** lesson delete trigger: blocks if invoiced; cascades `lesson_participants`
+- **Priority:** HIGH (invoice-guard trigger correctness)
+
+### C6. Bulk edit / bulk cancel
+- **Actor:** owner | admin
+- **Entry:** `BulkSelectBar` → `BulkEditDialog` on `/calendar`
+- **Touchpoints:** `useBulkLessonActions` → `bulk_update_lessons` / `bulk_cancel_lessons` RPCs (atomic, server-side authz)
+- **Referenced audits:** `audit-feature-09-bulk-edit.md`
+- **Priority:** HIGH
+
+### C7. Slot generator wizard (open-slot grid for future term/month)
+- **Actor:** owner | admin
+- **Entry:** `SlotGeneratorWizard` on `/calendar`
+- **Touchpoints:** `useSlotGenerator` → insert `lessons` with `is_open_slot=true`; `SlotPreviewTimeline` pre-check
+- **Referenced audits:** `audit-feature-08-slot-generator.md`
+- **Priority:** HIGH (bulk creation)
+
+### C8. Open-slot booking by parent / public booking page
+- **Actor:** parent (portal) or public
+- **Entry:** `/portal/schedule` (parent) OR `/book/:slug` (public)
+- **Touchpoints (public):** `BookingPage.tsx` → `booking-get-slots` → `booking-submit` edge fn → inserts `lesson_participants`, clears `is_open_slot`; enquiry mode → `leads` via `send-parent-enquiry`
+- **Touchpoints (parent):** `PortalSchedule` flows into same open-slot consumption
+- **Referenced audits:** `audit-feature-22-parent-portal.md`
+- **Priority:** CRITICAL (public endpoint, write path, rate-limit surface)
+
+### C9. Parent reschedule / cancel request
+- **Actor:** parent
+- **Entry:** `/portal/schedule` → `LessonChangeSheet`
+- **Touchpoints:** insert `lesson_change_requests` → teacher/admin approves via `/calendar` → on approve update lesson + optionally issue make-up credit
+- **Priority:** HIGH
+
+### C10. Lesson conflict detection
+- **Actor:** owner | admin | teacher
+- **Entry:** all create/edit flows
+- **Touchpoints:** `useConflictDetection` → checks teacher/location/student overlap + `external_busy_blocks` overlay
+- **Priority:** HIGH (silent conflict risk)
+
+### C11. External busy-block overlay (Google Calendar)
+- **Actor:** teacher
+- **Entry:** `/calendar` with Google connected
+- **Touchpoints:** `useExternalBusyBlocks` → reads `external_busy_blocks` (populated by `calendar-refresh-busy` cron every 15 min)
+- **Priority:** MEDIUM
+
+### C12. Two-way calendar sync per lesson
+- **Actor:** teacher with Google connected
+- **Entry:** on lesson create/edit
+- **Touchpoints:** `useCalendarSync` → `calendar-sync-lesson` edge fn → Google API → stores external event id
+- **Priority:** HIGH (external-state divergence)
+
+### C13. iCal feed subscribe
+- **Actor:** any (Apple / other readers)
+- **Entry:** `useCalendarConnections` → `calendar-ical-feed?token=…` (unauthed via token)
+- **Touchpoints:** `calendar-ical-feed` edge fn (no JWT, token-based)
+- **Priority:** HIGH (bearer-token leakage → PII exposure)
+
+### C14. Zoom lesson sync
+- **Actor:** teacher with Zoom connected
+- **Entry:** lesson with "Zoom link" enabled
+- **Touchpoints:** `useZoomSync` → `zoom-sync-lesson` edge fn → Zoom API → store meeting URL on lesson
+- **Priority:** MEDIUM
+
+### C15. Teacher availability (self-service)
+- **Actor:** teacher
+- **Entry:** dashboard "My Availability" card
+- **Touchpoints:** `useTeacherAvailability` → `teacher_availability` rows; feeds slot generator + conflict checks
+- **Priority:** MEDIUM
+
+### C16. Closure dates application
+- **Actor:** owner | admin
+- **Entry:** settings → closures
+- **Touchpoints:** `useClosurePatternCheck` prevents creating lessons on closure days; surfaced visually in calendar views
+- **Priority:** MEDIUM
+
+---
