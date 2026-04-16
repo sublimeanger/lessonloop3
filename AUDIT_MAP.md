@@ -861,3 +861,69 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** MEDIUM
 
 ---
+
+## Section 1.L — Practice Tracking & Resources
+
+### L1. Log practice session (portal)
+- **Actor:** parent (on behalf of student)
+- **Entry:** `/portal/practice` → `PracticeTimer`
+- **Touchpoints:** `usePractice` → insert `practice_logs` → triggers streak calc and weekly-goal progress
+- **Priority:** MEDIUM (low-stakes writes but high-frequency, RLS critical)
+
+### L2. Streak milestone celebration / notifications
+- **Actor:** system
+- **Entry:** streak transitions
+- **Touchpoints:** `StreakBadge`, `StreakCelebration`; `streak-notification` edge fn → push/email
+- **Priority:** LOW
+
+### L3. Assignment create (teacher → student practice goal)
+- **Actor:** owner | admin | teacher
+- **Entry:** `/practice` → `CreateAssignmentModal`
+- **Touchpoints:** insert `practice_assignments` (or similar) → scoped to student/instrument
+- **Referenced audits:** `audit-feature-20-practice-tracking.md`
+- **Priority:** MEDIUM
+
+### L4. Teacher practice review
+- **Actor:** owner | admin | teacher
+- **Entry:** `/practice` → `TeacherPracticeReview`
+- **Touchpoints:** list aggregated logs + assignments per student
+- **Priority:** LOW
+
+### L5. Resource upload
+- **Actor:** owner | admin | teacher
+- **Entry:** `/resources` → `UploadResourceModal`
+- **Touchpoints:** `useResources` → Supabase Storage bucket upload → insert `resources` row; optional `ShareResourceModal` → insert `resource_shares`
+- **Referenced audits:** `audit-feature-21-resources.md`
+- **Priority:** HIGH (file storage, signed URL expiry, PII in uploads)
+
+### L6. Resource share / unshare
+- **Actor:** owner | admin | teacher
+- **Entry:** `ShareResourceModal`
+- **Touchpoints:** insert/delete `resource_shares` (student- or guardian-scoped)
+- **Priority:** HIGH
+
+### L7. Resource delete / update
+- **Actor:** owner | admin | teacher
+- **Entry:** `/resources` → detail modal
+- **Touchpoints:** `useUpdateResource` → update/delete rows; storage file may linger (cleanup cron)
+- **Priority:** HIGH
+
+### L8. Orphaned resource cleanup
+- **Actor:** system
+- **Entry:** cron `cleanup-orphaned-resources` (schedule TBD)
+- **Touchpoints:** deletes storage files not referenced in `resources`
+- **Priority:** HIGH (cost + data residency)
+
+### L9. Resource preview / audio player
+- **Actor:** parent / teacher
+- **Entry:** `ResourcePreviewModal`, `AudioPlayer`
+- **Touchpoints:** signed URL generation; MIME handling
+- **Priority:** MEDIUM (XSS via embed if mishandled)
+
+### L10. Category management
+- **Actor:** owner | admin | teacher
+- **Entry:** `ManageCategoriesModal`
+- **Touchpoints:** CRUD `resource_categories`
+- **Priority:** LOW
+
+---

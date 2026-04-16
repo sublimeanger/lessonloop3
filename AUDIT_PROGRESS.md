@@ -19,7 +19,7 @@ Branch: `audit/phase-1-map`
 - [x] 1.I Make-up credits & waitlists
 - [x] 1.J Parent portal
 - [x] 1.K Messaging
-- [ ] 1.L Practice tracking & resources
+- [x] 1.L Practice tracking & resources
 - [ ] 1.M Notes
 - [ ] 1.N LoopAssist
 - [ ] 1.O Subscriptions & trials
