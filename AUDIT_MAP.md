@@ -1633,3 +1633,89 @@ These have no-JWT cron-style auth and mass-mailer patterns; Phase 2 must check S
 - Per-org throttling not obvious — a cron that fans out to all orgs concurrently could thundering-herd Stripe/Resend/Xero
 
 ---
+
+## Section 2.7 — External Integrations
+
+### Stripe
+- **Purpose:** payments (Connect destination), subscriptions, refunds
+- **Code paths:**
+  - Frontend hooks: `useStripeConnect`, `useStripePayment`, `useEmbeddedPayment`, `useStripeElements`, `useSavedPaymentMethods`, `useSubscription`, `useSubscriptionCheckout`, `useRefund`
+  - Edge fns: `stripe-connect-onboard`, `stripe-connect-status`, `stripe-create-checkout`, `stripe-create-payment-intent`, `stripe-verify-session`, `stripe-list-payment-methods`, `stripe-detach-payment-method`, `stripe-update-payment-preferences`, `stripe-customer-portal`, `stripe-billing-history`, `stripe-subscription-checkout`, `stripe-auto-pay-installment`, `stripe-process-refund`, `stripe-webhook`
+  - Shared config: `supabase/functions/_shared/plan-config.ts` (STRIPE_PRICE_* env → plan key mapping)
+  - DB: `organisations.stripe_account_id`, `organisations.subscription_*`, `payments`, `refunds`, `invoices.paid_minor`, `stripe_webhook_events`
+- **Failure modes:**
+  - Webhook signature failure → 400 (Stripe retries)
+  - DB failure → 500 (Stripe retries up to ~100×)
+  - Duplicate event → 200 duplicate
+  - Account deauthorized → `handleAccountDeauthorized` (needs rewire)
+  - Platform refund failure (insufficient balance) → Stripe returns error
+  - Subscription payment failure → `invoice.payment_failed` → dunning
+  - Native: payment UI hidden (Apple IAP conflict)
+
+### Xero
+- **Purpose:** accounting mirror
+- **Code paths:**
+  - Frontend: `AccountingTab` in `src/components/settings/`
+  - Edge fns: `xero-oauth-start`, `xero-oauth-callback`, `xero-disconnect`, `xero-sync-invoice`, `xero-sync-payment` (blocked)
+  - Shared: `_shared/xero-auth.ts` (token refresh)
+  - DB: `xero_connections`, `xero_entity_mappings`
+- **Failure modes:**
+  - Token expiry → `getValidXeroToken` refresh; if refresh fails → entire sync fails silently on fire-and-forget call from `create-billing-run` / `stripe-webhook`
+  - Scope error (`invalid_scope`) for `accounting.transactions` — already fixed by using granular scopes
+  - `accounting.payments` scope unavailable — payment sync silently no-ops
+  - Duplicate invoice on re-sync if mapping missing → must rely on `xero_entity_mappings`
+  - Rate limits (Xero: 60/min per tenant; daily limits) — no in-code throttle visible
+
+### Google Calendar
+- **Purpose:** two-way lesson sync + busy-block overlay
+- **Code paths:**
+  - Frontend: `useCalendarConnections`, `useCalendarSync`, `useExternalBusyBlocks`, `BusyBlockOverlay`, `CalendarIntegrationsTab`, `CalendarSyncHealth`
+  - Edge fns: `calendar-oauth-start`, `calendar-oauth-callback`, `calendar-disconnect`, `calendar-sync-lesson`, `calendar-fetch-busy`, `calendar-refresh-busy` (cron), `calendar-ical-feed` (iCal subscription, token-auth)
+  - DB: `calendar_connections`, `external_busy_blocks`
+- **Failure modes:**
+  - Token refresh failure → `CalendarSyncHealth` surfaces; `get_org_calendar_health` RPC
+  - Event id drift if deleted externally
+  - iCal token leakage → PII exposure (calendar-ical-feed is public!)
+
+### Zoom
+- **Purpose:** per-lesson meeting link
+- **Code paths:**
+  - Frontend: `useZoomSync`, `ZoomIntegrationTab`
+  - Edge fns: `zoom-oauth-start`, `zoom-oauth-callback`, `zoom-sync-lesson`
+  - DB: `zoom_connections`
+- **Failure modes:** token expiry, meeting creation failure — falls through silently per historical patterns
+
+### Anthropic (Claude API)
+- **Purpose:** LoopAssist (staff + parent + marketing)
+- **Code paths:**
+  - Frontend: `LoopAssistContext`, `useLoopAssist`, `useParentLoopAssist`, `MarketingChatWidget`
+  - Edge fns: `looopassist-chat` (staff), `looopassist-execute` (tool execution), `parent-loopassist-chat`, `marketing-chat`
+  - KB: `supabase/functions/looopassist-chat/knowledge-base.ts` (Block 1 cached)
+  - DB: daily-cap counter (per-org, 200/day), chat history, feedback
+- **Failure modes:** 529 overload, streaming disconnect (`consumeAnthropicStream` null-body guard), tool-call looping, prompt injection via org data
+
+### Resend (email)
+- **Purpose:** all transactional email
+- **Code paths:** used across every email edge fn
+- **Conventions (claude.md):** 3x retry, `escapeHtml()`, List-Unsubscribe header, domain `lessonloop.net`
+- **Failure modes:** bounce handling, transient 429, duplicates on retry ambiguity
+
+### Capacitor (native)
+- **Purpose:** iOS/Android wrapper
+- **Code paths:**
+  - `capacitor.config.ts`, `src/lib/native/*`, `src/lib/platform.ts`, `src/hooks/useAndroidBackButton.ts`, `src/services/pushNotifications.ts`
+  - Deep-link parser: `src/lib/native/deepLinks.ts`
+- **Failure modes:** push token drift, deep-link open-redirect, sync hang (`npx cap copy ios` workaround), iOS v1.3 pending after v1.2
+
+### Supabase services
+- Postgres: 70+ tables, 300+ migrations
+- Auth: `supabase.auth` used in AuthContext
+- Storage: `resources` bucket; signed URLs
+- Realtime: enabled on `attendance_records`, `practice_logs` (migration 20260330234228), `invoices` (`useRealtimeInvoices`)
+- Edge fns: 87+
+
+### Cloudflare (planned)
+- Marketing site on Cloudflare Pages
+- WAF + CSP headers listed in "Remaining" — NOT YET ADDED
+
+---

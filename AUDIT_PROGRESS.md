@@ -36,7 +36,7 @@ Branch: `audit/phase-1-map`
 - [x] 2.4 Idempotency
 - [x] 2.5 Migrations vs live schema risk
 - [x] 2.6 Cron/scheduled
-- [ ] 2.7 External integrations
+- [x] 2.7 External integrations
 - [ ] 2.8 RPC inventory
 
 ## Section 3
