@@ -40,7 +40,7 @@ Branch: `audit/phase-1-map`
 - [x] 2.8 RPC inventory
 
 ## Section 3
-- [ ] Known problem surface
+- [x] Known problem surface
 
 ## Section 4
 - [ ] Phase 2 plan

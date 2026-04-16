@@ -1794,3 +1794,61 @@ ORDER BY p.proname;
 ```
 
 ---
+
+## Section 3 — Known Problem Surface (smell list, not a full audit)
+
+### Unusually large / complex files
+- `supabase/functions/looopassist-chat/index.ts` — **1,776 lines**. Streaming, tool-call, caching, per-org limits, 9-dataset context fetch. Highest per-file complexity.
+- `supabase/functions/stripe-webhook/index.ts` — **988 lines**. 10 event-type branches, subscription + invoice + refund + account paths, Xero cross-call.
+- `supabase/functions/create-billing-run/index.ts` — **902 lines**. Rate-limit, dedup, per-student loop, Xero fire-and-forget.
+- `supabase/functions/bulk-process-continuation/index.ts` — **453 lines**.
+- `supabase/functions/send-lesson-reminders/index.ts` — **419 lines**.
+
+### Duplicated / overlapping logic
+- `send-message` (staff → portal) and `send-parent-message` (portal → staff) both dispatch `internal_messages` rows + email — likely share 80% of logic; verify one is not drifting behind the other
+- Manual-refund path (`record_manual_refund` RPC) vs Stripe-refund path (`stripe-process-refund` → webhook) — both insert into `refunds`; verify semantically identical
+- Three payment-writing paths: direct RPC `record_payment_and_update_status` (UI "Record Payment"), Stripe webhook `record_stripe_payment_paid_guard`, installment auto-pay webhook branch — all must update `invoices.paid_minor` consistently
+- Multiple cron/reminder edge fns with similar Resend patterns (`invoice-overdue-check`, `overdue-reminders`, `installment-overdue-check`, `installment-upcoming-reminder`, `auto-pay-upcoming-reminder`) — refactoring target but also divergence risk
+- `booking-submit` (public) and `invite-accept` both create org-scoped rows; error responses differ
+
+### Edge functions sharing non-obvious state
+- `create-billing-run` → fire-and-forget `fetch(xero-sync-invoice)` (per-invoice). If webhook retriggers, multiple syncs may race
+- `stripe-webhook` → fire-and-forget `fetch(xero-sync-payment)` twice (payment_intent.succeeded + charge.refunded paths) — silent no-op today (scope blocked) but when enabled will share state
+- Attendance trigger → credit auto-issue → waitlist auto-match (`auto_add_to_waitlist`) → notify cascade — any single failure could leave partial state
+
+### RLS that may be permissive / inconsistent
+- `calendar-ical-feed` is **public / token-authenticated** — bearer token in URL is PII-leaking. Token lifecycle (generation in `generate_ical_token`, expiry in `ical-expiry-reminder` cron) needs review.
+- Claude.md calls out: "PostgreSQL grants EXECUTE to PUBLIC by default" — migrations may inconsistently revoke. 121 functions × inconsistent revokes is a large verification surface.
+- `payment_notifications` INSERT service-role only per claude.md — verify every migration-altered definition still enforces
+- Recent `20260401000000_auth_rls_hardening.sql` suggests some tables previously had weaker policies — if not applied live (Lovable gap), hardening isn't in effect
+- Per claude.md teacher dual-linking (`teacher_user_id` + `teacher_id → teachers.user_id`): `is_lesson_teacher()` must traverse both; policy drift on any table using only one path → false denial/allow
+
+### Client-enforced things that should be server-enforced
+- Route RBAC (`allowedRoles` in routes.ts) — enforced by `RouteGuard` only; server must re-check in every edge fn + RLS
+- `useFeatureGate` (subscription plan gate) — client check; server enforcement in relevant edge fns exists but not uniform
+- Payment plan installment amounts derived frontend? Need to confirm `generate_installments` RPC is the canonical path
+- Invoice line-item editing in UI — client composes `invoice_items`; RLS/CHECK constraints are the only guard
+- Subscription-only UI (owner for subs) enforced client-side via banner + `stripe-subscription-checkout` server-side owner check
+
+### Silent error swallowing
+- `AuthContext.signOut` — `catch(() => {})` on the local-scope fallback
+- Fire-and-forget `fetch(xero-sync-*)` in `create-billing-run` and `stripe-webhook` — no await, no retry record
+- `useCalendarData`, `useMessageThreads`, `useParentConversations`, `useRealtimeInvoices` — TODOs flag org-wide postgres_changes listeners that may miss events at scale
+- Resend email dispatch: 3× retry wrapper may double-deliver if first call returns ambiguous success
+
+### TODO / FIXME / HACK / XXX of note
+- `supabase/functions/looopassist-chat/index.ts:87` — **TODO (PERF-M4):** "Consider creating a single `get_loopassist_context` RPC that returns all 9 datasets" — current N+1 context fetch
+- `src/hooks/useCalendarData.ts:203` — **TODO (PERF-M5):** org-wide lesson realtime subscription
+- `src/hooks/useMessageThreads.ts:112`, `useParentConversations.ts:47`, `useRealtimeInvoices.ts:14` — **TODO (PERF-M5):** multiple org-wide realtime channels open per session
+- (Total of 5 TODO markers in src; 1 in edge fns — low raw count but each is perf/scale-relevant)
+
+### Other smells worth drilling into
+- `AuthLoading` force-timeout 8s → `handleForceRedirect` goes to `/onboarding` — if onboarding itself is broken, user lands in loop
+- `PublicRoute` reads `sessionStorage['lessonloop_invite_return']` and routes to `/accept-invite` — storage unavailable path ignored; in private browsing could redirect incorrectly
+- `NativeInitializer` `pushInitRef` is not per-user — switching accounts on native without full relaunch may keep old push binding
+- `stripe-webhook` returns 500 on DB failure (per claude.md) — Stripe retries up to ~100× over 3 days; could cascade into huge retry volume if DB is degraded
+- Calendar cron schedule drift (claude.md 15 min vs migration `*/30`)
+- `calendar-ical-feed` unauth'd token path — see above
+- iOS v1.2 in review; v1.3 pending — mobile sweep includes DatePicker/dialog/touch fixes — mobile regression risk
+
+---
