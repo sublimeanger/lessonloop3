@@ -43,7 +43,7 @@ Branch: `audit/phase-1-map`
 - [x] Known problem surface
 
 ## Section 4
-- [ ] Phase 2 plan
+- [x] Phase 2 plan
 
 ## Final
-- [ ] Report to user
+- [x] Report to user

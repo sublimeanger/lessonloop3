@@ -1852,3 +1852,85 @@ ORDER BY p.proname;
 - iOS v1.2 in review; v1.3 pending — mobile sweep includes DatePicker/dialog/touch fixes — mobile regression risk
 
 ---
+
+## Section 4 — Phase 2 Plan
+
+### Verification (Phase 1 exit gate)
+Three random flows re-traced end-to-end:
+- **A1 sign-up:** `src/pages/Signup.tsx` → `profile-ensure` edge fn → `onboarding-setup` edge fn — all present.
+- **E1 billing run:** `src/hooks/useBillingRuns.ts` → `create-billing-run` edge fn → `delete_billing_run` RPC defined in `20260316210000_fix_billing_audit_findings.sql` — all present.
+- **I1 auto-credit on absence:** `auto_issue_credit_on_absence` function present across 5+ migrations; `trg_auto_credit` referenced in claude.md and migration history — all present.
+
+### Recommended cluster order for Phase 2 (highest risk first)
+
+**Cluster 1 — Money & Webhooks (single biggest risk surface)**
+- 1.F Payments (F1–F11), 2.4 Idempotency, 2.2 Money handling, 2.3 State machines (invoice/refund/subscription slices)
+- Audit together: `stripe-webhook`, `create-billing-run`, `stripe-auto-pay-installment`, `stripe-process-refund`, `record_manual_refund`, `record_payment_and_update_status`, `record_stripe_payment_paid_guard`
+- Session size: **large** (likely 2 sessions: one for webhook/payment-in, one for refund/subscription/auto-pay)
+
+**Cluster 2 — Auth, RLS, RBAC**
+- 1.A Auth & onboarding + 2.1 Authn/Authz
+- Audit: `RouteGuard` + `PublicRoute`, `RouteGuard` grace periods, `invite-accept`/`invite-get`, RLS audit on `org_memberships`, `organisations.subscription_*` protected columns, `auth_rls_hardening` migration verification
+- Size: **large**
+
+**Cluster 3 — Parent Portal & Guardian Chain**
+- 1.J Parent portal + 1.M Notes privacy + 1.R GDPR (child-data-restrictions slice)
+- Audit: guardian chain RLS, RPC-only lesson-notes read, parent LoopAssist data scoping, `child` URL filter
+- Size: **medium**
+
+**Cluster 4 — Continuation + Credits + Waitlist (triangular state machines)**
+- 1.H Continuation + 1.I Credits/waitlists + 2.3 State machines (continuation + credit + waitlist slices)
+- Audit together: `create-continuation-run`, `bulk-process-continuation`, `continuation-respond`, `waitlist-respond`, credit consumption FOR UPDATE SKIP LOCKED, `void_credits_on_student_delete`, auto-match cascade
+- Size: **large**
+
+**Cluster 5 — Xero + External-integration Failure Modes**
+- 1.G Xero + 2.7 External integrations (Xero/Stripe portion)
+- Audit: `xero-sync-invoice`, `xero-sync-payment` (blocked), fire-and-forget `fetch` patterns, `xero_entity_mappings` dedup, scope errata
+- Size: **medium**
+
+**Cluster 6 — Scheduling + Attendance (interlocking bulk ops)**
+- 1.C Scheduling + 1.D Attendance + 2.3 lesson-status slice
+- Audit: `bulk_update_lessons`, `bulk_cancel_lessons`, `shift_recurring_lesson_times`, conflict detection, `auto_complete_stale_lessons`, credit reversal on attendance change
+- Size: **medium**
+
+**Cluster 7 — Billing & Invoice Lifecycle (read-side of money)**
+- 1.E Billing & invoicing (E1–E13) + invoice status machine
+- Audit: `create-billing-run` per-student loop, payment plan generation, dunning crons, term adjustment
+- Size: **medium** (overlaps with Cluster 1; do after)
+
+**Cluster 8 — LoopAssist (staff, parent, marketing) + prompt-injection**
+- 1.N LoopAssist
+- Audit: `looopassist-chat` 1776-line handler, tool auth, `query_org_data`, parent data scoping, `marketing-chat` rate limit, per-org daily cap enforcement
+- Size: **large**
+
+**Cluster 9 — Messaging + Notifications**
+- 1.K Messaging
+- Audit: `send-message` vs `send-parent-message` divergence, `send-bulk-message` escape/unsubscribe, push notifications, notification preferences
+- Size: **medium**
+
+**Cluster 10 — Cron + Trial/Subscription Lifecycle**
+- 1.O Subscriptions + 2.6 Cron
+- Audit: Stripe subscription webhook handlers, trial reminder/expiry/winback crons, plan auto-transition, feature gates server-side, `protect_subscription_fields`
+- Size: **medium**
+
+**Cluster 11 — Academy Setup + CSV import**
+- 1.B Academy setup (B9 CSV import is the biggest risk here)
+- Audit: `csv-import-mapping`, `csv-import-execute`, `undo_student_import`, `import_batch_id` atomicity
+- Size: **small**
+
+**Cluster 12 — Native + Marketing + Public endpoints**
+- 1.S Native + 1.T Marketing + 2.7 Capacitor + public `booking-submit`, `calendar-ical-feed`, `continuation-respond`, `marketing-chat`
+- Audit: iCal token expiry/leakage, deep-link open-redirect, public LLM/booking rate limits, push registration
+- Size: **medium**
+
+**Cluster 13 — Notes + Practice + Resources (lower risk)**
+- 1.L Practice + 1.M Notes + 1.P Payroll + 1.Q Reports (accuracy slice)
+- Size: **medium** (payroll pays attention; others are lower-risk reads)
+
+### Clusters to start with
+Cluster 1 (Money/Webhooks) and Cluster 2 (Auth/RLS) — run in parallel sessions if possible; otherwise Cluster 1 first.
+
+### Estimated total sessions for Phase 2
+~10–13 sessions depending on findings per cluster.
+
+---
