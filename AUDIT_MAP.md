@@ -1531,3 +1531,59 @@ Grouped:
 - React Query `retry: false` on mutations (App.tsx) — good
 
 ---
+
+## Section 2.5 — Migrations vs Live Schema Risk (Lovable gap)
+
+Claude.md warns: Lovable does NOT reliably apply Claude Code's SQL migrations. Any recent Claude Code migration may exist in repo but NOT in live Supabase DB until Jamie applies via SQL Editor. Remaining items section of claude.md already lists April 4 pending batch.
+
+### Remaining (per claude.md "Remaining Items")
+- Apply **April 4** SQL migrations: xero tables, dunning config, external_busy_blocks, percentage pay, hint_completions
+- Apply via Supabase SQL Editor + `NOTIFY pgrst, 'reload schema'`
+
+### Migrations in the last 60 days (risk window)
+
+**April 2026 (highest risk — may not yet be live):**
+- `20260404210000_add_percentage_pay_rate_type.sql` — adds `teachers.pay_rate_type` percentage variant; payroll hook depends on it
+- `20260404160715_28e2d9d6-…sql` — generic Lovable-style name (needs content inspection)
+- `20260404000000_add_lesson_reminder_org_settings.sql` — adds dunning/reminder columns on `organisations`
+- `20260403000005_hint_completions.sql` — `hint_completions` table
+- `20260403000004_fix_credit_reversal_on_attendance_change.sql` — credit reversal behaviour
+- `20260403000003_count_lessons_on_dates_rpc.sql` — RPC used by slot generator preview
+- `20260403000002_add_rooms_description_column.sql` — `rooms.description`
+- `20260403000001_auto_promote_primary_on_archive.sql` — location trigger
+- `20260403000000_complete_onboarding_rpc.sql` — RPC
+- `20260401000002_void_credits_on_student_delete.sql` — trigger
+- `20260401000001_add_convert_lead_rpc.sql` — `convert_lead` RPC
+- `20260401000000_auth_rls_hardening.sql` — **RLS sweep** — most impactful if not applied
+
+**Late March 2026:**
+- `20260331170000_webhook_events_ttl_guidance.sql` — dedup TTL
+- `20260331160001_record_stripe_payment_paid_guard.sql` — payment guard RPC
+- `20260331160000_record_manual_refund_rpc.sql` — manual refund RPC
+- `20260331150000_add_recalc_continuation_summary_rpc.sql`
+- `20260331140001_offer_notify_and_waitlist_audit.sql`
+- `20260331140000_validate_waitlist_credit_ownership.sql`
+- `20260331130000_cleanup_withdrawal_credits.sql` — data cleanup
+- `20260331120000_fix_credit_term_dates_and_lesson_rate_fallback.sql`
+- `20260330234228_add_realtime_attendance_practice.sql`
+- `20260330234227_auto_complete_stale_lessons.sql` — **silent data write**
+- `20260330234226_add_get_unmarked_lesson_count_rpc.sql`
+- `20260330232228_*.sql` — Lovable-style name
+- `20260330000002_add_undo_student_import_rpc.sql`
+- `20260330000001_add_import_batch_id_to_students.sql`
+
+**Mid-March 2026 (likely applied — reference only):**
+- `20260316*` batch — payment plans phase 1, audit fixes, revenue report fixes, subscription auto-transition
+- `20260316350000_payment_plans_phase1.sql` — payment-plan schema (critical money)
+- `20260316260000_fix_voided_credits_audit.sql` through `20260316340000_fix_external_audit_security.sql` — security hardening sweep
+
+### Conventions (claude.md)
+- All migration SQL idempotent (`IF NOT EXISTS`, `CREATE OR REPLACE`, `DROP ... IF EXISTS` before `CREATE`, `DO $$ BEGIN … EXCEPTION WHEN duplicate_object THEN NULL; END $$;` for constraints)
+- CHECK constraints on existing tables use `NOT VALID` to avoid failing on legacy rows
+
+### Risk heuristic for Phase 2
+1. Cross-check each migration that adds/changes an RPC against frontend `supabase.rpc(...)` calls for that name — if not live, frontend call will fail silently (PGRST202) or throw
+2. Cross-check RLS-changing migrations for "auth.users.email" style policies that may have reverted
+3. For every new column (`pay_rate_type` percentage, `rooms.description`, dunning cols), if not live, writes silently drop the column
+
+---
