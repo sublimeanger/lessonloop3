@@ -463,3 +463,76 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** MEDIUM
 
 ---
+
+## Section 1.F — Payments (Stripe Connect, Plans, Auto-pay, Refunds)
+
+### F1. Stripe Connect onboarding (org → connected account)
+- **Actor:** owner | admin
+- **Entry:** `/settings` → Billing → "Connect Stripe"
+- **Touchpoints:** `useStripeConnect` → `stripe-connect-onboard` edge fn → returns onboarding URL → Stripe hosted flow → `stripe-connect-status` edge fn polls; `stripe-webhook` `account.updated` / `account.application.deauthorized` syncs `organisations.stripe_account_id` and flags
+- **Priority:** CRITICAL (money custody)
+
+### F2. Customer one-off invoice payment (parent, embedded)
+- **Actor:** parent
+- **Entry:** `/portal/invoices` invoice detail → `PaymentDrawer`
+- **Touchpoints:** `useEmbeddedPayment` + `useStripePayment` → `stripe-create-payment-intent` edge fn (destination charge, paid out to org) → Stripe Elements → `stripe-verify-session` (optional confirm) → `stripe-webhook` `payment_intent.succeeded` → `record_stripe_payment_paid_guard` RPC → upserts `payments`, updates invoice `paid_minor`
+- **Referenced audits:** `audit-feature-13-stripe-payments.md`
+- **Priority:** CRITICAL
+
+### F3. Customer payment via Stripe Checkout redirect (admin "pay on behalf")
+- **Actor:** owner | admin (for parent)
+- **Entry:** `InvoiceDetail` → "Pay with Stripe" redirect
+- **Touchpoints:** `stripe-create-checkout` → redirect → `stripe-webhook` `checkout.session.completed` (invoice branch) → `handleInvoiceCheckoutCompleted`
+- **Priority:** HIGH
+
+### F4. Saved payment method list / detach
+- **Actor:** parent
+- **Entry:** `/portal/invoices` → Payment Methods
+- **Touchpoints:** `useSavedPaymentMethods` → `stripe-list-payment-methods`, `stripe-detach-payment-method` edge fns
+- **Priority:** HIGH
+
+### F5. Auto-pay preferences update
+- **Actor:** parent | owner | admin
+- **Entry:** `PaymentMethodsCard`
+- **Touchpoints:** `stripe-update-payment-preferences` edge fn → updates `organisations` / parent-level preferences
+- **Priority:** HIGH
+
+### F6. Installment auto-pay run
+- **Actor:** system (cron/scheduler) + on-demand
+- **Entry:** scheduled or triggered by `installment-upcoming-reminder`
+- **Touchpoints:** `stripe-auto-pay-installment` edge fn → off-session PI → `stripe-webhook` `payment_intent.succeeded` → `payments` + invoice update; failure → `installment-overdue-check` cron + `auto-pay-upcoming-reminder`
+- **Priority:** CRITICAL (autonomous money; retry logic)
+
+### F7. Customer portal (Stripe-hosted subscription mgmt)
+- **Actor:** owner only (per claude.md)
+- **Entry:** `/settings` → Billing → "Manage subscription"
+- **Touchpoints:** `stripe-customer-portal` edge fn → Stripe customer portal URL → return → `stripe-webhook` subscription lifecycle events
+- **Priority:** HIGH
+
+### F8. Refund (partial or full)
+- **Actor:** owner | admin | finance
+- **Entry:** `RefundDialog` on `InvoiceDetail`
+- **Touchpoints:** `useRefund` → `stripe-process-refund` edge fn (platform account) → Stripe refund → `stripe-webhook` `charge.refunded` → `refunds` row (service_role writes only); OR `record_manual_refund` RPC for off-Stripe refunds → `send-refund-notification`
+- **Referenced audits:** `audit-feature-14-refunds.md`
+- **Priority:** CRITICAL (destructive money; dual path)
+
+### F9. Payment receipt email
+- **Actor:** system
+- **Entry:** on successful payment
+- **Touchpoints:** `send-payment-receipt` edge fn (triggered by webhook handler or record-payment path) → Resend
+- **Priority:** MEDIUM
+
+### F10. Stripe webhook (event processing)
+- **Actor:** Stripe
+- **Entry:** `https://…/functions/v1/stripe-webhook`
+- **Touchpoints:** signature verify → `stripe_webhook_events` dedup insert (23505 = duplicate, returns 200) → switch on event.type: `checkout.session.completed` (subscription vs invoice), `checkout.session.expired`, `customer.subscription.{created,updated,deleted}`, `invoice.payment_{succeeded,failed}`, `payment_intent.{succeeded,payment_failed}`, `account.updated`, `account.application.deauthorized`, `charge.refunded`
+- **Exits:** 200 on success/duplicate; 400 on bad signature; **500 on DB failure** (per claude.md convention)
+- **Priority:** CRITICAL (central money event bus)
+
+### F11. Stripe billing history (for org admin UI)
+- **Actor:** owner | admin
+- **Entry:** `/settings` → Billing → History
+- **Touchpoints:** `stripe-billing-history` edge fn → lists past Stripe invoices/charges
+- **Priority:** MEDIUM
+
+---

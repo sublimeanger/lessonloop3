@@ -13,7 +13,7 @@ Branch: `audit/phase-1-map`
 - [x] 1.C Scheduling (lessons, calendar, slots, recurrence)
 - [x] 1.D Attendance & registers
 - [x] 1.E Billing & invoicing
-- [ ] 1.F Payments (Stripe Connect, payment plans, auto-pay, refunds)
+- [x] 1.F Payments (Stripe Connect, payment plans, auto-pay, refunds)
 - [ ] 1.G Xero sync
 - [ ] 1.H Term continuation
 - [ ] 1.I Make-up credits & waitlists
