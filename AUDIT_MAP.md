@@ -625,3 +625,85 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** HIGH
 
 ---
+
+## Section 1.I — Make-up Credits & Waitlists
+
+### I1. Auto-issue make-up credit on absence
+- **Actor:** system (trigger)
+- **Entry:** `attendance_records` insert/update → status = absent (qualifying)
+- **Touchpoints:** `trg_auto_credit` trigger + `auto_issue_credit_on_absence` RPC → inserts `make_up_credits` row → `max per term` enforcement; `available_credits` view filters `voided_at IS NULL`
+- **Priority:** CRITICAL (currency-like asset)
+
+### I2. Manual credit issue / adjust
+- **Actor:** owner | admin
+- **Entry:** `/make-ups` or student detail
+- **Touchpoints:** direct insert on `make_up_credits` (RLS)
+- **Priority:** HIGH
+
+### I3. Credit void
+- **Actor:** owner | admin
+- **Entry:** `MakeUpDashboard` → row actions
+- **Touchpoints:** `void_make_up_credit` RPC → sets `voided_at`, `voided_by`; trigger `void_credits_on_student_delete` cascades on student delete
+- **Priority:** CRITICAL (destructive; audit trail)
+
+### I4. Credit consumption (parent books make-up)
+- **Actor:** parent
+- **Entry:** `/portal/schedule` → makeup open slot
+- **Touchpoints:** select open slot → atomic consume via RPC using `FOR UPDATE SKIP LOCKED` to prevent double-spend → inserts `lesson_participants`, marks credit consumed
+- **Priority:** CRITICAL (concurrency)
+
+### I5. Credit expiry (cron)
+- **Actor:** system
+- **Entry:** cron `credit-expiry`
+- **Touchpoints:** `credit-expiry` edge fn → expires credits past term end (except those on active waitlist per claude.md); optionally emails via `credit-expiry-warning`
+- **Priority:** HIGH
+
+### I6. Make-up waitlist add
+- **Actor:** owner | admin | parent
+- **Entry:** `/make-ups` or portal
+- **Touchpoints:** `useMakeUpWaitlist` → insert `make_up_waitlist` (dedup index); waitlist credit ownership validated (migration `20260331140000_validate_waitlist_credit_ownership`)
+- **Priority:** HIGH
+
+### I7. Make-up offer (match + notify)
+- **Actor:** owner | admin
+- **Entry:** `/make-ups` → match
+- **Touchpoints:** `notify-makeup-match` + `notify-makeup-offer` edge fns → emails parents; offer expires via deadline; `offer_notify_and_waitlist_audit` migration instruments audit
+- **Priority:** CRITICAL (parent-facing state machine)
+
+### I8. Make-up offer accept/decline
+- **Actor:** parent
+- **Entry:** email link → portal
+- **Touchpoints:** atomic RPC → converts offer to booked lesson + consumes credit OR declines
+- **Priority:** CRITICAL
+
+### I9. Enrolment waitlist add
+- **Actor:** owner | admin | parent
+- **Entry:** `/waitlist` (`EnrolmentWaitlistPage`) or public booking
+- **Touchpoints:** `useEnrolmentWaitlist` → insert `enrolment_waitlist` (mutual-exclusion vs `make_up_waitlist`)
+- **Priority:** HIGH
+
+### I10. Enrolment offer send
+- **Actor:** owner | admin
+- **Entry:** `/waitlist` → `OfferSlotDialog`
+- **Touchpoints:** `send-enrolment-offer` edge fn → email
+- **Priority:** HIGH
+
+### I11. Enrolment offer expiry
+- **Actor:** system
+- **Entry:** cron `enrolment-offer-expiry`
+- **Touchpoints:** expires stale offers; restores waitlist position
+- **Priority:** HIGH
+
+### I12. Waitlist respond (accept/decline via link)
+- **Actor:** parent
+- **Entry:** `waitlist-respond` edge fn (token-based, public)
+- **Touchpoints:** atomic conversion → insert `lesson_participants` or decline → audit row
+- **Priority:** CRITICAL
+
+### I13. Waitlist general expiry cron
+- **Actor:** system
+- **Entry:** cron `waitlist-expiry`
+- **Touchpoints:** age-out stale entries
+- **Priority:** MEDIUM
+
+---

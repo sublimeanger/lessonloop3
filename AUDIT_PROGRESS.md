@@ -16,7 +16,7 @@ Branch: `audit/phase-1-map`
 - [x] 1.F Payments (Stripe Connect, payment plans, auto-pay, refunds)
 - [x] 1.G Xero sync
 - [x] 1.H Term continuation
-- [ ] 1.I Make-up credits & waitlists
+- [x] 1.I Make-up credits & waitlists
 - [ ] 1.J Parent portal
 - [ ] 1.K Messaging
 - [ ] 1.L Practice tracking & resources
