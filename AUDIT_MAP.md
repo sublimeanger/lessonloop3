@@ -1424,3 +1424,63 @@ Grouped:
 - Xero sync converts using org currency
 
 ---
+
+## Section 2.3 — State Machine Enforcement
+
+### Invoice status: draft → sent → paid → voided
+- **Enforced by:** DB trigger on `invoices` (per claude.md) + frontend `useInvoices` hints
+- Migration files touching invoice status: `20260119234233_*.sql`, `20260120101844_*.sql`, and others under `supabase/migrations`
+- Mutation points: `send-invoice-email` (draft→sent), payments trigger (sent→paid when `paid_minor=total_minor`), `stripe-webhook` (via record RPC), void action from UI
+- Refund does NOT auto-void invoice (dual state — invoice still "paid", refund record exists)
+
+### Payment status (implied)
+- `payments` records are insert-only once written; unique constraint on Stripe PI id; three-layer idempotency per claude.md (`stripe_webhook_events` dedup + unique PI + `record_stripe_payment_paid_guard`)
+
+### Refund lifecycle
+- `refunds.voided_at` + `voided_by` — refunds themselves can be marked void (e.g. Stripe refund failed after record)
+- RLS: no auth-role INSERT/UPDATE/DELETE; service_role only
+
+### Make-up credit lifecycle
+- States (inferred): active (voided_at IS NULL, consumed_at IS NULL) → consumed (consumed_at set) → voided (voided_at set)
+- Consumption: atomic via `FOR UPDATE SKIP LOCKED`
+- Void: `void_make_up_credit` RPC (sets voided_at, voided_by); cascade `void_credits_on_student_delete` trigger
+- Auto-reverse on attendance change: migration `20260403000004_fix_credit_reversal_on_attendance_change.sql`
+- `available_credits` view filters WHERE `voided_at IS NULL`
+
+### Waitlist status
+- `make_up_waitlist`: active → offered → accepted / declined / expired
+- `enrolment_waitlist`: active → offered → accepted / declined / expired (mutual exclusion with makeup waitlist)
+- Transitions via edge fns: `send-enrolment-offer`, `notify-makeup-offer`, `waitlist-respond`, cron `waitlist-expiry`, `enrolment-offer-expiry`
+- Audit: `offer_notify_and_waitlist_audit` migration
+
+### Continuation run status
+- `term_continuation_runs`: draft → active → closed (deadline passed)
+- `term_continuation_responses`: pending → continue / change / stop / no_response
+- **Server-side deadline enforcement** per claude.md
+- Recalc: `recalc_continuation_summary` RPC
+- Bulk processing: `bulk-process-continuation` edge fn
+
+### Lead pipeline
+- `leads.status` via pipeline stages; `convert_lead` RPC promotes to student
+
+### Subscription status (on `organisations`)
+- trialing → active / past_due / expired / canceled
+- Protected by `protect_subscription_fields` trigger (only service_role, Stripe webhook); auto-promotion via `20260316360003_auto_transition_solo_to_studio.sql`
+- Transitions via `stripe-webhook` only
+
+### Lesson status
+- Implicit: `is_open_slot` flag flips to false on INSERT of first participant (trigger)
+- `auto_complete_stale_lessons` migration auto-marks stale unmarked lessons (likely to "completed" with "present" default)
+- Delete guarded if invoiced (trigger)
+
+### Attendance records
+- One row per (lesson, student); status enum; insertable/updateable; reversals cascade to credit reversal
+
+### Xero sync mapping status
+- LessonLoop `draft` → Xero `DRAFT`
+- LessonLoop `sent` → Xero `AUTHORISED`
+- LessonLoop `paid` → Xero `AUTHORISED` (NOT "PAID" because payments path is scope-blocked)
+- LessonLoop `voided` → Xero `VOIDED`
+- Mapping logic in `xero-sync-invoice/index.ts` — re-sync must not duplicate
+
+---

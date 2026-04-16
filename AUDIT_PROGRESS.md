@@ -32,7 +32,7 @@ Branch: `audit/phase-1-map`
 ## Section 2: Cross-cutting concerns (one per commit)
 - [x] 2.1 Authn/Authz
 - [x] 2.2 Money handling
-- [ ] 2.3 State machine enforcement
+- [x] 2.3 State machine enforcement
 - [ ] 2.4 Idempotency
 - [ ] 2.5 Migrations vs live schema risk
 - [ ] 2.6 Cron/scheduled
