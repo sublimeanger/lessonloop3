@@ -1075,3 +1075,214 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** HIGH (silent plan change)
 
 ---
+
+## Section 1.P — Payroll
+
+### P1. Payroll report view (date range)
+- **Actor:** owner | admin | finance | teacher (own rows only)
+- **Entry:** `/reports/payroll` (`pages/reports/Payroll.tsx`)
+- **Touchpoints:** `usePayroll` → reads `lessons` + `lesson_participants` + `attendance_records` + `teachers.pay_rate_type` / `pay_rate_value` → computes teacher totals (per_lesson | hourly | percentage)
+- **Referenced audits:** `audit-feature-26-payroll.md`
+- **Priority:** CRITICAL (money path — though read-only; percentage math + attendance exclusions)
+
+### P2. Payroll CSV export
+- **Actor:** owner | admin | finance
+- **Entry:** `/reports/payroll` → Export
+- **Touchpoints:** client-side CSV generation; `useDataExport`
+- **Priority:** HIGH (PII egress)
+
+### P3. Percentage pay rate (added April 2026)
+- **Actor:** derived from teacher config
+- **Entry:** teacher edit (see B5)
+- **Touchpoints:** migration `20260404210000_add_percentage_pay_rate_type.sql`; payroll resolver applies rate against revenue from attended lessons
+- **Priority:** HIGH (new money logic)
+
+---
+
+## Section 1.Q — Reports & Exports
+
+### Q1. Dashboard widgets
+- **Actor:** owner | admin | teacher | finance
+- **Entry:** `/dashboard`
+- **Touchpoints:** various hooks (`useUrgentActions`, `useTodayLessons`, `useUsageCounts`, `usePaymentAnalytics`)
+- **Priority:** LOW (read-only)
+
+### Q2. Revenue report
+- **Actor:** owner | admin | finance
+- **Entry:** `/reports/revenue`
+- **Touchpoints:** aggregates `payments.paid_minor` vs `invoices.total_minor`; migration `20260316360002_fix_revenue_report_paid_minor.sql`
+- **Priority:** HIGH (reporting accuracy — financial)
+
+### Q3. Outstanding report
+- **Actor:** owner | admin | finance
+- **Entry:** `/reports/outstanding`
+- **Touchpoints:** unpaid invoices aged; currency-aware
+- **Priority:** HIGH
+
+### Q4. Lessons delivered report
+- **Actor:** owner | admin | teacher
+- **Entry:** `/reports/lessons`
+- **Touchpoints:** attended lesson counts
+- **Priority:** MEDIUM
+
+### Q5. Cancellation report
+- **Actor:** owner | admin
+- **Entry:** `/reports/cancellations`
+- **Priority:** MEDIUM
+
+### Q6. Attendance report
+- **Actor:** owner | admin | teacher
+- **Entry:** `/reports/attendance`
+- **Touchpoints:** `useAttendanceReport`
+- **Priority:** MEDIUM
+
+### Q7. Utilisation report
+- **Actor:** owner | admin
+- **Entry:** `/reports/utilisation`
+- **Touchpoints:** capacity vs booked calculation
+- **Priority:** MEDIUM
+
+### Q8. Teacher performance report
+- **Actor:** owner | admin
+- **Entry:** `/reports/teacher-performance`
+- **Touchpoints:** `useTeacherPerformance`
+- **Priority:** MEDIUM
+
+### Q9. CSV export on all 8 reports
+- **Actor:** owner | admin | finance (per report)
+- **Entry:** per-page Export button
+- **Touchpoints:** client-side CSV
+- **Priority:** HIGH (PII egress, financial egress)
+
+---
+
+## Section 1.R — GDPR
+
+### R1. GDPR data export (per-subject, parent or staff)
+- **Actor:** any authenticated user (for self)
+- **Entry:** `/settings` → Privacy (`PrivacyTab`) or portal profile
+- **Touchpoints:** `useGDPRExport` → `gdpr-export` edge fn → queries all tables scoped to `auth.uid()` → returns JSON
+- **Priority:** CRITICAL
+
+### R2. GDPR account delete (right to erasure)
+- **Actor:** any authenticated user
+- **Entry:** `/settings` → Privacy
+- **Touchpoints:** `useGDPRDelete` → `gdpr-delete` edge fn → hard-delete or anonymise across tables; `useDeletionCandidates` previews impact
+- **Priority:** CRITICAL (destructive; cascade correctness)
+
+### R3. Account delete (owner self-serve)
+- **Actor:** owner
+- **Entry:** `ProfileTab`
+- **Touchpoints:** `account-delete` edge fn → org ownership check → cascades to all org data
+- **Priority:** CRITICAL (org destruction)
+
+### R4. Notification preference opt-out / list-unsubscribe
+- **Actor:** any recipient
+- **Entry:** settings → Notifications or List-Unsubscribe mail header
+- **Touchpoints:** `notification_preferences` rows; all email dispatch respects them
+- **Priority:** HIGH (compliance)
+
+### R5. Child data restrictions (parent-RPC only access)
+- **Actor:** parent
+- **Entry:** portal
+- **Touchpoints:** `students.notes` restricted from parents at RPC level; `get_parent_lesson_notes` strips private notes
+- **Priority:** CRITICAL
+
+---
+
+## Section 1.S — Native (iOS / Android)
+
+### S1. App launch / deep-link handling
+- **Actor:** any user on native
+- **Entry:** app open / universal link / push tap
+- **Touchpoints:** `lib/native/init.ts` → sets up Capacitor; `lib/native/deepLinks.ts` parses `/accept-invite`, invoice links, etc. and routes via `NativeInitializer`
+- **Priority:** HIGH (deep-link open-redirect surface)
+
+### S2. Push notification registration & delivery
+- **Actor:** authenticated user on native
+- **Entry:** on login (post-auth)
+- **Touchpoints:** `services/pushNotifications.ts` → Capacitor Push → registers device token → stored on `profiles` or dedicated table → `send-push` edge fn delivers via APNs/FCM
+- **Priority:** HIGH (PII-bearing channel + token rotation)
+
+### S3. App state change (resume)
+- **Actor:** any user
+- **Entry:** Capacitor `App.appStateChange`
+- **Touchpoints:** session refresh + query invalidation (see A9)
+- **Priority:** HIGH
+
+### S4. Status bar / keyboard / haptics / camera / share
+- **Actor:** user
+- **Entry:** various UI interactions
+- **Touchpoints:** `lib/native/{statusBar,keyboard,haptics,camera,share,badge,browser,network}.ts`; `useIOSKeyboardHeight`
+- **Priority:** LOW (UX)
+
+### S5. Stripe / Apple IAP conflict handling
+- **Actor:** user
+- **Entry:** any payment UI on native
+- **Touchpoints:** `platform.ts` detects native → hides Stripe payment UI (Apple IAP policy)
+- **Priority:** HIGH (App Store compliance)
+
+### S6. Android back button
+- **Actor:** Android user
+- **Entry:** hardware back
+- **Touchpoints:** `useAndroidBackButton`
+- **Priority:** LOW
+
+### S7. Offline state
+- **Actor:** any
+- **Entry:** loss of connectivity
+- **Touchpoints:** `useOnlineStatus`, `OfflineBanner`; query cache survives
+- **Priority:** MEDIUM
+
+---
+
+## Section 1.T — Marketing Site → App Conversion
+
+### T1. Static marketing site (Cloudflare Pages)
+- **Actor:** public
+- **Entry:** `lessonloop.net` (prerendered output in `marketing-html/`)
+- **Touchpoints:** `scripts/prerender.mjs` loads `routes-ssg.ts` → writes HTML; **claude.md warns on `localhost` leak risk**
+- **Priority:** HIGH (production hostname leak regression)
+
+### T2. Marketing → app CTA (Sign up / Login)
+- **Actor:** public
+- **Entry:** marketing CTA → `app.lessonloop.net/signup`
+- **Touchpoints:** link; sometimes pre-fills plan via query string
+- **Priority:** MEDIUM
+
+### T3. Contact form
+- **Actor:** public
+- **Entry:** marketing `/contact` or app-side `Contact`
+- **Touchpoints:** `send-contact-message` edge fn → internal email
+- **Priority:** HIGH (public write endpoint, spam vector)
+
+### T4. Marketing AI chat
+- **Actor:** public
+- **Entry:** marketing widget
+- **Touchpoints:** `marketing-chat` edge fn (LLM, rate-limited)
+- **Priority:** HIGH (public LLM cost + abuse)
+
+### T5. Public booking page
+- **Actor:** public prospect
+- **Entry:** `lessonloop.net/book/{slug}` → proxied to app `/book/:slug`
+- **Touchpoints:** `BookingPage.tsx` → `booking-get-slots`, `booking-submit`; enquiry mode → `send-parent-enquiry` → `leads` pipeline (`convert_lead` RPC on qualification)
+- **Priority:** CRITICAL (public write endpoint)
+
+### T6. Lead pipeline management (inbound)
+- **Actor:** owner | admin
+- **Entry:** `/leads` (`Leads.tsx`)
+- **Touchpoints:** `useLeads`, `useLeadActivities`, `useLeadAnalytics`, `LeadDetail` → `convert_lead` RPC to promote to students
+- **Priority:** HIGH
+
+### T7. Kickstarter / marketing page internal
+- **Actor:** public
+- **Entry:** `/kickstarter` → external redirect
+- **Priority:** LOW
+
+### T8. Report download (marketing gated content)
+- **Actor:** public (lead capture)
+- **Entry:** `pages/marketing/ReportDownload.tsx`
+- **Touchpoints:** captures email → lead row; `send-contact-message` or similar
+- **Priority:** MEDIUM
+
+---

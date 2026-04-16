@@ -23,11 +23,11 @@ Branch: `audit/phase-1-map`
 - [x] 1.M Notes
 - [x] 1.N LoopAssist
 - [x] 1.O Subscriptions & trials
-- [ ] 1.P Payroll
-- [ ] 1.Q Reports & exports
-- [ ] 1.R GDPR
-- [ ] 1.S Native (iOS/Android)
-- [ ] 1.T Marketing site → app
+- [x] 1.P Payroll
+- [x] 1.Q Reports & exports
+- [x] 1.R GDPR
+- [x] 1.S Native (iOS/Android)
+- [x] 1.T Marketing site → app
 
 ## Section 2: Cross-cutting concerns (one per commit)
 - [ ] 2.1 Authn/Authz
