@@ -583,3 +583,45 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** LOW
 
 ---
+
+## Section 1.H — Term Continuation
+
+### H1. Create continuation run (wizard)
+- **Actor:** owner | admin
+- **Entry:** `/continuation` → `ContinuationRunWizard`
+- **Touchpoints:** `useTermContinuation` → `create-continuation-run` edge fn (4 invocation sites — stage flags) → inserts `term_continuation_runs` + per-student `term_continuation_responses` → enqueues emails
+- **Exits:** run visible on `/continuation`; failure → rollback
+- **Referenced audits:** `audit-feature-16-term-continuation.md`, `deep-audit-continuation-part2.md`, `deep-audit-continuation-part3.md`
+- **Priority:** CRITICAL (bulk parent comms + downstream lesson creation)
+
+### H2. Bulk-process continuation (server-side batch update)
+- **Actor:** owner | admin
+- **Entry:** `/continuation`
+- **Touchpoints:** `bulk-process-continuation` edge fn → applies responses server-side → updates `term_continuation_responses.status`, inserts `lessons` for accepted, voids credits/offers as needed
+- **Priority:** CRITICAL (bulk write, deadline-enforced)
+
+### H3. Parent response (authenticated portal)
+- **Actor:** parent
+- **Entry:** `/portal/continuation`
+- **Touchpoints:** `continuation-respond` edge fn → updates `term_continuation_responses.status` (continue/change/stop) → may flip waitlist offers
+- **Priority:** CRITICAL (parent-initiated state change + downstream scheduling)
+
+### H4. Parent response (public link, unauthenticated)
+- **Actor:** parent
+- **Entry:** `/respond/continuation` (public route, signed token)
+- **Touchpoints:** same `continuation-respond` edge fn — verifies token; server-side deadline enforcement
+- **Priority:** CRITICAL (unauth endpoint, token forgery surface)
+
+### H5. Run summary recompute
+- **Actor:** staff (any time) + after responses
+- **Entry:** `/continuation` run detail view
+- **Touchpoints:** `recalc_continuation_summary` RPC → aggregates counts/amounts on `term_continuation_runs`
+- **Priority:** HIGH
+
+### H6. Continuation response inspect / override
+- **Actor:** owner | admin
+- **Entry:** `ContinuationResponseDetail`
+- **Touchpoints:** direct row update on `term_continuation_responses` (RLS + trigger enforces transition)
+- **Priority:** HIGH
+
+---
