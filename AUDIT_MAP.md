@@ -778,3 +778,86 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** LOW
 
 ---
+
+## Section 1.K — Messaging
+
+### K1. Staff → parent thread message
+- **Actor:** owner | admin | teacher | finance
+- **Entry:** `/messages` → `ComposeMessageModal`
+- **Touchpoints:** `useMessages` → `send-message` edge fn → inserts `internal_messages` (thread), dispatches email via Resend (with List-Unsubscribe), `escapeHtml` per claude.md
+- **Referenced audits:** `audit-feature-23-messaging.md`
+- **Priority:** CRITICAL (email, PII, XSS in rendered HTML)
+
+### K2. Parent → staff reply
+- **Actor:** parent
+- **Entry:** `/portal/messages`
+- **Touchpoints:** `useParentReply` / `useParentEnquiry` → `send-parent-message` edge fn (unified) → inserts `internal_messages`, email notifies staff via `notify-internal-message`
+- **Priority:** HIGH
+
+### K3. Internal staff-to-staff message
+- **Actor:** owner | admin | teacher | finance
+- **Entry:** `/messages` → `InternalComposeModal`
+- **Touchpoints:** `useInternalMessages` → insert `internal_messages` (internal thread) → `notify-internal-message` edge fn emails recipients
+- **Priority:** MEDIUM
+
+### K4. Bulk message (org-wide or segmented)
+- **Actor:** owner | admin
+- **Entry:** `/messages` → `BulkComposeModal`
+- **Touchpoints:** `useBulkMessage` → `send-bulk-message` edge fn (admin-only, escapeHtml, List-Unsubscribe) → emails all matching guardians/teachers
+- **Priority:** CRITICAL (mass email; consent + rate)
+
+### K5. Message thread read state
+- **Actor:** any
+- **Entry:** open thread
+- **Touchpoints:** `useUnreadMessages` → `mark-messages-read` edge fn → updates `internal_messages.read_at` per-recipient
+- **Priority:** MEDIUM
+
+### K6. Teacher-conversation reassignment on teacher departure
+- **Actor:** owner | admin
+- **Entry:** `MessagingSettingsTab`
+- **Touchpoints:** `reassign_teacher_conversations_to_owner` RPC → bulk reassign
+- **Priority:** MEDIUM
+
+### K7. Admin approves pending message request (portal → staff)
+- **Actor:** owner | admin
+- **Entry:** `MessageRequestsList` (`useAdminMessageRequests`)
+- **Touchpoints:** on approve → calls `send-message` to dispatch conversation; inserts `internal_messages`
+- **Priority:** HIGH
+
+### K8. Payment notifications (internal system table)
+- **Actor:** system
+- **Entry:** Stripe payment handler / invoice reminders
+- **Touchpoints:** `payment_notifications` table (service_role INSERT only) — surfaced in portal and admin views
+- **Priority:** HIGH (RLS on write)
+
+### K9. Contact form (public)
+- **Actor:** public
+- **Entry:** marketing `/contact`
+- **Touchpoints:** `send-contact-message` edge fn → emails internal team
+- **Priority:** MEDIUM (public write endpoint)
+
+### K10. Absence / cancellation / refund / receipt notifications
+- **Actor:** system (triggered by attendance/refund/payment)
+- **Entry:** internal
+- **Touchpoints:** `send-absence-notification`, `send-cancellation-notification`, `send-refund-notification`, `send-payment-receipt`, `send-notes-notification` edge fns → Resend
+- **Priority:** HIGH
+
+### K11. Lesson reminders
+- **Actor:** system (cron)
+- **Entry:** cron job 14 (hourly)
+- **Touchpoints:** `send-lesson-reminders` edge fn (290 lines; dedup by lesson+recipient)
+- **Priority:** HIGH
+
+### K12. Push notifications (native)
+- **Actor:** system
+- **Entry:** various (messages, reminders, etc.)
+- **Touchpoints:** `send-push` edge fn → APNs/FCM via Capacitor Push registration in `services/pushNotifications.ts`
+- **Priority:** HIGH (native delivery + token storage)
+
+### K13. Streak / practice / contextual nudges
+- **Actor:** system
+- **Entry:** cron or trigger
+- **Touchpoints:** `streak-notification`, `notify-makeup-*`, etc.
+- **Priority:** MEDIUM
+
+---
