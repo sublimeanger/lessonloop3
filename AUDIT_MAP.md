@@ -707,3 +707,74 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** MEDIUM
 
 ---
+
+## Section 1.J — Parent Portal
+
+### J1. Portal home
+- **Actor:** parent
+- **Entry:** `/portal/home` (`PortalHome.tsx`)
+- **Touchpoints:** `useParentPortal`, `ChildSwitcher`, `ThisWeekFocus`, `ParentOnboardingChecklist`, `PortalWelcomeDialog` → queries parent guardian chain (auth.uid → guardians.user_id → student_guardians → students) → filters by `?child=` via `useChildFilter`
+- **Referenced audits:** `audit-feature-22-parent-portal.md`
+- **Priority:** CRITICAL (guardian chain is the RLS boundary for all child data)
+
+### J2. Portal schedule
+- **Actor:** parent
+- **Entry:** `/portal/schedule`
+- **Touchpoints:** list upcoming/past lessons filtered by child → `LessonChangeSheet` for reschedule/cancel requests → reschedule via `RescheduleSlotPicker`
+- **Priority:** HIGH
+
+### J3. Portal practice (log practice, streak, goals)
+- **Actor:** parent (or student via parent)
+- **Entry:** `/portal/practice`
+- **Touchpoints:** `PracticeTimer` → insert `practice_logs` → triggers streak/goal calcs; `PracticeHistory`, `WeeklyGoalCard`, `PracticeMilestones`
+- **Priority:** MEDIUM
+
+### J4. Portal resources
+- **Actor:** parent
+- **Entry:** `/portal/resources`
+- **Touchpoints:** list `resources` assigned to child (filtered by guardian chain); storage download URLs via signed URL
+- **Priority:** MEDIUM
+
+### J5. Portal invoices & payment
+- **Actor:** parent
+- **Entry:** `/portal/invoices`
+- **Touchpoints:** list `invoices` for guardian → `PaymentDrawer` (embedded Stripe) → `useEmbeddedPayment`; `PaymentPlanInvoiceCard` for installments; `PaymentMethodsCard` for saved methods and auto-pay preferences
+- **Priority:** CRITICAL (parent-facing money)
+
+### J6. Portal messages
+- **Actor:** parent
+- **Entry:** `/portal/messages`
+- **Touchpoints:** `useParentConversations` → list `internal_messages` threads (guardian-scoped, **not** child-filtered by design) → `send-parent-message` edge fn to send/reply → `mark-messages-read` to clear unread
+- **Priority:** HIGH
+
+### J7. Portal profile
+- **Actor:** parent
+- **Entry:** `/portal/profile`
+- **Touchpoints:** update `profiles`, `notification_preferences`; GDPR export/delete buttons (see 1.R)
+- **Priority:** MEDIUM
+
+### J8. Portal continuation response
+- **Actor:** parent
+- **Entry:** `/portal/continuation` (also public `/respond/continuation`)
+- **Touchpoints:** `continuation-respond` edge fn (see H3/H4)
+- **Priority:** CRITICAL
+
+### J9. Parent LoopAssist (parent-side AI copilot)
+- **Actor:** parent
+- **Entry:** `PortalHome` LoopAssist widget or dedicated drawer
+- **Touchpoints:** `useParentLoopAssist` → `parent-loopassist-chat` edge fn (streaming) → Anthropic Claude
+- **Priority:** HIGH (data-scoping — must only expose parent's children)
+
+### J10. Parent enquiry (portal & public booking)
+- **Actor:** parent or prospect
+- **Entry:** portal or `/book/:slug` enquiry mode
+- **Touchpoints:** `useParentEnquiry` → `send-parent-message` edge fn (unified with replies) OR `send-parent-enquiry` for lead generation → `leads` insert
+- **Priority:** HIGH
+
+### J11. Guardian invitation acceptance badge (admin-side visibility)
+- **Actor:** owner | admin (viewing)
+- **Entry:** student detail / guardian list
+- **Touchpoints:** reads `org_invitations` state; displays "Portal Active"/"Invite Pending"
+- **Priority:** LOW
+
+---
