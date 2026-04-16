@@ -318,3 +318,63 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** MEDIUM
 
 ---
+
+## Section 1.D — Attendance & Registers
+
+### D1. Daily register (per-teacher view)
+- **Actor:** owner | admin | teacher
+- **Entry:** `/register` (`DailyRegister.tsx`)
+- **Touchpoints:** `useRegisterData` → loads today's `lessons` + `lesson_participants` + existing `attendance_records` → `RegisterRow` per-lesson marking → upsert `attendance_records` (status: present/absent/late/cancelled/…)
+- **Exits:** status persisted; triggers: `trg_auto_credit` (issues `make_up_credits` on qualifying absence), `send-absence-notification` (if parents opted in)
+- **Referenced audits:** `audit-feature-10-attendance-register.md`
+- **Priority:** CRITICAL (credit issuance triggered here)
+
+### D2. Mark lesson day complete (batch "all present")
+- **Actor:** owner | admin | teacher
+- **Entry:** `MarkDayCompleteButton` on `LessonDetailPanel`
+- **Touchpoints:** bulk upsert `attendance_records` with `present`
+- **Priority:** HIGH (silently sets attendance for all)
+
+### D3. Batch attendance — multi-day
+- **Actor:** owner | admin | teacher
+- **Entry:** `/batch-attendance` (`BatchAttendance.tsx`)
+- **Touchpoints:** multi-date selector → bulk upsert `attendance_records` for range
+- **Priority:** HIGH
+
+### D4. Unmarked backlog view
+- **Actor:** owner | admin | teacher
+- **Entry:** `UnmarkedBacklogView`; `useUrgentActions` + `get_unmarked_lesson_count` RPC power dashboard badges
+- **Touchpoints:** surfaces lessons past `start_at` lacking attendance records
+- **Priority:** MEDIUM
+
+### D5. Auto-complete stale lessons
+- **Actor:** system (migration trigger `auto_complete_stale_lessons`)
+- **Entry:** scheduled/trigger path on stale unmarked lessons
+- **Touchpoints:** migration `20260330234227_auto_complete_stale_lessons.sql`; may insert present records automatically after some threshold
+- **Priority:** HIGH (silent attendance write → credit/payroll side effects)
+
+### D6. Absence reason capture + parent notification
+- **Actor:** owner | admin | teacher
+- **Entry:** `AbsenceReasonPicker` on register row after marking absent
+- **Touchpoints:** update `attendance_records.absence_reason` → `send-absence-notification` edge fn (parent email via Resend) → may trigger `auto_issue_credit_on_absence` RPC
+- **Priority:** CRITICAL (credit path + parent comms)
+
+### D7. Credit reversal when attendance changes
+- **Actor:** staff toggling status
+- **Entry:** re-mark existing record
+- **Touchpoints:** migration `20260403000004_fix_credit_reversal_on_attendance_change.sql` — voids previously issued credit if status changes away from absent
+- **Priority:** CRITICAL (state reversal correctness)
+
+### D8. Realtime attendance/practice subscription
+- **Actor:** any participant
+- **Entry:** register pages
+- **Touchpoints:** migration `20260330234228_add_realtime_attendance_practice.sql` enables Supabase Realtime on attendance tables; UI updates on push
+- **Priority:** MEDIUM
+
+### D9. Dashboard urgent-action counters
+- **Actor:** owner | admin | teacher
+- **Entry:** `Dashboard.tsx`
+- **Touchpoints:** `useUrgentActions` → `get_unmarked_lesson_count` and similar RPCs
+- **Priority:** LOW
+
+---
