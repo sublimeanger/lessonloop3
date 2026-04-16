@@ -1484,3 +1484,50 @@ Grouped:
 - Mapping logic in `xero-sync-invoice/index.ts` — re-sync must not duplicate
 
 ---
+
+## Section 2.4 — Idempotency
+
+### Stripe webhook
+- **Table:** `stripe_webhook_events` (event_id unique)
+- **Mechanism:** INSERT on receipt; 23505 unique-violation → returns 200 `duplicate: true`; otherwise process
+- **Layer 2:** `payments.stripe_payment_intent_id` unique constraint (per claude.md)
+- **Layer 3:** `record_stripe_payment_paid_guard` RPC blocks over-application
+- **TTL:** migration `20260331170000_webhook_events_ttl_guidance.sql` — must verify retention/cleanup
+
+### Xero sync (invoice)
+- **Table:** `xero_entity_mappings` (local_id, entity_type, xero_id, tenant) — dedups contact + invoice creation on re-sync
+- **Mechanism:** look up existing mapping → PUT to update / POST to create; upsert mapping
+- **Gap:** auto-sync from `create-billing-run` and `stripe-webhook` uses fire-and-forget `fetch` — must check idempotency guard prevents duplicate Xero invoices if webhook replays
+
+### Billing run creation (`create-billing-run`)
+- **Mechanism:** rate-limit + dedup check against existing billing run for (org, period) → prevents duplicate invoice sets
+- **Gap area:** partial failure in multi-student loop — need to confirm rollback/retry semantics
+
+### Email dispatch (Resend)
+- **Mechanism:** `send-lesson-reminders` deduplicates by lesson+recipient (per claude.md 290 lines note)
+- Other email edge fns (`send-invoice-email`, `send-bulk-message`, `send-absence-notification`, etc.) — **unclear dedup** — Phase 2 must check for "send twice" risk on double-click or retry
+- Claude.md: "Email: Resend API, 3x retry" — internal HTTP retry may compound if Resend returns ambiguous response
+
+### Cron-triggered edge functions
+- `send-lesson-reminders` — dedup by lesson+recipient
+- `invoice-overdue-check`, `installment-upcoming-reminder`, `installment-overdue-check` — must check before re-sending same day
+- `credit-expiry`, `credit-expiry-warning`, `enrolment-offer-expiry`, `waitlist-expiry`, `ical-expiry-reminder` — operate on timestamps, inherent idempotent if "done" flag set
+- `calendar-refresh-busy` — per-org refresh; overwrites `external_busy_blocks`
+- `trial-reminder-{1,3,7}day`, `trial-expired`, `trial-winback` — must key by org + reminder type to avoid repeat
+
+### CSV import
+- `csv-import-execute` uses `import_batch_id` (migration `20260330000001_add_import_batch_id_to_students.sql`) for dedup + undo (`20260330000002_add_undo_student_import_rpc.sql`)
+- **Replay risk:** same file re-uploaded — dedup basis unclear (email/name?)
+
+### Stripe checkout session
+- `stripe-create-checkout` — Stripe natively idempotent if same client reference passed; LessonLoop passes invoice_id
+
+### OAuth callbacks (Xero / Zoom / Google)
+- State token single-use
+- `xero-oauth-callback` upserts `xero_connections` per (org, tenant) — re-auth overwrites existing row (intended)
+
+### Frontend mutation idempotency (double-click protection)
+- Claude.md: Zod + `isPending`/`isSaving` — but individual mutations must still be idempotent server-side
+- React Query `retry: false` on mutations (App.tsx) — good
+
+---
