@@ -1358,3 +1358,69 @@ Tables with RLS: all tables per claude.md. Group by domain:
 | `/help` | all authenticated |
 
 ---
+
+## Section 2.2 — Money Handling
+
+### Integer minor-unit columns (every money value)
+Per claude.md: all amounts stored as integer `*_minor`. Frontend renders via `formatCurrencyMinor(amount, currency)` only.
+
+**DB tables with `*_minor`:**
+- `invoices.total_minor`, `invoices.paid_minor`
+- `invoice_items.unit_price_minor`, `invoice_items.amount_minor`, `invoice_items.quantity` (CHECK >= 0, NOT VALID)
+- `invoice_installments.amount_minor` (derived)
+- `payments.amount_minor`
+- `refunds.amount_minor`
+- `lesson_participants.rate_minor` (snapshot at create, preserved on edit)
+- `rate_cards.rate_minor`
+- `make_up_credits.amount_minor` (if stored as monetary)
+- `term_continuation_responses` projection fields (preview totals)
+- payroll computations aggregate from `lesson_participants.rate_minor` + `attendance_records`
+
+**Migrations that touch money semantics (non-exhaustive):**
+- `20260331160001_record_stripe_payment_paid_guard.sql` — payment paid-minor guard
+- `20260316360002_fix_revenue_report_paid_minor.sql` — revenue report fix
+- `20260331160000_record_manual_refund_rpc.sql` — manual refund RPC
+- `20260316360001_fix_payment_plan_columns_cache.sql` — payment plan schema
+- `20260331120000_fix_credit_term_dates_and_lesson_rate_fallback.sql` — lesson rate fallback
+- `20260403000004_fix_credit_reversal_on_attendance_change.sql`
+- `20260404210000_add_percentage_pay_rate_type.sql` — percentage payroll
+- `20260404000000_add_lesson_reminder_org_settings.sql` (not money but tangent)
+
+### Frontend money read/write surface (56 files)
+Grouped:
+- **Invoice UI:** `InvoiceList`, `InvoiceDetail`, `CreateInvoiceModal`, `SendInvoiceModal`, `RecordPaymentModal`, `RefundDialog`, `PaymentPlanSetup`, `InstallmentTimeline`, `PaymentPlansDashboard`, `PaymentPlanInvoiceCard`
+- **Billing runs:** `BillingRunWizard`, `BillingRunHistory`
+- **Hooks:** `useInvoices`, `useInvoiceInstallments`, `useBillingRuns`, `usePaymentAnalytics`, `useRefund`, `useReports`, `useRealtimeInvoices`, `usePayroll`, `useTeacherPerformance`, `useDataExport`
+- **Credits:** `useMakeUpCredits`, `useAvailableCredits`, `useParentCredits`, `IssueCreditModal`, `MakeUpCreditsPanel`
+- **Continuation (money projection):** `ContinuationRunWizard`, `ContinuationResponseDetail`, `Continuation.tsx`, `PortalContinuation`, `useTermContinuation`
+- **Term adjustments:** `TermAdjustmentWizard`, `AdjustmentHistoryPanel`, `AdjustmentPreviewCard`, `useTermAdjustment`
+- **Waitlist offers:** `OfferSlotDialog`, `WaitlistEntryDetail`
+- **Portal:** `PortalHome`, `PortalInvoices`, `useParentPortal`
+
+### Stripe money interactions (28 edge-fn files touch money)
+- `stripe-create-payment-intent` — amount from DB (invoice `total_minor - paid_minor`), destination charge
+- `stripe-create-checkout` — amount from DB
+- `stripe-auto-pay-installment` — amount from `invoice_installments.amount_minor`
+- `stripe-process-refund` — amount param server-verified vs `payments.amount_minor`
+- `stripe-webhook` — reconciles `payment_intents`, `charge.refunded`, subscription invoice events → writes `payments.amount_minor`, `refunds.amount_minor`, `invoices.paid_minor`
+- `stripe-subscription-checkout`, `stripe-customer-portal`, `stripe-billing-history` — subscription amounts from Stripe side (no minor write to org tables, but syncs `subscription_plan`)
+- `record_stripe_payment_paid_guard` RPC — prevents overpay / double-credit
+- `record_manual_refund` RPC — non-Stripe refund path
+- **Rule (claude.md):** financial amounts always from DB, never from client
+
+### Xero money interactions
+- `xero-sync-invoice` — reads DB `invoice_items.unit_price_minor` → converts to Xero decimal
+- `xero-sync-payment` — BLOCKED by scope (currently no-op / silent failure)
+
+### Refund / void paths
+- Stripe path: `stripe-process-refund` → Stripe → webhook `charge.refunded` → `refunds` row (service_role)
+- Manual path: `record_manual_refund` RPC
+- Invoice void: separate from refund; DB trigger on `invoices` enforces status transitions
+- Billing run delete: `delete_billing_run` RPC — blocked if any child invoice paid/voided
+
+### Currency handling
+- `organisations.currency_code` (ISO 4217 validated)
+- `formatCurrencyMinor(amount, currency)` in `src/lib/currency.ts` (likely) — never hardcoded `£`/`$`
+- Xero sync converts using org currency
+
+---
