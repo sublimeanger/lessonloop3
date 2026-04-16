@@ -1719,3 +1719,78 @@ These have no-JWT cron-style auth and mass-mailer patterns; Phase 2 must check S
 - WAF + CSP headers listed in "Remaining" — NOT YET ADDED
 
 ---
+
+## Section 2.8 — RPC Inventory (frontend call sites vs migration definitions)
+
+### Frontend-called RPCs (via `supabase.rpc(...)` or casted `(supabase.rpc as any)`)
+```
+add_to_enrolment_waitlist
+bulk_cancel_lessons
+bulk_update_lessons
+confirm_makeup_booking
+convert_waitlist_to_student
+count_lessons_on_dates
+create_invoice_with_items
+delete_billing_run
+dismiss_makeup_match
+find_waitlist_matches
+generate_installments
+get_invoice_stats
+get_lesson_notes_for_staff
+get_org_calendar_health
+get_org_sync_error_count
+get_parent_dashboard_data
+get_parent_lesson_notes
+get_revenue_report
+get_students_for_org
+get_teacher_id_for_user
+get_teachers_with_pay
+get_unbilled_lesson_ids
+get_unmarked_lesson_count
+get_user_roles
+offer_makeup_slot
+reassign_teacher_conversations_to_owner
+recalc_continuation_summary
+record_manual_refund
+record_payment_and_update_status
+redeem_make_up_credit
+respond_to_enrolment_offer
+respond_to_makeup_offer
+seed_make_up_policies
+set_primary_location
+shift_recurring_lesson_times
+undo_student_import
+void_invoice
+void_make_up_credit
+withdraw_from_enrolment_waitlist
+```
+(≈ 39 unique)
+
+### Migration-defined functions (sample, distinct)
+121 distinct `CREATE [OR REPLACE] FUNCTION` definitions across migrations. Categories:
+- **Auth/role helpers:** `is_org_admin`, `is_org_staff`, `is_org_scheduler`, `is_org_finance_team`, `is_org_member`, `is_org_parent`, `is_org_active`, `is_org_write_allowed`, `is_assigned_teacher`, `is_lesson_teacher`, `is_parent_of_student`, `has_org_role`, `has_role`, `get_user_org_ids`, `get_user_roles`, `get_org_role`, `get_guardian_ids_for_user`, `get_student_ids_for_parent`, `get_teacher_id_for_user`, `is_invoice_payer`
+- **Auto-generated / triggers:** `check_attendance_not_future`, `check_invoice_item_amounts`, `check_availability_overlap`, `check_lesson_conflicts`, `check_rate_limit`, `check_student_limit`, `check_teacher_limit`, `check_subscription_active`, `check_term_overlap`, `clear_open_slot_on_participant`, `clean*_*` cleanup fns, `log_audit_event`, `enforce_invoice_status_transition`, `prevent_org_id_change`, `block_owner_insert`, `generate_invoice_number`, `generate_ical_token`, `handle_new_organisation`, `handle_new_user`
+- **Data RPCs (frontend-callable):** as listed above
+- **Background / triggers:** `audit_attendance_changes`, `auto_add_to_waitlist`, `auto_issue_credit_on_absence`, `cancel_payment_plan`, `cleanup_attendance_on_cancel`, `cleanup_expired_invites`, `cleanup_resource_shares_on_student_archive`, `cleanup_rate_limits`, `cleanup_withdrawal_credits`, `complete_expired_assignments`, `complete_onboarding`, `anonymise_guardian`, `anonymise_student`, `get_lessons_on_date`, `public_notify_streak_milestone`
+
+### Mismatches / risks (for Phase 2 drill-down)
+- `seed_make_up_policies` — frontend-called; unclear which migration defines it
+- `convert_lead` — defined in migration (20260401000001) but grep above showed `convert_waitlist_to_student` in frontend; check for separate call site or drift
+- `get_students_for_org` — frontend casts as `any`; suggests missing or evolving type — verify live schema matches migration types
+- `shift_recurring_lesson_times` — both cast and non-cast invocations; verify consistent signature
+- `record_manual_refund`, `record_payment_and_update_status`, `record_stripe_payment_paid_guard` — three overlapping money RPCs; must confirm distinct intents vs migration-defined signatures
+- `offer_makeup_slot`, `respond_to_makeup_offer`, `confirm_makeup_booking`, `redeem_make_up_credit`, `dismiss_makeup_match`, `find_waitlist_matches` — waitlist/credit RPC cluster; risk if any is stub/untested
+- Several frontend RPCs (`get_org_calendar_health`, `get_org_sync_error_count`) depend on recent migrations — confirm live-DB presence
+
+### Generation of inventory
+SQL for Phase 2 (do NOT execute per rules — written for later use):
+```sql
+-- List all current public functions and EXECUTE grants
+SELECT n.nspname, p.proname, p.prosecdef, p.proacl
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+ORDER BY p.proname;
+```
+
+---
