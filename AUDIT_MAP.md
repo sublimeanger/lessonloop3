@@ -1016,3 +1016,62 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** LOW
 
 ---
+
+## Section 1.O — Subscriptions & Trials (LessonLoop's own billing)
+
+### O1. Trial start (at org creation)
+- **Actor:** owner
+- **Entry:** `onboarding-setup` edge fn
+- **Touchpoints:** sets `organisations.subscription_status='trialing'`, `trial_ends_at`; fields protected by `protect_subscription_fields` trigger (service_role or Stripe webhook only)
+- **Priority:** CRITICAL (protected column surface)
+
+### O2. Trial reminder emails
+- **Actor:** system
+- **Entry:** cron: `trial-reminder-7day`, `trial-reminder-3day`, `trial-reminder-1day`
+- **Touchpoints:** Resend; respects unsub preferences
+- **Priority:** MEDIUM
+
+### O3. Trial expiry
+- **Actor:** system
+- **Entry:** cron `trial-expired`
+- **Touchpoints:** flips `subscription_status='expired'`; UI shows `TrialExpiredModal`; `useFeatureGate` blocks features
+- **Priority:** HIGH
+
+### O4. Trial winback email
+- **Actor:** system
+- **Entry:** cron `trial-winback` (post-expiry)
+- **Touchpoints:** re-engagement email
+- **Priority:** LOW
+
+### O5. Subscription checkout (upgrade from trial / plan change)
+- **Actor:** owner (NOT admin — owner-only per claude.md)
+- **Entry:** `/settings` → Billing (`BillingTab`)
+- **Touchpoints:** `useSubscriptionCheckout` → `stripe-subscription-checkout` edge fn (verifies JWT + owner) → Stripe Checkout hosted flow → `stripe-webhook` `checkout.session.completed` (subscription branch) → updates `organisations` subscription fields → `customer.subscription.{created,updated}` lifecycle
+- **Priority:** CRITICAL (money + role gate)
+
+### O6. Customer portal (cancel / update plan)
+- **Actor:** owner only
+- **Entry:** `BillingTab` → "Manage subscription"
+- **Touchpoints:** `stripe-customer-portal` edge fn → Stripe portal → `customer.subscription.{updated,deleted}` webhook
+- **Priority:** CRITICAL (cancellation + reactivation)
+
+### O7. Subscription payment failure → dunning
+- **Actor:** system
+- **Entry:** `stripe-webhook` `invoice.payment_failed`
+- **Touchpoints:** `handleSubscriptionPaymentFailed` → updates `organisations.subscription_status`; Stripe Smart Retries active; UI surfaces `UpgradeBanner`
+- **Priority:** CRITICAL
+
+### O8. Feature-gate enforcement
+- **Actor:** any
+- **Entry:** any gated feature
+- **Touchpoints:** `useFeatureGate` → reads `organisations.subscription_plan` against `_shared/plan-config.ts` → `FeatureGate` wraps components; also enforced server-side in relevant edge fns
+- **Referenced audits:** `audit-feature-25-subscriptions.md`
+- **Priority:** CRITICAL (client vs server consistency)
+
+### O9. Auto-transition solo→studio plan
+- **Actor:** system
+- **Entry:** migration `20260316360003_auto_transition_solo_to_studio.sql`
+- **Touchpoints:** trigger-based promotion at some threshold
+- **Priority:** HIGH (silent plan change)
+
+---
