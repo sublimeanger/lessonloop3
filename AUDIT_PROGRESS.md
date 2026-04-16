@@ -21,7 +21,7 @@ Branch: `audit/phase-1-map`
 - [x] 1.K Messaging
 - [x] 1.L Practice tracking & resources
 - [x] 1.M Notes
-- [ ] 1.N LoopAssist
+- [x] 1.N LoopAssist
 - [ ] 1.O Subscriptions & trials
 - [ ] 1.P Payroll
 - [ ] 1.Q Reports & exports

@@ -968,3 +968,51 @@ Each section below is appended in its own commit to route around stream-idle tim
 - **Priority:** MEDIUM
 
 ---
+
+## Section 1.N — LoopAssist
+
+### N1. Staff LoopAssist chat (streaming)
+- **Actor:** owner | admin | teacher | finance
+- **Entry:** global drawer `LoopAssistDrawer` (`LoopAssistContext`)
+- **Touchpoints:** `useLoopAssist` → `looopassist-chat` edge fn → Anthropic Claude API (Haiku 4.5 or Sonnet 4.5 per plan) → Block 1 cached knowledge base (`knowledge-base.ts`), Block 2 dynamic context → tool calls include `query_org_data` for live analytics → streaming via `consumeAnthropicStream`
+- **Daily cap:** 200 requests/org/day
+- **Referenced audits:** `audit-feature-24-loopassist.md`
+- **Priority:** CRITICAL (LLM tool execution; auth boundary on tools)
+
+### N2. LoopAssist action execution
+- **Actor:** owner | admin (based on action-registry)
+- **Entry:** `ActionCard` approve
+- **Touchpoints:** `looopassist-execute` edge fn → mutates org data (marking attendance, creating lesson, sending message) → role-permission check mirrored from `lib/action-registry.ts`
+- **Priority:** CRITICAL (mutation from LLM output)
+
+### N3. Parent LoopAssist chat
+- **Actor:** parent
+- **Entry:** `PortalHome` or LoopAssist widget
+- **Touchpoints:** `parent-loopassist-chat` edge fn — must only scope queries to parent's children
+- **Priority:** CRITICAL (cross-family data leak risk)
+
+### N4. Marketing AI chat (public)
+- **Actor:** public
+- **Entry:** `/` marketing or contact page widget (`MarketingChatWidget`)
+- **Touchpoints:** `marketing-chat` edge fn → public LLM endpoint; rate-limited
+- **Priority:** HIGH (public LLM endpoint, cost + abuse)
+
+### N5. Proactive alerts
+- **Actor:** system / staff (passive display)
+- **Entry:** `ProactiveAlerts` component
+- **Touchpoints:** queries org data, surfaces recommendations
+- **Priority:** MEDIUM
+
+### N6. First-run onboarding / welcome for LoopAssist
+- **Actor:** staff
+- **Entry:** `LoopAssistIntroModal`, `ProactiveWelcome`
+- **Touchpoints:** `useLoopAssistFirstRun` → `banner_dismissals` / preferences
+- **Priority:** LOW
+
+### N7. Message feedback capture
+- **Actor:** staff
+- **Entry:** `MessageFeedback` inline
+- **Touchpoints:** insert into feedback table (telemetry)
+- **Priority:** LOW
+
+---
