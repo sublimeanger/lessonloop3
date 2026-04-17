@@ -1028,8 +1028,110 @@ Items not in the top 8 (deferred to Session 3 or later):
 - C31 (family-credit conversion on void, A5 upgrade) — depends on C32; ships naturally alongside.
 
 **Top-level takeaway:** Session 2's UK-native story ships in 3 beats. **Beat 1 (weeks 1-2):** C12 + C11 + C42 — four-nation, bank holidays, invoice sequencing. These are low-cost, high-visibility, and don't block on anything. **Beat 2 (weeks 3-6):** C41 + C44 + C24 — term-date seeding, pass-through expenses, dunning suppression. Midway, C32 family-account work starts in parallel. **Beat 3 (weeks 5-8):** C40 GoCardless + C32 family accounts wrap together. End of Session 2, LessonLoop can credibly say "we're the UK-native MMS alternative" with receipts.
-Section 9 — Audit trail / teacher-facing evidence
-To be filled in Session-1.9.
+## Section 9 — Audit trail synthesis
+
+Sources: `supabase/migrations/20260120002039_5a489cca-...sql:1-108` (audit_log DDL + log_audit_event function + trigger bindings), `supabase/migrations/20260130162532_...sql:176-179` (teachers audit trigger), `supabase/migrations/20260201204906_...sql:65-67` (internal_messages audit trigger), `src/hooks/useAuditLog.ts` (consumer hook), `src/components/settings/AuditLogTab.tsx` (UI), prior section findings (C17 / C18 / C19 / B10 / B11 / B12 / B13).
+
+### Event inventory
+
+Scope: every billing-adjacent event. Column legend: **Persisted where** — "audit_log (generic)" = row-level trigger via `log_audit_event`; "audit_log (manual RPC)" = explicit `INSERT INTO audit_log` inside an RPC body; "side table" = dedicated table; "ephemeral" = console log only / no DB record.
+
+| Event | Entity | Emitter | Persisted where | Teacher-visible surface | Gap severity |
+|-------|--------|---------|-----------------|-------------------------|--------------|
+| Invoice created (manual) | invoices | `create_invoice_with_items` RPC + audit_invoices trigger | audit_log (generic) | Settings → Audit Log (org-wide filter) | MEDIUM — no per-invoice drill-down |
+| Invoice created (billing run) | invoices | `create-billing-run` + audit_invoices trigger | audit_log (generic) + `invoices.billing_run_id` FK | Audit log + billing-run summary | MEDIUM — same |
+| Invoice status transition (draft→sent / sent→paid / sent→overdue / sent→void / paid→sent refund / void blocks) | invoices | `enforce_invoice_status_transition` trigger + audit_invoices trigger | audit_log (generic) UPDATE with before/after status | Audit log | MEDIUM |
+| Invoice line items edited | invoice_items | — | **ephemeral** (no audit trigger — B12) | ✗ | **HIGH — B12 already filed** |
+| Invoice sent to parent (email dispatched) | invoices + message_log | `send-invoice-email` edge fn | `message_log` table (has its own row per sent email) + audit via invoice status change | Audit log (coarse); message_log not surfaced to teachers today | MEDIUM |
+| Payment received (manual recording) | payments | `record_payment_and_update_status` RPC — manual audit INSERT + audit_payments trigger | **doubly logged**: audit_log (generic via trigger) + audit_log (manual with action='payment_recorded') | Audit log | LOW — cosmetic duplication |
+| Payment received (Stripe webhook) | payments | `record_stripe_payment` RPC + audit_payments trigger | audit_log (generic only — webhook doesn't write manual audit entry per Section 1 finding #4) | Audit log (generic action='create') | MEDIUM — missing the rich "payment_recorded" action metadata |
+| Payment refunded (manual via record_manual_refund) | refunds | `record_manual_refund` RPC — manual audit INSERT | audit_log (manual, action='manual_refund_recorded') | Audit log (text-only); Invoice detail payment history shows refund rows | MEDIUM |
+| Payment refunded (Stripe webhook) | refunds | `handleChargeRefunded` | audit_log (manual, action='refund_recorded') **IF NOT** the orphan-reconciliation branch (B6) | Audit log | MEDIUM — B6 orphan-recon skips audit |
+| Payment refunded (admin via stripe-process-refund) | refunds | `stripe-process-refund` | audit_log (manual, action='refund_processed') | Audit log + invoice payment history | LOW |
+| Installment paid via auto-pay | invoice_installments + payments | `record_stripe_payment` RPC (via webhook) | audit_log (via audit_payments generic trigger — **installments table has no audit trigger**) | Audit log shows the payment row; no installment-level log | **HIGH — new finding for this section** |
+| Installment flipped to partially_paid | invoice_installments | `recalculate_installment_status` helper (A3 fix) | **ephemeral** — no audit trigger on invoice_installments | ✗ | HIGH |
+| Installment status → overdue (cron) | invoice_installments | `installment-overdue-check` / `invoice-overdue-check` crons | **ephemeral** — cron console log only | ✗ | MEDIUM |
+| Reminder email sent (overdue + upcoming) | — | `overdue-reminders` / `installment-upcoming-reminder` / `auto-pay-upcoming-reminder` crons | `message_log` table (per-email row) | ✗ in invoice / installment UI; visible only in Settings → Audit Log as implied (but message_log is not joined) | **HIGH — B11 already filed** |
+| Credit applied to invoice (make-up redemption) | invoices.credit_applied_minor + make_up_credits | `create_invoice_with_items` RPC (manual) | audit_log (manual, action='invoice_created' with credit details in `after`) | InvoiceDetail shows `credit_applied_minor` total only; no per-credit breakdown | MEDIUM — C20 already filed |
+| Make-up credit issued | make_up_credits | `auto_issue_credit_on_absence` trigger | **ephemeral** — no audit trigger on make_up_credits | Parent portal credit widget shows current state, not history | MEDIUM |
+| Make-up credit consumed | make_up_credits | various trigger updates | **ephemeral** | Same | MEDIUM |
+| Lesson added / edited / cancelled | lessons | audit_lessons trigger | audit_log (generic) | Audit log; Calendar UI doesn't surface history per-lesson | MEDIUM |
+| Billing run executed (with stats) | billing_runs | `create-billing-run` edge fn | **no audit trigger on billing_runs** → ephemeral in audit_log terms; `billing_runs.summary` jsonb captures stats but is written by the fn not the trigger | Billing run detail page (shows summary) | MEDIUM |
+| Billing run deleted | billing_runs + invoices | `delete_billing_run` RPC | audit_log (manual entry) — filed per `20260316210000_...sql` | Audit log (text-only) | LOW |
+| Closure date added / removed | closure_dates | direct DB INSERT/UPDATE/DELETE via RLS | **ephemeral** — no audit trigger | ✗ | MEDIUM — paired with C19 closure-skip persistence |
+| Teacher added / removed | teachers | audit_teachers_changes trigger (`20260130162532_...sql:176-179`) | audit_log (generic) | Audit log | LOW (covered) |
+| Student added / removed | students | audit_students trigger | audit_log (generic) | Audit log | LOW (covered) |
+| Guardian added / linked to student | guardians + student_guardians | **no audit trigger** on either table | **ephemeral** | ✗ | MEDIUM |
+| Xero connection created / disconnected | xero_connections | edge fn UPDATEs | **no audit trigger** | Settings → Accounting | MEDIUM — stable state visible, transition history invisible |
+| OAuth scope change | xero_connections | — | ephemeral | ✗ | LOW |
+| Payment plan created (generate_installments) | invoice_installments | `generate_installments` RPC — manual audit INSERT | audit_log (manual, action='payment_plan_created') | Audit log | LOW (covered) |
+| Payment plan cancelled | invoice_installments | `cancel_payment_plan` RPC — manual audit INSERT (added in A5 fix) | audit_log (manual, action='payment_plan_cancelled') | Audit log | LOW (covered post-A5) |
+
+**Event-inventory severity tally:** 2 HIGH (installment-level events both uncovered, plus reminder log B11), 11 MEDIUM (mostly "data exists in audit_log but no per-entity UI drill-down"), 6 LOW.
+
+### Audit trigger coverage
+
+**Tables WITH audit triggers** (via `log_audit_event`):
+- `students` (`20260120002039_...sql:86-88`)
+- `lessons` (`:91-93`)
+- `invoices` (`:96-98`)
+- `payments` (`:101-103`)
+- `org_memberships` (`:106-108`)
+- `ai_action_proposals` (`20260120002350_...sql:93-95`)
+- `teachers` (`20260130162532_...sql:176-179`)
+- `internal_messages` (`20260201204906_...sql:65-67`)
+
+**Billing-adjacent tables WITHOUT audit triggers:**
+- `invoice_items` (B12 filed) — line-item edits invisible
+- `invoice_installments` — installment state transitions invisible (A3 cascade, auto-pay flips, overdue transitions all ephemeral)
+- `refunds` — only captured via the manual audit INSERT in whichever RPC created the row; DELETE or UPDATE of a refund leaves no trail
+- `make_up_credits` — issue / redeem / void cycle invisible
+- `billing_runs` — execution metadata in `summary` jsonb on the row itself but no timeline
+- `closure_dates` — add/remove/edit invisible (relevant to C19)
+- `guardians` — GDPR-relevant changes invisible
+- `student_guardians` — relationship / primary-payer changes invisible
+- `rate_cards` — C8 filed (wider docs claimed coverage that doesn't exist)
+- `xero_connections`, `xero_entity_mappings` — connection-lifecycle invisible
+
+**Trigger pattern consistency:** one shape via `log_audit_event()` (`20260120002039_...sql:36-83`). Uses `TG_TABLE_NAME` for `entity_type`, `NEW.id`/`OLD.id` for `entity_id`, `NEW.org_id`/`OLD.org_id` for `org_id`, `auth.uid()` for `actor_user_id`. Consistent — but the table-plural naming (`'invoices'` via `TG_TABLE_NAME`) collides with many manual RPC audit entries using `'invoice'` singular (e.g. `record_payment_and_update_status` at `20260401000000_...sql:106`, `record_manual_refund` at `20260331160000_...sql:77-80`, `void_invoice` at `20260315220002_...sql:45`). **Query fragility — anyone filtering `WHERE entity_type = 'invoice'` misses half the events; filtering `'invoices'` misses the other half.** Flag as a new finding in this section.
+
+### Audit log shape — is it useful?
+
+- **Schema** (`20260120002039_...sql:2-12`): `id, org_id, actor_user_id (nullable), action text, entity_type text, entity_id uuid, before jsonb, after jsonb, created_at`.
+- **Indexes:** `org_id`, `entity_type`, `created_at DESC`, `actor_user_id`. **No index on `entity_id`**, no composite `(entity_type, entity_id)` index.
+- **Query "all events for this invoice":** would be `WHERE entity_type IN ('invoice','invoices') AND entity_id = '<uuid>'`. Plan: index scan on `entity_type` → filter on `entity_id` (sequential). OK for small orgs (hundreds of rows per entity_type), increasingly slow for large orgs. Add `CREATE INDEX idx_audit_log_entity ON audit_log(entity_type, entity_id)` when needed.
+- **Query "all events for this guardian across their invoices":** impossible via a single audit_log query — `guardians` has no audit trigger, and invoice events are keyed by `entity_id = invoice.id`, not `guardian_id`. The join would be `audit_log al JOIN invoices i ON i.id = al.entity_id WHERE i.payer_guardian_id = X AND al.entity_type IN ('invoice','invoices')`. Plus union with payment events (entity_id = payment.id JOIN payments JOIN invoices). Doable but not a single index-friendly query. **This is the Section 7 family-account visibility gap expressed in audit-log terms.**
+- **Actor capture:** `auth.uid()` into `actor_user_id`. Webhook-driven writes (Stripe refund, webhook-initiated) run under service role — `auth.uid()` is NULL. So webhook-derived events show `actor_user_id = NULL` → `useAuditLog.ts:94` renders as `'System'`. Correct behaviour; parents/teachers see "System" for automated events.
+- **Retention:** no retention policy. No cron purges old audit_log rows. Long-running orgs accumulate indefinitely. Cross-reference C47 (retention policy SPEC).
+
+### Missing audit surface
+
+- **Generic org-wide audit UI: exists.** `src/components/settings/AuditLogTab.tsx` via `useAuditLog` hook. Admin-only (RLS gated). Filters by entity_type, action, date range. Limit 100–200 rows. Renders with `getChangeDescription()` helper that has cases for `students/lessons/invoices/payments/org_memberships`.
+- **What's missing:**
+  - **Per-invoice timeline on InvoiceDetail (C17 — SPEC-TRACE-1).** Teacher looking at a single invoice cannot see "this was created on X, sent on Y, partially paid on Z, reminded on W". Data exists (audit_log + message_log) but no drill-down.
+  - **Per-guardian / per-family timeline.** Even bigger gap — Section 7's family-account visibility requires aggregating events across all of a family's invoices + payments + refunds + credits. No surface exists. Filed as new C49.
+  - **Per-lesson timeline.** For lesson reschedule/cancellation disputes, no drill-down.
+  - **Per-student timeline.** For guardian queries "what did you do with my child's record", no surface.
+  - **Reminder-send history surface.** `message_log` has the data but isn't joined into any entity-specific view. Teacher can't see "last reminder was sent 14 March, 28 March" without direct DB query. B11 already filed.
+  - **entity_type naming inconsistency** — `'invoice'` (singular, from manual RPC) vs `'invoices'` (plural, from trigger). Breaks any filter by entity_type. Filed as new finding C50 below.
+  - **Actor rendering for webhooks** — actor_user_id=NULL rendered as 'System'. Teachers sometimes want to know "was this the Stripe webhook or the admin panel" — could render as 'Stripe (webhook)' if the manual audit entry sets a source metadata field. Minor. Tracked not filed.
+
+### Section 9 severity summary
+
+- CRITICAL: 0
+- HIGH: 2 new
+  - Installment-level events (A3 partially_paid flip, auto-pay, overdue transitions) are all ephemeral — no audit trail on `invoice_installments`.
+  - `entity_type` naming inconsistency between trigger-generic (`'invoices'`) and RPC-manual (`'invoice'`) — breaks all entity-type filtering; listed as C50 below.
+- MEDIUM: 11 (per-entity drill-down gaps; tables without audit triggers where changes matter)
+- LOW: 6 (cosmetic duplication; webhook vs manual audit coverage for same event)
+- Cross-references: C17, C18, C19, C20, C47, B10, B11, B12, B13 all already filed in prior sections.
+
+### New Bucket C items surfaced in Section 9
+
+- **C49 — Per-guardian timeline across invoices / payments / refunds / credits.** Section 7's family-account visibility expressed in audit terms. Requires the C32 family-account primitive + a UI aggregator. Pairs with C17 (per-invoice timeline), C33 (Parents page).
+- **C50 — `entity_type` naming inconsistency between generic audit trigger (`'invoices'` via `TG_TABLE_NAME`) and manual RPC audit entries (`'invoice'` singular).** Filter queries break silently. Fix options: (a) standardise all manual audit INSERTs to plural-table-name; (b) add a UNION-friendly column `canonical_entity` derived. Option (a) is simpler; one-pass refactor across RPCs. Low complexity, meaningful correctness.
+- **C51 — Missing audit triggers on billing-adjacent tables.** Apply `log_audit_event` trigger to: `invoice_installments` (covers A3 state transitions + auto-pay flips), `refunds` (UPDATE / DELETE coverage), `make_up_credits`, `closure_dates`, `guardians`, `student_guardians`. Each is a one-line `CREATE TRIGGER` added in a consolidation migration. Cheap. Closes most of Section 9's ephemeral gaps in one pass. Does NOT include `invoice_items` — covered separately by B12.
+- **C52 — `audit_log` composite index on `(entity_type, entity_id)`.** Needed for efficient per-entity timeline queries once C17 lands. Low-cost migration; delivers ~100× query speed-up on per-invoice timeline lookups at scale.
 Section 10 — Walked test scenarios
 To be filled in Session-1.10.
 Section 11 — Findings summary + severity

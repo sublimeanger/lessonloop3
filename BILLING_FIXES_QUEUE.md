@@ -34,8 +34,8 @@ _None._
 ## Running index
 - Bucket A: 0 open / 6 resolved
 - Bucket B: 27
-- Bucket C: 47
-- Tracked (low): 9
+- Bucket C: 51
+- Tracked (low): 11
 
 ---
 
@@ -199,6 +199,26 @@ _None._
 ### Tracked but not actioned
 - Invoice-number race condition under concurrent inserts — `UNIQUE(org_id, invoice_number)` catches the second insert with a 23505, so correctness is preserved; one user sees an error. Reliability concern bundled with C42.
 - `cancelled_by_student` / `no_show` attendance billed as normal lesson per Section 3b MEDIUM finding — UK music studios split on this; configurable policy would help. Filed conceptually under the C35 goodwill-credits umbrella.
+
+---
+
+## From Section 9 — Audit trail synthesis
+
+### Bucket A (fix now)
+_None._
+
+### Bucket B (fix at end)
+_None new — existing B10 (no invoices.created_by), B11 (no reminder log table), B12 (no audit trigger on invoice_items), B13 (billing_run_id FK ON DELETE SET NULL) still cover the Bucket-B layer for this area._
+
+### Bucket C (design decision — post-audit SPEC)
+- **C49 — Per-guardian timeline across invoices / payments / refunds / credits.** Section 7's family-account visibility expressed in audit terms. Data already exists in `audit_log` + `message_log`, but there is no aggregator surface. Requires C32 family-account primitive + a new UI component (likely on the teacher-facing Parents page from C33). Pairs with C17 (per-invoice timeline), C33 (Parents page).
+- **C50 — `entity_type` naming inconsistency in `audit_log`.** Generic audit trigger writes `TG_TABLE_NAME` → `'invoices'` (plural). Many manual RPC audit INSERTs write `'invoice'` (singular) — e.g. `record_payment_and_update_status` (`supabase/migrations/20260401000000_...sql:106`), `record_manual_refund` (`20260331160000_...sql:77-80`), `void_invoice` (`20260315220002_...sql:45`). Any `WHERE entity_type = 'invoice'` query misses trigger-derived rows; `'invoices'` misses RPC-derived rows. Breaks all entity-type filtering silently. Fix: standardise all manual audit INSERTs to plural-table-name (one-pass refactor across ~6 RPCs). Low complexity, meaningful correctness.
+- **C51 — Missing audit triggers on billing-adjacent tables.** Apply `log_audit_event` trigger to: `invoice_installments` (covers A3 state transitions + auto-pay flips + overdue cron), `refunds` (UPDATE / DELETE coverage beyond the creation-time manual INSERT), `make_up_credits` (issue / redeem / void cycle), `closure_dates` (pairs with C19), `guardians` (GDPR-relevant), `student_guardians` (primary-payer changes). Each = one-line `CREATE TRIGGER`. Bundle in a single consolidation migration. Does NOT include `invoice_items` — already filed as B12.
+- **C52 — `audit_log` composite index on `(entity_type, entity_id)`.** Needed for efficient per-entity timeline queries once C17 (invoice timeline) lands. Low-cost migration. ~100× speed-up on per-invoice timeline lookup at scale. Pairs with C17/C49.
+
+### Tracked but not actioned
+- Cosmetic audit duplication: P1 (`record_payment_and_update_status`) writes BOTH the generic audit trigger row AND a manual `action='payment_recorded'` entry. Two rows per manual payment. Not wrong; just cluttered. Bundle into C50 cleanup.
+- `actor_user_id = NULL` for webhook-driven events renders as `'System'` in `useAuditLog.ts:94`. Correct but could be richer (`'Stripe (webhook)'`, `'Cron: overdue-reminders'`). Optional UX.
 
 ---
 
