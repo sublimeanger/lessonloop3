@@ -8,7 +8,7 @@ Billing Forensics Progress
 [x] Section 5
 [x] Section 6
 [x] Section 7
- Section 8
+[x] Section 8
  Section 9
  Section 10
  Section 11

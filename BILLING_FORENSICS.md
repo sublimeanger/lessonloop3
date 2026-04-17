@@ -899,8 +899,135 @@ Per `src/pages/portal/*` + `src/hooks/useParentPortal.ts`:
 ### Strategic summary
 
 > The minimum data-model work to credibly position LessonLoop as an MMS-replacement on the family-accounts front is four pieces: (1) a `family_credits` table holding money-on-account keyed by guardian, with sources distinguished (`refund`, `overpayment`, `goodwill`, `write_off`); (2) a `get_family_balance(_guardian_id)` RPC returning `SUM(outstanding invoices) − SUM(available family_credits)` with the same arithmetic rigour as `recalculate_invoice_paid`; (3) a teacher-facing Parents list page surfacing that balance per family with sort/filter; (4) a brought-forward mechanism inside `create-billing-run` that queries the family balance and inserts a `"Balance brought forward"` line item on the new invoice when non-zero. Plus renaming the existing "credit" concept so "makeup credit" and "money credit" are never confused. Everything else — multi-invoice payment allocation, bulk pay, goodwill credits, write-off status — is a natural extension once the balance primitive exists. Estimate: 4-6 weeks of focused product work. The A5 fix's C31 (family-credit conversion on void) and the Section 2 C6 credit-note gap both collapse into this work. Until it lands, the most honest positioning is "LessonLoop owns the per-invoice billing rigour; MMS still owns the family account". After it lands, LessonLoop has a credible "UK-native, per-family, rigorous" story.
-Section 8 — UK-specific billing gap analysis (internal-only)
-To be filled in Session-1.8.
+## Section 8 — UK-specific billing gap analysis (internal spec)
+
+Gap-analysis section, not a bug hunt. Output is a roadmap input for Session 2. Defaults to Bucket C (SPEC). Cross-references prior queue items rather than re-creating them.
+
+### Part 1 — Current state assessment
+
+#### 1. Currency + VAT
+
+- **Currency:** `organisations.currency_code TEXT NOT NULL DEFAULT 'GBP'` (`supabase/migrations/20260119231348_...sql:11`). Org-configurable at creation; default GBP. Stripe `stripe_checkout_sessions.currency_code TEXT NOT NULL DEFAULT 'gbp'` (`20260121120401_...sql:10`) — lowercase convention for Stripe API. Currency flows through to `invoices.currency_code`, `payments.currency_code`, `refunds.currency_code` consistently.
+- **VAT:** org-level single-rate model. `organisations.vat_enabled BOOLEAN DEFAULT false`, `vat_rate NUMERIC(5,2) DEFAULT 0`, `vat_registration_number TEXT` (`20260119231348_...sql:13-15`). Each invoice stores `vat_rate` at creation time (good — retroactive rate changes don't affect past invoices).
+- **VAT per-line classification: ABSENT.** No `invoice_items.vat_rate` column; no enum for zero-rated / exempt / reduced (5%). UK music teaching is generally VAT-exempt for under-18 pupils taught by a VAT-registered individual sole trader under the "education" exemption — but a VAT-registered limited company providing the same tuition is standard-rated. No flag to distinguish. **Severity: Bucket C (SPEC)** — filed as C45.
+- **Non-VAT-registered rendering:** `src/hooks/useInvoicePdf.ts:324-327` conditionally renders `VAT: {vat_registration_number}` only when the column is set. PDF correctly omits VAT ref for non-registered orgs. The VAT **percentage** line in the invoice totals block (`:447`) renders whenever `inv.vat_rate > 0` — which is tied to `invoices.vat_rate` stored at creation from `org.vat_rate`. Non-VAT-registered orgs with `vat_enabled=false` get `vat_rate=0` and no VAT line renders. **Current state: works correctly for both registered and unregistered.**
+- **VAT threshold monitoring (£90k rolling 12 months, UK 2024/25):** ABSENT. No org-level rolling-12-month turnover query; no warning when an org crosses the threshold. Solo teachers typically below threshold but growing agencies can silently cross it. **Severity: Bucket C (SPEC)** — filed as C43.
+
+#### 2. Payment rails
+
+- **`payment_method` enum** (`supabase/migrations/20260119234233_...sql:10`): `'card'`, `'bank_transfer'`, `'cash'`, `'other'`. Cash + BAC are first-class. No `'direct_debit'` value.
+- **`payment_provider` enum** (line 11): `'stripe'`, `'manual'`. No GoCardless provider.
+- **Stripe:** full integration (Section 3d / Xero OAuth + Section 4 auto-pay).
+- **GoCardless (UK Direct Debit, Bacs Core Scheme):** ABSENT. Grep across `supabase/functions/`, `src/` for `gocardless|direct.debit|bacs.core` returns zero code hits; only blog content references it. UK music schools and agencies heavily use Direct Debit for recurring monthly fees (mandated + 3-4% fee vs Stripe's 1.4% + 20p for UK cards, but zero decline risk). **Severity: Bucket C (SPEC)** — filed as C40. Highest payment-rail gap for UK positioning.
+- **BACS details on invoice PDF:** YES. `org.bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix` (`useInvoicePdf.ts:62-65`), rendered at line 603 as `Sort Code: ... Account: ...` block. Good.
+- **Bank transfer manual recording:** supported via `useRecordPayment` with `method='bank_transfer'`. Section 5 C27 already flags that dunning emails don't surface the BACS details (only the Stripe Pay Now CTA).
+- **Parent UX:** parent portal offers only Stripe card payment via `PaymentDrawer`. To pay by BACS the parent reads the bank details off the PDF and initiates the transfer separately; the teacher then records the payment manually.
+
+#### 3. Invoice PDF HMRC compliance
+
+Walk of `src/hooks/useInvoicePdf.ts` against HMRC invoice requirements:
+
+| HMRC requirement | LessonLoop PDF | File:line |
+|------------------|---------------|-----------|
+| Unique invoice number | ✓ `UNIQUE(org_id, invoice_number)` enforced (`20260119234233_...sql:33`); rendered at top of PDF | `useInvoicePdf.ts` near line 150 |
+| Invoice date | ✓ `issue_date` rendered in "BILL TO + DATES" block | near line 340 |
+| Seller name + address | ✓ `invoice_from_name/address_line1/city/postcode/country` | `:53-58, :283-322` |
+| Seller VAT number (if registered) | ✓ Conditional render | `:324-327` |
+| Buyer name | ✓ `payer_guardian.full_name` or student fallback | `:333-335` |
+| Description of service | ✓ per line item | `items[].description` |
+| Rate per unit and total | ✓ `unit_price_minor`, `amount_minor` | per line |
+| VAT amount | ✓ Conditional on `inv.vat_rate > 0` | `:447` |
+| Gross total | ✓ `total_minor` | near totals block |
+
+**All HMRC line-items present.** But two structural concerns:
+
+- **Invoice number sequencing (Bucket C).** `generate_invoice_number` at `supabase/migrations/20260119234233_...sql:78-100` uses `SELECT COUNT(*) + 1` filtered by year prefix. This is **non-gap-tolerant**: if any invoice is hard-deleted (e.g. via `delete_billing_run` RPC, which does DELETE on draft invoices of a failed run), the next generated number REUSES the deleted slot. HMRC accepts sequential gaps with justification but does NOT tolerate duplicate numbers across an audit trail. The `UNIQUE(org_id, invoice_number)` constraint prevents the 2nd insert from succeeding, but an audit later comparing deleted+regenerated invoices would find that number N was associated with two different issue dates via `audit_log`. Fix: use a Postgres SEQUENCE per org, persisted monotonically. **Severity: Bucket C (SPEC) — filed as C42.** Not Bucket A because no evidence of deletion-then-regeneration happening today.
+- **Concurrent-insert race.** `COUNT(*) + 1` under concurrent inserts can return the same value to two sessions; one gets 23505 UNIQUE violation. `create-billing-run` batch inserts multiple rows — per-row BEFORE triggers rely on Postgres `CommandCounterIncrement` between rows so later triggers see earlier rows. Works in practice; would break on direct UPDATE-via-API concurrent billing runs across two admins in the same org. Same fix as C42.
+
+#### 4. Bank holidays and term dates
+
+- **Bank holidays:** covered by C11 (Section 3c). Not re-audited.
+- **Terms table** (`supabase/migrations/20260209170759_...sql:3-12`): `id, org_id, name, start_date, end_date, created_by, UNIQUE(org_id, name)`. Per-org configurable.
+- **NOT pre-seeded with UK state-school term dates.** No seed data per nation (C12 dependency). No fetch-from-external-source logic. Operator must manually create "Autumn 2025", "Spring 2026" etc. each year.
+- UK reality: state schools follow a 3-term pattern broadly standardised via local authorities. Private schools differ (usually 3 longer terms). Music academies often align with the state pattern. Pre-seeding UK state-school term dates per nation (C12 dep) is a clear UK-native win MMS doesn't deliver.
+- **Severity: Bucket C (SPEC)** — filed as C41. Depends on C12 (four-nation field).
+
+#### 5. Payment dates vs UK banking conventions
+
+- **No weekend / working-day awareness** in due_date logic. `invoice-overdue-check` cron (Section 5) transitions `sent → overdue` on calendar days regardless of weekend / bank-holiday.
+- **No BACS 3-working-day float buffer.** An invoice with due_date Friday and a BACS payment initiated Thursday takes until Tuesday to settle; the cron flags overdue Monday and dunning emails Tuesday morning — for a parent whose money is in flight.
+- Already covered by existing C24 (Section 5 — bank-holiday / weekend suppression on dunning). The BACS-float aspect extends C24's scope: the fix needs not just "skip weekends/holidays" but also "give N-day grace after due date for BACS-expected payments". Note as addendum to C24 rather than separate C item.
+
+#### 6. Parent / guardian legal concerns
+
+- **GDPR exports:** `supabase/functions/gdpr-export/index.ts` and `gdpr-delete/index.ts` exist. Subject-access-request flow is plumbed.
+- **Retention policy: ABSENT.** No `organisations.data_retention_months` column; no automatic purge of ex-student invoices after N years. HMRC requires financial records retention for 6 years; GDPR requires active-minimisation for non-financial personal data. No opinionated handling — orgs keep everything forever by default. **Severity: Bucket C (SPEC)** — filed as C47.
+- **Email consent:** covered by Section 5 C25 (guest-parent opt-out gap). Not re-audited.
+
+#### 7. Accounting integration
+
+- **Xero:** full bi-directional integration (confirmed in Section 3d post-Xero unblock). Orgs can sync invoices + payments.
+- **GoCardless → Xero:** N/A without GoCardless (C40).
+- **QuickBooks:** ABSENT. `supabase/functions/` contains no qb-* functions; grep returns zero hits.
+- **FreeAgent:** ABSENT. Popular with UK sole traders (solo music teachers). Would be a differentiator.
+- **Sage:** ABSENT.
+- **HMRC Making Tax Digital:** indirect via Xero's own MTD submission. LessonLoop has no direct HMRC hook and realistically doesn't need one — Xero handles MTD filing — but the audit trail from LessonLoop → Xero → HMRC needs to be clean. Section 3d B6 (webhook orphan-audit gap) + SPEC-TRACE items (C17) are relevant. **Severity: Bucket C (SPEC) for QuickBooks + FreeAgent** — filed as C46.
+
+#### 8. Teaching-specific UK concerns
+
+- **Pass-through expenses (ABRSM / Trinity / RSL / LCM exam fees):** NOT distinguished. No `invoice_items.is_pass_through` flag. Teacher billing "Grade 4 exam fee £65" to parent treats it as taxable service revenue if the teacher is VAT-registered — which is wrong for a pure pass-through. The teacher's HMRC return will over-state turnover. **Severity: Bucket C (SPEC)** — filed as C44. Common UK flow; real impact on teachers' own tax filings.
+- **Group lessons:** billed per-participant via `lesson_participants.rate_minor` (Section 3b). Each participant has their own snapshot rate, each becomes a line item on the payer's invoice. UK norm is per-head for group lessons — LessonLoop matches.
+- **Makeup lessons:** handled via `make_up_credits` (Section 4). Parent-facing surface shows credit count + value (Section 7 noted the "credits" semantic trap — C38).
+
+#### 9. Multi-location teachers
+
+- **`locations` table** (`supabase/migrations/20260119231833_...sql:53`) + `closure_dates.location_id` already permit multi-location per org.
+- **No `teacher_locations` junction.** Grep returns zero hits. Teachers aren't explicitly assigned to a subset of locations. Lessons carry `location_id` per-lesson, so a peripatetic teacher teaching at 3 schools just creates lessons with different location_id values.
+- **Billing works per-lesson-location** naturally — each invoice_item's linked_lesson carries the location, PDF can reference it in the line item description. **What does NOT work:** the PDF header still shows the ORG's `invoice_from_address_line1...invoice_from_country` (`useInvoicePdf.ts:53-58`), not the location's address. A UK peripatetic teacher invoicing for lessons at "Ealing Primary" would want the PDF to say "Lessons at Ealing Primary, W5 5AA" in the Bill-from block. Not a common demand but flag as minor UX.
+- **Severity: Bucket C (SPEC) for teacher-locations junction + per-location-invoice-address** — filed as C48. Low priority; most UK music teachers with multiple locations are happy billing from their one registered address.
+
+#### 10. UK music-education-specific wins MMS doesn't deliver
+
+The structural UK-native wins LessonLoop can ship that MMS's US-centric model cannot:
+
+| Capability | Why MMS can't | What LessonLoop needs |
+|------------|---------------|------------------------|
+| Auto-seeded UK bank holidays per nation | No `country_subdivision` column in MMS data model | C11 + C12 |
+| Auto-seeded UK state-school term dates per nation | Same — no nation awareness | C12 + C41 |
+| GoCardless Direct Debit as first-class payment rail | Stripe-only US-centric | C40 |
+| HMRC-compliant invoice sequencing (gap-safe) | Non-issue in US | C42 |
+| VAT threshold monitor + auto-register prompt at £90k | US has state sales tax, not VAT | C43 |
+| Per-line VAT classification (exempt for under-18s, standard for adults) | US sales tax is flat | C45 |
+| Pass-through expense distinction (exam fees) | US doesn't have ABRSM/Trinity equivalent | C44 |
+| BACS details on invoice + portal multi-rail UX | US uses ACH/cards, BACS is UK-specific | existing + C40 |
+| GDPR-compliant retention policy | CCPA is looser; MMS built for US | C47 |
+| UK-native Xero/FreeAgent accounting stack | MMS integrates QuickBooks (US-centric) | existing + C46 |
+
+**No UK-specific Bucket A live bugs surfaced.** The gaps are all SPEC / design endpoints, not live corruption.
+
+---
+
+### Part 2 — UK-native roadmap priority list for Session 2
+
+| Priority | Item | PMF impact | Eng cost | Dependencies | Suggested Session 2 position |
+|----------|------|-----------|----------|--------------|------------------------------|
+| 1 | **C12 — Four-nation field on `organisations`** | HIGHEST — unlocks C11, C41, future regional features. Teachers explicitly ask for "Scotland-aware" scheduling. | Low (1 column + onboarding UX) | None — foundational | Week 1. Land first, everything else hangs off it. |
+| 2 | **C11 — UK bank holidays auto-seeded per nation** | HIGHEST — marketing already claims it. "Closed on Christmas Day" and "emailed me on a bank holiday" are the two loudest MMS complaints. | Medium (C12 dep + data source decision + seed + cron) | C12 | Week 1-2. |
+| 3 | **C32 — Family-account data model (Section 7)** | HIGHEST — the single biggest MMS-parity gap. Until this lands, teachers telling us they can't switch is correct. | High (4-6 weeks focused) | None | Weeks 3-8. Parallel with C11/C12 or sequential. |
+| 4 | **C40 — GoCardless Direct Debit integration** | HIGH — UK teachers lean on DD for recurring fees; Stripe-only leaves money on the table (DD is cheaper per transaction + zero decline for in-mandate payments). | Medium-high (3-4 weeks: OAuth + mandates + webhooks + refund flow + Xero pass-through) | None | Weeks 5-8 (parallel with C32). |
+| 5 | **C42 — HMRC-safe invoice number sequencing** | MEDIUM — latent compliance risk; immediate fix value for any VAT-registered org. | Low (1 week: Postgres sequence per org + migration + backfill) | None | Week 2 (small parallel task). |
+| 6 | **C44 — Pass-through expense flag on invoice_items** | MEDIUM — impacts teacher's OWN HMRC filings; real money story per teacher. | Low-medium (1-2 weeks: column + invoice total math + PDF render + Xero mapping) | None | Week 3. |
+| 7 | **C41 — Pre-seeded UK state-school term dates per nation** | MEDIUM-HIGH — supplies the "it just knows" moment. Lands alongside C11 for double UK-native win. | Low (1 week: data work + seed migration + yearly refresh cron) | C12 | Week 3-4 (bundled with C11 release). |
+| 8 | **C24 — Dunning bank-holiday + weekend suppression + BACS float** | MEDIUM — completes the C11 story at the parent-facing surface. "My teacher stopped sending harassment emails at Christmas" is a real anecdote. | Low-medium (1-2 weeks once C11 lands) | C11, C12 | Week 4-5. |
+
+Items not in the top 8 (deferred to Session 3 or later):
+- C33 (Teacher Parents list page) — depends on C32, bundle with it.
+- C25 (guest-parent opt-out / GDPR) — Bucket B priority, Session 2 cleanup.
+- C43 (VAT threshold monitor), C45 (per-line VAT), C46 (QuickBooks/FreeAgent), C47 (retention policy), C48 (teacher-locations) — all legitimate but lower PMF per week of engineering. Park for Session 3.
+- C13 (closure_dates date-range) — small quality-of-life, bundle into whichever week is lightest.
+- C31 (family-credit conversion on void, A5 upgrade) — depends on C32; ships naturally alongside.
+
+**Top-level takeaway:** Session 2's UK-native story ships in 3 beats. **Beat 1 (weeks 1-2):** C12 + C11 + C42 — four-nation, bank holidays, invoice sequencing. These are low-cost, high-visibility, and don't block on anything. **Beat 2 (weeks 3-6):** C41 + C44 + C24 — term-date seeding, pass-through expenses, dunning suppression. Midway, C32 family-account work starts in parallel. **Beat 3 (weeks 5-8):** C40 GoCardless + C32 family accounts wrap together. End of Session 2, LessonLoop can credibly say "we're the UK-native MMS alternative" with receipts.
 Section 9 — Audit trail / teacher-facing evidence
 To be filled in Session-1.9.
 Section 10 — Walked test scenarios

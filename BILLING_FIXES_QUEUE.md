@@ -34,8 +34,8 @@ _None._
 ## Running index
 - Bucket A: 0 open / 6 resolved
 - Bucket B: 27
-- Bucket C: 38
-- Tracked (low): 7
+- Bucket C: 47
+- Tracked (low): 9
 
 ---
 
@@ -174,6 +174,31 @@ _None in Section 7; all findings are either A (buggy math) or C (missing data mo
 
 ### Tracked but not actioned
 - Billing run's payer grouping (`create-billing-run/index.ts:582-660`) correctly produces one invoice per primary-payer per period with per-student line items — already matches MMS behaviour at invoice level, intentionally left untouched.
+
+---
+
+## From Section 8 — UK-specific billing gap analysis
+
+### Bucket A (fix now)
+_None — gap-analysis section, no live UK-specific bugs surfaced._
+
+### Bucket B (fix at end)
+_None._
+
+### Bucket C (design decision — post-audit SPEC)
+- **C40 — GoCardless Direct Debit integration.** UK's dominant recurring-payment rail. Currently absent (grep across repo returns only blog hits). Adds a new `payment_provider` enum value `'gocardless'` and `payment_method` value `'direct_debit'`; mandate table; webhook handling; Xero sync pass-through. Biggest UK payment-rail gap; highest parity-with-MMS win on this axis. Engineering: 3-4 weeks. No dependencies.
+- **C41 — Pre-seeded UK state-school term dates per nation.** `terms` table exists (`supabase/migrations/20260209170759_...sql:3-12`) but has no seed data. Post-C12 (four-nation) add yearly refresh cron that fetches term dates per nation (GB-ENG / GB-WLS / GB-SCT / GB-NIR) and seeds per-org. Dependency: C12.
+- **C42 — HMRC-safe invoice number sequencing.** `generate_invoice_number` at `supabase/migrations/20260119234233_...sql:78-100` uses `COUNT(*) + 1` filtered by year prefix — not gap-tolerant, vulnerable to race-then-23505 under concurrent inserts. Fix: one Postgres sequence per org (`invoice_number_seq_{org_id}`) or a `next_invoice_number` column on `organisations` with advisory-lock UPDATE. UNIQUE(org_id, invoice_number) constraint preserves correctness; the sequence guarantees monotonicity + reuse-after-delete immunity. Small migration. No dependencies.
+- **C43 — UK VAT threshold monitor (£90k rolling 12 months).** Currently no turnover tracking at org level. Add a rolling-12-month revenue view + dashboard warning when an org crosses 80% / 90% / 100% of the threshold. Prompts "You should register for VAT". Pairs with C44 + C45 for full UK VAT story.
+- **C44 — Pass-through expense flag on `invoice_items`.** Add `invoice_items.is_pass_through BOOLEAN DEFAULT false`. VAT calc skips pass-through items for teacher's turnover. PDF groups them under "Exam fees (passed through)" separately. Material for VAT-registered teachers billing ABRSM / Trinity / RSL fees — prevents over-stating own turnover on HMRC. Low-medium engineering.
+- **C45 — Per-line VAT classification.** Add `invoice_items.vat_rate_override NUMERIC(5,2) NULLABLE` + enum `vat_treatment TEXT CHECK IN ('standard','zero_rated','exempt','reduced','outside_scope')`. Today all invoice items inherit the org-level `vat_rate` — insufficient for a VAT-registered org teaching under-18s (exempt) alongside adult tuition (standard-rated) + selling sheet music (zero-rated for books). UK VAT reality for music schools is mixed-rate. Pairs with C44.
+- **C46 — QuickBooks + FreeAgent accounting integrations.** Xero exists + working post-unblock. FreeAgent popular with UK sole traders; QuickBooks common crossover. Each is a full integration (OAuth + sync mappings + invoice + payment + refund + customer). Session 3+ scope.
+- **C47 — GDPR data-retention policy enforcement.** `gdpr-export` + `gdpr-delete` functions exist but no automatic retention-purge cron. Add `organisations.data_retention_years INTEGER DEFAULT 6` (HMRC financial minimum) and a monthly cron that anonymises student/guardian PII for ex-students beyond retention + deletes non-financial comms. Financial records stay. Makes LessonLoop defensible under ICO inspection.
+- **C48 — Teacher-locations junction + per-location invoice address.** Optional enhancement for peripatetic teachers. `teacher_locations` table + PDF render location address instead of (or alongside) org address for single-location invoices. Low priority — most UK music teachers with multiple locations are happy billing from their one registered address.
+
+### Tracked but not actioned
+- Invoice-number race condition under concurrent inserts — `UNIQUE(org_id, invoice_number)` catches the second insert with a 23505, so correctness is preserved; one user sees an error. Reliability concern bundled with C42.
+- `cancelled_by_student` / `no_show` attendance billed as normal lesson per Section 3b MEDIUM finding — UK music studios split on this; configurable policy would help. Filed conceptually under the C35 goodwill-credits umbrella.
 
 ---
 
