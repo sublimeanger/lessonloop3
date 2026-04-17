@@ -5710,6 +5710,7 @@ export type Database = {
           access_token: string
           auto_sync_invoices: boolean
           auto_sync_payments: boolean
+          connected_by: string | null
           created_at: string
           error_message: string | null
           id: string
@@ -5728,6 +5729,7 @@ export type Database = {
           access_token: string
           auto_sync_invoices?: boolean
           auto_sync_payments?: boolean
+          connected_by?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
@@ -5746,6 +5748,7 @@ export type Database = {
           access_token?: string
           auto_sync_invoices?: boolean
           auto_sync_payments?: boolean
+          connected_by?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
