@@ -32,7 +32,7 @@ _None._
 ---
 
 ## Running index
-- Bucket A: 1 open / 5 resolved
+- Bucket A: 0 open / 6 resolved
 - Bucket B: 27
 - Bucket C: 38
 - Tracked (low): 7
@@ -157,7 +157,7 @@ _None._
 ## From Section 7 — Family Account / Balance Brought Forward
 
 ### Bucket A (fix now)
-- **A6 — `get_parent_dashboard_data` returns inflated outstanding balance.** `supabase/migrations/20260222230314_c096f5c1-...sql:88-94` computes parent dashboard outstanding as `SUM(total_minor)` for sent/overdue invoices, not `SUM(total_minor - paid_minor)`. Any partially-paid invoice is counted at full amount. Parent sees £100 outstanding on portal dashboard while `src/pages/portal/PortalInvoices.tsx:275` correctly shows £70 — same portal, contradictory numbers. Live parent-facing wrong-money-display. Fix: one-line SQL change to subtract `paid_minor` in the SUM; full family-balance math (subtract credits + refunds) is C32 territory.
+- ✅ **RESOLVED: A6 — `get_parent_dashboard_data` inflated outstanding balance.** Fixed via commit `184425d` (migration `20260417220000_fix_parent_dashboard_outstanding.sql` — `CREATE OR REPLACE` of the RPC with both SUM sites corrected to `SUM(total_minor - COALESCE(paid_minor, 0))`: per-child outstanding at the student-level block + per-guardian outstanding at the top-level aggregate). No refund JOIN needed — post-A3/A4, `paid_minor` is already net-of-refunds courtesy of `recalculate_invoice_paid`. No frontend change, no data backfill. Migration requires manual Supabase SQL Editor application + `NOTIFY pgrst, 'reload schema';` (statement in the file). Root-cause related to Section 7's wider family-balance work — A6 patches the display math; the real unification of family-balance surfaces lives in Session 2 roadmap (`family_credits` table + `get_family_balance` RPC + Parents page + brought-forward). After A6, `PortalHome` dashboard and `PortalInvoices` page agree on the parent's outstanding number.
 
 ### Bucket B (fix at end)
 _None in Section 7; all findings are either A (buggy math) or C (missing data model)._
@@ -199,6 +199,15 @@ _None in Section 7; all findings are either A (buggy math) or C (missing data mo
 - Pre-fix diagnostic (`A4_DIAGNOSTIC.md`, Query 1) returned 0 corrupt rows on prod — no backfill migration needed.
 - Cross-effect: A3's `recalculate_installment_status` cascade now actually runs on refund-of-paid flows. Any paid invoice that gets refunded post-deploy will correctly cascade installment statuses via the A3 mechanism.
 - Rollback path: re-apply the original trigger body from `20260222211425_568be73d-...sql`.
+
+### A6 parent dashboard outstanding math fix (April 17 2026)
+- 1 commit on branch `audit/phase-2-billing-forensics`: `184425d`.
+- Migration `20260417220000_fix_parent_dashboard_outstanding.sql` requires manual Supabase SQL Editor application + `NOTIFY pgrst, 'reload schema';` (statement in the file).
+- No frontend change (the bug was entirely in the RPC; PortalInvoices was already correct).
+- No data backfill.
+- Root-cause note: A6 is the minimal display-math patch. The wider fix — unifying family-balance surfaces across portal + teacher views, credits-on-account, brought-forward — lives in Session 2 roadmap: `family_credits` table + `get_family_balance` RPC + Parents page + brought-forward line item (C32, C33, C34, C35, C36, C37, C38 in this queue). A6 just stops the two portal surfaces contradicting each other today.
+- Post-fix smoke test: log in as a parent with a partially-paid invoice. Dashboard outstanding widget should now match the sum shown on the Invoices tab.
+- Rollback: re-apply the body from `20260222230314_c096f5c1-...sql`.
 
 ### A5 block-void-on-partial-paid fix (April 17 2026)
 - 4 commits on branch `audit/phase-2-billing-forensics`: `f97fa6a` (migration — RPC + trigger dual guard), `926cdce` (frontend — void dialog swaps to "Record Refund First" CTA when totalPaid > 0), `ccbbede` (docs), `[this commit]` (queue).
