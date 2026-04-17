@@ -474,8 +474,86 @@ Resolved during Section 3: the `closure_dates` exclusion on the billing run (com
 2. **C18 — SPEC-TRACE-2: rate provenance on invoice_items.** Pairs with the rate snapshot work already in this branch — closes the loop between "we captured the rate source" and "we can show it".
 3. **C19 — SPEC-TRACE-3: closure-skip persistence.** Low data-model cost, eliminates the `console.warn`-only trail from commit `9f60d71`, and becomes load-bearing once C11 (UK bank holidays) multiplies the skip volume.
 4. **C11 — UK bank holiday awareness.** Market positioning blocker; marketing copy already claims this. Prerequisite C12 (four-nation field) is small; together they turn LessonLoop's UK-native promise from aspiration into product.
-Section 4 — Payment plans + installments
-To be filled in Session-1.4.
+## Section 4 — Payment plans + installments
+
+Sources read: `supabase/migrations/20260401000000_auth_rls_hardening.sql:126-222` (latest `generate_installments`), `supabase/migrations/20260222155555_...sql` (invoice_installments DDL), `supabase/migrations/20260316350000_payment_plans_phase1.sql:151-207` (`cancel_payment_plan` RPC) + `:211-291` (`record_installment_payment`, orphan — see Section 1 B1), `supabase/functions/stripe-auto-pay-installment/index.ts`, `supabase/functions/installment-overdue-check/index.ts`, `supabase/functions/overdue-reminders/index.ts`.
+
+### Installment rounding
+
+- **Algorithm** (`20260401000000_auth_rls_hardening.sql:189-190, 199-208`): `_per_installment = _remaining / _count` (integer division, truncates); last installment absorbs the remainder via `_last_amount = _remaining − (_per_installment × (_count − 1))`; all other installments use `_per_installment`.
+- **£600 / 6 walk:** `_per_installment = 100`, `_last_amount = 600 − 100×5 = 100`. Installments: 100, 100, 100, 100, 100, 100. Sum = £600. **Exact.**
+- **£100 / 3 walk:** `_per_installment = 100 / 3 = 33` (truncated from 33.33). `_last_amount = 100 − 33×2 = 34`. Installments: 33, 33, 34. Sum = £100. **Exact — last installment carries the 1p remainder.**
+- **Custom schedule path** (`:168-186`): validates that the sum of caller-supplied `amount_minor` values equals `_remaining`, RAISEs if not. So custom schedules are exact-or-rejected.
+- **Lifecycle drift:** no drift within a single `generate_installments` call — the arithmetic is integer. Across the plan lifecycle the `paid_minor` on the invoice is recomputed via `SUM(payments) − SUM(succeeded refunds)` by `recalculate_invoice_paid` (see Section 2), *not* from the installments table. So even if installments are later marked `'void'`, the invoice's `paid_minor` still reflects money actually moved, not the scheduled amounts. This means **`SUM(invoice_installments.amount_minor WHERE status != 'void') ≠ total_minor − paid_minor`** after any void or after `_remaining` was set from a non-zero starting `paid_minor`.
+- **Severity: LOW.** No arithmetic drift; but the decoupling between the installments table and the recalc math means there is no trigger or invariant check enforcing "sum of unvoided installments equals outstanding balance". A future bug that desynchronises them would go undetected.
+
+### Auto-pay double-charge guards
+
+- **In-loop dedup:** `supabase/functions/stripe-auto-pay-installment/index.ts:88-94` — per installment, `SELECT id FROM payments WHERE installment_id = inst.id LIMIT 1`. If present, `continue` without charging.
+- **Status gate at query time:** `:51-52` — only installments with `status IN ('pending','overdue')` are selected. An installment that's already `'paid'` or `'void'` is never picked up.
+- **Stripe-side idempotency:** **NONE.** `paymentIntents.create(paymentIntentParams, stripeOpts)` at `:132` does not include `idempotency_key` in either the params or the request options. Stripe treats each call as a distinct request.
+- **Race window:** cron fires → creates PI → PI succeeds → webhook delivery delayed (Stripe outage, LL webhook handler timeout, DB connection issue). Next cron fires (same day if manually re-triggered, next day in normal schedule). Query at `:88-94` finds no `payments` row for `installment_id` because the webhook hasn't inserted one yet. `continue` does not fire. A second PI is created. **Double charge.** Scenario is rare (requires > 24h webhook lag for daily cron, or operator manually re-running the function) but not mitigated at the Stripe layer.
+- **Failure-path DB update:** after a successful PI, the auto-pay function does NOT update the installment itself — it relies on the webhook handler (`supabase/functions/stripe-webhook/index.ts` → `record_stripe_payment`) to insert the `payments` row and flip installment status. Comment at `:135` confirms: "The webhook will handle recording the payment, so we just log success". If the webhook fails to ever arrive (routing loss), the installment stays `'pending'`/`'overdue'` despite real money having moved — parent is charged and still appears to owe it.
+- **Severity: MEDIUM.** Live-impact likelihood today is small (daily cadence, normal webhook latency is seconds). Live-impact magnitude if it fires is high (duplicate charge of an installment amount). Fix is a single-line idempotency key like `idempotencyKey: \`auto-pay-${inst.id}\`` wrapped into `stripeOpts`.
+
+### Failed installment behaviour
+
+- **On card decline** (`stripe-auto-pay-installment/index.ts:147-192`): Stripe throws → `catch (err)` logs + pushes `{installmentId, status:'failed', error}` to results. If `err.code === 'card_declined'` or `err.type === 'StripeCardError'`, a one-shot Resend email is sent to the guardian (`:177-186`) with a "pay manually" link. **No DB update** on the installment — status stays as it was (typically `'pending'` or `'overdue'`).
+- **No attempt counter, no last-attempt timestamp, no pause state.** There is no `invoice_installments.last_auto_pay_attempted_at` or `auto_pay_attempts` column. Next cron run picks the same installment up again (still pending/overdue + guardian still auto-pay enabled).
+- **Retry cadence:** daily. Every day until either (a) the installment becomes `'paid'` through some other path, (b) the invoice status flips to `'void'`/`'paid'`, (c) the guardian disables auto-pay, or (d) the card finally succeeds. A declined card hit 30 days in a row is plausible. Each day produces another decline email. Stripe may flag the card/account for repeated fraud-pattern declines.
+- **Plan-pause:** does not exist. Installment 4 will auto-attempt on its own due_date regardless of installment 3's decline history.
+- **Operator-visible record:** nothing persistent. The decline exists only in (a) Stripe dashboard, (b) edge-function console logs, (c) the parent's email inbox. No badge or alert on the invoice / plan / parent page tells the operator "this card has declined N times".
+- **Severity: HIGH.** Infinite retry loop on a bad card, no-op UI, no operator surface. Not wrong money today (no charge is succeeding) but a direct support burden and a Stripe-risk-profile liability. Queue as Bucket B (defect, not live-wrong-money).
+
+### Dunning on installments
+
+- **Reminder cron:** `supabase/functions/overdue-reminders/index.ts` covers both plain overdue invoices (excluding plan invoices — `:46` `if (invoice.payment_plan_enabled) continue`) and overdue installments separately (`:59-85`).
+- **Cadence:** `org.overdue_reminder_days`, default `[7, 14, 30]` (`:238, :334`). Logic at `:241` and `:337`: `if (!reminderDays.includes(daysOverdue)) return "skip"` — **exact day-number match.** Must fire on exactly day 7 of overdue, exactly day 14, exactly day 30.
+- **Missed-day consequence:** if the cron doesn't run on exactly day 7 (weekend window skip, outage, Supabase Functions downtime), day 7's reminder is missed and never re-fires. Day 8 evaluates as `daysOverdue=8`, `[7,14,30].includes(8)` is false → skip. Only 14 and 30 are reachable; the 7-day nudge is permanently lost for that installment.
+- **Duplicate-day consequence:** no reminder log exists (confirmed Section 3e B11). If cron runs twice on the same day (operator manual trigger + scheduled, or redeploy quirk), the parent receives the **same reminder twice** — there is no `invoice_installments.last_reminder_sent_at` or `invoice_reminder_log` table gating on already-sent.
+- **UI surface:** no indication on InvoiceDetail or a plan summary page of which reminders were sent, on which date, to whom. See Section 3e SPEC-TRACE-5.
+- **Severity: MEDIUM.** Exact-match brittle + duplicate risk + invisibility in UI. Cross-ref with B11 (reminder log) from Section 3e.
+
+### Partial payment against an installment
+
+- **Manual-payment path behaviour:** `record_payment_and_update_status` at `supabase/migrations/20260401000000_auth_rls_hardening.sql:71-89` — greedy-cascades installments by `installment_number ASC`, only marking an installment `'paid'` when the remaining payment amount is `>= _inst.amount_minor` (line 79). `ELSE EXIT` (line 86) on the first installment where remaining < amount.
+- **Walked case — parent pays £30 by bank transfer against a £50 installment:** teacher records via the UI calling `record_payment_and_update_status(_amount_minor=3000, ...)`. Flow:
+  - `payments` row inserted (£30, provider=`manual`). `paid_minor` recalcs to include the £30.
+  - Greedy loop: `_remaining_payment=3000`, first pending installment is £5000, `3000 >= 5000` is false → EXIT.
+  - Installment stays `'pending'` with due_date unchanged. On its due_date it becomes `'overdue'` via `installment-overdue-check`.
+  - `overdue-reminders` starts emitting reminders asserting "£50 installment N is overdue" — but £30 of it has been paid.
+- **System state vs parent state:** the parent has paid £30 toward a £50 installment. The invoice `paid_minor` is correct (+£30). The installment row shows `status='overdue', amount_minor=5000` unchanged. Reminders use the installment's `amount_minor`, not the "outstanding against this installment" figure. Parent is told they owe £50; their view says they owe £20.
+- **No partial-payment model:** `invoice_installments` has no `paid_minor` column, no `partial_amount`, no `remaining_minor`. The schema assumes full-or-nothing per installment.
+- **Stripe-side:** Stripe's off-session auto-pay always charges `inst.amount_minor` exactly (`stripe-auto-pay-installment/index.ts:105`), so there is no partial-payment path through that flow.
+- **Parent-portal Stripe path:** if a parent paying via the portal chooses to pay a custom amount less than the full installment, no code prevents that — the payment lands, `_pay_remaining=false` by default, `_installment_id` might not be set, and the installment doesn't auto-flip. Same conflict as the manual path.
+- **Severity: HIGH — Bucket A candidate.** Parent-facing contradictory statements are a trust-breaking live state: the parent knows they paid £30 and the product keeps sending reminder emails saying the full £50 is overdue. Not wrong money in the accounting sense (the £30 is correctly recorded), but wrong-money-communication, which is exactly what the "parent + invoice + argument" benchmark protects against.
+
+### Plan cancellation mid-way
+
+- **RPC behaviour:** `supabase/migrations/20260316350000_payment_plans_phase1.sql:151-207`. `cancel_payment_plan(p_invoice_id)` checks `SELECT COUNT(*) FROM invoice_installments WHERE invoice_id = p_invoice_id AND status = 'paid'`. If `> 0` → **RAISE EXCEPTION 'Cannot cancel plan with paid installments'** (`:193-195`).
+- **Walked case — £600 / 6, 2 paid, operator wants to cancel:** `cancel_payment_plan` rejects. Alternative routes:
+  - `void_invoice` (`supabase/migrations/20260315220002_void_invoice_clear_billing_markers.sql`) — this *does* work since the invoice status would be `'sent'` / `'overdue'` (not `'paid'`). It marks remaining installments `'void'` and transitions the invoice to `'void'`. Paid installments stay `'paid'`. `paid_minor` stays at £200. The parent sees a `'void'` invoice with £200 recorded as paid and £400 written off implicitly.
+  - Manually UPDATE each remaining installment to `status='void'` via direct DB access — not exposed as an RPC; no RLS path.
+- **No write-off flow:** no RPC lets the operator say "keep the 2 paid installments credited, forgive the remaining 4, leave the invoice open so the parent can still see it". The only options are "cancel before any payment" or "void the entire invoice".
+- **No audit_log entry** by `cancel_payment_plan` — unlike `generate_installments` which logs (`:214-217`), `cancel_payment_plan` deletes + updates silently. No trail of who cancelled the plan, when, or why.
+- **Severity: MEDIUM.** Forces teachers into an either/or that isn't how real fee-dispute flows work. Also the silent cancellation is a Section 3e-style evidence gap.
+
+### Invoice vs installment reconciliation
+
+- **Auto-marking invoice paid:** happens via `recalculate_invoice_paid` math at `supabase/migrations/20260316240000_fix_refund_audit_findings.sql:189-208`: `_net_paid = SUM(payments) − SUM(succeeded refunds)`. If `_net_paid >= invoice.total_minor`, `status = 'paid'`. This is called from `record_stripe_payment`, `record_installment_payment` (orphan), `record_manual_refund`, and `record_payment_and_update_status` (inline math, not the RPC itself).
+- **Mechanism:** recalc is triggered on every payment-write path but is NOT triggered by installment-status changes directly. If a teacher manually marks an installment `'void'` via RLS-permitted UPDATE, the invoice's `paid_minor` does not auto-recalc. (No trigger on `invoice_installments` updates `invoices.paid_minor`.)
+- **Walked case — one installment voided mid-plan:** operator UPDATEs installment 4 (£100) to `status='void'`. Nothing cascades. Invoice still shows `total_minor=600, paid_minor=200` (the 2 paid), `status='sent'`. Nothing indicates "this plan now only owes £300 not £400". The overdue-reminders cron continues to use the *installments* table (`overdue-reminders/index.ts:70` filters `.eq("status","overdue")`), so the voided installment doesn't send reminders, but the *invoice* has no awareness of the voided amount — for an accountant reconciling, the total outstanding `total_minor − paid_minor = 400` is wrong; it should be 300.
+- **Cross-ref to Section 1 C3:** only P1 (`record_payment_and_update_status`) sets `invoice_installments.payment_id`. P2 (`record_stripe_payment`) leaves it NULL — so for Stripe-paid installments, "which payment settled this installment" is only queryable indirectly via `payments.installment_id` (the reverse link is populated at `stripe-webhook/index.ts` / `record_stripe_payment` via the PI metadata, but the mirror column on the installment row stays NULL). Still answerable, but two hops instead of one.
+- **Severity: MEDIUM.** Normal happy path (all installments pay in turn, recalc math flips invoice to `'paid'`) works. Edge paths (void, refund, manual adjustment) can leave invoice total and installments desynchronised with no in-DB invariant check.
+
+### Section 4 severity summary
+
+- CRITICAL: 0
+- HIGH: 2 (failed-installment infinite retry; partial-payment installment-reminder conflict)
+- MEDIUM: 4 (auto-pay no idempotency key; dunning exact-match day number + no reminder log; plan cancellation forces void on partially-paid plans; invoice/installment reconciliation has no invariant check)
+- LOW: 1 (installment-sum-vs-outstanding can diverge after void/edits)
+
+Bucket A candidate: the partial-payment conflict (parent paid some, still gets full-amount reminders). Live today, parent-facing wrong-money-communication. Filed in queue as A-item for Section 4.
 Section 5 — Dunning + overdue logic
 To be filled in Session-1.5.
 Section 6 — Invoice lifecycle state machine

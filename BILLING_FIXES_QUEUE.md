@@ -32,9 +32,9 @@ _None._
 ---
 
 ## Running index
-- Bucket A: 0 open / 2 resolved
-- Bucket B: 13
-- Bucket C: 19
+- Bucket A: 1 open / 2 resolved
+- Bucket B: 17
+- Bucket C: 22
 - Tracked (low): 3
 
 ---
@@ -86,6 +86,24 @@ _None._
 - **C18 — SPEC-TRACE-2: Rate provenance on `invoice_items`.** Add a column like `rate_source` enum(`'snapshot'`, `'rate_card_fallback'`, `'manual_override'`) to `invoice_items` or a sibling provenance table. When billing run creates an item, capture which path produced the number. InvoiceDetail renders this on hover/tooltip — "£25 (from rate snapshot captured 14 March)". Closes the loop between the rate-snapshot fix and teacher-facing visibility.
 - **C19 — SPEC-TRACE-3: Closure-skip persistence.** Currently `skippedForClosure` is a count in `billing_runs.summary`. Build a `billing_run_skips` table capturing `(billing_run_id, lesson_id, student_id, reason, closure_id)`. InvoiceDetail / run detail shows which specific lessons were skipped and why. Answers "why wasn't 14 Feb billed?" in one click. Becomes load-bearing once C11 (UK bank holidays) multiplies skip volume.
 - **C20 — Credit application breakdown on invoice.** `credit_applied_minor` shows a single total. Model + UI need per-credit breakdown (which credit rows applied, dates, amounts, source — refund / make-up / goodwill). Pairs with Section 7 (Family Account / balance brought forward).
+
+---
+
+## From Section 4 — Payment plans + installments
+
+### Bucket A (fix now)
+- **A3 — Partial payment against an installment leaves installment-level reminders showing the full amount as owed.** Parent pays £30 of a £50 installment manually. `record_payment_and_update_status` greedy cascade at `supabase/migrations/20260401000000_auth_rls_hardening.sql:79-89` requires `remaining >= inst.amount_minor`; partial amount exits without marking. `paid_minor` is correct (+£30), but the installment stays `'pending'` → `'overdue'` and `overdue-reminders` (`supabase/functions/overdue-reminders/index.ts:59-85`) emails the parent saying "£50 overdue". Parent-facing contradiction: they paid £30 and the product says they owe £50. Fix options: (a) add `invoice_installments.paid_minor` column and compute remaining per-installment; (b) keep full-or-nothing at installment level but change reminder template to show invoice-level outstanding rather than installment amount; (c) auto-resize the next pending installment when a partial lands against it. Decide at fix pass.
+
+### Bucket B (fix at end)
+- **B14 — Failed installment infinite retry.** `stripe-auto-pay-installment/index.ts:147-192` logs + emails on card decline but writes no state. No attempt counter, no pause, no plan-halt. Next cron run re-attempts the same installment. A card declined 30 days running sends 30 decline emails and risks Stripe fraud-flagging. Fix: add `invoice_installments.auto_pay_attempts` + `last_auto_pay_attempted_at` + `auto_pay_halted` columns; after N attempts halt the installment auto-pay and surface a badge on the invoice/plan page; single decline email instead of daily.
+- **B15 — Auto-pay PaymentIntent creation has no Stripe idempotency key.** `stripe-auto-pay-installment/index.ts:132` creates PIs without `idempotencyKey`. Race window between PI creation and `payments` row insert via webhook allows a second cron run to create a second PI for the same installment. Live-impact likelihood low under normal conditions but magnitude high (duplicate charge). One-line fix: `idempotencyKey: 'auto-pay-' + inst.id` wrapped into `stripeOpts`.
+- **B16 — Overdue-reminder cadence is exact-match day number.** `supabase/functions/overdue-reminders/index.ts:241, :337` uses `reminderDays.includes(daysOverdue)`. A missed cron day (outage, weekend scheduling) permanently loses that reminder. A double-fired cron sends duplicate emails (no `last_reminder_sent_at`). Fix: switch to "send if daysOverdue >= threshold AND no reminder sent for this threshold yet", backed by a reminder log (also closes B11 from Section 3e).
+- **B17 — `cancel_payment_plan` writes no `audit_log` entry** (`supabase/migrations/20260316350000_payment_plans_phase1.sql:151-207`). DELETE of installment rows + UPDATE of invoice silently. Contrast with `generate_installments` which does log at `20260401000000_auth_rls_hardening.sql:214-217`. Fix: add symmetric `audit_log` INSERT inside `cancel_payment_plan`.
+
+### Bucket C (design decision)
+- **C21 — No write-off / forgive-remaining-balance RPC.** Operator's only routes for a partially-paid plan they want to stop are (a) leave as-is, (b) void the entire invoice (losing the "paid 2 installments" narrative from the parent's perspective). Real fee-dispute flows need a third option: mark remaining installments written off, keep paid installments credited, invoice stays open with a visible "£200 written off, £200 outstanding" state. Pairs with Section 6 (invoice lifecycle) and Section 7 (family account).
+- **C22 — No invariant check between `SUM(invoice_installments.amount_minor WHERE status != 'void')` and `invoice.total_minor − invoice.paid_minor`.** After any void, manual adjustment, or edit, these can diverge silently. Decide at fix pass whether to add a DB-level CHECK constraint (probably impractical — would RAISE on legitimate void flows), a nightly reconciliation cron, or a one-shot report on the billing-run summary page.
+- **C23 — Stripe-paid installments leave `invoice_installments.payment_id` NULL.** `record_stripe_payment` (P2 from Section 1) does not set the `payment_id` FK on the installment row — only `stripe_payment_intent_id`. Teacher asking "which payment covered installment 3" has to join via `payments.installment_id` + `payments.provider_reference`. Fix: P2 should set both, mirroring P1's behaviour. Cross-ref Section 1 C3.
 
 ---
 
