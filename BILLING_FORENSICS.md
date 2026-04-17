@@ -768,8 +768,137 @@ Trigger: `enforce_invoice_status_transition` BEFORE UPDATE OF status ON public.i
 - LOW: 2 (invoice "Overdue" badge can show before cron runs; `'cancelled'` referenced in branches but missing from enum — dead branches today, latent footgun).
 
 **`partially_paid` at invoice level recommendation:** **NOT NEEDED** as a follow-on SPEC. The invoice already carries `paid_minor` + `total_minor`; adding a status would be duplicative. Installment-level `partially_paid` was needed because installments lacked an applied-amount column; that asymmetry is intentional and stays.
-Section 7 — Family Account / balance brought forward
-To be filled in Session-1.7.
+## Section 7 — Family Account / Balance Brought Forward
+
+Sources read: `supabase/migrations/20260119232402_...sql:23-43` (guardians + student_guardians DDL), `supabase/migrations/20260222230314_...sql` (latest `get_parent_dashboard_data` RPC), `supabase/functions/create-billing-run/index.ts` (payer grouping at 595-660), `src/hooks/useParentPortal.ts` (portal balance surfaces), `src/pages/portal/PortalInvoices.tsx`, `src/pages/Students.tsx`, `src/pages/StudentDetail.tsx`, full directory scan of `src/pages/`, `src/components/`, `src/hooks/`, full repo grep for family/household/balance/credit concepts.
+
+### Data model: does a family exist as a concept?
+
+- **No `family`, `household`, or `billing_unit` table exists.** Grep for `family_id`, `household_id`, `payer_family_id`, `billing_unit_id` across migrations returns zero matches.
+- **The de-facto billing unit is the guardian.** `guardians` table at `supabase/migrations/20260119232402_...sql:23-31` is a per-org entity with `full_name, email, phone`. `student_guardians` junction at lines 34-43 links many-to-many with `relationship (mother/father/guardian/other)` + `is_primary_payer boolean` + `UNIQUE(student_id, guardian_id)`.
+- **One student → many guardians is supported.** Divorced / two-parent households → two `guardians` rows, one of them flagged `is_primary_payer=true`. The other guardian exists for contact purposes only.
+- **One guardian → many students is supported.** A parent with 3 children at the same teacher is represented as 3 `student_guardians` rows pointing at the same `guardian_id`. This is the closest LessonLoop has to a "family".
+- **Invoices are addressed to a single payer** — `invoices.payer_guardian_id uuid nullable` OR `invoices.payer_student_id uuid nullable` (one or the other is populated; both nullable at the column level). Resolved at billing-run time by `create-billing-run/index.ts:611-637`: if the student has a primary-payer guardian, the invoice's `payer_guardian_id` is that guardian; else if the student has an email, the invoice is addressed to the student directly (`payer_student_id`); else skipped with `'no_primary_payer'`.
+- **No household entity binding two parents into a single billing unit.** A divorced household where Mum has `is_primary_payer=true` will receive all invoices; Dad is a contact. There is no concept of "shared parental liability" or "split invoice across both parents".
+
+**Verdict: the "family" exists implicitly as (primary-payer guardian + their linked students), but only one guardian per household is the billing entity. Adequate for the common case; does not model the complex household split.**
+
+### Rolling balance: does it exist?
+
+- **No `guardians.balance_minor` column.** No `guardian_balance`, no `family_balance`, no `rolling_balance`, no `account_balance` anywhere in the schema.
+- **No view, materialised view, or RPC that aggregates money across a family.** Grep for `family_outstanding`, `guardian_outstanding`, `get_family_balance` returns zero matches.
+- **Closest thing: `get_parent_dashboard_data` RPC** at `supabase/migrations/20260222230314_c096f5c1-...sql:1-115`. Returns `outstanding_balance` per-guardian computed as:
+  ```sql
+  SELECT SUM(total_minor) FROM invoices
+  WHERE payer_guardian_id = _guardian_id AND status IN ('sent','overdue') AND org_id = _org_id
+  ```
+  (line 88-94). **This is parent-facing only (called from parent portal), uses `total_minor` not `total_minor - paid_minor`, and does NOT subtract succeeded refunds, make-up credits, or any other adjustment.**
+- **Bug — parent-facing inflated outstanding balance.** A partially-paid invoice (`total_minor=10000, paid_minor=3000`, status='sent') contributes `10000` to the reported balance instead of `7000`. Parent sees £100 outstanding on the portal dashboard while the Invoices page (`src/pages/portal/PortalInvoices.tsx:275`, which computes `total_minor - paid_minor` correctly) shows £70. Inconsistent numbers across two surfaces of the same portal. **Filed as Bucket A-6 — live parent-facing wrong-money-display.**
+- **No teacher-side "family balance" surface anywhere.** Grep for a Parents / Guardians / Families list page returns none. Teacher's only aggregate invoice surface is `Invoices.tsx` (per-invoice listing with filters) and Dashboard's org-wide `outstandingAmount` counter.
+- **How does a teacher answer "what does the Jones family currently owe me" today?** Either (a) open the Invoices page, filter/search by guardian name, mentally sum outstanding across invoices; (b) open StudentDetail for each student in the household and aggregate; or (c) leave the app for spreadsheet / support ticket.
+- **Severity: CRITICAL SPEC.** This is the Section 7 headline finding. The absence of a rolling family balance is the single largest gap between LessonLoop and MMS-style positioning. Filed as C32 (family-account data model) and C33 (teacher-facing Parents page).
+
+### Brought-forward balance when new invoice generated
+
+- **Does not happen.** `create-billing-run/index.ts:712-726` builds each invoice row as a standalone document: subtotal from current-period line items, VAT computed, total derived. The `credit_applied_minor` column is NOT set (defaults to 0) — confirmed in Section 3b as the HIGH finding that billing run bypasses credit application entirely.
+- **No query of "previous outstanding balance on this guardian"** before invoice insert. No logic that adds a "Balance brought forward" line item. Grep for `brought_forward`, `carryover`, `previous_balance` across migrations + src returns zero matches.
+- **Each invoice is standalone** — has no forward/backward link to prior invoices for the same guardian except via the `billing_run_id` FK (different run, different invoice set). No notion of "running account".
+- **No mechanism for "apply £30 credit from last month to this invoice" at creation time.** The `credit_applied_minor` column is only populated by `create_invoice_with_items` RPC (manual invoice creation) from make-up credit redemption — which is lesson entitlements, not money.
+- **Severity: HIGH SPEC.** Filed as C37 — "Brought-forward balance on billing-run-generated invoices". Depends on C32 (family-account data model) to land first.
+
+### Credits: what counts as a credit today?
+
+| Mechanism | What it represents | Money or lesson entitlement? | Where it surfaces | Integrated into a unified balance? |
+|-----------|--------------------|------------------------------|-------------------|------------------------------------|
+| `make_up_credits` table (`20260124020340_d8ce35e7-...sql:6+`) | Right to one make-up lesson per credit; issued on absence, redeemed when a waitlist match happens OR via `create_invoice_with_items` credit-offset | **Lesson entitlement** (consumed by booking a make-up); can be *valued* in minor units via the credit_value_fallback chain, but is not real money-on-account | Parent portal's `useParentCredits` hook; teacher's `MakeUpCreditsPanel`; automatically redeemable at invoice creation time | ✗ Siloed. Value-when-redeemed only. |
+| `invoices.credit_applied_minor` column | Snapshot of make-up credit value applied at the moment of invoice creation | **Derived money** at that moment, sourced from `make_up_credits`; zero for billing-run invoices | Invoice total math (subtotal + VAT − credit) | ✗ Per-invoice only. Not a rolling family balance. |
+| `invoices.is_credit_note` column | Term-adjustment credit-note document (per Section 2 C6) | **Money** within the specific context of a term adjustment | Invoice PDF + detail page | ✗ Not reachable from a refund path; unrelated to family balance. |
+| `refunds` table | Record of money returned to a parent via Stripe or manually | **Money** (outbound); reduces invoice `paid_minor` via recalc | Invoice payment history | ✗ Refunds aren't held as credit; they're direct payouts. No "refund → hold as family credit" option. |
+| (nothing) | Family credit / overpayment / goodwill / balance brought forward | — | — | **Does not exist.** |
+
+**Summary:** there are four distinct credit mechanisms today, and **none of them combine into a unified family credit balance**. Make-up credits are the only parent-visible "credit" but they are lesson entitlements, not money — a parent with 3 make-up credits cannot "cash them out" or apply them to a non-lesson invoice item. The word "credit" in the LessonLoop UI currently means "lesson voucher", which is a permanent semantic trap vs MMS's money-on-account usage.
+
+### Multi-student household math
+
+- **One invoice per primary-payer per billing period (not one per student).** `create-billing-run/index.ts:582-660` groups lessons by `payerType + payerId` (Map key `guardian-{id}` or `student-{id}`). A primary-payer guardian with 3 children gets ONE invoice per billing run, with 3 groups of line items (one per child).
+- **Per-student line-item breakdown exists** — `invoice_items.student_id uuid` FK (Section 3e, DDL at `20260119234233_...sql:46`). InvoiceDetail renders each line item with its student_id; the PDF generator groups items by student. Operator can see "you owe £100 total = £60 for Alice + £40 for Bob" within one invoice.
+- **Severity: NONE.** This part works as a UK-teacher expects. The multi-student→single-invoice bundling is a legitimate "family" feature at the invoice level, even without a family-balance layer above.
+
+### Guardian-facing UI
+
+Per `src/pages/portal/*` + `src/hooks/useParentPortal.ts`:
+
+| Capability | Present today? | Evidence |
+|------------|---------------|----------|
+| See all invoices across all children on one page | ✓ | `PortalInvoices.tsx` lists all invoices where `payer_guardian_id = guardian.id`. Also shows per-student invoices where the student is in this guardian's `student_guardians`. |
+| Running family balance | ✗ (bug) | `PortalHome` consumes `useParentDashboardData`, which returns `outstanding_balance` from the RPC using `SUM(total_minor)` — inflated for partial-paid invoices. No credit subtraction. |
+| Upcoming charges (payment plans, pending lessons this month) | Partial | Installments visible via `PaymentPlanInvoiceCard`. Pending lessons this month → no billing preview ("you'll be charged £X for April"). |
+| Credits accrued | Partial (lessons only) | `useParentCredits` shows make-up credit count + value. No money-on-account — it doesn't exist. |
+| Bulk pay multiple invoices in one transaction | ✗ | Each invoice → one Stripe checkout per `PaymentDrawer.tsx`. No "pay all 3 outstanding invoices" button. |
+
+### Teacher-facing UI (parents list page)
+
+- **No Parents, Guardians, or Families route in `src/pages/`.** Grep for any such file returns none.
+- **Only guardian surface teachers have** is through `StudentDetail` (shows this student's guardians) and the Invoices filter dropdown (can filter by payer guardian name).
+- **No balance column per family anywhere** — because the column doesn't exist.
+- **Cannot sort "most owed first"** — no family-balance value to sort by.
+- **Cannot filter to "families with any overdue invoice"** — only filter is per-invoice status.
+- **Cannot see last-payment-date per family** — no such aggregate.
+- **Severity: CRITICAL SPEC.** This is the teacher-facing half of the C32 gap. Filed as C33.
+
+### Adjustments / manual credits / write-offs
+
+- **Manual goodwill credit: does NOT exist as an RPC or UI.** Grep for `goodwill`, `apply_credit_to_family`, `manual_credit`, `adjust_balance`, `write_off` returns zero matches.
+- **Workarounds today:**
+  - "Give a £10 goodwill credit" → create an invoice for -£10 and immediately mark it paid (hacky, uses the `is_credit_note` path indirectly, breaks invoice numbering coherence).
+  - "Write off a bad debt" → void the unpaid invoice (using `void_invoice` — per A5 fix, works only if `paid_minor = 0`). Loses the "we gave up on this" story; no dedicated "written off" state.
+- **Severity: HIGH SPEC.** Filed as C35.
+
+### Payment reconciliation at family level
+
+- Walk: parent sends £200 bank transfer, no invoice reference, no family has that exact amount outstanding.
+- Today: teacher must pick ONE invoice to record the payment against (`useRecordPayment` requires `invoice_id`). The payment's amount cannot exceed the chosen invoice's outstanding (P1 over-application guard per Section 1).
+- **Cannot spread £200 across 3 invoices.** No payment-allocation table, no `allocate_payment_to_invoices(...)` RPC. `payments.invoice_id` is NOT NULL.
+- **Cannot hold £200 as family credit for future invoices.** No family-credit concept.
+- **Only option: split mentally into N sub-payments, record each against a different invoice.** If £200 doesn't evenly match outstanding amounts, one payment might have to be over-applied (rejected by P1 guard) or the parent credits get stranded.
+- **Severity: HIGH SPEC.** Filed as C34.
+
+### Comparative benchmark — MMS gap
+
+| Benchmark capability | LessonLoop current | MMS current | Gap severity |
+|----------------------|---------------------|-------------|--------------|
+| Per-family rolling balance as a first-class number | ✗ | ✓ (headline feature) | **CRITICAL** |
+| Teacher sees family balance on a list page with sort/filter | ✗ | ✓ | **CRITICAL** |
+| Parent sees unified balance on portal (not per-invoice) | Partial (buggy summation, no credits) | ✓ | HIGH |
+| Brought-forward previous balance on new invoice | ✗ | ✓ | HIGH |
+| Family credit (money on account, distinct from lesson credits) | ✗ | ✓ | HIGH |
+| Multi-invoice payment allocation (one payment, many invoices) | ✗ | ✓ | HIGH |
+| Bulk pay multiple invoices (parent portal) | ✗ | ✓ | MEDIUM |
+| Manual goodwill credits | ✗ | ✓ | MEDIUM |
+| Bad-debt write-off as a distinct status | ✗ | ✓ | MEDIUM |
+| Multi-student single invoice with per-student breakdown | ✓ | ✓ | NONE (LessonLoop competitive) |
+| Multi-guardian household with one primary payer | ✓ (partial — two guardians modelled but no split liability) | ✓ | LOW |
+
+**Positioning reality:** on the family-account axis, LessonLoop today cannot credibly claim parity with MMS. The most visible gap (rolling family balance) is the single biggest differentiator, and its absence makes "balance brought forward", "goodwill credits", "bulk pay", "family-first invoicing" all unreachable.
+
+### Bucket assignments
+
+- **Bucket A (live parent-facing wrong money TODAY):**
+  - **A6** — `get_parent_dashboard_data` inflated outstanding balance via `SUM(total_minor)` instead of `SUM(total_minor - paid_minor)`. Parent portal dashboard contradicts Invoices page (which does the right math). Simple fix: one-line SQL change to subtract `paid_minor`. Cross-reference with Section 3e C20 (per-credit breakdown) because the real fix also subtracts credit value, but the minimal patch is the arithmetic correction.
+
+- **Bucket C (SPECs — design endpoints):**
+  - **C32** — Family-account data model: `family_credits` (money) + per-guardian rolling balance view + brought-forward mechanism.
+  - **C33** — Teacher-facing Parents / Families list page with balance column, sort by "most owed", filter by overdue.
+  - **C34** — Multi-invoice payment allocation (one £200 payment, split across 3 invoices).
+  - **C35** — Manual goodwill credits + bad-debt write-off as first-class actions.
+  - **C36** — Bulk pay multiple invoices from parent portal in a single Stripe checkout.
+  - **C37** — Brought-forward balance as a line item on billing-run-generated invoices (depends on C32).
+  - **C38** — Rename in-product "credit" concept: currently "credit" = lesson entitlement (make_up_credits); post-C32 "credit" should be unambiguously money-on-account. Either rename make_up_credits to "makeup entitlements" everywhere, or introduce "money credits" with a clearly distinct term.
+  - **C39** — Two-guardian shared liability (split invoice across Mum + Dad). Not a day-one requirement; most UK music schools assign one primary payer. Defer.
+
+### Strategic summary
+
+> The minimum data-model work to credibly position LessonLoop as an MMS-replacement on the family-accounts front is four pieces: (1) a `family_credits` table holding money-on-account keyed by guardian, with sources distinguished (`refund`, `overpayment`, `goodwill`, `write_off`); (2) a `get_family_balance(_guardian_id)` RPC returning `SUM(outstanding invoices) − SUM(available family_credits)` with the same arithmetic rigour as `recalculate_invoice_paid`; (3) a teacher-facing Parents list page surfacing that balance per family with sort/filter; (4) a brought-forward mechanism inside `create-billing-run` that queries the family balance and inserts a `"Balance brought forward"` line item on the new invoice when non-zero. Plus renaming the existing "credit" concept so "makeup credit" and "money credit" are never confused. Everything else — multi-invoice payment allocation, bulk pay, goodwill credits, write-off status — is a natural extension once the balance primitive exists. Estimate: 4-6 weeks of focused product work. The A5 fix's C31 (family-credit conversion on void) and the Section 2 C6 credit-note gap both collapse into this work. Until it lands, the most honest positioning is "LessonLoop owns the per-invoice billing rigour; MMS still owns the family account". After it lands, LessonLoop has a credible "UK-native, per-family, rigorous" story.
 Section 8 — UK-specific billing gap analysis (internal-only)
 To be filled in Session-1.8.
 Section 9 — Audit trail / teacher-facing evidence

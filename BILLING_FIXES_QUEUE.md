@@ -32,10 +32,10 @@ _None._
 ---
 
 ## Running index
-- Bucket A: 0 open / 5 resolved
+- Bucket A: 1 open / 5 resolved
 - Bucket B: 27
-- Bucket C: 30
-- Tracked (low): 6
+- Bucket C: 38
+- Tracked (low): 7
 
 ---
 
@@ -151,6 +151,29 @@ _None._
 ### Tracked but not actioned
 - LOW: badge "Overdue" can render before cron flips the column — visual eager, harmless.
 - LOW: dead `'cancelled'` branches — covered by B27.
+
+---
+
+## From Section 7 — Family Account / Balance Brought Forward
+
+### Bucket A (fix now)
+- **A6 — `get_parent_dashboard_data` returns inflated outstanding balance.** `supabase/migrations/20260222230314_c096f5c1-...sql:88-94` computes parent dashboard outstanding as `SUM(total_minor)` for sent/overdue invoices, not `SUM(total_minor - paid_minor)`. Any partially-paid invoice is counted at full amount. Parent sees £100 outstanding on portal dashboard while `src/pages/portal/PortalInvoices.tsx:275` correctly shows £70 — same portal, contradictory numbers. Live parent-facing wrong-money-display. Fix: one-line SQL change to subtract `paid_minor` in the SUM; full family-balance math (subtract credits + refunds) is C32 territory.
+
+### Bucket B (fix at end)
+_None in Section 7; all findings are either A (buggy math) or C (missing data model)._
+
+### Bucket C (design decision — post-audit SPEC)
+- **C32 — Family-account data model (HEADLINE).** Add `family_credits` table holding money-on-account keyed by guardian with source enum (`refund` / `overpayment` / `goodwill` / `write_off` / `balance_brought_forward`). Add `get_family_balance(_guardian_id)` RPC computing `SUM(outstanding invoices) − SUM(available family_credits)` with same arithmetic rigour as `recalculate_invoice_paid`. Single biggest MMS-competitive gap. Prerequisite for C33-C37. Unblocks C31 (A5 upgrade: void-and-credit). Estimate 4-6 weeks.
+- **C33 — Teacher-facing Parents / Families list page.** New route surfacing per-guardian balance with sort by "most owed", filter by overdue. Depends on C32.
+- **C34 — Multi-invoice payment allocation.** One £200 payment split across 3 invoices via new `payment_allocations` junction table, or auto-split into N `payments` rows. Data-model decision.
+- **C35 — Manual goodwill credits + bad-debt write-off.** `grant_family_credit(guardian_id, amount_minor, source, reason)` RPC. New invoice status `'written_off'` distinct from `'void'`. Pairs with C32.
+- **C36 — Bulk pay multiple invoices from parent portal.** Single Stripe checkout aggregating N outstanding invoices.
+- **C37 — Brought-forward balance line item on billing-run invoices.** When `create-billing-run` generates invoice for family with outstanding balance or credit, insert `"Balance brought forward"` line item. Depends on C32.
+- **C38 — Rename "credit" concept.** Make-up credits (lesson entitlements) vs family credits (money-on-account) must be linguistically distinct to avoid permanent semantic trap once C32 lands. Either rename `make_up_credits` label to "makeup vouchers" or column rename. Prevents teacher/parent confusion.
+- **C39 — Two-guardian shared liability.** Split invoice across Mum + Dad. Defer — most UK schools assign one primary payer.
+
+### Tracked but not actioned
+- Billing run's payer grouping (`create-billing-run/index.ts:582-660`) correctly produces one invoice per primary-payer per period with per-student line items — already matches MMS behaviour at invoice level, intentionally left untouched.
 
 ---
 
