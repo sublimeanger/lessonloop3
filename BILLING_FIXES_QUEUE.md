@@ -32,9 +32,9 @@ _None._
 ---
 
 ## Running index
-- Bucket A: 0
+- Bucket A: 0 open / 2 resolved
 - Bucket B: 7
-- Bucket C: 10
+- Bucket C: 13
 - Tracked (low): 3
 
 ---
@@ -60,8 +60,21 @@ _None._
 
 ---
 
-## From Section 3 onwards
-_To be populated._
+## From Section 3 — Billing run correctness forensics
+
+### Bucket A (fix now)
+- ✅ **RESOLVED:** billing run ignored `closure_dates` (commit `9f60d71`).
+
+### Bucket B (fix at end)
+_None._
+
+### Bucket C (design decision — post-audit SPEC)
+
+- **C11 — UK bank holiday awareness (HIGH priority SPEC).** No automatic bank holiday data in LessonLoop. Spec needs: (a) data source decision (seed from gov.uk/bank-holidays.json once per year / runtime fetch / npm date-holidays library); (b) four-nation distinction — England+Wales, Scotland, Northern Ireland have different holiday sets; (c) billing-run integration (bank holidays should feed the same closure_dates exclusion already implemented in commit `9f60d71`, or a parallel `bank_holidays` table with the same filter treatment); (d) UX for operators to preview which holidays apply and opt-out per-holiday (some music schools teach on bank holidays by prior agreement); (e) existing-org migration — what happens to orgs that manually entered "Christmas Day" already? Prerequisite: C12 (four-nation field). Blocker today for the UK-native positioning; current marketing page on `marketing-html/features/scheduling/index.html:323` implies this exists.
+
+- **C12 — Four-nation field on `organisations` (SPEC prerequisite to C11).** `organisations.country_code` is `'GB'` — need a refinement (e.g. `organisations.uk_nation` enum: `'england'` / `'wales'` / `'scotland'` / `'northern_ireland'`). Decisions needed: (a) required or optional at signup? (b) default when unknown (England/Wales is most common; auto-detect from billing postcode?); (c) what if an org's teachers span nations — does nation apply to the org as a whole or per-location? Recommendation: per-org default with per-location override, matching the `closure_dates.applies_to_all_locations` pattern already in the schema.
+
+- **C13 — `closure_dates` schema extension: date-range support.** Current schema is single `date` only — an operator closing Mon-Fri needs 5 rows. Low-risk DDL change (add `end_date` nullable column, update filter to handle range overlap). Not a fix today — queue until C11 work as part of the same data-model pass.
 
 ---
 
@@ -71,6 +84,12 @@ _To be populated._
 - 4 commits on branch `audit/phase-2-billing-forensics`: `c3c0b2d` (trivial paths), `d42b3f4` (term-adjustment), `40137f3` (confirm_makeup_booking migration — NOT YET APPLIED), `2abf1e2` (useLessonForm logging).
 - Migration `20260417120000_rate_snapshot_on_confirm_makeup_booking.sql` requires manual Supabase SQL Editor application + `NOTIFY pgrst, 'reload schema';` before the related code paths are deployed.
 - Deploy note: treat the four commits as one release — apply SQL first, then deploy frontend together.
+
+### closure_dates billing-run exclusion fix (April 17 2026)
+- 1 commit on branch `audit/phase-2-billing-forensics`: `9f60d71`.
+- Pure edge-function change, no DDL, no migration required.
+- Contradiction handling: closure wins over attendance, warn logged. `skippedForClosure` counter added to run summary for operator visibility.
+- Marketing claim at `marketing-html/features/scheduling/index.html:323` still mentions bank holidays — not addressed in this fix (separate decision; see C11).
 
 ### Bucket C items surfaced during fix (not yet actioned)
 - **C8.** `rate_cards` audit trigger not implemented despite `docs/AUDIT_LOGGING.md` claim (now corrected to ❌). Need a proper `trg_audit_rate_cards` that captures before-value changes to `rate_amount` so historical rates can be reconstructed — prerequisite for ever completing Option B backfill of NULL `rate_minor` rows, or for any Option C review flow to show the operator the correct historical rate.
