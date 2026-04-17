@@ -253,6 +253,15 @@ Fields that differ between paths: **13** of the 14 rows above (only "creates neg
 - VAT allocation on refund: **none.** The invoice's `tax_minor` is not decremented, and no per-line / per-refund VAT split is stored. A £30 refund against an invoice whose VAT component is £16.67 does not record "£5 VAT refunded, £25 net refunded"; it records one `amount_minor=3000` row against the parent payment only.
 - **Outcome:** integer arithmetic is drift-free (no float carrying). The failure mode is semantic, not numerical: for VAT-registered orgs, HMRC expects a refund to be paired with a credit note that proportionally reverses output VAT — LessonLoop produces the cash movement but not the VAT adjustment.
 - **Severity: MEDIUM (semantic / compliance).** No arithmetic drift; no NONE either — the missing VAT proration is a real gap for any org where VAT is enabled. This overlaps with the credit-note SPEC question deferred to 2d.
+
+### Credit notes
+
+**Partial — a narrow credit-note concept exists but is NOT integrated with the refund/void flow.** Evidence:
+- `invoices.is_credit_note boolean` column is referenced by `supabase/migrations/20260315220007_fix_invoice_items_check_credit_notes.sql:1-30` and by the term-adjustment pipeline at `supabase/functions/process-term-adjustment/index.ts:379, 393`. Invoices flagged `is_credit_note=true` may carry negative `invoice_items.unit_price_minor` / `amount_minor` (enforced by the trigger `check_invoice_item_amounts` at lines 16-30 of that migration).
+- **Scope:** only the term-adjustment flow creates these. No RPC or edge function converts a refund into a credit note; none of `record_manual_refund`, `stripe-process-refund`, or `handleChargeRefunded` references `is_credit_note`.
+- **No linkage:** there is no foreign key from `refunds` to `invoices` where `is_credit_note=true`, no "credit_note_id" on refunds, no Xero export payload field mapping refunds to credit-note documents. The refund paths write a refunds row + recalc `paid_minor` and nothing else.
+
+**Flag as SPEC.** For UK VAT-registered orgs and any org integrating with Xero/QuickBooks, HMRC and accounting convention expect a refund to be paired with a **credit note document** that (a) carries its own invoice-like identifier, (b) proportionally reverses output VAT on the original invoice, (c) appears in the sales ledger as a negative sales entry, and (d) is exportable as a distinct accounting artefact. LessonLoop today produces the cash movement (refunds row → `paid_minor` adjustment) but not the credit-note document, and the partial `is_credit_note` plumbing used for term adjustments is not reachable from the refund flow. The current shape forces teachers into ad-hoc void-and-reissue cycles (limited further by `void_invoice` refusing to act on paid invoices, per `20260315220002_void_invoice_clear_billing_markers.sql:20-22`), which breaks the audit trail a parent or HMRC inspector would expect to see. Cross-cutting; queued as a Bucket-C design decision.
 Section 3 — Billing run correctness forensics
 To be filled in Session-1.3.
 Section 4 — Payment plans + installments
