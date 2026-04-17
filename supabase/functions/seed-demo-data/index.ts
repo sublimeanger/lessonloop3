@@ -406,7 +406,7 @@ Deno.serve(async (req) => {
       if (meta.isEllaCancelDate) ellaCancelledLessonId = lessonId;
 
       for (const studentName of meta.studentNames) {
-        participantRows.push({ lesson_id: lessonId, student_id: students[studentName], org_id: ORG_ID });
+        participantRows.push({ lesson_id: lessonId, student_id: students[studentName], org_id: ORG_ID, rate_minor: 3500 });
         if (!lessonIdsByStudent[studentName]) lessonIdsByStudent[studentName] = [];
         lessonIdsByStudent[studentName].push(lessonId);
 

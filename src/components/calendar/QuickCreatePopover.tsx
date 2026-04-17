@@ -153,10 +153,30 @@ export function QuickCreatePopover({
 
       // Add participant
       if (newLesson) {
+        // Snapshot rate at creation time so mid-term rate changes
+        // don't retroactively affect billing.
+        let rateLookup: number | null = null;
+        try {
+          const { data: rateCards, error: rateCardsError } = await supabase
+            .from('rate_cards')
+            .select('rate_amount, duration_mins, is_default')
+            .eq('org_id', currentOrg.id)
+            .order('duration_mins', { ascending: true });
+          if (rateCardsError) throw rateCardsError;
+          if (rateCards && rateCards.length > 0) {
+            const exact = rateCards.find(r => r.duration_mins === duration);
+            const def = rateCards.find(r => r.is_default);
+            rateLookup = exact?.rate_amount ?? def?.rate_amount ?? rateCards[0]?.rate_amount ?? null;
+          }
+        } catch (rateErr) {
+          logger.error('Failed to snapshot rate_minor on quick-create participant:', rateErr);
+        }
+
         const { error: participantError } = await supabase.from('lesson_participants').insert({
           org_id: currentOrg.id,
           lesson_id: newLesson.id,
           student_id: studentId,
+          ...(rateLookup != null ? { rate_minor: rateLookup } : {}),
         });
         if (participantError) {
           logger.error('Failed to add participant:', participantError);

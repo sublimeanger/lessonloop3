@@ -866,6 +866,22 @@ serve(async (req) => {
     // Collect teacher assignments for batch insert after the main loop
     const teacherAssignmentsBatch: any[] = [];
 
+    // Fetch rate_cards once for the import, used to snapshot rate_minor
+    // on each new lesson_participants row so mid-term rate changes
+    // don't retroactively affect billing.
+    let importRateCards: Array<{ duration_mins: number; rate_amount: number; is_default: boolean }> = [];
+    try {
+      const { data: cards, error: cardsError } = await supabase
+        .from("rate_cards")
+        .select("duration_mins, rate_amount, is_default")
+        .eq("org_id", orgId)
+        .order("duration_mins", { ascending: true });
+      if (cardsError) throw cardsError;
+      importRateCards = (cards as typeof importRateCards) || [];
+    } catch (rateErr) {
+      console.error("[csv-import-execute] Failed to fetch rate_cards for rate_minor snapshot:", rateErr);
+    }
+
     // Process each row
     for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
       // Skip rows not marked for import
@@ -1231,11 +1247,19 @@ serve(async (req) => {
               if (lessonError) {
                 result.errors.push(`Row ${rowIdx + 1}: Lesson creation failed - ${lessonError.message}`);
               } else if (lesson) {
+                // Snapshot rate_minor from rate_cards by duration
+                let rateLookup: number | null = null;
+                if (importRateCards.length > 0) {
+                  const exact = importRateCards.find(r => r.duration_mins === duration);
+                  const def = importRateCards.find(r => r.is_default);
+                  rateLookup = exact?.rate_amount ?? def?.rate_amount ?? importRateCards[0]?.rate_amount ?? null;
+                }
                 // Add student as participant
                 await supabase.from("lesson_participants").insert({
                   org_id: orgId,
                   lesson_id: lesson.id,
                   student_id: student.id,
+                  ...(rateLookup != null ? { rate_minor: rateLookup } : {}),
                 });
                 syncLessonToCalendar(lesson.id, 'create');
                 result.lessonsCreated++;
