@@ -742,10 +742,14 @@ export default function InvoiceDetail() {
             <AlertDialogDescription>
               {totalPaid > 0 && (
                 <span className="block mb-2 text-amber-600 dark:text-amber-400 font-medium">
-                  ⚠️ This invoice has {formatCurrencyMinor(totalPaid, currency)} in recorded payments. Consider processing a refund before voiding.
+                  ⚠️ This invoice has {formatCurrencyMinor(totalPaid, currency)} in recorded payments. You must refund every payment before voiding — the payment must not be left attributed to a voided invoice.
                 </span>
               )}
-              Are you sure you want to void invoice {invoice.invoice_number}? This action cannot be undone.
+              {totalPaid === 0 && (
+                <>
+                  Are you sure you want to void invoice {invoice.invoice_number}? This action cannot be undone.
+                </>
+              )}
               {invoice.credit_applied_minor > 0 && (
                 <> Any applied make-up credits ({formatCurrencyMinor(invoice.credit_applied_minor, currency)}) will be restored to the student's balance.</>
               )}
@@ -753,13 +757,45 @@ export default function InvoiceDetail() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={updateStatus.isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleVoidConfirm}
-              disabled={updateStatus.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {updateStatus.isPending ? 'Voiding...' : totalPaid > 0 ? 'Void Anyway' : 'Void Invoice'}
-            </AlertDialogAction>
+            {totalPaid > 0 ? (
+              <AlertDialogAction
+                onClick={() => {
+                  // Wire into the existing refund dialog by picking the first
+                  // payment that still has a refundable balance. Operator
+                  // refunds each payment in turn, then returns to Void once
+                  // paid_minor hits zero.
+                  const refunds = (invoice as any).refunds || [];
+                  const firstRefundable = (invoice.payments || []).find((p: any) => {
+                    const alreadyRefunded = refunds
+                      .filter((r: any) => r.payment_id === p.id && r.status === 'succeeded')
+                      .reduce((sum: number, r: any) => sum + r.amount_minor, 0);
+                    return alreadyRefunded < p.amount_minor;
+                  });
+                  if (firstRefundable) {
+                    const alreadyRefunded = refunds
+                      .filter((r: any) => r.payment_id === firstRefundable.id && r.status === 'succeeded')
+                      .reduce((sum: number, r: any) => sum + r.amount_minor, 0);
+                    setRefundPayment({
+                      ...firstRefundable,
+                      _alreadyRefunded: alreadyRefunded,
+                      _isManual: !(firstRefundable.provider === 'stripe' && firstRefundable.provider_reference),
+                    });
+                    setRefundDialogOpen(true);
+                  }
+                  setVoidConfirmOpen(false);
+                }}
+              >
+                Record Refund First
+              </AlertDialogAction>
+            ) : (
+              <AlertDialogAction
+                onClick={handleVoidConfirm}
+                disabled={updateStatus.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {updateStatus.isPending ? 'Voiding...' : 'Void Invoice'}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
