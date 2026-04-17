@@ -33,8 +33,8 @@ _None._
 
 ## Running index
 - Bucket A: 0 open / 2 resolved
-- Bucket B: 7
-- Bucket C: 13
+- Bucket B: 9
+- Bucket C: 15
 - Tracked (low): 3
 
 ---
@@ -91,7 +91,25 @@ _None._
 - Contradiction handling: closure wins over attendance, warn logged. `skippedForClosure` counter added to run summary for operator visibility.
 - Marketing claim at `marketing-html/features/scheduling/index.html:323` still mentions bank holidays — not addressed in this fix (separate decision; see C11).
 
+### Xero OAuth unblock (April 17 2026)
+- Issue discovered during Section 3d empirical test: Xero Connect was silently failing after "Allow Access" with PGRST204 `"connected_by" column not found` errors followed by `user_id NOT NULL` violation errors. No UI surface alerted operators. Root cause: `xero_connections` table created outside of version control with schema drift vs code.
+- Commits: `5d89594` (accounting.payments scope re-added — empirically confirmed accepted on Xero's side today); [this commit]: migration sync file documenting live DDL.
+- Live DDL changes applied via Lovable SQL editor (not in commit because they were hotfixes against live DB first):
+  - `ALTER TABLE xero_connections ADD COLUMN IF NOT EXISTS connected_by uuid REFERENCES auth.users(id);`
+  - `ALTER TABLE xero_connections ALTER COLUMN user_id DROP NOT NULL;`
+  - `NOTIFY pgrst, 'reload schema';`
+- Empirical result: Connect Xero OAuth round-trip now succeeds. Connection lands in `xero_connections`.
+- KNOWN UX ISSUES post-fix (tracked as B8, B9 below):
+  - No success toast on Xero connect completion.
+  - Redirect post-connect goes to `/settings` (root) instead of preserving `?tab=accounting`, and the URL has a double `?` bug.
+
+### Out-of-audit Bucket B items
+- **B8 — Xero connect success toast missing.** After successful OAuth callback, user returns to `/settings?tab=accounting?xero_error=...` but no success toast or visible confirmation that Xero is connected. Surface state is ambiguous. Fix: handle the `xero_success=true` query param in `AccountingTab` or the settings page and show a toast.
+- **B9 — Xero connect redirect loses tab state.** Redirect URL after OAuth completion is `/settings?tab=accounting?xero_error=save_failed` — note the double-query-string bug (second `?` instead of `&`). Even when successful, the tab state isn't preserved cleanly. Fix: correct query string construction in `xero-oauth-callback` redirect logic.
+
 ### Bucket C items surfaced during fix (not yet actioned)
 - **C8.** `rate_cards` audit trigger not implemented despite `docs/AUDIT_LOGGING.md` claim (now corrected to ❌). Need a proper `trg_audit_rate_cards` that captures before-value changes to `rate_amount` so historical rates can be reconstructed — prerequisite for ever completing Option B backfill of NULL `rate_minor` rows, or for any Option C review flow to show the operator the correct historical rate.
 - **C9.** `supabase/functions/csv-import-execute/index.ts:736-739` queries non-existent `rate_cards` columns (`duration_minutes`, `amount_per_lesson_minor`) — actual DDL is `duration_mins` / `rate_amount`. Either dead code or silently failing (no error handling on the query). Triage at fix-pass time: delete the block, or repair the column names and wire the result into whatever logic was meant to consume it.
 - **C10.** `confirm_makeup_booking` has six superseded migration versions (`20260222233359`, `20260222234306`, `20260223004403`, `20260315200100`, `20260315200300`, `20260316260000`) before the current live body at `20260316270000`, plus the new `20260417120000` from this fix. Consolidate migration debt at a future schema-squash pass.
+- **C15 — `xero_connections` schema drift.** Table exists in live DB but has no canonical `CREATE TABLE` migration in `supabase/migrations/`. The sync migration `20260417180000_xero_connections_schema_sync.sql` added today is a snapshot, not the authoritative definition. Session 2 should either (a) write a full authoritative `CREATE TABLE` migration that matches current live state, or (b) audit what other tables/columns have drifted outside version control. Find the original creator and confirm whether Lovable auto-generates these or they were manual.
+- **C16 — Silent failure of Xero connect flow was invisible to operators.** For an unknown period, every Xero connect attempt produced an `xero_error=save_failed` URL fragment with no user-visible message. Session 2 should add a comprehensive OAuth error surface (toast / banner / settings page indicator) that reads query params and shows meaningful errors.
