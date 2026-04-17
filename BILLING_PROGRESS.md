@@ -1,7 +1,7 @@
 Billing Forensics Progress
 
  Bootstrap
- Section 1
+[x] Section 1
  Section 2
  Section 3
  Section 4
