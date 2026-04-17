@@ -33,9 +33,9 @@ _None._
 
 ## Running index
 - Bucket A: 0 open / 3 resolved
-- Bucket B: 17
-- Bucket C: 22
-- Tracked (low): 3
+- Bucket B: 22
+- Bucket C: 27
+- Tracked (low): 4
 
 ---
 
@@ -103,7 +103,31 @@ _None._
 ### Bucket C (design decision)
 - **C21 — No write-off / forgive-remaining-balance RPC.** Operator's only routes for a partially-paid plan they want to stop are (a) leave as-is, (b) void the entire invoice (losing the "paid 2 installments" narrative from the parent's perspective). Real fee-dispute flows need a third option: mark remaining installments written off, keep paid installments credited, invoice stays open with a visible "£200 written off, £200 outstanding" state. Pairs with Section 6 (invoice lifecycle) and Section 7 (family account).
 - **C22 — No invariant check between `SUM(invoice_installments.amount_minor WHERE status != 'void')` and `invoice.total_minor − invoice.paid_minor`.** After any void, manual adjustment, or edit, these can diverge silently. Decide at fix pass whether to add a DB-level CHECK constraint (probably impractical — would RAISE on legitimate void flows), a nightly reconciliation cron, or a one-shot report on the billing-run summary page.
-- **C23 — Stripe-paid installments leave `invoice_installments.payment_id` NULL.** `record_stripe_payment` (P2 from Section 1) does not set the `payment_id` FK on the installment row — only `stripe_payment_intent_id`. Teacher asking "which payment covered installment 3" has to join via `payments.installment_id` + `payments.provider_reference`. Fix: P2 should set both, mirroring P1's behaviour. Cross-ref Section 1 C3.
+- **C23 — Stripe-paid installments leave `invoice_installments.payment_id` NULL.** `record_stripe_payment` (P2 from Section 1) does not set the `payment_id` FK on the installment row — only `stripe_payment_intent_id`. Teacher asking "which payment covered installment 3" has to join via `payments.installment_id` + `payments.provider_reference`. Fix: P2 should set both, mirroring P1's behaviour. Cross-ref Section 1 C3. **Partially addressed by A3 fix** — `record_stripe_payment` now sets `payment_id = COALESCE(payment_id, _payment_id)`. Legacy NULLs remain.
+
+---
+
+## From Section 5 — Dunning + overdue logic
+
+### Bucket A (fix now)
+_None._
+
+### Bucket B (fix at end)
+- **B18 — `overdue-reminders` cron missing from `docs/CRON_JOBS.md`.** Function exists at `supabase/functions/overdue-reminders/index.ts` and is referenced as a cron in `audit-feature-03-roles-permissions.md:228`, but the canonical cron documentation has no entry. Fresh Supabase environments set up from the doc will never schedule it → no overdue emails sent. Fix: add a section to `docs/CRON_JOBS.md` with the intended schedule (e.g. `0 9 * * *` to align with the other reminder crons).
+- **B19 — `invoice-overdue-check` and `installment-overdue-check` overlap on installment status transition.** Both query `installments WHERE status='pending' AND due_date < today` and UPDATE to `'overdue'`. The 5-minute schedule offset means the second cron's UPDATE is a no-op — wasted DB work, twice the surface for race conditions. Fix: pick one home for installment transitions (recommend `installment-overdue-check`) and remove the duplicate logic from `invoice-overdue-check` lines 53-104.
+- **B20 — Race window: parent pays vs cron sends overdue email.** Cron snapshots overdue invoices at start; parent pays in the seconds between snapshot and send; email goes out for an invoice that's now paid. Fix: refetch invoice status inside `processInvoiceReminder`/`processInstallmentReminder` immediately before send (`overdue-reminders/index.ts:241, 329`). One extra SELECT per email, eliminates the race.
+- **B21 — Guest parents (no `user_id`) cannot opt out of reminder emails.** `isNotificationEnabled` check at `overdue-reminders/index.ts:140` is gated on `if (guardian.user_id)`. Parents who never registered for the portal have no `notification_preferences` row and no opt-out path. GDPR/PECR compliance risk + parent UX. Fix options: (a) add an unsubscribe-token table keyed by guardian.email; (b) require portal account creation before sending dunning; (c) move the opt-out gate to guardian-level (add `guardians.email_invoice_reminders_enabled`).
+- **B22 — `List-Unsubscribe` header points to a non-API URL.** `overdue-reminders/index.ts:195` sets `List-Unsubscribe: <FRONTEND_URL/portal/settings?tab=notifications>` and `List-Unsubscribe-Post: One-Click`, but the URL is a React route, not a POST endpoint that toggles the preference. Per RFC 8058 mail clients may POST to the URL to unsubscribe; that POST currently returns the React app HTML and silently fails. Fix: implement a `/api/unsubscribe` POST endpoint (or edge function) that accepts the One-Click body and toggles the relevant preference.
+
+### Bucket C (design decision — post-audit SPEC)
+- **C24 — UK bank-holiday + weekend suppression in dunning crons.** All dunning crons fire at 09:00 UTC every day regardless of date. A "URGENT, 30 days overdue" email landing on Christmas Day morning is a parent-trust catastrophe. SPEC: cron checks `today` against `closure_dates` for the org AND against the C11 UK bank-holiday data (once that exists), suppresses sends, and either skips the day or shifts to the next business morning. Prerequisite: C11. Highest UX priority once C11 lands.
+- **C25 — Teacher pause-dunning per invoice + org-wide.** No mechanism today for "we agreed verbally, don't email this parent" or "snooze all dunning for the next 7 days during a sensitive period". Add `invoices.dunning_paused_until timestamptz nullable` (per-invoice) + `organisations.dunning_paused_until timestamptz nullable` (org-wide). Cron filter excludes invoices/orgs in pause window. UI: snooze button on InvoiceDetail; org-wide toggle in settings. Pairs with C17 timeline so the snooze action shows up in the activity feed.
+- **C26 — Teacher escalation: proactive notification on overdue.** Today, the only signal that a parent is overdue is the dashboard counter — passive, requires the teacher to look. SPEC: a digest email or in-app notification when (a) a new invoice transitions to overdue, (b) a parent has gone past N days without responding to reminders, (c) a parent now has multiple overdue invoices simultaneously. Configurable per role (solo teacher wants daily; agency admin wants weekly summary across teachers). Pairs with the agency-vs-solo SPEC work in later sections.
+- **C27 — BACS / bank transfer details in dunning emails.** UK music schools rely heavily on bank transfer. Current dunning email only offers the Stripe Pay Now button. Fix: render the org's BACS reference (already plumbed through `PaymentPlanInvoiceCard.tsx:36` via `bank_reference_prefix`) in the dunning email body when the org has it configured. Small change, high UK impact.
+- **C28 — Multi-invoice digest email.** A guardian with 3 invoices all hitting day-7 overdue receives 3 separate emails on the same morning. The dedup is per-invoice, so each fires independently. SPEC: aggregate same-guardian-same-day reminders into a single email listing all overdue invoices with totals per. Reduces inbox spam, looks more professional, and is what teachers actually ask for.
+
+### Tracked but not actioned
+- LOW: the `invoice-overdue-check`/`installment-overdue-check` overlap is functionally a no-op UPDATE — wasted query, not a correctness bug. Fix as part of B19.
 
 ---
 

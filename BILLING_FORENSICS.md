@@ -554,8 +554,103 @@ Sources read: `supabase/migrations/20260401000000_auth_rls_hardening.sql:126-222
 - LOW: 1 (installment-sum-vs-outstanding can diverge after void/edits)
 
 Bucket A candidate: the partial-payment conflict (parent paid some, still gets full-amount reminders). Live today, parent-facing wrong-money-communication. Filed in queue as A-item for Section 4.
-Section 5 — Dunning + overdue logic
-To be filled in Session-1.5.
+## Section 5 — Dunning + overdue logic
+
+Sources read: `supabase/functions/invoice-overdue-check/index.ts` (full), `supabase/functions/installment-overdue-check/index.ts` (re-read from Section 3c), `supabase/functions/overdue-reminders/index.ts` (re-read post-A3 fix), `supabase/functions/installment-upcoming-reminder/index.ts`, `supabase/functions/auto-pay-upcoming-reminder/index.ts`, `supabase/functions/_shared/check-notification-pref.ts`, `docs/CRON_JOBS.md`, `audit-feature-03-roles-permissions.md`. Schemas: `message_log`, `notification_preferences`, `organisations.overdue_reminder_days`.
+
+### Cron trigger map
+
+Five cron functions touch dunning / overdue logic:
+
+| # | Function | Schedule (UTC) | Source for schedule | Purpose |
+|---|----------|----------------|---------------------|---------|
+| 1 | `invoice-overdue-check` | `0 3 * * *` (03:00) | `docs/CRON_JOBS.md:30-34` | Transitions invoices `sent → overdue`; ALSO transitions installment `pending → overdue`; ALSO marks parent invoice overdue if all installments overdue |
+| 2 | `installment-overdue-check` | `5 3 * * *` (03:05) | `docs/CRON_JOBS.md:37-42` | Transitions installments `pending → overdue` (overlaps with #1) |
+| 3 | `stripe-auto-pay-installment` | `0 6 * * *` (06:00) | `docs/CRON_JOBS.md:53-59` | Charges installments due today / overdue (Section 4 audit) |
+| 4 | `auto-pay-upcoming-reminder` | `0 9 * * *` (09:00) | `docs/CRON_JOBS.md:62-67` | Email parents 3 days before auto-pay |
+| 5 | `installment-upcoming-reminder` | `0 9 * * *` (09:00) | `docs/CRON_JOBS.md:70-75` | Email parents 7 days before installment due |
+| 6 | `overdue-reminders` | **NOT DOCUMENTED** | grep `docs/CRON_JOBS.md` returns 0 hits | Sends overdue reminder emails (invoice + installment); referenced by `audit-feature-03-roles-permissions.md:228` as a cron but has no schedule entry |
+
+**Overlap finding:** functions #1 and #2 BOTH transition installment `pending → overdue` (`invoice-overdue-check/index.ts:55-70` and `installment-overdue-check/index.ts:18-39`). The 5-minute schedule offset means #1 runs first and #2 finds the same rows already transitioned (no-op UPDATE). Wasted query; not a correctness bug, but it's twice the work and doubles the surface area for race conditions. Neither function transitions `partially_paid` (correct per the A3 fix design — partially_paid should remain partially_paid regardless of due date).
+
+**Schedule gap (B-grade defect):** `overdue-reminders` is documented as a cron in the role-permissions audit (`audit-feature-03-roles-permissions.md:228`) but is missing from the canonical `docs/CRON_JOBS.md`. If an operator sets up a fresh Supabase project from `CRON_JOBS.md`, the overdue-reminders cron is never scheduled and **no overdue emails ever go out**. Silent feature loss.
+
+### Reminder cadence for a single overdue invoice
+
+- **Source of truth:** `organisations.overdue_reminder_days int[]` with default `[7, 14, 30]` (read at `overdue-reminders/index.ts:243, 334`).
+- **Trigger logic:** `if (!reminderDays.includes(daysOverdue)) return "skip"` (line 246, line 337) — exact day-number match.
+- **Maximum 3 reminders** per invoice over the lifetime: at +7, +14, +30 days past due. After day 30, no further reminders fire — the invoice goes silent.
+- **Cadence is per-org configurable** (the array column accepts any integer values). No UI surface in this audit's scope to set the array; presumably operator-edits via Supabase or a settings screen elsewhere.
+- **Tone tiers** (`overdue-reminders/index.ts:258`): `daysOverdue >= 30` → "urgent" (red, "Pay Now Urgently Required"), `>= 14` → "important", else "friendly".
+- **Severity: MEDIUM** — already covered by Section 4 B16 (exact-match brittleness — missed cron day permanently loses that reminder; double-fired cron sends duplicates). The 3-reminders-then-silent ceiling is correct UX (avoid harassment) but pairs poorly with the lack of teacher escalation (see below) — invoices over 30 days overdue silently rot until a human notices.
+
+### Duplicate-suppression between overlapping crons
+
+- **Mechanism:** `shouldSkipGuardian` at `overdue-reminders/index.ts:134-159`. Queries `message_log` for a row matching `related_id + message_type + created_at >= today.toISOString()` (start of today UTC). If any row found → skip.
+- **Coverage:** same-day dedup, robust within and across runs. Two cron triggers in the same calendar day will not double-email.
+- **Race window — parent pays vs cron sends:**
+  - Cron starts at 06:00, queries `WHERE invoice.status = 'overdue'` — snapshot is good at this moment.
+  - Parent pays at 06:01 via Stripe; webhook → `record_stripe_payment` flips invoice status to `'paid'`.
+  - Cron iterates the snapshot (still contains this invoice) and at 06:02 calls `processInvoiceReminder` → sends email saying "you owe £100".
+  - The reminder email goes out for an invoice that just became paid. Parent sees a contradiction.
+  - **Severity: MEDIUM.** Window is seconds for daily cron; rare but possible. Mitigation: refetch invoice status inside `processInvoiceReminder` before send.
+- **Multi-invoice scope** (cross-cron): if a guardian has 3 overdue invoices on day 7 of overdue, the dedup is per-invoice (`related_id` = invoice.id), so the parent receives **3 separate emails** on the same morning. No email-digest aggregation. Treat as Bucket-C UX, not a defect (`message_log` correctly tracks per-invoice).
+
+### Weekend + bank-holiday awareness
+
+- **None.** Grep across `supabase/functions/` for `isWeekend|getDay\(\)|saturday|sunday|business_day|holiday` returns zero matches in any dunning function.
+- Reminders fire at 9:00 AM UTC every day — Saturday, Sunday, Christmas Day, Easter Sunday, all the same.
+- A parent whose due-date passes on the day of a UK bank holiday receives a "URGENT: invoice 30 days overdue" email at 09:00 on the bank holiday morning if the +30 day mark lands there.
+- **Cross-reference C11** (Section 3c — UK bank holiday awareness SPEC): without the underlying `bank_holidays` data, suppression in dunning crons cannot be implemented. C11 is the prerequisite.
+- **Severity: HIGH (parent-trust-breaker SPEC).** The single most quoted complaint about MMS-style billing tools is "they emailed my parents on Christmas Day demanding payment". Currently LessonLoop has the same behaviour. UK-native positioning requires fixing this. Filed as Bucket C.
+
+### Unsubscribe / pause mechanism
+
+- **Email header:** `List-Unsubscribe: <${FRONTEND_URL}/portal/settings?tab=notifications>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (`overdue-reminders/index.ts:195-196`). The header is set, but the URL is a settings page, not a POST endpoint that toggles the preference. Per RFC 8058, mail clients may POST to the URL with `List-Unsubscribe=One-Click` body; the portal settings route is unlikely to handle that (it's a React route, not an API endpoint). **Functional one-click unsubscribe is missing despite the header.**
+- **Notification preferences:** `notification_preferences` table with `email_invoice_reminders` boolean. Checked at `overdue-reminders/index.ts:141` via `isNotificationEnabled(orgId, userId, "email_invoice_reminders")`.
+  - Defaults to **opt-in** (transactional category — `_shared/check-notification-pref.ts:33`). If no row exists, reminders go out.
+  - **Requires a `user_id`** (line 140 — `if (guardian.user_id)`). For parents who have never created a portal account (guest billing relationship), there is no `user_id`, no notification_preferences row, and no opt-out path. They receive every reminder unconditionally with no way to stop them short of replying-to-noreply or contacting the teacher.
+- **Per-invoice pause (teacher-side):** does not exist. Grep for `pause_dunning|dunning_paused|reminder_paused|dunning_pause|payment_hold` returns zero matches in source. There is no `invoices.dunning_paused_at` column, no `pause_invoice_reminders(_invoice_id)` RPC, no UI control. A teacher who agreed verbally with a parent "I'll wait until Friday" cannot tell the system to wait — the cron will email regardless.
+- **Org-wide pause:** also does not exist. No "snooze all dunning for 7 days" toggle for sensitive periods (a teacher dealing with a bereavement in their parent community has no in-product way to pause).
+- **Severity:**
+  - One-click unsubscribe header pointing at a non-API URL → MEDIUM (RFC compliance + Gmail/Outlook bulk-sender treatment).
+  - Guest parents have no opt-out → HIGH (GDPR/PECR compliance risk + parent UX).
+  - Per-invoice pause missing → MEDIUM (workaround: void+reissue, but loses history).
+  - Org-wide pause missing → MEDIUM (workaround: ad-hoc cron disable, brittle).
+
+### Teacher escalation
+
+- **No proactive notification** to teachers about overdue parents. Grep `overdue-reminders/index.ts` for `teacher|admin|notify_admin|escalat` returns zero matches.
+- **Passive surface only:** `Dashboard.tsx:158, 220, 271, 314` shows a count card "Outstanding £X" with subtitle `"${stats.overdueCount} overdue"` linking to `/invoices`. Teacher must actively visit the dashboard.
+- **No email-the-teacher cron** when a parent crosses a threshold (e.g. 14 days overdue, or after 3 reminders go unanswered).
+- **No in-app notification badge** for "X new overdue invoices since you last visited".
+- **No escalation policy** at the cron level — if a parent ignores all 3 reminders and goes 31+ days overdue, the system goes silent and only the dashboard counter knows.
+- **Severity: MEDIUM.** A solo teacher who runs admin once a week can have a parent go 30 days overdue, receive 3 emails, and then go silent — and the teacher learns about it only on next dashboard glance. For agency owners with multiple teachers, the lack of "Sarah has 4 students in dunning" is a bigger gap. Filed as Bucket C SPEC because the right answer involves data-model decisions (notification cadence per role, threshold settings).
+
+### Email content quality
+
+Sample of the +14 day "important" tier (`overdue-reminders/index.ts:269-296`):
+
+- ✓ **Branded header** with org logo + brand colour (`buildBrandedHeader` at line 271).
+- ✓ **Three urgency tiers** with subject + colour shifts (friendly → important → urgent at 30+ days).
+- ✓ **Clear figures:** total / paid / remaining when partial; amount due otherwise (lines 279-283).
+- ✓ **Original due date + days overdue** (line 284-285).
+- ✓ **Pay Now button** linking to the parent portal Stripe checkout (line 292).
+- ✓ **"If already paid, please disregard"** footer (line 294).
+- ✗ **No BACS / bank transfer details.** UK music schools rely heavily on bank transfer; the email forces parents into the Stripe-only Pay Now flow. Operators may have configured a bank-reference prefix elsewhere (`PaymentPlanInvoiceCard.tsx:36` carries one) but it's not in the dunning email.
+- ✗ **No PDF invoice attachment.** Parents who want to print or forward to a partner / accountant get a "click here" link only. PDF generation exists (`useInvoicePdf.ts`) but isn't wired into the cron emails.
+- ✗ **No multi-invoice digest** (covered above as a separate finding).
+- ✗ **No plain-text alternative** in the email envelope. HTML-only emails get penalised by some spam filters.
+- ✗ **`reply-to` not configured** in the visible code — likely defaults to `noreply@mail.lessonloop.net`, meaning a parent who replies to the dunning email gets a bounce. UK convention is to allow reply-to-the-org's-email for dunning.
+- **Severity: MEDIUM (UX / brand)** — baseline is professional but missing the "built for UK music schools" affordances that distinguish from MMS-style boilerplate.
+
+### Section 5 severity summary
+
+- CRITICAL: 0
+- HIGH: 2 (no UK bank-holiday / weekend suppression — sends "URGENT" on Christmas Day; guest parents have no opt-out path)
+- MEDIUM: 6 (overdue-reminders missing from CRON_JOBS.md; invoice/installment overdue cron overlap; race window between cron snapshot and parent payment; List-Unsubscribe points at non-API URL; teacher pause-per-invoice missing; teacher escalation passive only; email-content quality gaps)
+- LOW: 1 (overlap is a no-op UPDATE — wasted query, not a correctness bug)
+- Cross-references C11 (UK bank holidays prerequisite) and B16 (exact-match cadence — already filed in Section 4).
 Section 6 — Invoice lifecycle state machine
 To be filled in Session-1.6.
 Section 7 — Family Account / balance brought forward
