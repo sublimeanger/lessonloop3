@@ -321,6 +321,7 @@ async function handleCreate(
       invoiceIds: result.invoiceIds,
       skippedLessons: result.skippedLessons,
       skippedForCancellation: result.skippedForCancellation,
+      skippedForClosure: result.skippedForClosure,
       ...(result.skippedStudents.length > 0
         ? { skippedStudents: result.skippedStudents }
         : {}),
@@ -513,7 +514,7 @@ async function executeBillingLogic(
     .from("lessons")
     .select(
       `
-      id, title, start_at, end_at,
+      id, title, start_at, end_at, location_id,
       lesson_participants(
         rate_minor,
         student:students(
@@ -534,6 +535,25 @@ async function executeBillingLogic(
 
   if (lessonsError) throw lessonsError;
 
+  // Fetch closure_dates that overlap the billing period. A closure row has a
+  // single `date` (no range) and is either org-wide
+  // (applies_to_all_locations=true OR location_id IS NULL) or scoped to one
+  // location_id. We exclude any lesson whose org-local calendar date matches
+  // a closure that applies to its location. See Section 3c of
+  // BILLING_FORENSICS.md — this filter fixes the HIGH finding that closed-day
+  // lessons were being billed when a closure was added after lesson creation.
+  const { data: closureDatesData, error: closureError } = await client
+    .from("closure_dates")
+    .select("id, date, location_id, applies_to_all_locations")
+    .eq("org_id", orgId)
+    .gte("date", startDate)
+    .lte("date", endDate);
+  if (closureError) {
+    console.error("[BillingRun] Failed to fetch closure_dates (non-critical):", closureError);
+  }
+  const closures: Array<{ id: string; date: string; location_id: string | null; applies_to_all_locations: boolean }> =
+    (closureDatesData as any) || [];
+
   // Get already billed (lesson, student) pairs — dedup must be per-student
   // so group lessons bill each student independently
   const { data: billedItems } = await client
@@ -545,8 +565,10 @@ async function executeBillingLogic(
   const billedPairs = new Set(
     (billedItems || []).map((i: any) => `${i.linked_lesson_id}-${i.student_id}`)
   );
-  // Keep all lessons that have at least one unbilled student
-  const unbilledLessons = lessons || [];
+  // Keep all lessons that have at least one unbilled student. Mutable because
+  // the closure-date filter below removes lessons whose org-local date falls
+  // on an applicable closure.
+  let unbilledLessons: any[] = lessons || [];
 
   // Fetch attendance records for unbilled lessons
   const unbilledIds = unbilledLessons.map((l: any) => l.id);
@@ -570,6 +592,60 @@ async function executeBillingLogic(
         });
       }
     }
+  }
+
+  // Apply closure-date exclusion. A lesson is excluded if its org-local
+  // calendar date matches a closure row for its org where either
+  // applies_to_all_locations is true (or location_id is NULL), or where the
+  // closure's location_id matches the lesson's location_id. Closure wins for
+  // billing purposes even if attendance was recorded — that contradiction is
+  // logged for operator investigation but does not block the run.
+  let skippedForClosure = 0;
+  if (closures.length > 0 && unbilledLessons.length > 0) {
+    const orgWideClosureDates = new Set<string>();
+    const locationClosureDates = new Map<string, Set<string>>();
+    for (const c of closures) {
+      if (c.applies_to_all_locations || !c.location_id) {
+        orgWideClosureDates.add(c.date);
+      } else {
+        if (!locationClosureDates.has(c.location_id)) {
+          locationClosureDates.set(c.location_id, new Set<string>());
+        }
+        locationClosureDates.get(c.location_id)!.add(c.date);
+      }
+    }
+    unbilledLessons = unbilledLessons.filter((l: any) => {
+      // Project lesson start to the org's local calendar date (en-CA → YYYY-MM-DD)
+      const localDate = new Date(l.start_at).toLocaleDateString("en-CA", { timeZone: tz });
+      const orgClosed = orgWideClosureDates.has(localDate);
+      const locClosed = !!(l.location_id && locationClosureDates.get(l.location_id)?.has(localDate));
+      if (!orgClosed && !locClosed) return true;
+
+      // Contradiction check — closure set AND attendance marked as attended
+      const matchedClosureIds = closures
+        .filter((c) => c.date === localDate && (
+          c.applies_to_all_locations || !c.location_id || c.location_id === l.location_id
+        ))
+        .map((c) => c.id);
+      const participants = l.lesson_participants || [];
+      for (const lp of participants) {
+        const studentId = lp?.student?.id;
+        if (!studentId) continue;
+        const attStatus = attendanceMap.get(`${l.id}-${studentId}`);
+        if (attStatus === "present" || attStatus === "late") {
+          console.warn("[BillingRun] Closure/attendance contradiction — excluding lesson from billing", {
+            org_id: orgId,
+            lesson_id: l.id,
+            student_id: studentId,
+            attendance_status: attStatus,
+            closure_ids: matchedClosureIds,
+            local_date: localDate,
+          });
+        }
+      }
+      skippedForClosure++;
+      return false;
+    });
   }
 
   // Track students skipped due to no payer
@@ -896,6 +972,7 @@ async function executeBillingLogic(
     totalPayers: payerGroups.size,
     skippedLessons,
     skippedForCancellation,
+    skippedForClosure,
     skippedStudents,
     failedPayers,
   };
