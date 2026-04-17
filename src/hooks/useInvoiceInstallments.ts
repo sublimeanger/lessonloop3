@@ -9,7 +9,7 @@ export interface Installment {
   installment_number: number;
   amount_minor: number;
   due_date: string;
-  status: 'pending' | 'paid' | 'overdue' | 'void';
+  status: 'pending' | 'paid' | 'overdue' | 'void' | 'partially_paid';
   paid_at: string | null;
   payment_id: string | null;
 }
@@ -27,6 +27,64 @@ export function useInstallments(invoiceId: string | undefined) {
         .order('installment_number', { ascending: true });
       if (error) throw error;
       return data as Installment[];
+    },
+    enabled: !!invoiceId,
+  });
+}
+
+/**
+ * Per-installment applied/outstanding amounts, derived from
+ * payments.installment_id and refunds. Separate hook to keep useInstallments
+ * lightweight for callers that only need status. Used by rendering surfaces
+ * that need to show "£X outstanding" on partially_paid installments.
+ */
+export function useInstallmentOutstanding(invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: ['installments-outstanding', invoiceId],
+    queryFn: async () => {
+      const result = { applied: new Map<string, number>(), outstanding: new Map<string, number>() };
+      if (!invoiceId) return result;
+
+      const { data: installments } = await supabase
+        .from('invoice_installments')
+        .select('id, amount_minor')
+        .eq('invoice_id', invoiceId);
+      const ids = (installments || []).map((i) => i.id);
+      if (ids.length === 0) return result;
+
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('id, amount_minor, installment_id')
+        .in('installment_id', ids);
+
+      const paymentIds = (payments || []).map((p) => p.id);
+      let refunds: Array<{ amount_minor: number; payment_id: string }> = [];
+      if (paymentIds.length > 0) {
+        const { data: refundRows } = await supabase
+          .from('refunds')
+          .select('amount_minor, payment_id')
+          .in('payment_id', paymentIds)
+          .eq('status', 'succeeded');
+        refunds = (refundRows || []) as typeof refunds;
+      }
+
+      const refundByPayment = new Map<string, number>();
+      refunds.forEach((r) => {
+        refundByPayment.set(r.payment_id, (refundByPayment.get(r.payment_id) || 0) + r.amount_minor);
+      });
+
+      (payments || []).forEach((p) => {
+        const net = p.amount_minor - (refundByPayment.get(p.id) || 0);
+        const prev = result.applied.get(p.installment_id) || 0;
+        result.applied.set(p.installment_id, prev + net);
+      });
+
+      (installments || []).forEach((i) => {
+        const applied = result.applied.get(i.id) || 0;
+        result.outstanding.set(i.id, Math.max(0, i.amount_minor - applied));
+      });
+
+      return result;
     },
     enabled: !!invoiceId,
   });
