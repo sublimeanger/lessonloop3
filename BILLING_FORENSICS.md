@@ -651,8 +651,123 @@ Sample of the +14 day "important" tier (`overdue-reminders/index.ts:269-296`):
 - MEDIUM: 6 (overdue-reminders missing from CRON_JOBS.md; invoice/installment overdue cron overlap; race window between cron snapshot and parent payment; List-Unsubscribe points at non-API URL; teacher pause-per-invoice missing; teacher escalation passive only; email-content quality gaps)
 - LOW: 1 (overlap is a no-op UPDATE — wasted query, not a correctness bug)
 - Cross-references C11 (UK bank holidays prerequisite) and B16 (exact-match cadence — already filed in Section 4).
-Section 6 — Invoice lifecycle state machine
-To be filled in Session-1.6.
+## Section 6 — Invoice lifecycle state machine
+
+Sources read: `supabase/migrations/20260222211425_568be73d-...sql:3-39` (`enforce_invoice_status_transition` trigger + binding), `supabase/migrations/20260315220002_void_invoice_clear_billing_markers.sql` (`void_invoice` RPC), `supabase/migrations/20260417190000_installment_partially_paid_state.sql` (latest `recalculate_invoice_paid` body — A3 fix), `src/hooks/useInvoices.ts:269-280` (client-side `ALLOWED_TRANSITIONS`), `src/pages/InvoiceDetail.tsx:43-69, 257-274, 588` (status rendering + action gating), `audit-feature-12-invoices.md`, `docs/AUDIT_TEST_CHECKLIST.md:155`. Schema fields: `invoices.status invoice_status` (`"draft" | "sent" | "paid" | "overdue" | "void"` per `src/integrations/supabase/types.ts:6655`).
+
+### Full state transition matrix
+
+Trigger: `enforce_invoice_status_transition` BEFORE UPDATE OF status ON public.invoices (`20260222211425_...sql:36-39`). Logic:
+
+- Same-value: NO-OP (line 10-12).
+- `OLD.status IN ('paid', 'void')`: RAISE (line 15-17). **Both paid and void are terminal.**
+- `OLD.status = 'draft'`: allow only `'sent'` or `'void'` (line 20-22).
+- `OLD.status = 'sent'`: allow only `'paid'`, `'overdue'`, `'void'` (line 24-26).
+- `OLD.status = 'overdue'`: allow only `'paid'`, `'sent'`, `'void'` (line 28-30).
+
+| From → To | Allowed? | Trigger reasoning | Notes |
+|-----------|----------|-------------------|-------|
+| draft → sent | ✓ | line 20 | Normal happy path. |
+| draft → paid | ✗ | line 20 (only sent/void) | Cannot record payment without sending first. Manual P1 workaround: also send. |
+| draft → void | ✓ | line 20 | Discarding an unsent draft. |
+| draft → overdue | ✗ | line 20 | Cron cannot transition draft to overdue. |
+| sent → draft | ✗ | line 24 (paid/overdue/void only) | No "unsend" path. **MEDIUM** — operator who sent wrong invoice cannot retract; must void+reissue. |
+| sent → paid | ✓ | line 24 | Standard flow. |
+| sent → overdue | ✓ | line 24 | Cron-driven (Section 5). |
+| sent → void | ✓ | line 24 | Standard cancel. |
+| paid → sent | ✗ | line 15-17 (paid terminal) | **CRITICAL.** This is the exact transition `recalculate_invoice_paid` attempts on refund (`20260417190000_...sql` recalc body, lines `IF _invoice.status = 'paid' AND _net_paid < _invoice.total_minor THEN _new_status := 'sent'`). The trigger raises. Refunds on paid invoices silently corrupt the math (see "Side effects" below). |
+| paid → draft | ✗ | line 15-17 | No reversal of payment recording. |
+| paid → overdue | ✗ | line 15-17 | Even if refunded, can't re-overdue. |
+| paid → void | ✗ | line 15-17 | **HIGH.** Cannot void a paid invoice through any path: trigger blocks paid→void; `void_invoice` RPC also raises on `status='paid'` (`void_invoice/...sql:20-22`). To void a fully-paid invoice operators have no in-product route. The intended workflow ("refund first, then void") is broken because the refund step (paid→sent) is also blocked. |
+| overdue → draft | ✗ | line 28 (paid/sent/void only) | No reversal. |
+| overdue → sent | ✓ | line 28 | Allows "un-overdue" if the operator extends due_date — but no UI surfaces this. |
+| overdue → paid | ✓ | line 28 | Normal. |
+| overdue → void | ✓ | line 28 | Normal cancel. |
+| void → draft / sent / paid / overdue | ✗ | line 15-17 (void terminal) | **MEDIUM.** Mistaken voids cannot be reversed. Operator must create a new invoice with same items. Audit log shows the void but the new invoice has no link back. |
+| (any) → 'partially_paid' / 'cancelled' | N/A | enum doesn't include these values | See "Missing states" below. |
+
+**Documentation drift:** `audit-feature-12-invoices.md:179` claims "`recalculate_invoice_paid()` can transition paid → sent (after refund), but correctly skips void invoices." This is **false** — the trigger blocks it. Same doc at line 174-175 simultaneously and correctly states paid + void are terminal. Internal contradiction.
+
+### Missing states
+
+- **`partially_paid` at invoice level: does NOT exist.** A3 fix (Section 4) added `'partially_paid'` to `invoice_installments.status` only. The invoice-level enum at `src/integrations/supabase/types.ts:6655` is unchanged: `"draft" | "sent" | "paid" | "overdue" | "void"`. Partial payment on an invoice is represented purely by `paid_minor < total_minor` while `status` stays at `'sent'` (or `'overdue'` if past due). Recommendation: **do NOT add invoice-level `partially_paid`**. The math model (`paid_minor` + `total_minor`) is sufficient at invoice level — the dunning email already shows "Total: £100, Paid: £30, Remaining: £70" from those columns. Adding a status would be duplicative state with no upside. The installment-level `partially_paid` was needed because the installment row had no `paid_minor` column — a different shape. Cross-reference A3: **deliberate parity break — invoice level uses scalars, installment level uses status enum**.
+
+- **`overdue` exists as a real status** (in the enum) AND is a computed property (cron `installment-overdue-check` + `invoice-overdue-check` flip status when `due_date < today`). The dunning cron `overdue-reminders` filters on `WHERE status = 'overdue'` (`overdue-reminders/index.ts:37`) — relies on the column. The InvoiceDetail badge ALSO computes `isOverdue = status === 'sent' && due_date < today` for the visual (`InvoiceDetail.tsx:47`) — derives independently of the column. These can disagree if the cron hasn't run yet today: the badge shows "Overdue" while the DB still says "sent". Minor UX glitch (the visual is more eager than the data) but the behaviour is intentional and benign. **LOW**.
+
+- **`'cancelled'` referenced in code, missing from enum.** `record_stripe_payment` and `recalculate_invoice_paid` both have branches `IF _invoice.status IN ('void', 'cancelled')` (e.g. `20260331160001_...sql:38, 64`; `20260417190000_...sql` recalc body). The enum has no `'cancelled'` value. Branches on it are dead code today — but if a future migration adds the enum value, the trigger has no handling for it (lines 20-30 don't include `cancelled`), so any transition out of `'cancelled'` would fall through and be silently allowed. **LOW (latent)**.
+
+### Side effects of transitions
+
+| Transition | Side effects observed in code |
+|------------|-------------------------------|
+| draft → sent | `useUpdateInvoiceStatus` UPDATE invoices SET status='sent' (`useInvoices.ts:282+`). NO `sent_at` column on invoices — the timestamp lives only in `audit_log` via the `audit_invoices` trigger. NO automatic email dispatch from the status change itself; the Send modal at InvoiceDetail.tsx:258 separately calls `send-invoice-email` edge function. NO Xero auto-sync from this transition (Xero sync only fires on the billing-run path per Section 3d). |
+| sent → paid | Set by `recalculate_invoice_paid` (`20260417190000_...sql` recalc body) when `_net_paid >= total_minor` — UPDATE invoices SET paid_minor = _net_paid, status = 'paid'. NO `paid_at` column on invoices. Cascade to installments (post-A3): each non-void installment gets `recalculate_installment_status` called, which sets installment.paid_at. NO Xero sync. NO email to parent confirming receipt (the `payment_recorded` audit log fires; user-facing receipt depends on a separate flow in `stripe-webhook`). |
+| sent → overdue | Cron-driven (`invoice-overdue-check/index.ts:37-44`). NO email at the moment of transition; reminder cadence handled separately by `overdue-reminders`. |
+| overdue → paid | Same as sent → paid. |
+| sent / overdue → void | `void_invoice` RPC at `20260315220002_...sql`. Side effects: clears `linked_lesson_id` on every invoice_item (line 25-27, so lessons can be re-billed); UPDATE invoices SET status='void', payment_plan_enabled=false (line 29); UPDATE invoice_installments SET status='void' WHERE status IN ('pending','overdue') (line 31-33 — note: post-A3, this misses `'partially_paid'` installments — see Section 4 cascade); restores any redeemed make_up_credits applied to the invoice (line 36-41); writes `audit_log` action='invoice_voided' (line 44-47). NO Xero sync. NO email to parent. **`payments` rows are NOT touched.** **`refunds` rows are NOT auto-created.** |
+
+**Voiding a partially-paid invoice — what happens to existing payments?**
+- (a) deleted: NO
+- (b) **left as-is (selected behaviour)**: payments rows persist with `invoice_id` pointing at the now-voided invoice. `paid_minor` stays at whatever was paid.
+- (c) marked voided themselves: NO (`payments` table has no `status` column with a `'voided'` value)
+- (d) auto-refunded: NO
+
+**Walked case** — operator voids a "sent" invoice with £30 already paid via Stripe:
+- `void_invoice` succeeds (status='sent' is not paid/void, trigger allows sent → void).
+- `invoices.paid_minor` stays at 3000.
+- `invoices.status='void'`.
+- `payments` row for £30 still exists, still attributes to this invoice.
+- The accountant sees a voided invoice with a recorded payment against it — implicitly a £30 credit to the parent that nothing in the product visibly tracks. The £30 is real (in Stripe), but where does the parent see it? Nowhere — the invoice is voided, the dashboard "outstanding" subtracts paid_minor but the invoice is excluded from the totals.
+- **Severity: HIGH.** Operator action that quietly orphans real money. No prompt at void-time saying "this invoice has £30 in payments — refund first?"; no auto-refund; no balance-brought-forward credit (Section 7). Filed Bucket A.
+
+**Refund on a paid invoice — recalc fails silently:**
+- `record_manual_refund` / `stripe-process-refund` / `handleChargeRefunded` all INSERT a `refunds` row, then call `recalculate_invoice_paid`.
+- recalc computes `_net_paid < total_minor`, sets `_new_status = 'sent'`, executes `UPDATE invoices SET paid_minor = _net_paid, status = 'sent'`.
+- `enforce_invoice_status_transition` trigger fires BEFORE UPDATE: `OLD.status='paid' IN ('paid','void')` → RAISE EXCEPTION.
+- The recalc transaction aborts. `paid_minor` is not updated. `status` stays `'paid'`.
+- The refunds row was committed earlier (separate Supabase client call). Caller's error handler:
+  ```
+  if (recalcError) console.error("Failed to recalculate invoice after refund:", recalcError);
+  ```
+  Logs and continues.
+- **End state:** refunds.amount_minor=3000 exists, invoices.paid_minor still =10000, invoices.status still ='paid'. Internally inconsistent. Outstanding-amount math (`total − paid + refunded`) gives £30 owed, but status says paid → dunning excludes it. Parent received the refund cash but the LessonLoop ledger says the invoice is fully paid.
+- **Severity: CRITICAL.** Live parent-facing wrong money on every refund of a paid invoice. Filed Bucket A.
+
+**audit_log coverage:** the `audit_invoices` trigger (`supabase/migrations/20260120002039_5a489cca-...sql:96-98` per Section 3e) fires INSERT/UPDATE/DELETE — so transitions are captured in `audit_log` even though invoice columns lack timestamps. The trigger conflict above means a refund-on-paid attempt logs nothing because the UPDATE rolls back before the audit trigger fires (audit trigger is also on UPDATE, but a failed UPDATE doesn't write).
+
+### Invoice edit after send
+
+- **No edit UI.** Grep `src/` for `EditInvoiceModal|EditInvoiceForm|editInvoice` returns zero matches. Grep for `invoice_items.update(` returns zero matches in `src/`. The InvoiceDetail page exposes Send / Reminder / Record Payment / Refund / Void / Download PDF actions only (`InvoiceDetail.tsx:257-274, 484-501`).
+- **No edit RPC.** `update_invoice_items` or similar does not exist in migrations.
+- **Conclusion:** invoices and their line items are effectively **write-once after creation**. The only post-creation mutations are status changes (gated by the trigger) and `paid_minor` recomputation.
+- **Sanctioned correction mechanism:** void-and-reissue. The voided invoice keeps its number; the new invoice gets a fresh number; nothing links them in the schema (no `superseded_by_invoice_id`). For credit-note flows (per Section 2 C6) the partial `is_credit_note` plumbing exists but is only reachable from the term-adjustment pipeline, not from a teacher-initiated correction.
+- **Severity: MEDIUM (UX) / HIGH (audit cleanliness).** A teacher who undercharges by £5 on a sent invoice has to: void the invoice (losing the original number from active counters), create a brand new invoice with corrected amounts and new number, manually message the parent explaining. No "edit and send revised" path. No supersession link. The original invoice and its replacement are connected only by inference (same payer, similar items, voided around the same time). Cross-reference Section 2 C6 (credit-note SPEC).
+
+### UI representation of state
+
+- **Single badge** on InvoiceDetail (`InvoiceDetail.tsx:45-68`). Variants:
+  - `draft` → secondary (grey)
+  - `sent` → default (primary brand colour)
+  - `paid` → default + custom green class (`bg-success`)
+  - `overdue` → destructive (red)
+  - `void` → outline (muted)
+  - **Computed special:** `status === 'sent' && due_date < today` → renders "Overdue" (destructive) even before the cron has flipped the column. Visual eagerness ahead of data.
+- **No partial-paid visual differentiation.** A `'sent'` invoice with `paid_minor = 0` and a `'sent'` invoice with `paid_minor = 30%` of total render with the same badge. The Totals block on the same page (`InvoiceDetail.tsx:395-451`) does show "Total / Paid / Outstanding" lines, so the partial state is *legible*, just not *signalled* by the status badge.
+- **Action gating** (`InvoiceDetail.tsx:257-274`):
+  - `draft`: Send button only (Reminder / Record Payment hidden).
+  - `sent` or `overdue`: Reminder + Record Payment buttons (Send hidden).
+  - `paid` and `void`: only Download PDF (Reminder + Record Payment + Send all hidden).
+- **Void action** (line 588) is a separate card visible only when `status NOT IN ('paid','void')`, with a destructive AlertDialog confirming.
+- **Severity: LOW** for the badge gap (legibility is fine; signalling could be richer). No partial_paid invoice state was deemed necessary above.
+
+### Section 6 severity summary
+
+- **CRITICAL: 1** (refund-on-paid trigger/recalc conflict — every refund of a paid invoice silently corrupts the ledger; live since the trigger was added in Feb 2026).
+- HIGH: 2 (voiding a partially-paid invoice strands real money in `payments` with no refund and no balance-forward; cannot void a paid invoice through any in-product route — locking the operator out of the intended void+reissue correction flow).
+- MEDIUM: 3 (no `sent → draft` recovery path for mistaken sends; no edit-after-send UI / RPC — must void+reissue; voiding leaves no `superseded_by` link to the replacement invoice).
+- LOW: 2 (invoice "Overdue" badge can show before cron runs; `'cancelled'` referenced in branches but missing from enum — dead branches today, latent footgun).
+
+**`partially_paid` at invoice level recommendation:** **NOT NEEDED** as a follow-on SPEC. The invoice already carries `paid_minor` + `total_minor`; adding a status would be duplicative. Installment-level `partially_paid` was needed because installments lacked an applied-amount column; that asymmetry is intentional and stays.
 Section 7 — Family Account / balance brought forward
 To be filled in Session-1.7.
 Section 8 — UK-specific billing gap analysis (internal-only)

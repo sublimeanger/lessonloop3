@@ -32,10 +32,10 @@ _None._
 ---
 
 ## Running index
-- Bucket A: 0 open / 3 resolved
-- Bucket B: 22
-- Bucket C: 27
-- Tracked (low): 4
+- Bucket A: 2 open / 3 resolved
+- Bucket B: 27
+- Bucket C: 29
+- Tracked (low): 6
 
 ---
 
@@ -128,6 +128,29 @@ _None._
 
 ### Tracked but not actioned
 - LOW: the `invoice-overdue-check`/`installment-overdue-check` overlap is functionally a no-op UPDATE — wasted query, not a correctness bug. Fix as part of B19.
+
+---
+
+## From Section 6 — Invoice lifecycle state machine
+
+### Bucket A (fix now)
+- **A4 — CRITICAL: refund on a paid invoice silently corrupts the ledger.** `enforce_invoice_status_transition` trigger (`supabase/migrations/20260222211425_568be73d-...sql:15-17`) treats `'paid'` as terminal and RAISES on any transition out. `recalculate_invoice_paid` (post-A3 fix at `20260417190000_...sql`) attempts `paid → sent` when a refund drops `_net_paid` below `total_minor`. The trigger raises; the recalc transaction aborts; `paid_minor` and `status` stay unchanged on the invoice. The refunds row was committed in a separate Supabase client call (e.g. `supabase/functions/stripe-process-refund/index.ts:125-138`) so the refund persists, but the caller swallows `recalcError` with `console.error` only (line 189-191). **Every refund of a paid invoice today produces an internally-inconsistent state**: refund row says £30 returned, invoice says paid in full, dunning excludes it (status='paid'), parent received the cash but the LessonLoop ledger contradicts itself. Fix options: (a) extend the trigger to allow `paid → sent` (or a new `paid → partially_refunded` state); (b) bypass the trigger from inside `recalculate_invoice_paid` via `SET LOCAL session_replication_role = replica` then restore; (c) keep status='paid' on refund and represent the partial-refund-of-paid state purely via `paid_minor − total_refunded` math, dropping the recalc's status-set logic. Recommend (a) with explicit allowlist of recalc-driven transitions. Live impact: every paid-invoice-refund since Feb 2026.
+- **A5 — Voiding a partially-paid invoice strands real money in `payments` with no refund or balance-forward.** `void_invoice` (`supabase/migrations/20260315220002_...sql`) raises only on `status IN ('paid','void')` (line 20-22), so a `'sent'` invoice with £30 paid voids successfully. Side effects: invoice → 'void', installments → 'void', credits restored — but `payments` row is untouched, `paid_minor` stays at 3000, no refunds row inserted. Parent's £30 sits orphaned: invoice is voided so excluded from outstanding totals, but the cash was real and the parent expects either refund or credit. Fix options: (a) `void_invoice` raises if `paid_minor > 0` and forces operator to refund first; (b) auto-create a refunds row of equal amount on void (problematic for non-Stripe payments); (c) auto-create a balance-forward credit on the family account (depends on Section 7 work). Recommend (a) for the immediate patch, (c) for the design endpoint.
+
+### Bucket B (fix at end)
+- **B23 — Cannot void a paid invoice through any in-product route.** Trigger blocks `paid → void`; `void_invoice` RPC raises on `status='paid'`. The intended workflow ("refund first, then void") is broken because the refund step (paid → sent) is also blocked (A4). Even after A4 is fixed, the void path still requires status to be 'sent' first — operator must execute refund + then void, two steps. Consider a single `cancel_paid_invoice(invoice_id, refund_method)` RPC that does both atomically with a single audit_log entry. Lower priority than A4 but bundled in the same fix pass.
+- **B24 — No `sent → draft` recovery for a mistaken send.** Trigger only allows `draft → sent / void`. An operator who sent the wrong invoice has no "unsend" — must void + create new. UX defect; should add an `unsend_invoice(invoice_id)` RPC available in the first N minutes (e.g., 15 min window) that flips back to draft.
+- **B25 — Void leaves no `superseded_by_invoice_id` link to the replacement.** When operator voids and re-issues, the two invoices are connected only by inference (same payer, similar items, around the same time). Add nullable `invoices.superseded_by_invoice_id uuid REFERENCES invoices(id)` and surface it on InvoiceDetail ("Voided — replaced by INV-2026-0042").
+- **B26 — Invoice has no `sent_at`, `paid_at`, `voided_at` column.** Timestamps live only in `audit_log` via the `audit_invoices` trigger. Querying "all invoices sent in March" requires a join through `audit_log`. Add the three nullable columns and populate them from each transition path. Cross-references C17 (Section 3e activity timeline).
+- **B27 — `'cancelled'` branches in code without enum value.** `record_stripe_payment` (`20260331160001_...sql:38, 64`) and `recalculate_invoice_paid` both branch on `_invoice.status IN ('void', 'cancelled')`. The enum has no `'cancelled'`. Branches are dead today but the trigger has no transition rules for `'cancelled'` either, so a future enum-add would silently allow any transition. Either delete the dead branches or add `'cancelled'` to the enum + trigger rules consistently.
+
+### Bucket C (design decision — post-audit SPEC)
+- **C29 — No edit-after-send UI / RPC.** Invoices are write-once after creation. Sanctioned correction is void+reissue with no link between the two. SPEC: design an `edit_invoice_with_correction(invoice_id, items_diff)` flow that emits a credit-note + new invoice atomically. Pairs with C6 (refund credit-note SPEC) and B25 (superseded_by link).
+- **C30 — `partially_paid` at invoice level: deliberately NOT recommended.** Documented for completeness so future audits don't propose adding it. Invoice carries `paid_minor` + `total_minor` scalar columns — partial state is fully derivable. Installment-level `partially_paid` (A3 fix) was needed because installments lacked an applied-amount column. Asymmetry is intentional.
+
+### Tracked but not actioned
+- LOW: badge "Overdue" can render before cron flips the column — visual eager, harmless.
+- LOW: dead `'cancelled'` branches — covered by B27.
 
 ---
 
