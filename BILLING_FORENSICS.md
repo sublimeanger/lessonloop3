@@ -447,6 +447,33 @@ Gaps surfaced, each a Bucket C item to spec:
 - **SPEC-TRACE-5 (MEDIUM) — Reminder log.** Missing: no record of reminder emails sent. Proposed new table `invoice_reminders` with `id, invoice_id, sent_at, sent_by, recipient_email, template, delivery_status`. Populated by the existing reminder-send flow. Surfaces on InvoiceDetail as a "Reminders sent" line or inside the SPEC-TRACE-1 timeline. Prevents the "did you send the reminder I asked for" loop.
 - **SPEC-TRACE-6 (MEDIUM) — Per-credit offset breakdown.** Missing: the invoice shows a single `credit_applied_minor` scalar but no breakdown of *which credits* were consumed. Data model has `make_up_credits.applied_to_invoice_id` for the reverse lookup — a simple `useInvoiceCredits(invoiceId)` hook on InvoiceDetail would surface the per-credit list. Small UX addition: expand the credit line into a collapsible "(3 credits applied — £20, £10, £5)" chip list.
 - **SPEC-TRACE-7 (LOW) — Xero sync status per invoice.** Cross-links with Section 3d. Join `invoices` ↔ `xero_entity_mappings` to derive a per-invoice sync badge. Already flagged under the Xero workstream; noted here for the InvoiceDetail surface.
+
+### Section 3 summary
+
+**Findings across 3a-3e:** 0 CRITICAL, 9 HIGH (1 resolved, 8 open), 8 MEDIUM, 5 LOW.
+
+Resolved during Section 3: the `closure_dates` exclusion on the billing run (commit `9f60d71`) — a Bucket A that was silently over-billing closed-studio lessons for any org that added a closure after lessons were created.
+
+**Two most important findings that remain open:**
+1. Billing run bypasses credit application entirely (Section 3b). A student with an available make-up credit gets billed full price and the credit sits unredeemed. Parent-facing wrong money on any org that issues credits.
+2. Xero fire-and-forget with zero operator visibility into per-invoice failures (Section 3d). Every failed sync leaves no DB trace; the operator's Xero ledger can silently diverge from LessonLoop invoice totals indefinitely.
+
+**SPECs that pair naturally with later sections:**
+- **SPEC-TRACE-1 / C17** (invoice activity timeline) pairs with **Section 9** (teacher-facing evidence) — the timeline *is* the answer to "teacher in front of angry parent".
+- **SPEC-TRACE-6 / C20** (per-credit breakdown on invoice) pairs with **Section 7** (Family Account / balance brought forward) — credits are the main cross-invoice ledger flow and they need a unified provenance view there.
+- **SPEC-TRACE-3 / C19** (closure-skip persistence) pairs with **Section 3c's C11 / C12** (UK bank holidays + four-nation field) — once bank holidays auto-populate `closure_dates`, the volume of skipped lessons per run grows, which raises the cost of having no per-lesson skip-reason record.
+- **C4** (Section 2 partial-refund status reopen) will need to be revisited under **Section 6** (invoice lifecycle state machine) — the `partially_paid` / `refunded` intermediate states don't exist anywhere in the invoice_status enum.
+
+**Out-of-audit fixes delivered during Section 3:**
+- Rate snapshot fix — 4 commits (`c3c0b2d`, `d42b3f4`, `40137f3`, `2abf1e2`) plus migration `20260417120000_rate_snapshot_on_confirm_makeup_booking.sql` (not yet applied).
+- Closure-dates billing-run exclusion — 1 commit (`9f60d71`). Pure edge-function change, deployable immediately.
+- Xero OAuth unblock — 2 commits (`5d89594` scope re-add; `d8afb08` schema-sync migration). Live DDL already applied; the migration is a repo-parity snapshot.
+
+**Recommended top priorities for post-Section-11 fix-pass planning:**
+1. **C17 — SPEC-TRACE-1: invoice activity timeline UI.** Highest leverage; uses existing `audit_log` data, surfaces the single most visible gap against the "angry parent" benchmark, and unblocks teacher trust work that Sections 9 and 11 will build on.
+2. **C18 — SPEC-TRACE-2: rate provenance on invoice_items.** Pairs with the rate snapshot work already in this branch — closes the loop between "we captured the rate source" and "we can show it".
+3. **C19 — SPEC-TRACE-3: closure-skip persistence.** Low data-model cost, eliminates the `console.warn`-only trail from commit `9f60d71`, and becomes load-bearing once C11 (UK bank holidays) multiplies the skip volume.
+4. **C11 — UK bank holiday awareness.** Market positioning blocker; marketing copy already claims this. Prerequisite C12 (four-nation field) is small; together they turn LessonLoop's UK-native promise from aspiration into product.
 Section 4 — Payment plans + installments
 To be filled in Session-1.4.
 Section 5 — Dunning + overdue logic

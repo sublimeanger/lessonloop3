@@ -33,8 +33,8 @@ _None._
 
 ## Running index
 - Bucket A: 0 open / 2 resolved
-- Bucket B: 9
-- Bucket C: 15
+- Bucket B: 13
+- Bucket C: 19
 - Tracked (low): 3
 
 ---
@@ -66,7 +66,12 @@ _None._
 - ✅ **RESOLVED:** billing run ignored `closure_dates` (commit `9f60d71`).
 
 ### Bucket B (fix at end)
-_None._
+
+#### From Section 3e
+- **B10 — No `invoices.created_by` column for manually-created invoices.** Teacher can't attribute who created a manual invoice. (For billing-run invoices, `billing_runs.created_by` is available via FK but isn't surfaced.)
+- **B11 — No reminder log table.** Dunning history invisible to the teacher — no record of whether, when, or to whom reminders were sent.
+- **B12 — `invoice_items` has no audit trigger.** Line-item edits (description, quantity, unit price, amount) leave no trace in `audit_log` — money changes silently.
+- **B13 — `invoices.billing_run_id` FK uses `ON DELETE SET NULL`** (`20260316210000_fix_billing_audit_findings.sql:59-61`), so deleting a billing_run orphans every invoice's provenance forever. Consider changing to RESTRICT, or capture the billing_run metadata inline on the invoice before the delete.
 
 ### Bucket C (design decision — post-audit SPEC)
 
@@ -75,6 +80,12 @@ _None._
 - **C12 — Four-nation field on `organisations` (SPEC prerequisite to C11).** `organisations.country_code` is `'GB'` — need a refinement (e.g. `organisations.uk_nation` enum: `'england'` / `'wales'` / `'scotland'` / `'northern_ireland'`). Decisions needed: (a) required or optional at signup? (b) default when unknown (England/Wales is most common; auto-detect from billing postcode?); (c) what if an org's teachers span nations — does nation apply to the org as a whole or per-location? Recommendation: per-org default with per-location override, matching the `closure_dates.applies_to_all_locations` pattern already in the schema.
 
 - **C13 — `closure_dates` schema extension: date-range support.** Current schema is single `date` only — an operator closing Mon-Fri needs 5 rows. Low-risk DDL change (add `end_date` nullable column, update filter to handle range overlap). Not a fix today — queue until C11 work as part of the same data-model pass.
+
+#### From Section 3e
+- **C17 — SPEC-TRACE-1: Invoice activity timeline UI.** `audit_invoices` trigger captures events but `InvoiceDetail` doesn't render them. Build a timeline component that reads `audit_log` and renders status transitions, edits, reminder sends, payment receipts chronologically. Single biggest differentiator vs MMS — teachers need to show parents "created on X, sent on Y, partially paid on Z" without leaving the app. Pairs with Section 9 (teacher-facing evidence).
+- **C18 — SPEC-TRACE-2: Rate provenance on `invoice_items`.** Add a column like `rate_source` enum(`'snapshot'`, `'rate_card_fallback'`, `'manual_override'`) to `invoice_items` or a sibling provenance table. When billing run creates an item, capture which path produced the number. InvoiceDetail renders this on hover/tooltip — "£25 (from rate snapshot captured 14 March)". Closes the loop between the rate-snapshot fix and teacher-facing visibility.
+- **C19 — SPEC-TRACE-3: Closure-skip persistence.** Currently `skippedForClosure` is a count in `billing_runs.summary`. Build a `billing_run_skips` table capturing `(billing_run_id, lesson_id, student_id, reason, closure_id)`. InvoiceDetail / run detail shows which specific lessons were skipped and why. Answers "why wasn't 14 Feb billed?" in one click. Becomes load-bearing once C11 (UK bank holidays) multiplies skip volume.
+- **C20 — Credit application breakdown on invoice.** `credit_applied_minor` shows a single total. Model + UI need per-credit breakdown (which credit rows applied, dates, amounts, source — refund / make-up / goodwill). Pairs with Section 7 (Family Account / balance brought forward).
 
 ---
 
