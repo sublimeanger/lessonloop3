@@ -319,6 +319,46 @@ Fields that differ between paths: **13** of the 14 rows above (only "creates neg
   - **Duration rounding:** `durationMins = Math.round((end_at − start_at) / 60000)` at `create-billing-run/index.ts:702`. Lessons scheduled to whole-minute boundaries are exact; any sub-minute drift (rare) would round to nearest minute and map to the nearest `rate_cards.duration_mins`. Since rate cards are keyed by whole-minute buckets (e.g. 30/45/60), a 59-minute lesson would hit the default/first card rather than the 60-minute card. **LOW** (edge case, unlikely in practice).
   - **No "half lesson" or "partial attendance" rate proration** — a student who attends half a 60-min lesson is billed the full rate. Consistent with music-studio policy; not a defect.
 - **Summary of precision vs approximation:** LessonLoop billing is **per-lesson discrete** — no period-fraction proration, no per-minute proration — so there is no place for the kind of MMS approximation drift. The precision fails, where they exist, are at the **snapshot coverage** boundary (rate_minor NULL → live fallback) and at the **credit-application boundary** (billing run bypasses credit offset entirely), not at arithmetic.
+
+### Closure dates
+
+- **Table:** `closure_dates` at `supabase/migrations/20260119233724_0293a85e-fdcd-45b4-a437-2dee7c480b83.sql:2-12`. Columns: `id, org_id, location_id (nullable), date, reason, applies_to_all_locations boolean default true, created_at, created_by`, with `UNIQUE(org_id, location_id, date)`. Per-org, optionally per-location, single day only (no date-range concept). Reason is free-text.
+- **Org-level toggle:** `organisations.block_scheduling_on_closures boolean NOT NULL DEFAULT true` added at `20260119233724_...sql:35-36` — intended to harden lesson *creation* against closures.
+- **Does the billing run exclude closure-date lessons? NO.** Grep of `supabase/functions/create-billing-run/index.ts` for `closure|holiday|closed|bank_holiday` returns **zero matches**. Lesson selection at `create-billing-run/index.ts:512-533` is a pure date-range query (`lesson.start_at >= startUTC AND start_at <= endUTC`) constrained only by lesson `status` and `is_open_slot`. Nothing consults `closure_dates`.
+- **Where closure_dates *is* consulted** (for context — these are all prevention paths, not billing paths):
+  - `src/components/calendar/useLessonForm.ts:669-699` — recurring lesson creation filters out series dates that fall on closures before INSERT.
+  - `supabase/functions/booking-get-slots/index.ts:161` — parent booking hides closed dates from the picker.
+  - `supabase/functions/create-continuation-run/index.ts` — term continuation respects closures when materialising the new term.
+  - `supabase/functions/process-term-adjustment/index.ts` — similar prevention at term-adjustment time.
+  - `src/hooks/useCalendarData.ts:347` — calendar visual overlay.
+- **Consequence — walked case:** an operator creates a recurring lesson series on 2 March, then on 10 March adds a new closure for 15 March because the studio boiler broke. The 15 March lesson was INSERTed on 2 March (closure did not yet exist) with `status='scheduled'`. Nothing auto-cancels it when the closure is added — there is no trigger / RPC that reconciles existing lessons with a new closure. On 16 March the lesson's natural flow (attendance marking) treats it as a normal lesson. The billing run on 31 March picks up this lesson and bills it. The parent is charged for a lesson that didn't happen because the studio was closed.
+- **Closure-date management UI:** grep `src/` for `from('closure_dates').insert|upsert` returns **zero matches** and grep for `ClosureDatesTab|ClosureDatesManagement|ClosureDateForm` returns no component. The table has DELETE/INSERT/UPDATE RLS policies permitting `is_org_admin`, but no UI component in this codebase creates or edits rows. Closures are writable only via direct DB / SQL or via a custom admin tool not in this repo. (The marketing pages at `marketing-html/features/scheduling/index.html:323` promise this feature as teacher-facing.)
+- **Severity: HIGH.**
+  - Billing run billing a closed-studio lesson is **live parent-facing wrong money** (Bucket A by the rules of this audit). The trigger is rare (closure added after lesson creation) but deterministic when it fires.
+  - Closure-date management having no UI in this repo compounds it — an operator who realises they need to add a closure has no in-app surface, so they go to direct-DB edits or ignore it. Either way, existing lessons still get billed.
+
+### Bank holidays
+
+- **No awareness of UK bank holidays in any form.** Grep across the full repo for `bank_holiday|bankholiday|public_holiday|uk_holiday|england.holiday|scotland.holiday|gov\.uk|bank-holidays|nager\.at|holidayapi` returns:
+  - `docs/SYSTEM_OVERVIEW.md:136` — "Bank Holidays: Configurable closure dates" (explicit statement that the *only* bank-holiday mechanism is manual closure entry).
+  - `docs/DATA_MODEL.md:300` — example `reason` value `"Bank Holiday"` (just a free-text label on a manually-created `closure_dates` row).
+  - `.lovable/plan.md:68` — "UK school holidays + bank holidays" listed as an intended closure-date use case.
+  - `marketing-html/features/scheduling/index.html:323` and sibling marketing pages — "Define your own terms, half-terms, and **bank holidays**" — the marketing copy explicitly claims this as a product capability.
+  - `tests/e2e/workflows/crud-terms.spec.ts:161` — test looks for a "Bank Holiday" placeholder string in a UI dialog.
+  - Zero third-party holiday-feed integrations (no `gov.uk/bank-holidays.json`, `nager.at`, `holidayapi`, `date-holidays`).
+  - Zero seeded `closure_dates` rows for standard UK bank holidays.
+- **Teacher-facing reality:** every UK bank holiday (which falls mid-term in Spring, Summer, Autumn) must be typed in manually by an admin as a `closure_dates` row, per-org, per-year. That's 8 bank holidays × (optionally 3 different nations) × every year. Plus an in-app UI to do it doesn't exist — see above, so they can't even do that from the app.
+- **Severity: HIGH.** This is the UK-native proposition LessonLoop markets itself on. MMS famously forces this manual work — the stated differentiator is to automate it. The current state is that LessonLoop forces the same manual pro-rata work MMS does, while a feature page actively claims the opposite. Treat as HIGH (UK-market-leadership-blocker), not MEDIUM. SPEC: automatic seeding of UK bank holidays per org's nation on org creation, yearly refresh, plus a UI to edit/disable.
+
+### Four-nation support
+
+- **`organisations.country_code TEXT NOT NULL DEFAULT 'GB'`** at `supabase/migrations/20260119231348_e28c56b1-4cd3-4030-b7b6-713697cd7822.sql:10`. The default and the naming both point at GB-as-a-whole, not at one of the four UK nations.
+- **No `country_subdivision` / `region` / `nation` column on `organisations` or anywhere else.** Grep for `organisations.*ADD COLUMN.*region|country_subdivision|nation|GB-ENG|GB-SCT|GB-WLS|GB-NIR` returns **zero matches**. No ISO 3166-2 code anywhere.
+- **Consumers of `country_code`:** a standalone reference `country_code` exists on `exam_boards` at `20260223002034_...sql:25` (also `GB`), but I can find no code that branches on `organisations.country_code` value — no switch, no lookup, no currency or VAT behaviour keyed off it. It's effectively a constant.
+- **Consequences:**
+  - An English org and a Scottish org are indistinguishable to the system, even though they have different bank holiday sets (Scotland has St Andrew's Day and the Monday after New Year; England/Wales don't), different term dates (Scotland terms differ), and in some cases different VAT/education treatment for peripatetic music tuition.
+  - Any future "auto-seed UK bank holidays" feature (the Bank holidays finding above) would have nowhere to read the org's nation from.
+- **Severity: HIGH (SPEC).** This is the enabling field for everything a UK-native billing product needs to do correctly. Missing today. Not a Bucket A because nothing in the billing run currently reads it — no silent wrong-money path active — but it blocks the bank-holidays fix, a future term-dates preset feature, and regional tax customisation. Flag as Bucket C SPEC with HIGH priority at fix pass.
 Section 4 — Payment plans + installments
 To be filled in Session-1.4.
 Section 5 — Dunning + overdue logic
