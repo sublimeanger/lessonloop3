@@ -215,6 +215,44 @@ The original CRITICAL rating and the HIGH "orphaned" rating do point in opposite
 | Rollback semantics                                     | Full txn rollback on any RAISE                      | Per-call; failures logged, loop continues               |
 
 Fields that differ between paths: **13** of the 14 rows above (only "creates negative `payments` row" is identical).
+
+### Walked scenarios
+
+**1. Partial refund £30 on £100 paid invoice**
+- Pre-state: `total_minor=10000`, `paid_minor=10000`, `status='paid'`.
+- Write: refunds row `amount_minor=3000, status='succeeded'` via either path.
+- Recalc (`supabase/migrations/20260316240000_fix_refund_audit_findings.sql:189-208`): `_total_paid=10000`, `_total_refunded=3000`, `_net_paid=7000`. Previous status `'paid'` and `_net_paid < total_minor` triggers the reopen branch at line 202-204 → `_new_status='sent'`. UPDATE at line 208 writes `paid_minor=7000, status='sent'`.
+- **Outcome:** family balance displays as paid £70, outstanding £30; invoice status reopens to `'sent'`. The parent who was just refunded £30 becomes the recipient of a new £30 balance-due signal (and of any downstream dunning if the original due_date has passed — Section 5 will revisit).
+- **Severity: MEDIUM.** The reopen is numerically correct (they do owe £30 again relative to the unchanged total), but no "partially_paid" / "refunded" intermediate state exists in the status machine, so every partial refund degrades the invoice back to the pre-payment state. The behaviour is consistent across both refund paths (inherited from the shared recalc).
+
+**2. Refund-after-void (Stripe webhook arrives after invoice is already voided)**
+- Pre-condition: to reach a paid-and-voided state the operator must refund first (which reopens `'paid'` → `'sent'` per scenario 1), then call `void_invoice`. `supabase/migrations/20260315220002_void_invoice_clear_billing_markers.sql:20-22` RAISEs if `status IN ('paid','void')`, so a direct void of a paid invoice is not possible through the RPC.
+- Event: second `charge.refunded` webhook arrives (e.g. another refund from the Stripe Dashboard).
+- Handler flow (`supabase/functions/stripe-webhook/index.ts:856-988`): stripe_refund_id idempotency (lines 879-887) doesn't match a new refund, so INSERT proceeds at lines 916-927 (the `validate_refund_amount` trigger at `20260316240000_fix_refund_audit_findings.sql:223-249` checks only against the single payment's amount, which still passes). Audit log written at lines 938-952.
+- Post-process: invoice status read at line 958 → `'void'` → branch at lines 959-975 fires: `UPDATE invoices SET paid_minor = netPaid` with netPaid computed in TypeScript, **no row lock, no status change, `recalculate_invoice_paid` RPC skipped**.
+- **Outcome:** the refunds row is recorded and `paid_minor` decreases on the voided invoice; status stays `'void'`. No corruption of the ledger, but the write takes the non-atomic bypass path.
+- **Severity: MEDIUM.** Functionally correct but reuses the line-973 bypass already flagged as Section 1 finding B4. A concurrent refund+payment race (rare in practice on a voided invoice) would be unlocked.
+
+**3. Double `charge.refunded` webhook delivery (Stripe retry)**
+- First delivery: `handleChargeRefunded` iterates `charge.refunds.data`. Each refund SELECT by `stripe_refund_id` at lines 879-883 returns nothing; INSERT succeeds at lines 916-927.
+- Second delivery (retry): same loop. SELECT at line 879-883 now finds the row; line 885-887 `continue`s without INSERT.
+- Backstop if the SELECT races: unique index on `refunds.stripe_refund_id` at `supabase/migrations/20260224120000_refunds_and_org_settings.sql:37`. INSERT would fail with `23505` → caught at line 930-931 (`"Duplicate refund prevented"`) and the loop continues.
+- After the loop: `recalculate_invoice_paid` runs again (line 979), but it recomputes from `SUM(payments)` and `SUM(refunds)`, so a duplicate call is mathematically idempotent.
+- **Outcome:** one refunds row, one paid_minor update per Stripe refund, regardless of webhook retry count.
+- **Severity: NONE.** Correctly guarded at two independent layers (SELECT-check + unique index).
+
+**4. Refund of a payment covering multiple invoices**
+- Model check: `supabase/migrations/20260224120000_refunds_and_org_settings.sql:8-9` declares `payment_id uuid NOT NULL` and `invoice_id uuid NOT NULL` on refunds — each refund is pinned to exactly one payment and one invoice. The payments table itself is written with a single `invoice_id` in every INSERT site (e.g. `20260401000000_auth_rls_hardening.sql:67`, `20260331160001_record_stripe_payment_paid_guard.sql:89`). There is no `payment_allocations` table and no join table linking payments to multiple invoices.
+- **Outcome:** the scenario is structurally impossible in the current model. A single Stripe/manual payment always settles one invoice. Cross-invoice settlement would require issuing separate payments or using the Family Account balance-brought-forward mechanism (Section 7).
+- **Severity: NONE** at the refund layer. Modelling limitation is a SPEC question for Section 7.
+
+**5. VAT + discount + refund integer rounding drift**
+- VAT applied at invoice creation: `_tax_minor := ROUND(_subtotal * _org.vat_rate / 100.0)` at `supabase/migrations/20260223004118_531ed3d7-2efc-46df-a553-6684491267e2.sql:85`. Total: `_total_minor := GREATEST(0, _subtotal + _tax_minor - _credit_offset)` at line 105. All integer minor units; the only floating operation is the division inside `ROUND`, and the result is immediately cast back to integer.
+- Worked example: subtotal 8333, vat_rate 20 → `_tax_minor = ROUND(8333 * 0.2) = 1667`, `_total_minor = 8333 + 1667 − 0 = 10000`. Pay 10000 → `paid_minor=10000`.
+- Partial refund 3000: refunds row `amount_minor=3000` integer. `_net_paid = 10000 − 3000 = 7000` integer. No float anywhere in the refund arithmetic path.
+- VAT allocation on refund: **none.** The invoice's `tax_minor` is not decremented, and no per-line / per-refund VAT split is stored. A £30 refund against an invoice whose VAT component is £16.67 does not record "£5 VAT refunded, £25 net refunded"; it records one `amount_minor=3000` row against the parent payment only.
+- **Outcome:** integer arithmetic is drift-free (no float carrying). The failure mode is semantic, not numerical: for VAT-registered orgs, HMRC expects a refund to be paired with a credit note that proportionally reverses output VAT — LessonLoop produces the cash movement but not the VAT adjustment.
+- **Severity: MEDIUM (semantic / compliance).** No arithmetic drift; no NONE either — the missing VAT proration is a real gap for any org where VAT is enabled. This overlaps with the credit-note SPEC question deferred to 2d.
 Section 3 — Billing run correctness forensics
 To be filled in Session-1.3.
 Section 4 — Payment plans + installments
