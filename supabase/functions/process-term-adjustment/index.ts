@@ -750,6 +750,7 @@ async function handleConfirm(
           org_id: orgId,
           lesson_id: lessonId,
           student_id: adjustment.student_id,
+          rate_minor: adjustment.lesson_rate_minor,
         }));
 
         await client.from("lesson_participants").insert(participantRows);
