@@ -30,7 +30,9 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-    // Find all due/overdue installments with auto-pay enabled
+    // Find all due/overdue installments with auto-pay enabled. Includes
+    // partially_paid installments whose outstanding amount still needs to be
+    // collected (see A3 fix in migration 20260417190000).
     const { data: installments, error: queryError } = await supabase
       .from("invoice_installments")
       .select(`
@@ -48,7 +50,7 @@ serve(async (req) => {
           status
         )
       `)
-      .in("status", ["pending", "overdue"])
+      .in("status", ["pending", "overdue", "partially_paid"])
       .lte("due_date", today);
 
     if (queryError) {
@@ -84,14 +86,29 @@ serve(async (req) => {
         continue;
       }
 
-      // Check if this installment was already paid (by installment_id)
-      const { data: existingPayment } = await supabase
+      // Compute outstanding on this installment (amount_minor minus
+      // non-refunded prior payments). Covers pending (outstanding = amount),
+      // partially_paid (outstanding = amount − prior), and the dedup case
+      // (outstanding = 0 if already fully paid but status lagged).
+      const { data: priorPayments } = await supabase
         .from("payments")
-        .select("id")
-        .eq("installment_id", inst.id)
-        .maybeSingle();
+        .select("id, amount_minor")
+        .eq("installment_id", inst.id);
 
-      if (existingPayment) continue;
+      const priorPaymentIds = (priorPayments || []).map((p: any) => p.id);
+      let priorRefunded = 0;
+      if (priorPaymentIds.length > 0) {
+        const { data: priorRefundRows } = await supabase
+          .from("refunds")
+          .select("amount_minor")
+          .in("payment_id", priorPaymentIds)
+          .eq("status", "succeeded");
+        priorRefunded = (priorRefundRows || []).reduce((s: number, r: any) => s + r.amount_minor, 0);
+      }
+      const priorApplied = (priorPayments || []).reduce((s: number, p: any) => s + p.amount_minor, 0) - priorRefunded;
+      const outstanding = inst.amount_minor - priorApplied;
+
+      if (outstanding <= 0) continue;
 
       // Get org details for Connect routing
       const { data: org } = await supabase
@@ -102,7 +119,7 @@ serve(async (req) => {
 
       try {
         const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
-          amount: inst.amount_minor,
+          amount: outstanding,
           currency: (invoice.currency_code || "gbp").toLowerCase(),
           customer: prefs.stripe_customer_id,
           payment_method: prefs.default_payment_method_id,
@@ -117,14 +134,18 @@ serve(async (req) => {
         };
 
         // Stripe Connect routing
-        const stripeOpts: Stripe.RequestOptions = {};
+        const stripeOpts: Stripe.RequestOptions = {
+          // Idempotency: guard against duplicate PIs if the webhook lags and
+          // the cron re-triggers before payments.installment_id lands.
+          idempotencyKey: `auto-pay-${inst.id}-${outstanding}`,
+        };
         if (org?.stripe_connect_account_id) {
           paymentIntentParams.transfer_data = {
             destination: org.stripe_connect_account_id,
           };
           if (org.platform_fee_percent && org.platform_fee_percent > 0) {
             paymentIntentParams.application_fee_amount = Math.round(
-              inst.amount_minor * (org.platform_fee_percent / 100)
+              outstanding * (org.platform_fee_percent / 100)
             );
           }
         }
@@ -179,7 +200,7 @@ serve(async (req) => {
                   to: guardian.email,
                   subject: `Payment failed — ${invoice.invoice_number}`,
                   html: `<p>Hi ${guardian.full_name},</p>
-                    <p>Your automatic payment of £${(inst.amount_minor / 100).toFixed(2)} for invoice ${invoice.invoice_number} could not be processed. Your card was declined.</p>
+                    <p>Your automatic payment of £${(outstanding / 100).toFixed(2)} for invoice ${invoice.invoice_number} could not be processed. Your card was declined.</p>
                     <p>Please log in to the parent portal to update your payment method or pay manually.</p>
                     <p>Thanks,<br>${orgData?.name || 'Your Academy'}</p>`,
                 });
