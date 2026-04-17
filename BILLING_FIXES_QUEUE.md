@@ -34,7 +34,7 @@ _None._
 ## Running index
 - Bucket A: 0
 - Bucket B: 7
-- Bucket C: 7
+- Bucket C: 10
 - Tracked (low): 3
 
 ---
@@ -62,3 +62,17 @@ _None._
 
 ## From Section 3 onwards
 _To be populated._
+
+---
+
+## Out-of-audit fixes applied
+
+### Rate snapshot fix (April 17 2026)
+- 4 commits on branch `audit/phase-2-billing-forensics`: `c3c0b2d` (trivial paths), `d42b3f4` (term-adjustment), `40137f3` (confirm_makeup_booking migration — NOT YET APPLIED), `2abf1e2` (useLessonForm logging).
+- Migration `20260417120000_rate_snapshot_on_confirm_makeup_booking.sql` requires manual Supabase SQL Editor application + `NOTIFY pgrst, 'reload schema';` before the related code paths are deployed.
+- Deploy note: treat the four commits as one release — apply SQL first, then deploy frontend together.
+
+### Bucket C items surfaced during fix (not yet actioned)
+- **C8.** `rate_cards` audit trigger not implemented despite `docs/AUDIT_LOGGING.md` claim (now corrected to ❌). Need a proper `trg_audit_rate_cards` that captures before-value changes to `rate_amount` so historical rates can be reconstructed — prerequisite for ever completing Option B backfill of NULL `rate_minor` rows, or for any Option C review flow to show the operator the correct historical rate.
+- **C9.** `supabase/functions/csv-import-execute/index.ts:736-739` queries non-existent `rate_cards` columns (`duration_minutes`, `amount_per_lesson_minor`) — actual DDL is `duration_mins` / `rate_amount`. Either dead code or silently failing (no error handling on the query). Triage at fix-pass time: delete the block, or repair the column names and wire the result into whatever logic was meant to consume it.
+- **C10.** `confirm_makeup_booking` has six superseded migration versions (`20260222233359`, `20260222234306`, `20260223004403`, `20260315200100`, `20260315200300`, `20260316260000`) before the current live body at `20260316270000`, plus the new `20260417120000` from this fix. Consolidate migration debt at a future schema-squash pass.
