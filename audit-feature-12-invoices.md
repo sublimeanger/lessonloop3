@@ -166,17 +166,19 @@
 
 **Valid Transitions (enforced by DB trigger + frontend):**
 
-| From | Allowed To |
+| From | Allowed To (server trigger) |
 |------|-----------|
 | draft | sent, void |
 | sent | paid, overdue, void |
 | overdue | paid, sent, void |
-| paid | — (terminal) |
+| paid | sent *only when `paid_minor < total_minor`* (refund-driven reopen) |
 | void | — (terminal) |
 
-**Enforcement:** `enforce_invoice_status_transition()` trigger on `BEFORE UPDATE OF status`. Also enforced client-side via `ALLOWED_TRANSITIONS` in `useInvoices.ts`.
+**Enforcement — server-side:** `enforce_invoice_status_transition()` trigger on `BEFORE UPDATE OF status`. Updated by A4 fix (migration `20260417200000_paid_to_sent_on_refund.sql`) to allow refund-driven `paid → sent` when `NEW.paid_minor < NEW.total_minor`. Rationale: `paid` is a derived fact from `paid_minor >= total_minor`, not a terminal human state — the trigger enforces the invariant, not the terminality. Every other transition out of `paid` remains blocked.
 
-**Special case:** `recalculate_invoice_paid()` can transition paid → sent (after refund), but correctly skips void invoices.
+**Enforcement — client-side:** `ALLOWED_TRANSITIONS` in `src/hooks/useInvoices.ts:269-275` still has `paid: []` intentionally. Client divergence is deliberate: teacher-initiated UI status changes should never flip `paid → sent` from a dropdown. The only legitimate `paid → sent` flip is refund-driven via `recalculate_invoice_paid`, which runs server-side and bypasses the client check.
+
+**Special case resolved by A4:** `recalculate_invoice_paid()` sets `status = 'sent'` when refunds drop net paid below total. Prior to the A4 fix the trigger raised on this, causing silent ledger corruption via the webhook / admin-refund paths (refund INSERT committed in a separate transaction, recalc rolled back, invoice state unchanged). After A4 the transition succeeds and the installment cascade in `recalculate_invoice_paid` runs as intended.
 
 ---
 
