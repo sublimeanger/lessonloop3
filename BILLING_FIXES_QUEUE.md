@@ -32,7 +32,7 @@ _None._
 ---
 
 ## Running index
-- Bucket A: 1 open / 2 resolved
+- Bucket A: 0 open / 3 resolved
 - Bucket B: 17
 - Bucket C: 22
 - Tracked (low): 3
@@ -92,7 +92,7 @@ _None._
 ## From Section 4 — Payment plans + installments
 
 ### Bucket A (fix now)
-- **A3 — Partial payment against an installment leaves installment-level reminders showing the full amount as owed.** Parent pays £30 of a £50 installment manually. `record_payment_and_update_status` greedy cascade at `supabase/migrations/20260401000000_auth_rls_hardening.sql:79-89` requires `remaining >= inst.amount_minor`; partial amount exits without marking. `paid_minor` is correct (+£30), but the installment stays `'pending'` → `'overdue'` and `overdue-reminders` (`supabase/functions/overdue-reminders/index.ts:59-85`) emails the parent saying "£50 overdue". Parent-facing contradiction: they paid £30 and the product says they owe £50. Fix options: (a) add `invoice_installments.paid_minor` column and compute remaining per-installment; (b) keep full-or-nothing at installment level but change reminder template to show invoice-level outstanding rather than installment amount; (c) auto-resize the next pending installment when a partial lands against it. Decide at fix pass.
+- ✅ **RESOLVED:** A3 — partial payment against an installment. Fixed via 4 commits on branch `audit/phase-2-billing-forensics`: `f74ff61` (migration — `partially_paid` state + `recalculate_installment_status` helper + P1/P2/recalc/cancel/generate RPC rewrites), `2a4e233` (auto-pay + parent-portal PI charge outstanding not full amount), `018fdf2` (dunning crons honour partially_paid + email shows outstanding), `cfa4c80` (teacher + parent UI render partially_paid with `£X of £Y` outstanding). Migration `20260417190000_installment_partially_paid_state.sql` requires manual Supabase SQL Editor application + `NOTIFY pgrst, 'reload schema';`. Deploy note: SQL first, then frontend + edge-function deploy together.
 
 ### Bucket B (fix at end)
 - **B14 — Failed installment infinite retry.** `stripe-auto-pay-installment/index.ts:147-192` logs + emails on card decline but writes no state. No attempt counter, no pause, no plan-halt. Next cron run re-attempts the same installment. A card declined 30 days running sends 30 decline emails and risks Stripe fraud-flagging. Fix: add `invoice_installments.auto_pay_attempts` + `last_auto_pay_attempted_at` + `auto_pay_halted` columns; after N attempts halt the installment auto-pay and surface a badge on the invoice/plan page; single decline email instead of daily.
@@ -113,6 +113,14 @@ _None._
 - 4 commits on branch `audit/phase-2-billing-forensics`: `c3c0b2d` (trivial paths), `d42b3f4` (term-adjustment), `40137f3` (confirm_makeup_booking migration — NOT YET APPLIED), `2abf1e2` (useLessonForm logging).
 - Migration `20260417120000_rate_snapshot_on_confirm_makeup_booking.sql` requires manual Supabase SQL Editor application + `NOTIFY pgrst, 'reload schema';` before the related code paths are deployed.
 - Deploy note: treat the four commits as one release — apply SQL first, then deploy frontend together.
+
+### A3 installment partially_paid state fix (April 17 2026)
+- 4 commits on branch `audit/phase-2-billing-forensics`: `f74ff61` (migration), `2a4e233` (edge fns), `018fdf2` (dunning), `cfa4c80` (UI).
+- Migration `20260417190000_installment_partially_paid_state.sql` requires manual Supabase SQL Editor application + `NOTIFY pgrst, 'reload schema';`.
+- New derived-state discipline: `invoice_installments.status` is a function of `SUM(payments.installment_id == X) − SUM(succeeded refunds)` compared against `amount_minor`. Central helper `recalculate_installment_status(_installment_id)` is called by every payment-write path (P1 cascade, P2 webhook, recalc cascade on refund). Refunds naturally flip `paid → partially_paid → pending`.
+- Follow-on Bucket C items noted during the fix (not opened as new C-items since they were already in the queue pre-fix):
+  - C23 (Stripe-paid installments `payment_id` NULL) is now partially addressed: P2 uses `COALESCE(payment_id, _payment_id)` to backfill the FK. Full resolution still pending for legacy rows.
+  - C22 (no invariant check between installments sum and invoice outstanding) remains open — the cascade recalc in `recalculate_invoice_paid` now keeps statuses in sync but does not enforce `SUM(amount_minor WHERE status != 'void') = total − paid`.
 
 ### closure_dates billing-run exclusion fix (April 17 2026)
 - 1 commit on branch `audit/phase-2-billing-forensics`: `9f60d71`.
