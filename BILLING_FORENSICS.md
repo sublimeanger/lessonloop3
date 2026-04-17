@@ -169,6 +169,52 @@ The original CRITICAL rating and the HIGH "orphaned" rating do point in opposite
 - **`refunds.voided_at` / `voided_by` lifecycle:** none. These columns **do not exist** on the `refunds` table per the DDL at `supabase/migrations/20260224120000_refunds_and_org_settings.sql:6-17`, and are absent from the generated types at `src/integrations/supabase/types.ts:4350-4380`. No migration adds them. `claude.md:69` documents their existence but this is incorrect — a documentation drift finding, not a runtime artefact of this path.
 - **Audit log:** yes — INSERT at lines 77-80 with `action='manual_refund_recorded'`, entity_type `'invoice'`, `actor_user_id = auth.uid()`, and a JSONB payload containing `refund_id`, `payment_id`, `amount_minor`, `reason`.
 - **Error handling / rollback:** every RAISE rolls back the full transaction (refunds INSERT + recalc UPDATE + audit INSERT). No partial commit possible.
+
+### Stripe webhook refund path (`charge.refunded` branch)
+
+- **Definition:** `supabase/functions/stripe-webhook/index.ts:856-988` — function `handleChargeRefunded`. Dispatched from the webhook event switch at line 156-158 (`case "charge.refunded"`). Runs under service role; the webhook itself is authenticated by Stripe signature verification upstream.
+- **Auth:** no in-body auth check. Protection is the Stripe signature check at the webhook entry point (above line 856) and the service-role key that bypasses RLS. No `is_org_finance_team` call. No per-user identity — `auth.uid()` is NULL inside this handler.
+- **Row locks:** none explicit. `FOR UPDATE` is only applied later if `recalculate_invoice_paid` is invoked (see below). The initial payment lookup uses `.maybeSingle()` (line 868) with no lock.
+- **Status gates:** none blocking. The handler does NOT refuse to record a refund on any invoice status. Instead it branches *after* writing the refund rows:
+  - Lookup at lines 957-958 reads `invoices.status`.
+  - If status is `'void'`: direct `UPDATE invoices SET paid_minor = netPaid` at line 973 with no status change, and `recalculate_invoice_paid` is **skipped**. No FOR UPDATE lock on this path.
+  - Otherwise: calls `recalculate_invoice_paid(_invoice_id)` via `rpc()` at line 979.
+- **Refundable calculation:** **none performed in this handler.** No cumulative check against payment amount, no comparison to prior refunds on the same payment. Protection relies on two lower-level safeties: (a) the unique index on `refunds.stripe_refund_id` (DDL at `supabase/migrations/20260224120000_refunds_and_org_settings.sql:37`); (b) the BEFORE-insert trigger `validate_refund_amount` (`supabase/migrations/20260316240000_fix_refund_audit_findings.sql:223-249`) which checks `NEW.amount_minor <= payments.amount_minor` only — not cumulative.
+- **Effect on `invoices.paid_minor`:** two write sites depending on invoice status. On non-void invoices: delegated to `recalculate_invoice_paid` (same RPC and same formula as the manual path — line 208 of `20260316240000_fix_refund_audit_findings.sql`). On void invoices: direct UPDATE at line 973 using `netPaid = SUM(payments.amount_minor) − SUM(refunds WHERE status='succeeded')` computed in TypeScript (lines 961-972), no RPC, no row lock. This is the same bypass flagged as finding B4 in Section 1.
+- **Effect on invoice status (paid → sent revert):** fires via `recalculate_invoice_paid` on non-void invoices (same rule: was `'paid'` and net < total → `'sent'`). On void invoices: status is held at `'void'` — the bypass UPDATE explicitly omits the status column.
+- **Rows written:**
+  - `refunds` row: **yes**, one INSERT per element of `charge.refunds.data` (lines 916-927), preceded by two idempotency branches:
+    - **Exact-replay idempotency (lines 879-888):** SELECT by `stripe_refund_id`; if found, `continue` without INSERT.
+    - **Orphaned-pending reconciliation (lines 893-912, REF-M1):** SELECT for `payment_id + amount + status='pending' + stripe_refund_id IS NULL` (at most 1). If found, UPDATE that row with `stripe_refund_id` + mapped status instead of INSERTing — this reconciles rows left pending by `stripe-process-refund` when its post-Stripe DB update failed.
+  - Column values on INSERT: `refunded_by = null` (line 926, explicit — REF-H4), `stripe_refund_id = refund.id` (line 925), `status` mapped from Stripe at line 915 (`"succeeded"` | `"failed"` | `"pending"`), `reason = refund.reason || "Refund via Stripe Dashboard"` (line 923).
+  - Backstop: if INSERT raises `23505` (unique violation on `stripe_refund_id`), line 930-931 logs and continues silently. No partial rollback.
+  - `payments` (negative): **no** — this path does not create a negative/reversal payment row.
+- **`refunds.voided_at` / `voided_by` lifecycle:** same as the manual path — these columns do not exist on the `refunds` table per DDL at `supabase/migrations/20260224120000_refunds_and_org_settings.sql:6-17` and are absent from the generated types at `src/integrations/supabase/types.ts:4350-4380`. No lifecycle to describe. `claude.md:69` still misdocuments them as present.
+- **Audit log:** yes, but **partial** — an audit_log INSERT fires per refund at lines 938-952 with `action='refund_recorded'`, `actor_user_id = null`, `entity_type='invoice'`. However the orphan-reconciliation branch (lines 903-912) `continue`s at line 911 *before* reaching the audit block, so when this handler reconciles a pending row written by `stripe-process-refund`, no webhook-side audit entry is created. (The original audit_log `'refund_processed'` entry written by `stripe-process-refund` at lines 196-211 of `supabase/functions/stripe-process-refund/index.ts` does still exist from the admin-initiated flow in that case.) For refunds initiated via Stripe Dashboard (no prior pending row) the audit entry IS written.
+- **Error handling / rollback:** no transaction boundary — each DB call is a separate HTTP-RPC round-trip. A failure in `refunds` INSERT is caught and logged but the loop continues with the next refund. A failure in the audit INSERT (lines 938-952) is not inspected. A failure in `recalculate_invoice_paid` (line 983-985) is logged as `console.error` but not thrown, so the webhook returns 200 to Stripe with an un-recalculated invoice.
+
+### Path comparison — manual RPC vs Stripe webhook
+
+| Field / behaviour                                      | Manual RPC (`record_manual_refund`)                 | Stripe webhook (`handleChargeRefunded`)                 |
+|--------------------------------------------------------|-----------------------------------------------------|---------------------------------------------------------|
+| Location                                               | migration `20260331160000_record_manual_refund_rpc.sql:7-92` | edge fn `supabase/functions/stripe-webhook/index.ts:856-988` |
+| Execution context                                      | SQL `SECURITY DEFINER` (single txn)                 | Deno edge function, multiple RPC round-trips (no txn)   |
+| Auth model                                             | `is_org_finance_team(auth.uid())`                   | Stripe signature + service role; `auth.uid()` is NULL   |
+| `FOR UPDATE` on payment/invoice                        | Yes (lines 37, 45)                                  | No (explicit lock only inside recalc RPC, if reached)   |
+| Invoice status gate (pre-write)                        | RAISEs on `void`, `draft`                           | None — branches post-write based on status              |
+| Refundable cumulative check                            | Yes, in RPC (line 52-66, per-payment)               | None in handler — relies on unique index + validator trigger |
+| `refunds` row status on INSERT                         | Always `'succeeded'`                                | Mapped from Stripe (`succeeded`/`failed`/`pending`)     |
+| `refunds.refunded_by`                                  | `auth.uid()` (line 70)                              | `null` (line 926, REF-H4)                               |
+| `refunds.stripe_refund_id`                             | NULL                                                | Set from `refund.id` (line 925)                         |
+| Idempotency on replay                                  | None                                                | Two-layer: `stripe_refund_id` SELECT + orphan reconcile |
+| Creates negative `payments` row                        | No                                                  | No                                                      |
+| `paid_minor` write mechanism                           | Always via `recalculate_invoice_paid` (line 74)     | Via RPC if non-void; direct `UPDATE` bypass if void (line 973) |
+| Status revert `paid` → `sent`                          | Yes (via recalc)                                    | Yes on non-void; suppressed on void                     |
+| `audit_log` entry                                      | Yes (`manual_refund_recorded`, actor=uid)           | Yes (`refund_recorded`, actor=null) — but skipped on orphan-reconciliation branch |
+| `refunds.voided_at` / `voided_by` lifecycle            | N/A (columns absent)                                | N/A (columns absent)                                    |
+| Rollback semantics                                     | Full txn rollback on any RAISE                      | Per-call; failures logged, loop continues               |
+
+Fields that differ between paths: **13** of the 14 rows above (only "creates negative `payments` row" is identical).
 Section 3 — Billing run correctness forensics
 To be filled in Session-1.3.
 Section 4 — Payment plans + installments
