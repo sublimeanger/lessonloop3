@@ -49,7 +49,8 @@ function useParentInstallments(invoiceId: string | undefined) {
         .order('installment_number', { ascending: true });
       if (error) throw error;
 
-      const ids = (installments || []).map((i: Installment) => i.id);
+      const installmentsTyped = (installments || []) as unknown as Installment[];
+      const ids = installmentsTyped.map((i) => i.id);
       if (ids.length === 0) return { installments: [] as Installment[], outstanding: new Map<string, number>() };
 
       const { data: payments } = await supabase
@@ -77,11 +78,11 @@ function useParentInstallments(invoiceId: string | undefined) {
         appliedByInstallment.set(p.installment_id, (appliedByInstallment.get(p.installment_id) || 0) + net);
       });
       const outstanding = new Map<string, number>();
-      (installments || []).forEach((i: Installment) => {
+      installmentsTyped.forEach((i) => {
         outstanding.set(i.id, Math.max(0, i.amount_minor - (appliedByInstallment.get(i.id) || 0)));
       });
 
-      return { installments: (installments || []) as Installment[], outstanding };
+      return { installments: installmentsTyped, outstanding };
     },
     enabled: !!invoiceId,
   });
