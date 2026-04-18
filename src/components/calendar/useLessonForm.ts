@@ -546,8 +546,21 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
                   const exact = rateCards.find(r => r.duration_mins === durationMins);
                   const def = rateCards.find(r => r.is_default);
                   newStudentRate = exact?.rate_amount ?? def?.rate_amount ?? rateCards[0]?.rate_amount ?? null;
+                } else {
+                  logger.error('rate_cards lookup returned no rows when snapshotting rate_minor on lesson edit', {
+                    org_id: currentOrg.id,
+                    durationMins,
+                    newStudentIds: newStudents,
+                  });
                 }
-              } catch { /* non-blocking — rate snapshot is best-effort */ }
+              } catch (rateErr) {
+                logger.error('Failed to fetch rate_cards when snapshotting rate_minor on lesson edit (non-blocking)', {
+                  org_id: currentOrg.id,
+                  durationMins,
+                  newStudentIds: newStudents,
+                  error: rateErr,
+                });
+              }
             }
 
             const allParticipants = lessonIdsToUpdate.flatMap(lessonId =>
@@ -740,8 +753,21 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
                 const exact = rateCards.find(r => r.duration_mins === durationMins);
                 const def = rateCards.find(r => r.is_default);
                 rateLookup = exact?.rate_amount ?? def?.rate_amount ?? rateCards[0]?.rate_amount ?? null;
+              } else {
+                logger.error('rate_cards lookup returned no rows when snapshotting rate_minor on lesson creation', {
+                  org_id: currentOrg.id,
+                  durationMins,
+                  selectedStudents,
+                });
               }
-            } catch { /* non-blocking — rate snapshot is best-effort */ }
+            } catch (rateErr) {
+              logger.error('Failed to fetch rate_cards when snapshotting rate_minor on lesson creation (non-blocking)', {
+                org_id: currentOrg.id,
+                durationMins,
+                selectedStudents,
+                error: rateErr,
+              });
+            }
 
             const allParticipants = insertedLessons.flatMap(l =>
               selectedStudents.map(studentId => ({

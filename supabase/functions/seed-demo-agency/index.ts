@@ -508,7 +508,7 @@ Deno.serve(async (req) => {
 
       for (const studentName of meta.studentNames) {
         if (!students[studentName]) continue;
-        participantRows.push({ lesson_id: lessonId, student_id: students[studentName], org_id: ORG_ID });
+        participantRows.push({ lesson_id: lessonId, student_id: students[studentName], org_id: ORG_ID, rate_minor: 3800 });
         if (!lessonIdsByStudent[studentName]) lessonIdsByStudent[studentName] = [];
         lessonIdsByStudent[studentName].push(lessonId);
 

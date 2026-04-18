@@ -36,7 +36,7 @@ serve(async (req) => {
           payer_guardian:guardians(id, full_name, email, user_id)
         )
       `)
-      .eq("status", "pending")
+      .in("status", ["pending", "partially_paid"])
       .eq("due_date", targetDateStr);
 
     if (error) throw new Error(`Failed to fetch upcoming installments: ${error.message}`);

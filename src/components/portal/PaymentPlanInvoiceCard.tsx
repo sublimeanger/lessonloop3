@@ -41,14 +41,46 @@ function useParentInstallments(invoiceId: string | undefined) {
   return useQuery({
     queryKey: ['parent-installments', invoiceId],
     queryFn: async () => {
-      if (!invoiceId) return [];
-      const { data, error } = await supabase
+      if (!invoiceId) return { installments: [] as Installment[], outstanding: new Map<string, number>() };
+      const { data: installments, error } = await supabase
         .from('invoice_installments')
         .select('*')
         .eq('invoice_id', invoiceId)
         .order('installment_number', { ascending: true });
       if (error) throw error;
-      return data as Installment[];
+
+      const ids = (installments || []).map((i: Installment) => i.id);
+      if (ids.length === 0) return { installments: [] as Installment[], outstanding: new Map<string, number>() };
+
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('id, amount_minor, installment_id')
+        .in('installment_id', ids);
+      const paymentIds = (payments || []).map((p) => p.id);
+      let refunds: Array<{ amount_minor: number; payment_id: string }> = [];
+      if (paymentIds.length > 0) {
+        const { data: refundRows } = await supabase
+          .from('refunds')
+          .select('amount_minor, payment_id')
+          .in('payment_id', paymentIds)
+          .eq('status', 'succeeded');
+        refunds = (refundRows || []) as typeof refunds;
+      }
+      const refundByPayment = new Map<string, number>();
+      refunds.forEach((r) => {
+        refundByPayment.set(r.payment_id, (refundByPayment.get(r.payment_id) || 0) + r.amount_minor);
+      });
+      const appliedByInstallment = new Map<string, number>();
+      (payments || []).forEach((p) => {
+        const net = p.amount_minor - (refundByPayment.get(p.id) || 0);
+        appliedByInstallment.set(p.installment_id, (appliedByInstallment.get(p.installment_id) || 0) + net);
+      });
+      const outstanding = new Map<string, number>();
+      (installments || []).forEach((i: Installment) => {
+        outstanding.set(i.id, Math.max(0, i.amount_minor - (appliedByInstallment.get(i.id) || 0)));
+      });
+
+      return { installments: (installments || []) as Installment[], outstanding };
     },
     enabled: !!invoiceId,
   });
@@ -66,7 +98,9 @@ export function PaymentPlanInvoiceCard({
   autoPayEnabled,
 }: PaymentPlanInvoiceCardProps) {
   const [timelineOpen, setTimelineOpen] = useState(true);
-  const { data: installments } = useParentInstallments(invoice.id);
+  const { data: parentData } = useParentInstallments(invoice.id);
+  const installments = parentData?.installments || [];
+  const outstandingMap = parentData?.outstanding || new Map<string, number>();
   const { downloadPdf, isLoading: isPdfLoading } = useInvoicePdf();
   const today = startOfToday();
 
@@ -76,8 +110,8 @@ export function PaymentPlanInvoiceCard({
   const paidCount = installments?.filter(i => i.status === 'paid').length || 0;
   const totalCount = installments?.length || invoice.installment_count || 0;
 
-  // Find next unpaid installment
-  const nextInstallment = installments?.find(i => i.status === 'pending' || i.status === 'overdue');
+  // Find next unpaid installment (includes partially_paid — still owes the remainder)
+  const nextInstallment = installments?.find(i => i.status === 'pending' || i.status === 'overdue' || i.status === 'partially_paid');
   const nextIsOverdue = nextInstallment ? isBefore(parseISO(nextInstallment.due_date), today) : false;
 
   return (
@@ -187,11 +221,15 @@ export function PaymentPlanInvoiceCard({
             {timelineOpen && (
               <div className="mt-2 space-y-1.5">
                 {installments.map((inst) => {
-                  const isOverdue = inst.status === 'overdue' || (inst.status === 'pending' && isBefore(parseISO(inst.due_date), today));
+                  const isPartial = inst.status === 'partially_paid';
+                  const isOverdue = inst.status === 'overdue' || ((inst.status === 'pending' || isPartial) && isBefore(parseISO(inst.due_date), today));
+                  const outstandingOnInst = outstandingMap.get(inst.id) ?? inst.amount_minor;
                   return (
                     <div key={inst.id} className="flex items-center gap-2 text-sm py-1">
                       {inst.status === 'paid' ? (
                         <CheckCircle className="h-4 w-4 text-success flex-shrink-0" />
+                      ) : isPartial ? (
+                        <CheckCircle className="h-4 w-4 text-warning flex-shrink-0" />
                       ) : isOverdue ? (
                         <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
                       ) : (
@@ -202,18 +240,23 @@ export function PaymentPlanInvoiceCard({
                         inst.status === 'paid' && 'text-muted-foreground',
                         isOverdue && inst.status !== 'paid' && 'text-destructive',
                       )}>
-                        {formatCurrencyMinor(inst.amount_minor, currencyCode)}
+                        {isPartial
+                          ? `${formatCurrencyMinor(outstandingOnInst, currencyCode)} of ${formatCurrencyMinor(inst.amount_minor, currencyCode)}`
+                          : formatCurrencyMinor(inst.amount_minor, currencyCode)}
                       </span>
                       <span className={cn(
                         'text-xs',
                         inst.status === 'paid' ? 'text-success' :
+                        isPartial ? 'text-warning' :
                         isOverdue ? 'text-destructive' : 'text-muted-foreground',
                       )}>
                         {inst.status === 'paid'
                           ? `Paid ${inst.paid_at ? format(parseISO(inst.paid_at), 'd MMM yyyy') : ''}`
-                          : isOverdue
-                            ? `${formatDistanceToNowStrict(parseISO(inst.due_date))} overdue`
-                            : `Due ${format(parseISO(inst.due_date), 'd MMM yyyy')}`
+                          : isPartial
+                            ? (isOverdue ? 'Partially paid • overdue' : 'Partially paid')
+                            : isOverdue
+                              ? `${formatDistanceToNowStrict(parseISO(inst.due_date))} overdue`
+                              : `Due ${format(parseISO(inst.due_date), 'd MMM yyyy')}`
                         }
                       </span>
                     </div>

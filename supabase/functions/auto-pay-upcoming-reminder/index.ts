@@ -48,7 +48,7 @@ serve(async (req) => {
           currency_code
         )
       `)
-      .in("status", ["pending"])
+      .in("status", ["pending", "partially_paid"])
       .eq("due_date", targetDateStr);
 
     if (queryError) {

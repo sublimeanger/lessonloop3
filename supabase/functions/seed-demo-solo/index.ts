@@ -304,7 +304,7 @@ Deno.serve(async (req) => {
       if (!meta) continue;
       for (const sName of meta.studentNames) {
         if (!students[sName]) continue;
-        participantRows.push({ lesson_id: allLessonIds[li], student_id: students[sName], org_id: ORG_ID });
+        participantRows.push({ lesson_id: allLessonIds[li], student_id: students[sName], org_id: ORG_ID, rate_minor: 3000 });
         if (!lessonIdsByStudent[sName]) lessonIdsByStudent[sName] = [];
         lessonIdsByStudent[sName].push(allLessonIds[li]);
         if (meta.status === "completed") {

@@ -56,6 +56,11 @@ serve(async (req) => {
     // ── INSTALLMENT REMINDERS ──────────────────────────────────
     console.log("Starting overdue installment reminder check...");
 
+    // Include partially_paid installments too — reminder logic in
+    // processInstallmentReminder computes daysOverdue from due_date; a
+    // partially_paid installment with a future due_date is naturally skipped,
+    // while one with a past due_date is reminded about with its outstanding
+    // (not installment) amount.
     const { data: overdueInstallments, error: installError } = await supabase
       .from("invoice_installments")
       .select(`
@@ -67,7 +72,7 @@ serve(async (req) => {
           payer_guardian:guardians(id, full_name, email, user_id)
         )
       `)
-      .eq("status", "overdue")
+      .in("status", ["overdue", "partially_paid"])
       .not("invoice.status", "in", "(void,paid)");
 
     if (installError) {
@@ -340,7 +345,35 @@ async function processInstallmentReminder(supabase: any, installment: OverdueIns
   const orgName = org?.name || "LessonLoop";
   const brandColor = org?.brand_primary_color || "#2563eb";
   const logoUrl = org?.logo_url || null;
-  const installmentAmount = formatCurrency(installment.amount_minor, invoice.currency_code);
+
+  // Outstanding on this installment = amount_minor minus net prior payments
+  // (after refunds). For fully-pending installments this equals amount_minor;
+  // for partially_paid it's the remainder. Reminder always shows the real
+  // outstanding to avoid the pre-A3 contradiction where a parent who paid £30
+  // of £50 still received "£50 overdue" emails.
+  const { data: priorPayments } = await supabase
+    .from("payments")
+    .select("id, amount_minor")
+    .eq("installment_id", installment.id);
+  const priorIds = (priorPayments || []).map((p: { id: string }) => p.id);
+  let priorRefunded = 0;
+  if (priorIds.length > 0) {
+    const { data: priorRefundRows } = await supabase
+      .from("refunds")
+      .select("amount_minor")
+      .in("payment_id", priorIds)
+      .eq("status", "succeeded");
+    priorRefunded = (priorRefundRows || []).reduce((s: number, r: { amount_minor: number }) => s + r.amount_minor, 0);
+  }
+  const priorApplied = (priorPayments || []).reduce((s: number, p: { amount_minor: number }) => s + p.amount_minor, 0) - priorRefunded;
+  const outstandingMinor = Math.max(0, installment.amount_minor - priorApplied);
+  if (outstandingMinor <= 0) return "skip";
+  const outstandingLabel = formatCurrency(outstandingMinor, invoice.currency_code);
+  const isPartial = priorApplied > 0;
+  const amountLineLabel = isPartial ? "Outstanding on this installment" : "Installment amount";
+  const paidSoFarLine = isPartial
+    ? `<p style="margin: 5px 0;"><strong>Already paid on this installment:</strong> ${escapeHtml(formatCurrency(priorApplied, invoice.currency_code))}</p>`
+    : "";
   const totalRemaining = formatCurrency((invoice.total_minor - (invoice.paid_minor || 0)), invoice.currency_code);
 
   const subject = `Payment reminder: Installment ${installment.installment_number} of ${invoice.installment_count} — ${invoice.invoice_number}`;
@@ -354,9 +387,10 @@ async function processInstallmentReminder(supabase: any, installment: OverdueIns
          for invoice <strong>${escapeHtml(invoice.invoice_number)}</strong>
          is now <strong>${daysOverdue} days overdue</strong>.</p>
       <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${brandColor};">
-        <p style="margin: 5px 0;"><strong>Installment amount:</strong> ${escapeHtml(installmentAmount)}</p>
+        <p style="margin: 5px 0;"><strong>${amountLineLabel}:</strong> ${escapeHtml(outstandingLabel)}</p>
+        ${paidSoFarLine}
         <p style="margin: 5px 0;"><strong>Due date:</strong> ${formatDateGB(installment.due_date)}</p>
-        <p style="margin: 5px 0;"><strong>Remaining balance:</strong> ${escapeHtml(totalRemaining)}</p>
+        <p style="margin: 5px 0;"><strong>Remaining balance on invoice:</strong> ${escapeHtml(totalRemaining)}</p>
       </div>
       <p style="text-align: center;">
         <a href="${FRONTEND_URL}/portal/invoices?invoice=${invoice.id}&installment=${installment.id}&action=pay"

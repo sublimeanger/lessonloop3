@@ -544,6 +544,7 @@ Deno.serve(async (req) => {
             lesson_id: lesson.id,
             student_id: studentIds[ld.student],
             org_id: orgId,
+            rate_minor: 3500,
           }).then(() => {});
 
           // Mark attendance for past lessons

@@ -10,7 +10,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useInstallments, useRemovePaymentPlan, type Installment } from '@/hooks/useInvoiceInstallments';
+import { useInstallments, useInstallmentOutstanding, useRemovePaymentPlan, type Installment } from '@/hooks/useInvoiceInstallments';
 
 interface InstallmentTimelineProps {
   invoice: {
@@ -33,12 +33,14 @@ function getStepIcon(status: Installment['status']) {
       return <CheckCircle2 className="h-5 w-5 text-success" />;
     case 'overdue':
       return <AlertCircle className="h-5 w-5 text-destructive" />;
+    case 'partially_paid':
+      return <CreditCard className="h-5 w-5 text-warning" />;
     default:
       return <Clock className="h-5 w-5 text-muted-foreground" />;
   }
 }
 
-function getStepLabel(inst: Installment) {
+function getStepLabel(inst: Installment, outstandingMinor: number | undefined, currency: string) {
   const today = startOfToday();
   switch (inst.status) {
     case 'paid':
@@ -47,6 +49,15 @@ function getStepLabel(inst: Installment) {
       const days = differenceInDays(today, parseISO(inst.due_date));
       return `Overdue (due ${format(parseISO(inst.due_date), 'dd MMM yyyy')}, ${days} day${days !== 1 ? 's' : ''} ago)`;
     }
+    case 'partially_paid': {
+      const remaining = outstandingMinor ?? 0;
+      const remainingLabel = formatCurrencyMinor(remaining, currency);
+      const dueDate = format(parseISO(inst.due_date), 'dd MMM yyyy');
+      const overdue = differenceInDays(today, parseISO(inst.due_date)) > 0;
+      return overdue
+        ? `Partially paid — ${remainingLabel} outstanding (due ${dueDate})`
+        : `Partially paid — ${remainingLabel} outstanding (due ${dueDate})`;
+    }
     default:
       return `Due ${format(parseISO(inst.due_date), 'dd MMM yyyy')}`;
   }
@@ -54,6 +65,7 @@ function getStepLabel(inst: Installment) {
 
 export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: InstallmentTimelineProps) {
   const { data: installments, isLoading } = useInstallments(invoice.id);
+  const { data: outstandingData } = useInstallmentOutstanding(invoice.id);
   const removeMutation = useRemovePaymentPlan();
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
 
@@ -64,7 +76,9 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
   const { paidCount, totalCount, hasAnyPaid, nextPendingId } = useMemo(() => {
     const paid = installments?.filter(i => i.status === 'paid').length || 0;
     const total = installments?.length || 0;
-    const nextPending = installments?.find(i => i.status === 'pending' || i.status === 'overdue');
+    const nextPending = installments?.find(
+      i => i.status === 'pending' || i.status === 'overdue' || i.status === 'partially_paid'
+    );
     return { paidCount: paid, totalCount: total, hasAnyPaid: paid > 0, nextPendingId: nextPending?.id };
   }, [installments]);
 
@@ -128,12 +142,14 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
                       </p>
                       <p className={cn(
                         'text-xs',
-                        inst.status === 'overdue' ? 'text-destructive/80' : 'text-muted-foreground',
+                        inst.status === 'overdue' ? 'text-destructive/80' :
+                        inst.status === 'partially_paid' ? 'text-warning/80' :
+                        'text-muted-foreground',
                       )}>
-                        {getStepLabel(inst)}
+                        {getStepLabel(inst, outstandingData?.outstanding.get(inst.id), currency)}
                       </p>
                     </div>
-                    {(inst.status === 'overdue' || (inst.status === 'pending' && inst.id === nextPendingId)) && (
+                    {(inst.status === 'overdue' || inst.status === 'partially_paid' || (inst.status === 'pending' && inst.id === nextPendingId)) && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -141,7 +157,7 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
                           'flex-shrink-0 gap-1 text-xs min-h-11 px-3 sm:h-7 sm:min-h-0 print:hidden',
                           inst.status === 'overdue' && 'border-destructive/30 text-destructive hover:bg-destructive/10',
                         )}
-                        onClick={() => onRecordPayment(inst.amount_minor)}
+                        onClick={() => onRecordPayment(outstandingData?.outstanding.get(inst.id) ?? inst.amount_minor)}
                       >
                         <CreditCard className="h-3 w-3" />
                         Pay

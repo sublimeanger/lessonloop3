@@ -130,20 +130,44 @@ serve(async (req) => {
     let description: string;
     let resolvedInstallmentId: string | null = null;
 
+    // Helper: outstanding on an installment = amount_minor minus net prior
+    // payments (post-refund). Covers partially_paid state.
+    async function installmentOutstanding(installmentId: string, amountMinor: number): Promise<number> {
+      const { data: priorPayments } = await supabase
+        .from("payments")
+        .select("id, amount_minor")
+        .eq("installment_id", installmentId);
+      const priorIds = (priorPayments || []).map((p: any) => p.id);
+      let priorRefunded = 0;
+      if (priorIds.length > 0) {
+        const { data: priorRefundRows } = await supabase
+          .from("refunds")
+          .select("amount_minor")
+          .in("payment_id", priorIds)
+          .eq("status", "succeeded");
+        priorRefunded = (priorRefundRows || []).reduce((s: number, r: any) => s + r.amount_minor, 0);
+      }
+      const priorApplied = (priorPayments || []).reduce((s: number, p: any) => s + p.amount_minor, 0) - priorRefunded;
+      return Math.max(0, amountMinor - priorApplied);
+    }
+
     if (requestedInstallmentId) {
       const { data: installment, error: instError } = await supabase
         .from("invoice_installments")
         .select("*")
         .eq("id", requestedInstallmentId)
         .eq("invoice_id", invoice.id)
-        .in("status", ["pending", "overdue"])
+        .in("status", ["pending", "overdue", "partially_paid"])
         .single();
 
       if (instError || !installment) {
         throw new Error("Installment not found or already paid");
       }
 
-      paymentAmount = installment.amount_minor;
+      paymentAmount = await installmentOutstanding(installment.id, installment.amount_minor);
+      if (paymentAmount <= 0) {
+        throw new Error("Installment is already fully paid");
+      }
       description = `${invoice.invoice_number} — Installment ${installment.installment_number} of ${invoice.installment_count}`;
       resolvedInstallmentId = installment.id;
 
@@ -156,7 +180,7 @@ serve(async (req) => {
         .from("invoice_installments")
         .select("*")
         .eq("invoice_id", invoice.id)
-        .in("status", ["pending", "overdue"])
+        .in("status", ["pending", "overdue", "partially_paid"])
         .order("installment_number", { ascending: true })
         .limit(1)
         .single();
@@ -165,7 +189,10 @@ serve(async (req) => {
         throw new Error("All installments are already paid");
       }
 
-      paymentAmount = nextInstallment.amount_minor;
+      paymentAmount = await installmentOutstanding(nextInstallment.id, nextInstallment.amount_minor);
+      if (paymentAmount <= 0) {
+        throw new Error("Installment is already fully paid");
+      }
       description = `${invoice.invoice_number} — Installment ${nextInstallment.installment_number} of ${invoice.installment_count}`;
       resolvedInstallmentId = nextInstallment.id;
 

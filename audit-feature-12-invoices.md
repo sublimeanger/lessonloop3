@@ -166,17 +166,27 @@
 
 **Valid Transitions (enforced by DB trigger + frontend):**
 
-| From | Allowed To |
+| From | Allowed To (server trigger) |
 |------|-----------|
-| draft | sent, void |
-| sent | paid, overdue, void |
-| overdue | paid, sent, void |
-| paid | — (terminal) |
+| draft | sent, void *only when `paid_minor = 0`* |
+| sent | paid, overdue, void *only when `paid_minor = 0`* |
+| overdue | paid, sent, void *only when `paid_minor = 0`* |
+| paid | sent *only when `paid_minor < total_minor`* (refund-driven reopen) |
 | void | — (terminal) |
 
-**Enforcement:** `enforce_invoice_status_transition()` trigger on `BEFORE UPDATE OF status`. Also enforced client-side via `ALLOWED_TRANSITIONS` in `useInvoices.ts`.
+**Enforcement — server-side:** `enforce_invoice_status_transition()` trigger on `BEFORE UPDATE OF status`. Updated sequentially by:
+- **A4 fix** (migration `20260417200000_paid_to_sent_on_refund.sql`) — allows refund-driven `paid → sent` when `NEW.paid_minor < NEW.total_minor`. Rationale: `paid` is a derived fact from `paid_minor >= total_minor`, not a terminal human state.
+- **A5 fix** (migration `20260417210000_block_void_on_partial_paid.sql`) — blocks any transition to `void` when `NEW.paid_minor > 0`. Rationale: a voided invoice must not carry recorded payments; the cash would be orphaned (no family-credit concept exists yet — Section 7 future work). Forces refund-first workflow: refund every payment → `paid_minor` drops to zero → void succeeds.
 
-**Special case:** `recalculate_invoice_paid()` can transition paid → sent (after refund), but correctly skips void invoices.
+**Enforcement — RPC layer:** `void_invoice()` RPC (migration `20260417210000_...sql`) performs the same `paid_minor > 0` check before reaching the UPDATE, with a human-friendly error message ("Cannot void invoice with £30.00 in paid payments. Refund the payments first, then void."). This is the canonical path called by the frontend. The trigger catches any direct-SQL / service-role bypass.
+
+**Enforcement — client-side:** `ALLOWED_TRANSITIONS` in `src/hooks/useInvoices.ts:269-275` still has `paid: []` intentionally. Client divergence is deliberate: teacher-initiated UI status changes should never flip `paid → sent` from a dropdown. The only legitimate `paid → sent` flip is refund-driven via `recalculate_invoice_paid`, which runs server-side and bypasses the client check.
+
+**Enforcement — UI (A5):** `src/pages/InvoiceDetail.tsx` void dialog, when `totalPaid > 0`, replaces the destructive void action with a primary "Record Refund First" CTA that opens the existing refund dialog pre-populated for the first refundable payment. The A5 trigger + RPC guards are the safety net; the UI is the "prevent-the-error" layer so the operator never sees the DB error in normal flow.
+
+**Special case resolved by A4:** `recalculate_invoice_paid()` sets `status = 'sent'` when refunds drop net paid below total. Prior to the A4 fix the trigger raised on this, causing silent ledger corruption via the webhook / admin-refund paths (refund INSERT committed in a separate transaction, recalc rolled back, invoice state unchanged). After A4 the transition succeeds and the installment cascade in `recalculate_invoice_paid` runs as intended.
+
+**Design choice noted in A5 (C31):** LessonLoop has no family-credit / overpayment data model today — the only `credits` table is `make_up_credits` (lesson-makeup entitlements, not money). The "ideal" UX for voiding a partially-paid invoice is a one-click "Void and credit £X to family account" flow; that requires the data model Section 7 will build. Until then, A5 enforces refund-first as the safe Choice-1 behaviour. Upgrade path tracked as C31 in `BILLING_FIXES_QUEUE.md`.
 
 ---
 

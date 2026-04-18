@@ -124,7 +124,7 @@ Audit triggers are attached to the following tables:
 | `invoices` | ✅ | ✅ | ✅ | Status changes tracked |
 | `payments` | ✅ | ✅ | ✅ | Financial trail |
 | `org_memberships` | ✅ | ✅ | ✅ | Role changes |
-| `rate_cards` | ✅ | ✅ | ✅ | Pricing history |
+| `rate_cards` | ❌ | ❌ | ❌ | Pricing history (planned — see fix queue) |
 
 ### 3.3 Trigger Attachment
 
