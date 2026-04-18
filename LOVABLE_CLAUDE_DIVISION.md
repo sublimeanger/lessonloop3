@@ -178,4 +178,16 @@ When the user asks for backend work:
 
 ---
 
+## Migration tracking — not what you think
+
+Lovable's migration tool does NOT write to supabase_migrations.schema_migrations. That table will appear mostly empty / wildly out of date relative to the supabase/migrations/ folder.
+
+**DO NOT use schema_migrations as a drift signal.** During the 18 April 2026 audit deploy, a false-alarm "120 missing migrations" diagnosis was triggered by treating that table as authoritative. Only one migration was actually unapplied live (payments.installment_id from 20260303100000), and Lovable caught + prereq-applied it during the deploy.
+
+**Authoritative drift check:** compare expected schema objects (tables, columns, functions, triggers) against live via pg_catalog / information_schema queries, not against schema_migrations. When in doubt, probe the specific object the code expects to exist.
+
+**Claude-Code-authored migrations:** these are picked up by Lovable on GitHub sync but Lovable's migration tool does NOT auto-apply them. Jamie must prompt Lovable explicitly to apply pending migrations after any merge that contains Claude-Code-authored migration files.
+
+---
+
 _Last updated: 2026-04-18_

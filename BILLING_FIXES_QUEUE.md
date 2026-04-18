@@ -294,3 +294,26 @@ _None new — existing B10 (no invoices.created_by), B11 (no reminder log table)
 - **C15 — `xero_connections` schema drift.** Table exists in live DB but has no canonical `CREATE TABLE` migration in `supabase/migrations/`. The sync migration `20260417180000_xero_connections_schema_sync.sql` added today is a snapshot, not the authoritative definition. Session 2 should either (a) write a full authoritative `CREATE TABLE` migration that matches current live state, or (b) audit what other tables/columns have drifted outside version control. Find the original creator and confirm whether Lovable auto-generates these or they were manual.
 - **C16 — Silent failure of Xero connect flow was invisible to operators.** For an unknown period, every Xero connect attempt produced an `xero_error=save_failed` URL fragment with no user-visible message. Session 2 should add a comprehensive OAuth error surface (toast / banner / settings page indicator) that reads query params and shows meaningful errors.
 - **C31 — A5 upgrade path: family-credit conversion on void.** Current A5 fix forces refund-first: teacher must refund every payment before voiding a partially-paid invoice. The design-endpoint upgrade once Section 7's family-account data model lands: on void of a partially-paid invoice, auto-convert `paid_minor` into a family-account credit (balance brought forward). Requires new tables / columns (`family_credits` or `guardian_credits` with `balance_minor`; no such concept exists in the DB today — only `make_up_credits` for lessons). Pairs with C20 (per-credit breakdown on invoice). Operator UX: single-click "Void and credit £X to family account"; credit visible on next invoice and deductible from it via the existing `credit_applied_minor` column. When this lands, relax the A5 trigger guard to allow `paid_minor > 0` void when accompanied by a balance-forward credit record.
+
+---
+
+## 18 April 2026 post-deploy follow-ups
+
+### Bucket B
+
+### B28 — void_invoice does not clear billing_run_id
+
+**Found:** 18 April 2026 post-deploy schema probe.
+**Impact:** When an invoice is voided, invoices.billing_run_id remains populated. Means voided invoices may still be counted in billing-run reporting / dedup logic. Low blast radius — no evidence of user-facing problem today, but incorrect state.
+**Fix:** Add `billing_run_id = NULL` to the void_invoice RPC body alongside existing void logic.
+**Pairs with:** A5 void guard. Consider bundling into the C31 A5 upgrade path when family-accounts (C32) lands.
+
+### Tracked (LOW)
+
+### Tracked-12 — 6 legacy payment rows need human review
+
+**Found:** 18 April 2026 drift forensics.
+**Context:** Of 102 payments with NULL installment_id in last 60 days, 96 are correctly NULL (non-installment invoices). Remaining 6 need eyes:
+- 4 amount_mismatch rows (2026-03-29 window, total £660) — payment amount differs from unpaid installment amount on same invoice. Could be partial, could be admin error.
+- 2 all_installments_paid rows (2026-03-29 + 2026-04-01, total £690) — payments recorded against invoices where all installments were already paid. Possible overpayment or duplicate.
+**Action:** Spot-check when convenient. Not urgent. Trial users only.
