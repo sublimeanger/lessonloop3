@@ -74,6 +74,7 @@ export function useInstallmentOutstanding(invoiceId: string | undefined) {
       });
 
       (payments || []).forEach((p) => {
+        if (!p.installment_id) return;
         const net = p.amount_minor - (refundByPayment.get(p.id) || 0);
         const prev = result.applied.get(p.installment_id) || 0;
         result.applied.set(p.installment_id, prev + net);

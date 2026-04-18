@@ -72,6 +72,7 @@ function useParentInstallments(invoiceId: string | undefined) {
       });
       const appliedByInstallment = new Map<string, number>();
       (payments || []).forEach((p) => {
+        if (!p.installment_id) return;
         const net = p.amount_minor - (refundByPayment.get(p.id) || 0);
         appliedByInstallment.set(p.installment_id, (appliedByInstallment.get(p.installment_id) || 0) + net);
       });
