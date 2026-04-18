@@ -3790,6 +3790,7 @@ export type Database = {
           created_at: string
           currency_code: string
           id: string
+          installment_id: string | null
           invoice_id: string
           method: Database["public"]["Enums"]["payment_method"]
           org_id: string
@@ -3803,6 +3804,7 @@ export type Database = {
           created_at?: string
           currency_code?: string
           id?: string
+          installment_id?: string | null
           invoice_id: string
           method?: Database["public"]["Enums"]["payment_method"]
           org_id: string
@@ -3816,6 +3818,7 @@ export type Database = {
           created_at?: string
           currency_code?: string
           id?: string
+          installment_id?: string | null
           invoice_id?: string
           method?: Database["public"]["Enums"]["payment_method"]
           org_id?: string
@@ -3825,6 +3828,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_installments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -6507,6 +6517,10 @@ export type Database = {
       recalc_continuation_summary: {
         Args: { _org_id: string; _run_id: string }
         Returns: Json
+      }
+      recalculate_installment_status: {
+        Args: { _installment_id: string }
+        Returns: undefined
       }
       recalculate_invoice_paid: { Args: { _invoice_id: string }; Returns: Json }
       record_installment_payment: {
