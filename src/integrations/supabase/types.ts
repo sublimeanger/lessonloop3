@@ -1920,6 +1920,7 @@ export type Database = {
           issue_date: string
           notes: string | null
           org_id: string
+          overpayment_minor: number
           paid_minor: number | null
           payer_guardian_id: string | null
           payer_student_id: string | null
@@ -1947,6 +1948,7 @@ export type Database = {
           issue_date?: string
           notes?: string | null
           org_id: string
+          overpayment_minor?: number
           paid_minor?: number | null
           payer_guardian_id?: string | null
           payer_student_id?: string | null
@@ -1974,6 +1976,7 @@ export type Database = {
           issue_date?: string
           notes?: string | null
           org_id?: string
+          overpayment_minor?: number
           paid_minor?: number | null
           payer_guardian_id?: string | null
           payer_student_id?: string | null
@@ -6530,6 +6533,17 @@ export type Database = {
           p_stripe_payment_intent_id?: string
         }
         Returns: Json
+      }
+      record_manual_payment: {
+        Args: {
+          p_amount_minor: number
+          p_installment_id?: string
+          p_invoice_id: string
+          p_method: string
+          p_paid_at?: string
+          p_reference?: string
+        }
+        Returns: string
       }
       record_manual_refund: {
         Args: {
