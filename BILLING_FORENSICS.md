@@ -1132,7 +1132,86 @@ Scope: every billing-adjacent event. Column legend: **Persisted where** — "aud
 - **C50 — `entity_type` naming inconsistency between generic audit trigger (`'invoices'` via `TG_TABLE_NAME`) and manual RPC audit entries (`'invoice'` singular).** Filter queries break silently. Fix options: (a) standardise all manual audit INSERTs to plural-table-name; (b) add a UNION-friendly column `canonical_entity` derived. Option (a) is simpler; one-pass refactor across RPCs. Low complexity, meaningful correctness.
 - **C51 — Missing audit triggers on billing-adjacent tables.** Apply `log_audit_event` trigger to: `invoice_installments` (covers A3 state transitions + auto-pay flips), `refunds` (UPDATE / DELETE coverage), `make_up_credits`, `closure_dates`, `guardians`, `student_guardians`. Each is a one-line `CREATE TRIGGER` added in a consolidation migration. Cheap. Closes most of Section 9's ephemeral gaps in one pass. Does NOT include `invoice_items` — covered separately by B12.
 - **C52 — `audit_log` composite index on `(entity_type, entity_id)`.** Needed for efficient per-entity timeline queries once C17 lands. Low-cost migration; delivers ~100× query speed-up on per-invoice timeline lookups at scale.
-Section 10 — Walked test scenarios
-To be filled in Session-1.10.
-Section 11 — Findings summary + severity
-To be filled in Session-1.11.
+## Section 10 — Walked test scenarios
+
+Deferred to pre-deploy verification. The 8 scenarios will be walked against merged `main` before production deploy, not against the audit branch. Rationale: walking against pre-merge state tests audit-branch fixes in isolation; walking against post-merge main catches integration regressions from Bucket A landings interacting with each other + with any other Session 1 changes. See Section 11.5 checklist.
+
+## Section 11 — Audit wrap
+
+### 11.1 Audit summary
+
+Sections covered: 1 through 9, plus this wrap (Section 11). Section 10 deferred as a pre-deploy verification step (see above + 11.5).
+
+**Findings totals (from `BILLING_FIXES_QUEUE.md`):**
+
+- **Bucket A — STOP THE BLEEDING:** 0 open / **6 resolved during audit**.
+- **Bucket B — END-OF-AUDIT FIX:** 27 open.
+- **Bucket C — DESIGN DECISION / SPEC:** 51 open.
+- **Tracked (LOW, cosmetic):** 11.
+
+**Bucket A resolution summary** (all fixed on branch `audit/phase-2-billing-forensics`):
+
+1. **Rate snapshot on confirm_makeup_booking** — migration `20260417120000`; 4 commits capped by `2abf1e2`.
+2. **`closure_dates` exclusion in billing run** — commit `9f60d71`; pure edge-function fix, no migration.
+3. **A3 — installment `partially_paid` state** — migration `20260417190000` + 3 companion commits (`f74ff61`, `2a4e233`, `018fdf2`, `cfa4c80`). Central helper `recalculate_installment_status` called from every payment write path.
+4. **A4 — paid→sent trigger unblock on refund** — migration `20260417200000` + docs (`8d54060`, `10b3c0a`). No backfill needed (prod diagnostic returned 0 corrupt rows).
+5. **A5 — void-on-partial-paid guard** — migration `20260417210000` (RPC + trigger dual guard) + UI "Record Refund First" CTA (`f97fa6a`, `926cdce`, `ccbbede`).
+6. **A6 — parent dashboard outstanding math** — migration `20260417220000`, single commit `184425d`.
+
+**Notable out-of-audit fix: Xero OAuth unblock.** Surfaced during Section 3d empirical test; root cause was `xero_connections` schema drift (table created outside version control — missing `connected_by`, stale `user_id NOT NULL`). Live-DB ALTERs applied via Lovable SQL editor; sync migration `20260417180000` snapshots the live DDL for reproducibility. Known follow-on UX gaps filed as B8 (no success toast) + B9 (redirect loses tab state, double-`?` bug); schema-drift broader audit filed as C15; silent-OAuth-failure UX filed as C16.
+
+### 11.2 Deploy order for audit-branch fixes
+
+**1. Migrations — apply in Lovable SQL editor in filename/timestamp order:**
+
+1. `20260417120000_rate_snapshot_on_confirm_makeup_booking.sql`
+2. `20260417180000_xero_connections_schema_sync.sql`
+3. `20260417190000_installment_partially_paid_state.sql`
+4. `20260417200000_paid_to_sent_on_refund.sql`
+5. `20260417210000_block_void_on_partial_paid.sql`
+6. `20260417220000_fix_parent_dashboard_outstanding.sql`
+
+Each migration contains `NOTIFY pgrst, 'reload schema';` as its last statement — no separate reload step required.
+
+**2. Edge functions — redeploy in this order (payment-recording first, then dunning, then remainder):**
+
+Payment-recording:
+- `stripe-auto-pay-installment`
+- `stripe-create-payment-intent`
+
+Dunning:
+- `overdue-reminders`
+- `installment-upcoming-reminder`
+- `auto-pay-upcoming-reminder`
+
+Billing + integrations:
+- `create-billing-run`
+- `xero-oauth-start` (already deployed during Xero test; redeploy for parity)
+
+Remaining touched on branch (grep confirmed — redeploy alongside the group above or verify no divergence):
+- `csv-import-execute` (touched by rate-snapshot pass)
+- `process-term-adjustment` (touched by rate-snapshot pass)
+- `seed-demo-agency` / `seed-demo-data` / `seed-demo-solo` / `seed-e2e-data` (demo-data seeds; redeploy if seeds are rerun against fresh envs)
+
+**3. Frontend deploy.** Lovable auto-builds on merge to main; if a manual trigger is required in the target environment, deploy after steps 1 + 2 complete. Frontend changes include: `InvoiceDetail` void dialog (A5 "Record Refund First" CTA), parent-portal + teacher installment rendering (A3 `partially_paid` badge + `£X of £Y` outstanding), dunning email templates (A3 wording).
+
+### 11.3 Session 2 scope
+
+Session 2 scope and ordering are defined in Section 8.2's priority table (Beats 1–3 span 8 weeks combined). Not rewritten here — single source of truth is the Section 8 table.
+
+### 11.4 Open items deferred
+
+- **Section 10 walked scenarios** → pre-deploy verification step (Section 11.5 below).
+- **Bucket B (27 items)** → systematic pass post-Session 2, or as capacity allows. None are live-bleeding; all are defects-in-waiting or evidence gaps.
+- **Bucket C (51 items)** → prioritised per Section 8.2 table. Top three by UK-native impact: **C12** (four-nation `organisations.uk_nation` field — prerequisite for C11 + C41), **C11** (UK bank-holiday awareness in billing-run + dunning), **C32** (family-account data model — headline MMS-parity gap).
+
+### 11.5 Post-audit checklist (for Jamie)
+
+1. **Apply migrations** in Lovable SQL editor in the order given in Section 11.2 step 1.
+2. **Redeploy edge functions** in the order given in Section 11.2 step 2.
+3. **Smoke test — A3:** create a test invoice with installments, record a partial payment against one installment, verify the installment flips to `partially_paid`, verify dunning email content references outstanding amount (not full installment).
+4. **Smoke test — A4 + A6:** refund a paid invoice via Stripe Dashboard, verify invoice status flips `paid → sent`, verify parent portal dashboard outstanding matches Invoices tab total (A6 cross-check).
+5. **Smoke test — A5:** attempt to void a partially-paid invoice, verify the guard blocks with a toast referring to "Record Refund First" and the UI CTA opens the refund dialog pre-populated.
+6. **After smoke tests pass:** merge `audit/phase-2-billing-forensics` → `main`.
+7. **Walk Section 10's 8 scenarios** against merged main as final verification before production deploy.
+8. **Session 2 kickoff** — first fortnight priorities: **C12** (four-nation field), **C11** (UK bank holidays — depends on C12), **C42** (HMRC-safe invoice number sequencing — independent, small).

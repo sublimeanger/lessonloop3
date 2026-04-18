@@ -10,5 +10,5 @@ Billing Forensics Progress
 [x] Section 7
 [x] Section 8
 [x] Section 9
- Section 10
- Section 11
+[x] Section 10 — Deferred to pre-deploy verification (walk 8 scenarios against merged main before production deploy).
+[x] Section 11
