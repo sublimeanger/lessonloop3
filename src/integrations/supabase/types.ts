@@ -945,42 +945,6 @@ export type Database = {
           },
         ]
       }
-      data_reconciliation_notes: {
-        Row: {
-          details: Json
-          discovered_during: string
-          entity_id: string | null
-          entity_type: string
-          id: string
-          issue_class: string
-          logged_at: string
-          org_id: string | null
-          remediation: string | null
-        }
-        Insert: {
-          details?: Json
-          discovered_during: string
-          entity_id?: string | null
-          entity_type: string
-          id?: string
-          issue_class: string
-          logged_at?: string
-          org_id?: string | null
-          remediation?: string | null
-        }
-        Update: {
-          details?: Json
-          discovered_during?: string
-          entity_id?: string | null
-          entity_type?: string
-          id?: string
-          issue_class?: string
-          logged_at?: string
-          org_id?: string | null
-          remediation?: string | null
-        }
-        Relationships: []
-      }
       enrolment_waitlist: {
         Row: {
           child_age: number | null
