@@ -344,6 +344,8 @@ export function useRecordPayment() {
       amount_minor: number;
       method: Database['public']['Enums']['payment_method'];
       provider_reference?: string;
+      installment_id?: string;
+      paid_at?: string;
     }) => {
       if (data.amount_minor <= 0) {
         throw new Error('Payment amount must be greater than zero');
@@ -354,23 +356,29 @@ export function useRecordPayment() {
 
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      const { data: result, error } = await supabase.rpc('record_payment_and_update_status', {
-        _org_id: currentOrg.id,
-        _invoice_id: data.invoice_id,
-        _amount_minor: data.amount_minor,
-        _currency_code: currentOrg.currency_code,
-        _method: data.method,
-        _provider_reference: data.provider_reference ?? undefined,
+      // record_manual_payment: atomic, server-enforced overpayment rejection,
+      // installment validation, and recalculated invoice/installment status.
+      const { data: paymentId, error } = await supabase.rpc('record_manual_payment', {
+        p_invoice_id: data.invoice_id,
+        p_amount_minor: data.amount_minor,
+        p_method: data.method,
+        p_paid_at: data.paid_at ?? new Date().toISOString(),
+        p_reference: data.provider_reference ?? undefined,
+        p_installment_id: data.installment_id ?? undefined,
       });
 
       if (error) throw error;
-      return { result, input: data };
+      return { result: { payment_id: paymentId }, input: data };
     },
     onSuccess: ({ result, input }) => {
-      const parsed = typeof result === 'string' ? JSON.parse(result) : result;
       if (currentOrg?.id && user?.id) {
-        logAudit(currentOrg.id, user.id, 'payment_recorded', 'payment', parsed?.payment_id ?? null, {
-          after: { invoice_id: input.invoice_id, amount_minor: input.amount_minor, method: input.method, new_status: parsed?.new_status },
+        logAudit(currentOrg.id, user.id, 'payment_recorded', 'payment', result?.payment_id ?? null, {
+          after: {
+            invoice_id: input.invoice_id,
+            amount_minor: input.amount_minor,
+            method: input.method,
+            installment_id: input.installment_id ?? null,
+          },
         });
       }
       queryClient.invalidateQueries({ queryKey: ['invoices'] });

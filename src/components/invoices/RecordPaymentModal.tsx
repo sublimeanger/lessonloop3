@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -22,8 +22,6 @@ import { useOrg } from '@/contexts/OrgContext';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
 import type { Database } from '@/integrations/supabase/types';
 import { formatCurrencyMinor } from '@/lib/utils';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
 
 type PaymentMethod = Database['public']['Enums']['payment_method'];
 
@@ -48,7 +46,7 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('bank_transfer');
   const [reference, setReference] = useState('');
-  const [confirmOverpay, setConfirmOverpay] = useState(false);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
   const totalPaid = invoice?.payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0;
   const outstandingAmount = invoice ? Math.max(0, invoice.total_minor - totalPaid) : 0;
@@ -64,28 +62,31 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
     [currency]
   );
 
-  const isOverpayment = amountMinor > outstandingAmount && outstandingAmount > 0;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!invoice) return;
 
-    if (isOverpayment && !confirmOverpay) {
-      setConfirmOverpay(true);
-      return;
+    try {
+      await recordPayment.mutateAsync({
+        invoice_id: invoice.id,
+        amount_minor: amountMinor,
+        method,
+        provider_reference: reference || undefined,
+      });
+
+      setAmount('');
+      setReference('');
+      onOpenChange(false);
+    } catch (err: unknown) {
+      // Server hard-rejects overpayment; refocus the amount field so the
+      // user can correct without reopening the modal. Toast is surfaced by
+      // the mutation's onError.
+      const message = err instanceof Error ? err.message : String(err);
+      if (/exceed/i.test(message)) {
+        amountInputRef.current?.focus();
+        amountInputRef.current?.select();
+      }
     }
-
-    await recordPayment.mutateAsync({
-      invoice_id: invoice.id,
-      amount_minor: amountMinor,
-      method,
-      provider_reference: reference || undefined,
-    });
-
-    setAmount('');
-    setReference('');
-    setConfirmOverpay(false);
-    onOpenChange(false);
   };
 
 
@@ -113,14 +114,12 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
               </span>
               <Input
                 id="amount"
+                ref={amountInputRef}
                 type="number"
                 step="0.01"
                 min="0.01"
                 value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value);
-                  setConfirmOverpay(false);
-                }}
+                onChange={(e) => setAmount(e.target.value)}
                 className="pl-7"
                 placeholder="0.00"
                 required
@@ -130,14 +129,6 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
               <p className="text-xs text-muted-foreground">
                 Already paid: {formatCurrencyMinor(totalPaid, currency)}
               </p>
-            )}
-            {isOverpayment && (
-              <Alert variant="destructive" className="py-2">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription className="text-xs">
-                  This payment of {formatCurrencyMinor(amountMinor, currency)} exceeds the remaining balance of {formatCurrencyMinor(outstandingAmount, currency)}.
-                </AlertDescription>
-              </Alert>
             )}
             <Button
               type="button"
@@ -181,11 +172,7 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
               Cancel
             </Button>
             <Button className="min-h-11 w-full sm:min-h-9 sm:w-auto" type="submit" disabled={recordPayment.isPending || !amount}>
-              {recordPayment.isPending
-                ? 'Recording...'
-                : confirmOverpay
-                  ? 'Confirm Overpayment'
-                  : 'Record Payment'}
+              {recordPayment.isPending ? 'Recording...' : 'Record Payment'}
             </Button>
           </DialogFooter>
         </form>
