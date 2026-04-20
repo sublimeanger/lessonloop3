@@ -125,3 +125,39 @@ invariant register. Summary:
 - git tag `billing-v1.0` — billing coherence milestone
 
 ---
+
+## Area 2 — Invoicing UX
+
+### Journey 1: Creating a single invoice manually
+
+Walked 19 April 2026. Five real bugs + one legacy naming issue fixed.
+
+#### Fixed
+- **F4** Lesson duration guard — From Lessons branch now blocks
+  zero/negative duration lessons before submit.
+- **F11** Duplicate error toast removed — useCreateInvoice hook's
+  onError is the single source of error messaging for invoice
+  creation failures.
+- **F12** Invoice number in success toast — useCreateInvoice
+  onSuccess now surfaces the generated invoice number.
+- **F13** Modal close decoupled from payment plan generation —
+  invoice create success closes the modal immediately; plan
+  generation fires in background with its own error reporting.
+- **F18a** onMarkPaid → onRecordPayment rename — stale prop name
+  from pre-pivot. No user-facing change; the menu label was
+  already "Record Payment".
+- **F18b** RecordPaymentModal extended with defaultAmount,
+  defaultMethod, installmentId, title, submitLabel, onSuccess
+  props. Enables "record full outstanding in one click" pre-fill
+  from any caller.
+
+#### Filed for later
+- F1-F3, F5-F10, F14-F17, F19-F21 — see git log for discussion.
+  Ranges from small polish to cross-Journey coherence work.
+  Bigger ones (F2 quantity integer, F6 past-due warning,
+  client-side invoice number preview) scheduled for Commit 2.
+- **Allow edit of draft invoices** — scheduled for Commit 3.
+  Requires new edit modal, diff-aware mutation, and likely a
+  server RPC for atomic line-item replacement.
+
+---

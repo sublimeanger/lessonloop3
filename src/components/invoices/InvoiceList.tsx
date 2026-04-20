@@ -73,7 +73,7 @@ interface InvoiceListProps {
   invoices: InvoiceWithDetails[];
   totalCount?: number;
   onSend: (invoice: InvoiceWithDetails) => void;
-  onMarkPaid: (invoice: InvoiceWithDetails) => void;
+  onRecordPayment: (invoice: InvoiceWithDetails) => void;
   onVoid: (invoice: InvoiceWithDetails) => void;
   onSendReminder: (invoice: InvoiceWithDetails) => void;
   selectedIds: Set<string>;
@@ -125,14 +125,14 @@ function getPayerName(invoice: InvoiceWithDetails): string {
 function InvoiceActions({
   invoice,
   onSend,
-  onMarkPaid,
+  onRecordPayment,
   onVoid,
   onSendReminder,
   alwaysVisible = false,
 }: {
   invoice: InvoiceWithDetails;
   onSend: (inv: InvoiceWithDetails) => void;
-  onMarkPaid: (inv: InvoiceWithDetails) => void;
+  onRecordPayment: (inv: InvoiceWithDetails) => void;
   onVoid: (inv: InvoiceWithDetails) => void;
   onSendReminder: (inv: InvoiceWithDetails) => void;
   alwaysVisible?: boolean;
@@ -166,7 +166,7 @@ function InvoiceActions({
         )}
         {(invoice.status === 'sent' || invoice.status === 'overdue') && (
           <>
-            <DropdownMenuItem onClick={() => guard(onMarkPaid)} disabled={busy}>
+            <DropdownMenuItem onClick={() => guard(onRecordPayment)} disabled={busy}>
               <CreditCard className="mr-2 h-4 w-4" />
               Record Payment
             </DropdownMenuItem>
@@ -206,7 +206,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
   onSelect,
   onNavigate,
   onSend,
-  onMarkPaid,
+  onRecordPayment,
   onVoid,
   onSendReminder,
 }: {
@@ -216,7 +216,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
   onSelect: (checked: boolean) => void;
   onNavigate: () => void;
   onSend: (inv: InvoiceWithDetails) => void;
-  onMarkPaid: (inv: InvoiceWithDetails) => void;
+  onRecordPayment: (inv: InvoiceWithDetails) => void;
   onVoid: (inv: InvoiceWithDetails) => void;
   onSendReminder: (inv: InvoiceWithDetails) => void;
 }) {
@@ -259,7 +259,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
         <InvoiceActions
           invoice={invoice}
           onSend={onSend}
-          onMarkPaid={onMarkPaid}
+          onRecordPayment={onRecordPayment}
           onVoid={onVoid}
           onSendReminder={onSendReminder}
           alwaysVisible
@@ -273,7 +273,7 @@ export function InvoiceList({
   invoices,
   totalCount,
   onSend,
-  onMarkPaid,
+  onRecordPayment,
   onVoid,
   onSendReminder,
   selectedIds,
@@ -380,7 +380,7 @@ export function InvoiceList({
             onSelect={(checked) => handleSelectOne(invoice.id, !!checked)}
             onNavigate={() => navigate(`/invoices/${invoice.id}`)}
             onSend={onSend}
-            onMarkPaid={onMarkPaid}
+            onRecordPayment={onRecordPayment}
             onVoid={onVoid}
             onSendReminder={onSendReminder}
           />
@@ -455,7 +455,7 @@ export function InvoiceList({
               <InvoiceActions
                 invoice={invoice}
                 onSend={onSend}
-                onMarkPaid={onMarkPaid}
+                onRecordPayment={onRecordPayment}
                 onVoid={onVoid}
                 onSendReminder={onSendReminder}
               />

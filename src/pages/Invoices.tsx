@@ -313,7 +313,7 @@ export default function Invoices() {
                   invoices={invoices}
                   totalCount={totalCount}
                   onSend={(inv) => setSendModalInvoice(inv)}
-                  onMarkPaid={(inv) => setPaymentModalInvoice(inv)}
+                  onRecordPayment={(inv) => setPaymentModalInvoice(inv)}
                   onVoid={(inv) => setVoidConfirmInvoice(inv)}
                   onSendReminder={(inv) => setReminderModalInvoice(inv)}
                   selectedIds={selectedIds}
@@ -353,7 +353,7 @@ export default function Invoices() {
                 invoices={invoices}
                 totalCount={totalCount}
                 onSend={(inv) => setSendModalInvoice(inv)}
-                onMarkPaid={(inv) => setPaymentModalInvoice(inv)}
+                onRecordPayment={(inv) => setPaymentModalInvoice(inv)}
                 onVoid={(inv) => setVoidConfirmInvoice(inv)}
                 onSendReminder={(inv) => setReminderModalInvoice(inv)}
                 selectedIds={selectedIds}

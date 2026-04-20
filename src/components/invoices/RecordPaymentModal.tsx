@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,20 @@ interface RecordPaymentModalProps {
   invoice: InvoiceWithDetails | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Pre-fill the amount field (major units, e.g. 50.00 for £50).
+      If omitted, defaults to the invoice outstanding balance. */
+  defaultAmount?: number;
+  /** Pre-fill the payment method. If omitted, defaults to 'card'. */
+  defaultMethod?: PaymentMethod;
+  /** Pre-fill the installment_id if recording against a specific
+      installment. */
+  installmentId?: string;
+  /** Override the default modal title. */
+  title?: string;
+  /** Override the default submit button label. */
+  submitLabel?: string;
+  /** Optional callback fired after successful payment record. */
+  onSuccess?: (paymentId: string) => void;
 }
 
 const PAYMENT_METHODS: Array<{ value: PaymentMethod; label: string }> = [
@@ -38,18 +52,43 @@ const PAYMENT_METHODS: Array<{ value: PaymentMethod; label: string }> = [
   { value: 'other', label: 'Other' },
 ];
 
-export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymentModalProps) {
+export function RecordPaymentModal({
+  invoice,
+  open,
+  onOpenChange,
+  defaultAmount,
+  defaultMethod,
+  installmentId,
+  title,
+  submitLabel,
+  onSuccess,
+}: RecordPaymentModalProps) {
   const { currentOrg } = useOrg();
   const recordPayment = useRecordPayment();
   const currency = currentOrg?.currency_code || 'GBP';
 
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState<PaymentMethod>('bank_transfer');
+  const [method, setMethod] = useState<PaymentMethod>(defaultMethod ?? 'card');
   const [reference, setReference] = useState('');
   const amountInputRef = useRef<HTMLInputElement>(null);
 
   const totalPaid = invoice?.payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0;
   const outstandingAmount = invoice ? Math.max(0, invoice.total_minor - totalPaid) : 0;
+
+  // Pre-fill amount and method when the modal opens. Only prefill the
+  // amount when an explicit defaultAmount is passed — otherwise leave
+  // empty so the user clicks "Pay full amount" to commit to the full
+  // outstanding balance (avoids a partial-payment accidentally becoming
+  // a full-balance payment).
+  useEffect(() => {
+    if (!open) return;
+    if (defaultAmount !== undefined) {
+      setAmount(defaultAmount.toFixed(2));
+    } else {
+      setAmount('');
+    }
+    setMethod(defaultMethod ?? 'card');
+  }, [open, defaultAmount, defaultMethod]);
 
   const amountMinor = useMemo(() => {
     const parsed = parseFloat(amount);
@@ -67,15 +106,17 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
     if (!invoice) return;
 
     try {
-      await recordPayment.mutateAsync({
+      const { result } = await recordPayment.mutateAsync({
         invoice_id: invoice.id,
         amount_minor: amountMinor,
         method,
         provider_reference: reference || undefined,
+        installment_id: installmentId,
       });
 
       setAmount('');
       setReference('');
+      onSuccess?.(result.payment_id);
       onOpenChange(false);
     } catch (err: unknown) {
       // Server hard-rejects overpayment; refocus the amount field so the
@@ -94,7 +135,7 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-w-md sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
+          <DialogTitle>{title ?? 'Record Payment'}</DialogTitle>
           <DialogDescription>
             {invoice && (
               <>
@@ -172,7 +213,7 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
               Cancel
             </Button>
             <Button className="min-h-11 w-full sm:min-h-9 sm:w-auto" type="submit" disabled={recordPayment.isPending || !amount}>
-              {recordPayment.isPending ? 'Recording...' : 'Record Payment'}
+              {recordPayment.isPending ? 'Recording...' : (submitLabel ?? 'Record Payment')}
             </Button>
           </DialogFooter>
         </form>

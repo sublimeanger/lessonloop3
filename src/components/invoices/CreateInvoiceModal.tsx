@@ -209,12 +209,8 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
           })),
         });
         newInvoiceId = result?.id || null;
-      } catch (err) {
-        toast({
-          title: 'Invoice creation failed',
-          description: err instanceof Error ? err.message : 'An unexpected error occurred.',
-          variant: 'destructive',
-        });
+      } catch {
+        // Hook's onError already shows appropriate toast. Abort submit flow.
         return;
       }
     } else {
@@ -238,6 +234,23 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
         toast({
           title: 'No valid lessons',
           description: 'Selected lessons have no participants. Please add participants to lessons first.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Guard: reject zero/negative duration lessons
+      const invalidDurationLessons = validLessons.filter((lesson) => {
+        const mins = differenceInMinutes(
+          new Date(lesson.end_at),
+          new Date(lesson.start_at)
+        );
+        return mins <= 0;
+      });
+      if (invalidDurationLessons.length > 0) {
+        toast({
+          title: 'Invalid lesson durations',
+          description: `${invalidDurationLessons.length} lesson(s) have zero or negative duration. Fix them in the calendar before invoicing.`,
           variant: 'destructive',
         });
         return;
@@ -276,32 +289,26 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
           }),
         });
         newInvoiceId = result?.id || null;
-      } catch (err) {
-        toast({
-          title: 'Invoice creation failed',
-          description: err instanceof Error ? err.message : 'An unexpected error occurred.',
-          variant: 'destructive',
-        });
+      } catch {
+        // Hook's onError already shows appropriate toast. Abort submit flow.
         return;
       }
     }
 
-    // Generate installments if payment plan is enabled
-    if (planEnabled && newInvoiceId && planCount >= 2) {
-      try {
-        await generateInstallments.mutateAsync({
-          invoiceId: newInvoiceId,
-          count: planCount,
-          frequency: planFrequency,
-          startDate: planStartDate || undefined,
-        });
-      } catch (err) {
-        // Invoice was created but plan failed — toast already shown by hook
-        console.warn('Payment plan generation failed:', err);
-      }
-    }
-
+    // Close the modal — invoice was created successfully
     handleOpenChange(false);
+
+    // Generate installments if payment plan is enabled. If this fails,
+    // the invoice is already created and visible in the list; the hook
+    // will show its own error toast.
+    if (planEnabled && newInvoiceId && planCount >= 2) {
+      generateInstallments.mutate({
+        invoiceId: newInvoiceId,
+        count: planCount,
+        frequency: planFrequency,
+        startDate: planStartDate || undefined,
+      });
+    }
   };
 
   const toggleLesson = (lessonId: string) => {

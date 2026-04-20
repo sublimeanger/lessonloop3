@@ -241,12 +241,15 @@ export function useCreateInvoice() {
       if (error) throw error;
       return result as { id: string; invoice_number: string; total_minor: number };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
       queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
       queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
-      toast({ title: 'Invoice created' });
+      toast({
+        title: 'Invoice created',
+        description: `Invoice ${result.invoice_number} has been created.`,
+      });
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
