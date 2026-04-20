@@ -26,8 +26,12 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Today boundary for dedup check
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     // Calculate the target date (3 days from now)
-    const targetDate = new Date();
+    const targetDate = new Date(today);
     targetDate.setDate(targetDate.getDate() + 3);
     const targetDateStr = targetDate.toISOString().split("T")[0];
 
@@ -157,6 +161,17 @@ serve(async (req) => {
         <p>Thank you,<br>${escapeHtml(org.name)}</p>
       </div>`;
 
+      // Deduplicate: skip if a reminder for this installment already
+      // sent today (cron re-fire protection)
+      const { data: existing } = await supabase
+        .from("message_log")
+        .select("id")
+        .eq("related_id", inst.id)
+        .eq("message_type", "auto_pay_reminder")
+        .gte("created_at", today.toISOString())
+        .limit(1);
+      if (existing && existing.length > 0) continue;
+
       // Log to message_log
       await supabase.from("message_log").insert({
         org_id: invoice.org_id,
@@ -166,7 +181,7 @@ serve(async (req) => {
         recipient_email: guardian.email,
         recipient_name: guardian.full_name,
         recipient_type: "guardian",
-        related_id: inst.invoice_id,
+        related_id: inst.id,
         message_type: "auto_pay_reminder",
         status: resendApiKey ? "pending" : "logged",
       });
@@ -196,7 +211,7 @@ serve(async (req) => {
             await supabase
               .from("message_log")
               .update({ status: "sent", sent_at: new Date().toISOString() })
-              .eq("related_id", inst.invoice_id)
+              .eq("related_id", inst.id)
               .eq("message_type", "auto_pay_reminder")
               .order("created_at", { ascending: false })
               .limit(1);
