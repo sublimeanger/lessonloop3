@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { format, addDays, differenceInMinutes } from 'date-fns';
+import { format, addDays, differenceInMinutes, isBefore, parseISO, startOfToday } from 'date-fns';
 import { useGenerateInstallments } from '@/hooks/useInvoiceInstallments';
 import { PaymentPlanToggle } from '@/components/invoices/PaymentPlanToggle';
 import {
@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Trash2, Gift } from 'lucide-react';
+import { Plus, Trash2, Gift, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useCreateInvoice, useUnbilledLessons } from '@/hooks/useInvoices';
@@ -104,6 +104,14 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   const payerType = watch('payerType');
   const payerId = watch('payerId');
   const dueDate = watch('dueDate');
+  const isPastDue = useMemo(() => {
+    if (!dueDate) return false;
+    try {
+      return isBefore(parseISO(dueDate), startOfToday());
+    } catch {
+      return false;
+    }
+  }, [dueDate]);
 
   // Sync plan start date with due date when not manually set
   useEffect(() => {
@@ -180,11 +188,15 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     }
 
     if (tab === 'manual') {
-      const invalidItems = data.items.filter(item => item.unitPrice <= 0 || item.quantity <= 0);
+      const invalidItems = data.items.filter(item =>
+        item.unitPrice <= 0 ||
+        item.quantity <= 0 ||
+        !Number.isInteger(item.quantity)
+      );
       if (invalidItems.length > 0) {
         toast({
-          title: 'Invalid amounts',
-          description: 'All items must have a price and quantity greater than zero.',
+          title: 'Invalid line items',
+          description: 'Each item needs a price greater than zero and a whole-number quantity.',
           variant: 'destructive',
         });
         return;
@@ -425,6 +437,12 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                 onChange={(v) => setValue('dueDate', v, { shouldValidate: true })}
                 placeholder="Select due date"
               />
+              {isPastDue && (
+                <p className="text-xs text-amber-600 dark:text-amber-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  This due date is in the past — the invoice will be immediately overdue.
+                </p>
+              )}
             </div>
 
             <TabsContent value="manual" className="mt-0 space-y-4">
@@ -465,10 +483,13 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                         <Input
                           type="number"
                           placeholder="Qty"
+                          step="1"
+                          min="1"
                           {...register(`items.${index}.quantity`, {
                             required: true,
                             valueAsNumber: true,
                             min: 1,
+                            validate: (v) => Number.isInteger(v) || 'Quantity must be a whole number',
                           })}
                           className="w-full sm:w-20"
                         />

@@ -68,7 +68,7 @@ export function RecordPaymentModal({
   const currency = currentOrg?.currency_code || 'GBP';
 
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState<PaymentMethod>(defaultMethod ?? 'card');
+  const [method, setMethod] = useState<PaymentMethod>(defaultMethod ?? 'bank_transfer');
   const [reference, setReference] = useState('');
   const amountInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,7 +87,7 @@ export function RecordPaymentModal({
     } else {
       setAmount('');
     }
-    setMethod(defaultMethod ?? 'card');
+    setMethod(defaultMethod ?? 'bank_transfer');
   }, [open, defaultAmount, defaultMethod]);
 
   const amountMinor = useMemo(() => {

@@ -150,6 +150,15 @@ Walked 19 April 2026. Five real bugs + one legacy naming issue fixed.
   defaultMethod, installmentId, title, submitLabel, onSuccess
   props. Enables "record full outstanding in one click" pre-fill
   from any caller.
+- **F2** Quantity integer-only — line item quantity input now
+  enforces whole numbers via HTML step + RHF validate + submit
+  guard. Prevents "1.5 hours at £30/hr" antipattern.
+- **F6** Past due date warning — dueDate picker shows amber
+  inline warning when set to a past date. Creation still allowed
+  for legitimate back-dating.
+- **Default payment method** — RecordPaymentModal default method
+  changed from 'card' to 'bank_transfer' (UK solo-teacher norm).
+  Applies only when `defaultMethod` prop is not passed by caller.
 
 #### Filed for later
 - F1-F3, F5-F10, F14-F17, F19-F21 — see git log for discussion.
