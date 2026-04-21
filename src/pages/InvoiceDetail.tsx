@@ -39,6 +39,7 @@ import type { Database } from '@/integrations/supabase/types';
 import { cn } from '@/lib/utils';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 import { EntityLink } from '@/components/shared/EntityLink';
+import { getFirstRefundablePayment, isManualPayment, isStripePayment, refundedForPayment } from '@/lib/paymentUtils';
 
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
@@ -122,16 +123,15 @@ export default function InvoiceDetail() {
   // Auto-open refund dialog when navigated with ?action=refund
   useEffect(() => {
     if (searchParams.get('action') === 'refund' && invoice?.payments?.length && !refundDialogOpen) {
-      const firstPayment = invoice.payments[0] as any;
-      const refunds = (invoice as any).refunds || [];
-      const totalRefunded = refunds
-        .filter((r: any) => r.original_payment_id === firstPayment.id)
-        .reduce((sum: number, r: any) => sum + (r.refund_amount_minor || 0), 0);
-      if (firstPayment.amount_minor > totalRefunded) {
+      const refundable = getFirstRefundablePayment(
+        invoice.payments as any,
+        (invoice as any).refunds,
+      );
+      if (refundable) {
         setRefundPayment({
-          ...firstPayment,
-          _alreadyRefunded: totalRefunded,
-          _isManual: !(firstPayment.provider === 'stripe' && firstPayment.provider_reference),
+          ...refundable.payment,
+          _alreadyRefunded: refundable.alreadyRefunded,
+          _isManual: isManualPayment(refundable.payment),
         });
         setRefundDialogOpen(true);
       }
@@ -474,8 +474,9 @@ export default function InvoiceDetail() {
                 <div className="space-y-3">
                   {invoice.payments.map((payment: any) => {
                     const paymentRefunds = (invoice as any).refunds?.filter((r: any) => r.payment_id === payment.id && r.status === 'succeeded') || [];
-                    const totalRefundedForPayment = paymentRefunds.reduce((sum: number, r: any) => sum + r.amount_minor, 0);
-                    
+                    const totalRefundedForPayment = refundedForPayment(payment.id, (invoice as any).refunds);
+                    const isStripe = isStripePayment(payment);
+
                     return (
                       <div key={payment.id} className="space-y-2">
                         <div className="flex items-center justify-between rounded-xl border p-3">
@@ -502,13 +503,13 @@ export default function InvoiceDetail() {
                                 setRefundPayment({
                                   ...payment,
                                   _alreadyRefunded: totalRefundedForPayment,
-                                  _isManual: !(payment.provider === 'stripe' && payment.provider_reference),
+                                  _isManual: !isStripe,
                                 });
                                 setRefundDialogOpen(true);
                               }}
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">{payment.provider === 'stripe' && payment.provider_reference ? 'Refund' : 'Record Refund'}</span>
+                              <span className="hidden sm:inline">{isStripe ? 'Refund' : 'Record Refund'}</span>
                             </Button>
                           )}
                         </div>
@@ -781,21 +782,15 @@ export default function InvoiceDetail() {
                   // payment that still has a refundable balance. Operator
                   // refunds each payment in turn, then returns to Void once
                   // paid_minor hits zero.
-                  const refunds = (invoice as any).refunds || [];
-                  const firstRefundable = (invoice.payments || []).find((p: any) => {
-                    const alreadyRefunded = refunds
-                      .filter((r: any) => r.payment_id === p.id && r.status === 'succeeded')
-                      .reduce((sum: number, r: any) => sum + r.amount_minor, 0);
-                    return alreadyRefunded < p.amount_minor;
-                  });
-                  if (firstRefundable) {
-                    const alreadyRefunded = refunds
-                      .filter((r: any) => r.payment_id === firstRefundable.id && r.status === 'succeeded')
-                      .reduce((sum: number, r: any) => sum + r.amount_minor, 0);
+                  const refundable = getFirstRefundablePayment(
+                    invoice.payments as any,
+                    (invoice as any).refunds,
+                  );
+                  if (refundable) {
                     setRefundPayment({
-                      ...firstRefundable,
-                      _alreadyRefunded: alreadyRefunded,
-                      _isManual: !(firstRefundable.provider === 'stripe' && firstRefundable.provider_reference),
+                      ...refundable.payment,
+                      _alreadyRefunded: refundable.alreadyRefunded,
+                      _isManual: isManualPayment(refundable.payment),
                     });
                     setRefundDialogOpen(true);
                   }
