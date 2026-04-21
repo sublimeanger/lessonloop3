@@ -752,6 +752,13 @@ export default function InvoiceDetail() {
             refetch();
           }
         }}
+        onRefundSuccess={() => {
+          // Refetch early so the detail page reflects the new paid_minor /
+          // status while the dialog's 2.5s success screen is still showing.
+          // The onOpenChange close already triggers refetch, but that's
+          // delayed behind the success animation.
+          refetch();
+        }}
         paymentId={refundPayment?.id || null}
         paymentAmount={refundPayment?.amount_minor || 0}
         alreadyRefunded={refundPayment?._alreadyRefunded || 0}
@@ -788,7 +795,7 @@ export default function InvoiceDetail() {
             <AlertDialogDescription>
               {totalPaid > 0 && (
                 <span className="block mb-2 text-amber-600 dark:text-amber-400 font-medium">
-                  ⚠️ This invoice has {formatCurrencyMinor(totalPaid, currency)} in recorded payments. You must refund every payment before voiding — the payment must not be left attributed to a voided invoice.
+                  ⚠️ This invoice has {formatCurrencyMinor(totalPaid, currency)} in recorded payments. You must refund every payment before voiding — the payment must not be left attributed to a voided invoice. After refunding all payments, return here to void.
                 </span>
               )}
               {totalPaid === 0 && (

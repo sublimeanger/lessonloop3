@@ -11,6 +11,19 @@ interface RefundResult {
   amountMinor?: number;
   status?: string;
   error?: string;
+  /**
+   * Post-refund net paid on the parent invoice (total payments minus
+   * succeeded refunds). 0 means the paid balance has cleared — the
+   * caller can surface a "you can now void this invoice" hint.
+   * Populated on success only; undefined on error or if the follow-up
+   * read fails (never blocks the success return).
+   */
+  netPaidMinor?: number;
+  /**
+   * Invoice ID the refund was applied to. Echoes back the caller's
+   * input so success UIs can fetch fresh invoice state if needed.
+   */
+  invoiceId?: string;
 }
 
 export function useRefund() {
@@ -24,6 +37,7 @@ export function useRefund() {
     amount?: number,
     reason?: string,
     currencyCode: string = 'GBP',
+    invoiceId?: string,
   ): Promise<RefundResult> => {
     setIsProcessing(true);
     setError(null);
@@ -54,7 +68,20 @@ export function useRefund() {
         description: `Refund of ${data.amountMinor ? formatCurrencyMinor(data.amountMinor, currencyCode) : ''} has been processed successfully.`,
       });
 
-      return { success: true, ...data };
+      // Read post-refund net paid so the caller can decide whether to
+      // surface the "you can now void" nudge. Best-effort — if the read
+      // fails, the nudge simply won't show.
+      let netPaidMinor: number | undefined;
+      if (invoiceId) {
+        const { data: freshInvoice } = await supabase
+          .from('invoices')
+          .select('paid_minor')
+          .eq('id', invoiceId)
+          .maybeSingle();
+        netPaidMinor = freshInvoice?.paid_minor ?? undefined;
+      }
+
+      return { success: true, netPaidMinor, invoiceId, ...data };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Refund failed';
       setError(message);
@@ -107,7 +134,15 @@ export function useRefund() {
         description: `Refund of ${formatCurrencyMinor(data.amount_minor, currencyCode)} has been recorded.`,
       });
 
-      return { success: true, ...data };
+      let netPaidMinor: number | undefined;
+      const { data: freshInvoice } = await supabase
+        .from('invoices')
+        .select('paid_minor')
+        .eq('id', invoiceId)
+        .maybeSingle();
+      netPaidMinor = freshInvoice?.paid_minor ?? undefined;
+
+      return { success: true, netPaidMinor, invoiceId, ...data };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Refund failed';
       setError(message);

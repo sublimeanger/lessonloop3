@@ -59,6 +59,13 @@ interface RefundDialogProps {
   isManual?: boolean;
   invoiceId?: string;
   orgId?: string;
+  /**
+   * Fired after a successful refund. Receives the post-refund net paid
+   * balance on the invoice (if known). Caller can use this to refresh
+   * local state or surface follow-up affordances (e.g. void nudge when
+   * balance hits zero).
+   */
+  onRefundSuccess?: (result: { netPaidMinor?: number; refundAmountMinor: number }) => void;
 }
 
 export function RefundDialog({
@@ -74,6 +81,7 @@ export function RefundDialog({
   isManual = false,
   invoiceId,
   orgId,
+  onRefundSuccess,
 }: RefundDialogProps) {
   const maxRefundable = paymentAmount - alreadyRefunded;
   const [step, setStep] = useState<'form' | 'confirm' | 'success' | 'error'>('form');
@@ -81,6 +89,7 @@ export function RefundDialog({
   const [customAmount, setCustomAmount] = useState('');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
+  const [postRefundNetPaid, setPostRefundNetPaid] = useState<number | undefined>();
   const { processRefund, processManualRefund, isProcessing } = useRefund();
   const isDesktop = useMediaQuery('(min-width: 640px)');
 
@@ -93,6 +102,7 @@ export function RefundDialog({
         setCustomAmount('');
         setReason('');
         setNotes('');
+        setPostRefundNetPaid(undefined);
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -126,17 +136,20 @@ export function RefundDialog({
           refundType === 'partial' ? refundAmountMinor : undefined,
           reasonText || undefined,
           currencyCode,
+          invoiceId,
         );
 
     if (result.success) {
+      setPostRefundNetPaid(result.netPaidMinor);
       setStep('success');
+      onRefundSuccess?.({ netPaidMinor: result.netPaidMinor, refundAmountMinor });
       setTimeout(() => {
         onOpenChange(false);
       }, 2500);
     } else {
       setStep('error');
     }
-  }, [paymentId, isValidAmount, reason, notes, processRefund, refundType, refundAmountMinor, onOpenChange]);
+  }, [paymentId, isValidAmount, reason, notes, processRefund, processManualRefund, refundType, refundAmountMinor, onOpenChange, isManual, invoiceId, orgId, currencyCode, onRefundSuccess]);
 
   const content = (
     <div className="space-y-5 px-1">
@@ -370,6 +383,12 @@ export function RefundDialog({
                   : `${formatCurrencyMinor(refundAmountMinor, currencyCode)} will be returned to the parent's payment method.`}
               </p>
             </div>
+            {/* J4-F28 nudge: paid balance has cleared, surface the void path. */}
+            {postRefundNetPaid === 0 && (
+              <div className="rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/20 p-3 text-xs text-amber-800 dark:text-amber-200 max-w-xs text-center">
+                This invoice's paid balance is now zero. You can void it from the header if the invoice itself should no longer stand.
+              </div>
+            )}
           </motion.div>
         )}
 
