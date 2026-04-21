@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Receipt, RotateCcw } from 'lucide-react';
+import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Receipt, RotateCcw, Pencil } from 'lucide-react';
 import { InlineEmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
@@ -74,6 +74,7 @@ interface InvoiceListProps {
   totalCount?: number;
   onSend: (invoice: InvoiceWithDetails) => void;
   onRecordPayment: (invoice: InvoiceWithDetails) => void;
+  onEdit: (invoice: InvoiceWithDetails) => void;
   onVoid: (invoice: InvoiceWithDetails) => void;
   onSendReminder: (invoice: InvoiceWithDetails) => void;
   selectedIds: Set<string>;
@@ -126,6 +127,7 @@ function InvoiceActions({
   invoice,
   onSend,
   onRecordPayment,
+  onEdit,
   onVoid,
   onSendReminder,
   alwaysVisible = false,
@@ -133,6 +135,7 @@ function InvoiceActions({
   invoice: InvoiceWithDetails;
   onSend: (inv: InvoiceWithDetails) => void;
   onRecordPayment: (inv: InvoiceWithDetails) => void;
+  onEdit: (inv: InvoiceWithDetails) => void;
   onVoid: (inv: InvoiceWithDetails) => void;
   onSendReminder: (inv: InvoiceWithDetails) => void;
   alwaysVisible?: boolean;
@@ -159,10 +162,16 @@ function InvoiceActions({
           View
         </DropdownMenuItem>
         {invoice.status === 'draft' && (
-          <DropdownMenuItem onClick={() => guard(onSend)} disabled={busy}>
-            <Send className="mr-2 h-4 w-4" />
-            Send
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem onClick={() => guard(onEdit)} disabled={busy}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => guard(onSend)} disabled={busy}>
+              <Send className="mr-2 h-4 w-4" />
+              Send
+            </DropdownMenuItem>
+          </>
         )}
         {(invoice.status === 'sent' || invoice.status === 'overdue') && (
           <>
@@ -207,6 +216,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
   onNavigate,
   onSend,
   onRecordPayment,
+  onEdit,
   onVoid,
   onSendReminder,
 }: {
@@ -217,6 +227,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
   onNavigate: () => void;
   onSend: (inv: InvoiceWithDetails) => void;
   onRecordPayment: (inv: InvoiceWithDetails) => void;
+  onEdit: (inv: InvoiceWithDetails) => void;
   onVoid: (inv: InvoiceWithDetails) => void;
   onSendReminder: (inv: InvoiceWithDetails) => void;
 }) {
@@ -260,6 +271,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
           invoice={invoice}
           onSend={onSend}
           onRecordPayment={onRecordPayment}
+          onEdit={onEdit}
           onVoid={onVoid}
           onSendReminder={onSendReminder}
           alwaysVisible
@@ -274,6 +286,7 @@ export function InvoiceList({
   totalCount,
   onSend,
   onRecordPayment,
+  onEdit,
   onVoid,
   onSendReminder,
   selectedIds,
@@ -381,6 +394,7 @@ export function InvoiceList({
             onNavigate={() => navigate(`/invoices/${invoice.id}`)}
             onSend={onSend}
             onRecordPayment={onRecordPayment}
+            onEdit={onEdit}
             onVoid={onVoid}
             onSendReminder={onSendReminder}
           />
@@ -456,6 +470,7 @@ export function InvoiceList({
                 invoice={invoice}
                 onSend={onSend}
                 onRecordPayment={onRecordPayment}
+                onEdit={onEdit}
                 onVoid={onVoid}
                 onSendReminder={onSendReminder}
               />

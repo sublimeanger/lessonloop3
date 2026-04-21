@@ -21,6 +21,7 @@ import { BulkActionsBar } from '@/components/invoices/BulkActionsBar';
 import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal';
 import { BillingRunWizard } from '@/components/invoices/BillingRunWizard';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
+import { EditInvoiceModal } from '@/components/invoices/EditInvoiceModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { RecurringBillingTab } from '@/components/settings/RecurringBillingTab';
@@ -97,6 +98,7 @@ export default function Invoices() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [billingRunOpen, setBillingRunOpen] = useState(false);
   const [paymentModalInvoice, setPaymentModalInvoice] = useState<InvoiceWithDetails | null>(null);
+  const [editInvoice, setEditInvoice] = useState<InvoiceWithDetails | null>(null);
   const [sendModalInvoice, setSendModalInvoice] = useState<InvoiceWithDetails | null>(null);
   const [reminderModalInvoice, setReminderModalInvoice] = useState<InvoiceWithDetails | null>(null);
   const [voidConfirmInvoice, setVoidConfirmInvoice] = useState<InvoiceWithDetails | null>(null);
@@ -314,6 +316,7 @@ export default function Invoices() {
                   totalCount={totalCount}
                   onSend={(inv) => setSendModalInvoice(inv)}
                   onRecordPayment={(inv) => setPaymentModalInvoice(inv)}
+                  onEdit={(inv) => setEditInvoice(inv)}
                   onVoid={(inv) => setVoidConfirmInvoice(inv)}
                   onSendReminder={(inv) => setReminderModalInvoice(inv)}
                   selectedIds={selectedIds}
@@ -354,6 +357,7 @@ export default function Invoices() {
                 totalCount={totalCount}
                 onSend={(inv) => setSendModalInvoice(inv)}
                 onRecordPayment={(inv) => setPaymentModalInvoice(inv)}
+                onEdit={(inv) => setEditInvoice(inv)}
                 onVoid={(inv) => setVoidConfirmInvoice(inv)}
                 onSendReminder={(inv) => setReminderModalInvoice(inv)}
                 selectedIds={selectedIds}
@@ -373,6 +377,11 @@ export default function Invoices() {
         invoice={paymentModalInvoice}
         open={!!paymentModalInvoice}
         onOpenChange={(open) => !open && setPaymentModalInvoice(null)}
+      />
+      <EditInvoiceModal
+        invoice={editInvoice}
+        open={!!editInvoice}
+        onOpenChange={(open) => !open && setEditInvoice(null)}
       />
       <SendInvoiceModal
         invoice={sendModalInvoice}

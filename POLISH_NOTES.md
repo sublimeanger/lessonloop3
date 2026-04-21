@@ -159,6 +159,16 @@ Walked 19 April 2026. Five real bugs + one legacy naming issue fixed.
 - **Default payment method** — RecordPaymentModal default method
   changed from 'card' to 'bank_transfer' (UK solo-teacher norm).
   Applies only when `defaultMethod` prop is not passed by caller.
+- **Allow editing of draft invoices (Q1 answer B)** —
+  Commit 3a: `update_invoice_with_items` server RPC with status
+  gate, payment-plan-total guard, UPSERT items + credits, audit
+  log. Commit 3b: `useUpdateInvoice` hook, `EditInvoiceModal`
+  component (forked from CreateInvoiceModal), Edit dropdown item
+  in InvoiceList for draft, Edit header button in InvoiceDetail
+  for draft. Items section disabled with inline note when
+  payment plan attached (UX option A). Issue date now editable
+  on edit (not on create). All other fields prefilled from
+  existing invoice.
 
 #### Filed for later
 - F1-F3, F5-F10, F14-F17, F19-F21 — see git log for discussion.

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2, SplitSquareHorizontal, RotateCcw, Info, ArrowRightLeft } from 'lucide-react';
+import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2, SplitSquareHorizontal, RotateCcw, Info, ArrowRightLeft, Pencil } from 'lucide-react';
 import { PaymentPlanSetup } from '@/components/invoices/PaymentPlanSetup';
 import { RefundDialog } from '@/components/invoices/RefundDialog';
 import { useOrg } from '@/contexts/OrgContext';
@@ -22,6 +22,7 @@ import { platform } from '@/lib/platform';
 
 import { DetailSkeleton } from '@/components/shared/LoadingState';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
+import { EditInvoiceModal } from '@/components/invoices/EditInvoiceModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { InstallmentTimeline } from '@/components/invoices/InstallmentTimeline';
 import {
@@ -85,6 +86,7 @@ export default function InvoiceDetail() {
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentPrefillAmount, setPaymentPrefillAmount] = useState<number | undefined>();
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
@@ -241,8 +243,18 @@ export default function InvoiceDetail() {
               </>
             ) : (
               <>
-                <Button 
-                  variant="outline" 
+                {invoice.status === 'draft' && canManageBilling && !isCreditNote && (
+                  <Button
+                    variant="outline"
+                    className="min-h-11 gap-2 sm:min-h-9"
+                    onClick={() => setEditModalOpen(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
                   className="min-h-11 gap-2 sm:min-h-9"
                   onClick={handleDownloadPdf}
                   disabled={isPdfLoading}
@@ -675,6 +687,11 @@ export default function InvoiceDetail() {
         invoice={invoice}
         open={paymentModalOpen}
         onOpenChange={setPaymentModalOpen}
+      />
+      <EditInvoiceModal
+        invoice={invoice ?? null}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
       />
       <SendInvoiceModal
         invoice={invoice}

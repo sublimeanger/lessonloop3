@@ -269,6 +269,108 @@ export function useCreateInvoice() {
   });
 }
 
+export function useUpdateInvoice() {
+  const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (data: {
+      invoice_id: string;
+      due_date: string;
+      payer_guardian_id?: string | null;
+      payer_student_id?: string | null;
+      issue_date?: string;
+      notes?: string;
+      credit_ids?: string[];
+      items: Array<{
+        description: string;
+        quantity: number;
+        unit_price_minor: number;
+        linked_lesson_id?: string | null;
+        student_id?: string | null;
+      }>;
+    }) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+
+      const { data: result, error } = await supabase.rpc('update_invoice_with_items', {
+        _invoice_id: data.invoice_id,
+        _due_date: data.due_date,
+        _payer_guardian_id: data.payer_guardian_id ?? undefined,
+        _payer_student_id: data.payer_student_id ?? undefined,
+        _issue_date: data.issue_date ?? undefined,
+        _notes: data.notes ?? undefined,
+        _credit_ids: data.credit_ids || [],
+        _items: data.items.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          unit_price_minor: item.unit_price_minor,
+          linked_lesson_id: item.linked_lesson_id || null,
+          student_id: item.student_id || null,
+        })),
+      });
+
+      if (error) throw error;
+      return result as {
+        id: string;
+        invoice_number: string;
+        subtotal_minor: number;
+        tax_minor: number;
+        total_minor: number;
+        credit_applied_minor: number;
+        status: string;
+      };
+    },
+    onSuccess: (result) => {
+      if (currentOrg?.id && user?.id) {
+        logAudit(currentOrg.id, user.id, 'invoice_edited', 'invoice', result.id, {
+          after: {
+            total_minor: result.total_minor,
+            invoice_number: result.invoice_number,
+          },
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice', result.id] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
+      toast({
+        title: 'Invoice updated',
+        description: `Invoice ${result.invoice_number} has been updated.`,
+      });
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      const lower = message.toLowerCase();
+      if (lower.includes('payment plan') && lower.includes('total')) {
+        toast({
+          title: 'Cannot change total with payment plan attached',
+          description: 'Remove the payment plan first, then edit the invoice items.',
+          variant: 'destructive',
+        });
+      } else if (lower.includes('only draft invoices')) {
+        toast({
+          title: 'Invoice cannot be edited',
+          description: 'Only draft invoices can be edited. Sent invoices require a credit note or replacement.',
+          variant: 'destructive',
+        });
+      } else if (lower.includes('credit') && (lower.includes('redeemed') || lower.includes('expired'))) {
+        toast({
+          title: 'Credit no longer available',
+          description: 'One or more selected credits has been redeemed or expired. Please refresh.',
+          variant: 'destructive',
+        });
+        queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
+        queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
+      } else {
+        toastError(error, 'Failed to update invoice');
+      }
+    },
+  });
+}
+
 const ALLOWED_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
   draft: ['sent', 'void'],
   sent: ['paid', 'overdue', 'void'],
