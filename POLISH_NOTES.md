@@ -169,6 +169,19 @@ Walked 19 April 2026. Five real bugs + one legacy naming issue fixed.
   payment plan attached (UX option A). Issue date now editable
   on edit (not on create). All other fields prefilled from
   existing invoice.
+  - **Post-deploy fix (Lovable autonomous)**: our 3a migration
+    `20260419005000` had two bugs that Lovable caught and fixed
+    via a follow-up migration `20260421080040`:
+    1. `invoice_items` INSERT omitted `org_id` (NOT NULL column) —
+       function would have errored on first invocation. Fixed by
+       adding `_invoice.org_id` to the INSERT.
+    2. Audit log `item_count` in the `before` jsonb was queried
+       AFTER the DELETE+INSERT had already mutated the table, so
+       it reported the new count, not the old. Fixed by removing
+       the field.
+    Live DB now runs Lovable's corrected version. Our migration
+    file remains in-tree as design-rationale documentation.
+    Process improvements logged for the polish pass.
 
 #### Filed for later
 - F1-F3, F5-F10, F14-F17, F19-F21 — see git log for discussion.
@@ -180,3 +193,20 @@ Walked 19 April 2026. Five real bugs + one legacy naming issue fixed.
   server RPC for atomic line-item replacement.
 
 ---
+
+## Process improvements
+
+Discovered during the polish pass — applied to all subsequent
+RPC and migration work:
+
+1. **Read the analogous existing RPC end-to-end before writing
+   a new one.** Don't assume parity; verify column lists, INSERT
+   shapes, RLS patterns. The `update_invoice_with_items` org_id
+   bug would have been caught by reading `create_invoice_with_items`
+   in full.
+
+2. **Audit log "before" snapshots: capture to local variables at
+   the TOP of the function.** Never SELECT inline as part of the
+   audit_log INSERT — the function's own writes will have
+   invalidated the result. Use a `_pre_X` local variable assigned
+   before any DELETE / UPDATE / INSERT.
