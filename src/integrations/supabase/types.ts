@@ -6609,6 +6609,19 @@ export type Database = {
         Args: { _org_id: string; _teacher_user_id: string; _thread_id: string }
         Returns: boolean
       }
+      update_invoice_with_items: {
+        Args: {
+          _credit_ids?: string[]
+          _due_date: string
+          _invoice_id: string
+          _issue_date?: string
+          _items?: Json
+          _notes?: string
+          _payer_guardian_id?: string
+          _payer_student_id?: string
+        }
+        Returns: Json
+      }
       update_payment_plan: {
         Args: {
           p_frequency?: string
