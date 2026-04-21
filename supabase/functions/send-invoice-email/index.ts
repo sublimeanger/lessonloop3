@@ -106,12 +106,6 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Rate limiting check
-    const rateLimitResult = await checkRateLimit(user.id, "send-invoice-email");
-    if (!rateLimitResult.allowed) {
-      return rateLimitResponse(corsHeaders, rateLimitResult);
-    }
-
     const { invoiceId, isReminder, customMessage }: InvoiceEmailRequest = await req.json();
 
     if (!invoiceId) {
@@ -119,6 +113,14 @@ const handler = async (req: Request): Promise<Response> => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // J3-F3: Split rate limits — reminders have their own bucket so a
+    // teacher sending initial invoices doesn't throttle overdue chases
+    const rateLimitKey = isReminder ? "send-invoice-reminder" : "send-invoice-email";
+    const rateLimitResult = await checkRateLimit(user.id, rateLimitKey);
+    if (!rateLimitResult.allowed) {
+      return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
@@ -129,8 +131,8 @@ const handler = async (req: Request): Promise<Response> => {
       .select(`
         id, org_id, invoice_number, status, total_minor, due_date,
         currency_code, paid_minor, payment_plan_enabled, installment_count,
-        payer_guardian:guardians!payer_guardian_id(full_name, email),
-        payer_student:students!payer_student_id(first_name, last_name, email)
+        payer_guardian:guardians!payer_guardian_id(id, full_name, email),
+        payer_student:students!payer_student_id(id, first_name, last_name, email)
       `)
       .eq("id", invoiceId)
       .single();
@@ -167,14 +169,48 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // ── J3-F2: 5-minute idempotency debounce ──
+    // Prevents double-clicks and impatient retries from sending the
+    // same invoice twice. Window is tight enough to still allow
+    // legitimate re-sends (e.g., after confirmed bounce).
+    const debounceWindowMs = 5 * 60 * 1000;
+    const debounceCutoff = new Date(Date.now() - debounceWindowMs).toISOString();
+    const expectedMessageType = isReminder ? "invoice_reminder" : "invoice";
+
+    const { data: recentSends, error: debounceError } = await supabaseService
+      .from("message_log")
+      .select("id, created_at, status")
+      .eq("org_id", invoice.org_id)
+      .eq("related_id", invoiceId)
+      .eq("message_type", expectedMessageType)
+      .eq("status", "sent")
+      .gte("created_at", debounceCutoff)
+      .limit(1);
+
+    if (debounceError) {
+      console.warn("[send-invoice-email] Idempotency check failed, proceeding:", debounceError.message);
+    } else if (recentSends && recentSends.length > 0) {
+      const lastSent = new Date(recentSends[0].created_at);
+      const secondsAgo = Math.floor((Date.now() - lastSent.getTime()) / 1000);
+      const minutesAgo = Math.floor(secondsAgo / 60);
+      const humanAgo = minutesAgo > 0 ? `${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago` : `${secondsAgo} seconds ago`;
+      return new Response(
+        JSON.stringify({
+          error: `This ${isReminder ? "reminder" : "invoice"} was already sent ${humanAgo}. Please wait a few minutes before resending.`,
+          already_sent: true,
+        }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // ── Derive all email fields from DB data (not client-supplied) ──
     const orgId = invoice.org_id;
 
     // Resolve recipient from DB
     const payerRaw = invoice.payer_guardian as unknown;
-    const payer = (Array.isArray(payerRaw) ? payerRaw[0] : payerRaw) as { full_name: string; email: string } | null;
+    const payer = (Array.isArray(payerRaw) ? payerRaw[0] : payerRaw) as { id: string; full_name: string; email: string } | null;
     const payerStudentRaw = invoice.payer_student as unknown;
-    const payerStudent = (Array.isArray(payerStudentRaw) ? payerStudentRaw[0] : payerStudentRaw) as { first_name: string; last_name: string; email: string } | null;
+    const payerStudent = (Array.isArray(payerStudentRaw) ? payerStudentRaw[0] : payerStudentRaw) as { id: string; first_name: string; last_name: string; email: string } | null;
 
     const recipientEmail = payer?.email || payerStudent?.email || null;
     const recipientName = payer?.full_name ||
@@ -368,6 +404,12 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Thank you for your business,<br>${escapeHtml(orgName)}</p>
         </div>`;
 
+    // J3-F1: Derive recipient_type and recipient_id from actual payer,
+    // not hardcoded to 'guardian'. Invoices can be payable by a student
+    // (adult learner) with no guardian.
+    const recipientType = payer ? "guardian" : payerStudent ? "student" : null;
+    const recipientId = payer?.id || payerStudent?.id || null;
+
     // Log message to message_log and capture the row ID for deterministic status update
     let logEntryId: string | null = null;
     const { data: logEntry, error: logError } = await supabaseService
@@ -380,7 +422,8 @@ const handler = async (req: Request): Promise<Response> => {
         sender_user_id: user.id,
         recipient_email: recipientEmail,
         recipient_name: recipientName,
-        recipient_type: "guardian",
+        recipient_type: recipientType,
+        recipient_id: recipientId,
         related_id: invoiceId,
         message_type: isReminder ? "invoice_reminder" : "invoice",
         status: "pending",

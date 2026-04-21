@@ -145,7 +145,7 @@ export function SendInvoiceModal({
     setIsSending(true);
 
     try {
-      const { error: sendError } = await supabase.functions.invoke('send-invoice-email', {
+      const { data, error: sendError } = await supabase.functions.invoke('send-invoice-email', {
         body: {
           invoiceId: invoice.id,
           isReminder,
@@ -153,7 +153,15 @@ export function SendInvoiceModal({
         },
       });
 
+      // J3-F10: Transport-level failure
       if (sendError) throw sendError;
+
+      // J3-F10: Server-returned error body. invoke() returns 200-299 as
+      // success; non-2xx responses come back with data.error populated
+      // but sendError = null.
+      if (data && typeof data === 'object' && 'error' in data && data.error) {
+        throw new Error((data as any).error as string);
+      }
 
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice'] });
@@ -202,8 +210,8 @@ export function SendInvoiceModal({
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    No email address found for the payer. Please add an email address to send
-                    the invoice.
+                    No email address found for the payer. Please add an email address to{' '}
+                    {isReminder ? 'send the reminder' : 'send the invoice'}.
                   </AlertDescription>
                 </Alert>
               )}

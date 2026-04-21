@@ -279,6 +279,65 @@ BR13 shared payer-group helper, BR16 batch-insert numbering order
 - BR6 Preview/edge re-query difference (small race, accepted)
 - BR13, BR16-BR20 Polish / future features
 
+### Journey 3 — Sending an invoice
+
+Walked 21 April 2026. 18 findings across client modal + edge
+function. 5 bugs + 2 paste-artifact false alarms + 11 cohesion/
+filed items.
+
+#### Fixed (Commit 6)
+- **J3-F1** `message_log.recipient_type` was hardcoded to
+  'guardian' even when payer was a student. Now derived from
+  actual payer. `recipient_id` also populated (was null before).
+- **J3-F2** 5-minute idempotency debounce on send. Server checks
+  message_log for any `status='sent'` row with same `related_id`
+  + `message_type` within the last 5 minutes; rejects with 409
+  `already_sent` if found. Prevents double-click and impatient-
+  retry duplicate sends. Window short enough to still allow
+  legitimate re-sends after bounce.
+- **J3-F3** `send-invoice-reminder` rate-limit bucket split from
+  `send-invoice-email`. Both at 50/hr. A teacher sending initial
+  invoices no longer throttles their ability to chase overdue
+  payments.
+- **J3-F10** Client now handles server-returned error bodies
+  (400/409/502). Previously `supabase.functions.invoke` only
+  surfaced transport failures; server-returned errors came back
+  with `data.error` populated but `sendError: null`, treated as
+  success. Fixed by checking `data.error` inline.
+- **J3-F18** No-email alert copy now respects `isReminder` prop
+  (was hardcoded "send the invoice" regardless).
+
+#### Not bugs (paste artifacts in inventory)
+- **J3-F6** escapeHtml function fine in source — Lovable's paste
+  stripped the regex escapes.
+- **J3-F9** JSX structure fine in source — same paste artifact.
+
+#### Filed for later
+- **J3-F4** message_log insert failure is warn-only; consider
+  surfacing to caller
+- **J3-F5** No PDF attachment — emails ship portal link only.
+  UK UX gap for tax-archive use case. Product decision.
+- **J3-F8** Client preview HTML significantly simpler than
+  server HTML (no branded header, bank details, installments,
+  etc.). Teacher clicks Preview → bare-bones output → clicks
+  Send → parent receives branded email. Trust erosion risk.
+  Commit 7 candidate.
+- **J3-F11** `related_id` always points to invoice, never
+  installment (even for payment-plan reminders). Cosmetic.
+- **J3-F12** Status flip (draft→sent) happens AFTER email send.
+  If email succeeds but status update fails, teacher sees
+  "sent" toast, invoice stays draft, resends duplicate. Needs
+  atomicity or reconciliation. Architectural, filed.
+- **J3-F14** BulkActionsBar bulk send flow not yet walked.
+  Expected concerns: per-invoice resilience, rate-limit cascade,
+  progress reporting.
+- **J3-F15** No unsubscribe link (legally fine for transactional)
+- **J3-F16** Hardcoded `billing@lessonloop.net` sender
+- **J3-F17** No email open/click tracking
+- **J3-F19** Rate-limit config has three-o typos
+  (`looopassist-chat`, `looopassist-execute`) — not our Journey
+  3 concern but flagged
+
 ---
 
 ## Process improvements

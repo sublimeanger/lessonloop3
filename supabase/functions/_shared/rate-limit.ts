@@ -22,6 +22,7 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   "send-invite-email":     { maxRequests: 30,  windowMinutes: 60 },
   "batch-invite-guardians": { maxRequests: 5,  windowMinutes: 60 },
   "send-invoice-email":    { maxRequests: 50,  windowMinutes: 60 },
+  "send-invoice-reminder": { maxRequests: 50,  windowMinutes: 60 },
   "notify-internal-message": { maxRequests: 50, windowMinutes: 60 },
 
   // Billing operations — 5 runs per hour is generous for normal use
