@@ -25,6 +25,7 @@ import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { EditInvoiceModal } from '@/components/invoices/EditInvoiceModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { InstallmentTimeline } from '@/components/invoices/InstallmentTimeline';
+import { RecalcFailureBanner } from '@/components/invoices/RecalcFailureBanner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -329,6 +330,9 @@ export default function InvoiceDetail() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
+          {canManageBilling && !isParent && (
+            <RecalcFailureBanner invoiceId={invoice.id} />
+          )}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
