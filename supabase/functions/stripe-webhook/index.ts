@@ -160,6 +160,13 @@ serve(async (req) => {
         break;
       }
 
+      case "refund.updated":
+      case "refund.failed": {
+        const refund = event.data.object as Stripe.Refund;
+        await handleRefundUpdated(supabase, refund);
+        break;
+      }
+
       default:
         log(`Unhandled event type: ${event.type}`);
     }
@@ -1035,4 +1042,86 @@ async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
   } else {
     log(`Invoice ${truncate(payment.invoice_id)} recalculated after refund (${recalc.attempts} attempt${recalc.attempts === 1 ? '' : 's'})`);
   }
+}
+
+async function handleRefundUpdated(supabase: any, refund: Stripe.Refund) {
+  // Stripe sends refund.updated when an existing refund's status
+  // changes. Typical triggers: async ACH return, issuer blocks a
+  // previously-initiated refund, dispute converting into a refund
+  // reversal. We update our DB row to match, and on a succeeded→failed
+  // transition we trigger recalc so paid_minor reflects reality.
+
+  const { data: existing } = await supabase
+    .from("refunds")
+    .select("id, invoice_id, org_id, payment_id, amount_minor, status")
+    .eq("stripe_refund_id", refund.id)
+    .maybeSingle();
+
+  if (!existing) {
+    log(`refund.updated for unknown refund ${truncate(refund.id)} — ignoring`);
+    return;
+  }
+
+  // Map Stripe status to ours. Stripe statuses: pending, requires_action,
+  // succeeded, failed, canceled. LessonLoop tracks: pending, succeeded, failed.
+  const newStatus =
+    refund.status === "succeeded" ? "succeeded" :
+    refund.status === "failed" || refund.status === "canceled" ? "failed" :
+    "pending";
+
+  if (newStatus === existing.status) {
+    log(`refund ${truncate(refund.id)} status unchanged (${newStatus}) — no-op`);
+    return;
+  }
+
+  const { error: updateErr } = await supabase
+    .from("refunds")
+    .update({ status: newStatus })
+    .eq("id", existing.id);
+
+  if (updateErr) {
+    console.error(`Failed to update refund ${truncate(refund.id)} status:`, updateErr);
+    throw new Error(`DB update failed for refund.updated: ${updateErr.message}`);
+  }
+
+  // Audit trail — status transitions on refunds are rare and
+  // operator-visible; record the before/after.
+  await supabase.from("audit_log").insert({
+    org_id: existing.org_id,
+    actor_user_id: null,
+    action: "refund_status_changed",
+    entity_type: "invoice",
+    entity_id: existing.invoice_id,
+    before: { status: existing.status },
+    after: {
+      status: newStatus,
+      refund_id: existing.id,
+      stripe_refund_id: refund.id,
+      stripe_status: refund.status,
+      stripe_failure_reason: refund.failure_reason ?? null,
+      source: "refund_updated_webhook",
+    },
+  });
+
+  // If a succeeded refund flipped to failed, the money came back to
+  // the payer's bank (or never left). paid_minor needs recalc —
+  // recalculate_invoice_paid sums only status='succeeded' refunds, so
+  // a failed refund no longer reduces paid_minor.
+  if (existing.status === "succeeded" && newStatus === "failed") {
+    const recalc = await recalcWithRetry({
+      supabase,
+      invoiceId: existing.invoice_id,
+      orgId: existing.org_id,
+      source: "refund_updated_webhook",
+      actorUserId: null,
+      extra: {
+        refund_id: existing.id,
+        stripe_refund_id: refund.id,
+        transition: "succeeded_to_failed",
+      },
+    });
+    log(`Invoice ${truncate(existing.invoice_id)} recalc after refund failure: ${recalc.ok ? 'ok' : 'failed'}`);
+  }
+
+  log(`Refund ${truncate(refund.id)} status changed ${existing.status} → ${newStatus}`);
 }
