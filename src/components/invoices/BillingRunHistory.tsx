@@ -73,7 +73,8 @@ export function BillingRunHistory() {
   const { data: runInvoices = [], isLoading: loadingInvoices } = useRunInvoices(selectedRunId, currentOrg?.id);
 
   const paidCount = runInvoices.filter((i) => i.status === 'paid').length;
-  const hasPaidInvoices = paidCount > 0;
+  const nonDraftCount = runInvoices.filter((i) => i.status !== 'draft').length;
+  const hasNonDraftInvoices = nonDraftCount > 0;
 
   const handleDelete = async () => {
     if (!deleteConfirmRun) return;
@@ -127,7 +128,7 @@ export function BillingRunHistory() {
           <div className="flex items-center gap-2">
             {statusBadge(selectedRun.status)}
             {canDelete && (
-              hasPaidInvoices ? (
+              hasNonDraftInvoices ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span>
@@ -136,7 +137,7 @@ export function BillingRunHistory() {
                       </Button>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>Cannot delete — run contains paid invoices</TooltipContent>
+                  <TooltipContent>Cannot delete — run contains non-draft invoices</TooltipContent>
                 </Tooltip>
               ) : (
                 <Button
@@ -243,7 +244,9 @@ export function BillingRunHistory() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Billing Run</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete this billing run and all {runInvoices.length} associated invoice{runInvoices.length !== 1 ? 's' : ''}. Invoices that have been paid cannot be deleted.
+                This will permanently delete this billing run and all {runInvoices.length} associated invoice{runInvoices.length !== 1 ? 's' : ''}.
+                Only runs where every invoice is still in draft can be deleted —
+                void or reconcile any sent, overdue, paid, or voided invoices individually first.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

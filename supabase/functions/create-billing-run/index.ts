@@ -219,7 +219,7 @@ async function handleCreate(
   const { data: org, error: orgError } = await client
     .from("organisations")
     .select(
-      "vat_enabled, vat_rate, currency_code, subscription_status, trial_ends_at, timezone, default_plan_threshold_minor, default_plan_installments, default_plan_frequency"
+      "vat_enabled, vat_rate, currency_code, subscription_status, trial_ends_at, timezone, default_plan_threshold_minor, default_plan_installments, default_plan_frequency, default_payment_terms_days"
     )
     .eq("id", orgId)
     .single();
@@ -231,6 +231,8 @@ async function handleCreate(
     });
   }
 
+  // BR3: Pre-flight overlap check for UX — the real safety is the
+  // unique exclusion constraint on billing_runs (migration 20260421115000).
   // BIL-M3: Check for overlapping billing runs (not just exact date match)
   const { data: overlapping } = await client
     .from("billing_runs")
@@ -472,7 +474,7 @@ interface PlanOptions {
 async function executeBillingLogic(
   client: any,
   orgId: string,
-  org: { vat_enabled: boolean; vat_rate: number; currency_code: string; timezone?: string; default_plan_threshold_minor?: number | null; default_plan_installments?: number; default_plan_frequency?: string },
+  org: { vat_enabled: boolean; vat_rate: number; currency_code: string; timezone?: string; default_plan_threshold_minor?: number | null; default_plan_installments?: number; default_plan_frequency?: string; default_payment_terms_days?: number },
   startDate: string,
   endDate: string,
   billingMode: string,
@@ -755,12 +757,14 @@ async function executeBillingLogic(
   }> = [];
 
   if (generateInvoices) {
-    // Calculate due date in the org's timezone so the 14-day window
-    // aligns with the org's local calendar date, not UTC.
+    // Calculate due date in the org's timezone so the window aligns with
+    // the org's local calendar date, not UTC. Due days configurable via
+    // organisations.default_payment_terms_days (default 14).
     const tz = org.timezone || "Europe/London";
-    const nowInTz = new Date().toLocaleDateString("en-CA", { timeZone: tz }); // YYYY-MM-DD
+    const dueDays = (org as any).default_payment_terms_days ?? 14;
+    const nowInTz = new Date().toLocaleDateString("en-CA", { timeZone: tz });
     const localDate = new Date(nowInTz + "T00:00:00");
-    localDate.setDate(localDate.getDate() + 14);
+    localDate.setDate(localDate.getDate() + dueDays);
     const dueDateStr = localDate.toISOString().split("T")[0];
     const vatRate = org.vat_enabled ? org.vat_rate : 0;
 

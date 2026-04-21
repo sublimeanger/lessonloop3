@@ -251,12 +251,27 @@ _(All items below resolved in Commit 4b — see Fixed section.)_
   cleanly at the first RPC call rather than succeeding via
   direct insert and failing later.
 
+#### Fixed (Commit 5)
+- **BR3** Concurrency-safe overlap prevention via exclusion
+  constraint on billing_runs (`EXCLUDE USING gist`, keyed on
+  org_id + daterange). Requires btree_gist extension. Pre-flight
+  overlap SELECT kept for UX reasons (better error message than
+  bare 23505) but the real safety is now at the DB layer.
+- **BR5** `delete_billing_run` RPC now refuses ANY non-draft
+  invoice in the run — not just paid. Teacher must void sent/
+  overdue invoices individually first so each void has its own
+  audit trail. UI dialog copy updated to match.
+- **BR12** Edge function reads `organisations.default_payment_terms_days`
+  (existing column, default 14) instead of hardcoded 14. Org
+  can now configure the default due-date offset. Settings UI
+  to surface this deferred — column + edge function wiring
+  closed the gap for billing runs.
+
+**Journey 2 closed** except for polish (BR17-BR20) and genuine
+future work (BR6, BR13, BR16).
+
 #### Filed for later
-- BR3 Concurrency-safe overlap check (edge function pre-check
-  races with insert)
-- BR5 Verify `delete_billing_run` RPC matches UI gating
 - BR6 Preview/edge re-query difference (small race, accepted)
-- BR12 Configurable due-date default (currently hardcoded 14 days)
 - BR13, BR16-BR20 Polish / future features
 
 ---
