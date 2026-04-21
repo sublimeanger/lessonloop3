@@ -554,10 +554,13 @@ function generatePdf(
     doc.line(margin, y, pageWidth - margin, y);
     y += 5;
 
-    const paidTotal = inv.installments
-      .filter((i) => i.status === 'paid')
-      .reduce((s, i) => s + i.amount_minor, 0);
-    const remaining = inv.total_minor - paidTotal;
+    // J4-F23: Use invoice.paid_minor as single source of truth for
+    // Paid — recalculate_invoice_paid keeps it net of refunds AND
+    // inclusive of partial installment payments. Summing only
+    // status='paid' installments previously underreported Paid (and
+    // overstated Remaining) whenever an installment was partially paid.
+    const paidTotal = inv.paid_minor ?? 0;
+    const remaining = Math.max(0, inv.total_minor - paidTotal);
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
