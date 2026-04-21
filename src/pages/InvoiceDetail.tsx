@@ -266,6 +266,34 @@ export default function InvoiceDetail() {
                   )}
                   {isPdfLoading ? 'Generating...' : 'Download PDF'}
                 </Button>
+                {/* Refund — visible whenever there's a refundable payment,
+                    regardless of invoice status. Paid invoices have no other
+                    header actions, so this closes the discoverability gap
+                    flagged in April 2026 QA (J4-F1/J4-F2). */}
+                {canManageBilling && !isCreditNote && (() => {
+                  const refundable = getFirstRefundablePayment(
+                    invoice.payments as any,
+                    (invoice as any).refunds,
+                  );
+                  if (!refundable) return null;
+                  return (
+                    <Button
+                      variant="outline"
+                      className="min-h-11 gap-2 sm:min-h-9 text-muted-foreground hover:text-destructive"
+                      onClick={() => {
+                        setRefundPayment({
+                          ...refundable.payment,
+                          _alreadyRefunded: refundable.alreadyRefunded,
+                          _isManual: isManualPayment(refundable.payment),
+                        });
+                        setRefundDialogOpen(true);
+                      }}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      {isStripePayment(refundable.payment) ? 'Refund' : 'Record Refund'}
+                    </Button>
+                  );
+                })()}
                 {invoice.status === 'draft' && (
                   <Button className="min-h-11 gap-2 sm:min-h-9" onClick={() => setSendModalOpen(true)}>
                     <Send className="h-4 w-4" />

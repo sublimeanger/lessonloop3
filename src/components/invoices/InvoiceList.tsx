@@ -185,7 +185,11 @@ function InvoiceActions({
             </DropdownMenuItem>
           </>
         )}
-        {invoice.status === 'paid' && (
+        {/* J4-F26: Refund on any invoice with a paid balance, not just
+            fully-paid. Partially-paid sent/overdue invoices had no list
+            affordance before. paid_minor > 0 is a safe proxy — recalculate
+            keeps it in sync with net payments. */}
+        {(invoice.paid_minor ?? 0) > 0 && invoice.status !== 'void' && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate(`/invoices/${invoice.id}?action=refund`)} disabled={busy}>
