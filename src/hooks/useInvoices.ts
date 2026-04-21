@@ -534,6 +534,7 @@ export function useUnbilledLessons(
           status,
           teacher_id,
           lesson_participants(
+            rate_minor,
             student:students(
               id,
               first_name,

@@ -13,6 +13,7 @@ export interface BillingRunSummary {
   invoiceIds?: string[];
   skippedLessons?: number;
   skippedForCancellation?: number;
+  skippedForClosure?: number;
   failedPayers?: Array<{ payerName: string; payerEmail: string | null; error: string; payerType?: 'guardian' | 'student'; payerId?: string }>;
 }
 
@@ -55,6 +56,10 @@ export function useCreateBillingRun() {
       fallback_rate_minor?: number;
       billing_mode?: 'delivered' | 'upfront';
       term_id?: string;
+      plan_enabled?: boolean;
+      plan_threshold_minor?: number;
+      plan_installments?: number;
+      plan_frequency?: string;
     }) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
@@ -69,6 +74,10 @@ export function useCreateBillingRun() {
           fallback_rate_minor: data.fallback_rate_minor,
           billing_mode: data.billing_mode,
           term_id: data.term_id,
+          plan_enabled: data.plan_enabled,
+          plan_threshold_minor: data.plan_threshold_minor,
+          plan_installments: data.plan_installments,
+          plan_frequency: data.plan_frequency,
         },
       });
 
@@ -106,6 +115,15 @@ export function useCreateBillingRun() {
         toast({
           title: 'Teacher cancellations excluded',
           description: `${summary.skippedForCancellation} lesson-student record${summary.skippedForCancellation === 1 ? '' : 's'} excluded due to teacher cancellations`,
+        });
+      }
+
+      // BR14: Surface closure-date exclusion in summary toast
+      if (summary.skippedForClosure && summary.skippedForClosure > 0) {
+        const n = summary.skippedForClosure;
+        toast({
+          title: 'Closure dates excluded',
+          description: `${n} lesson${n === 1 ? '' : 's'} excluded because they fell on a closure date.`,
         });
       }
     },

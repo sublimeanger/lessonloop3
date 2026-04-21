@@ -80,7 +80,11 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
 
   const hasRateCards = rateCards.length > 0;
 
-  const getLessonRate = (lesson: any): number => {
+  const getParticipantRate = (lesson: any, participant: any): number => {
+    // Prefer snapshot rate captured at booking time (matches edge function logic)
+    if (participant?.rate_minor != null && participant.rate_minor > 0) {
+      return participant.rate_minor;
+    }
     const durationMins = differenceInMinutes(new Date(lesson.end_at), new Date(lesson.start_at));
     return findRateForDuration(durationMins, rateCards, 3000);
   };
@@ -89,10 +93,10 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
   const payerGroups = new Map<string, { name: string; lessonCount: number; totalMinor: number; addedLessonIds: Set<string> }>();
 
   unbilledLessons.forEach((lesson: any) => {
-    const lessonRate = getLessonRate(lesson);
     const participants = lesson.lesson_participants || [];
 
     participants.forEach((p: any) => {
+      const lessonRate = getParticipantRate(lesson, p);
       const student = p.student;
       if (!student) return;
 
@@ -161,10 +165,11 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
         generate_invoices: true,
         billing_mode: config.billingMode,
         term_id: config.termId || undefined,
+        plan_enabled: config.planEnabled,
         plan_threshold_minor: config.planEnabled ? config.planThreshold : undefined,
         plan_installments: config.planEnabled ? config.planInstallments : undefined,
         plan_frequency: config.planEnabled ? config.planFrequency : undefined,
-      } as any);
+      });
 
       setBillingResult({
         billingRunId: result.id,
@@ -478,6 +483,9 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-semibold">{unbilledLessons.length}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Closure-date lessons excluded automatically
+                  </p>
                 </CardContent>
               </Card>
               <Card>
