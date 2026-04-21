@@ -6145,6 +6145,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_recalculate_invoice_paid: {
+        Args: { _invoice_id: string; _org_id: string }
+        Returns: Json
+      }
       anonymise_guardian: { Args: { guardian_id: string }; Returns: undefined }
       anonymise_student: { Args: { student_id: string }; Returns: undefined }
       bulk_cancel_lessons: {
@@ -6381,6 +6385,14 @@ export type Database = {
           student_id: string
           teacher_id: string
           updated_at: string
+        }[]
+      }
+      get_recent_recalc_failures_for_invoice: {
+        Args: { _invoice_id: string; _org_id: string }
+        Returns: {
+          after: Json
+          created_at: string
+          id: string
         }[]
       }
       get_revenue_report: {
