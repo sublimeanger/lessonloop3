@@ -88,7 +88,8 @@ export function RecordPaymentModal({
       setAmount('');
     }
     setMethod(defaultMethod ?? 'bank_transfer');
-  }, [open, defaultAmount, defaultMethod]);
+    setReference('');
+  }, [open, defaultAmount, defaultMethod, invoice?.id]);
 
   const amountMinor = useMemo(() => {
     const parsed = parseFloat(amount);
