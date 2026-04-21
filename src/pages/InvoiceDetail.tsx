@@ -187,13 +187,22 @@ export default function InvoiceDetail() {
   const amountDue = invoice.total_minor - totalPaid;
 
   const handleVoidConfirm = async () => {
-    await updateStatus.mutateAsync({
-      id: invoice.id,
-      status: 'void',
-      currentStatus: invoice.status,
-      orgId: currentOrg?.id,
-    });
-    setVoidConfirmOpen(false);
+    try {
+      await updateStatus.mutateAsync({
+        id: invoice.id,
+        status: 'void',
+        currentStatus: invoice.status,
+        orgId: currentOrg?.id,
+      });
+      setVoidConfirmOpen(false);
+    } catch {
+      // Mutation's onError already surfaces the toast. Keep the
+      // dialog open so the operator can read the amount-paid warning
+      // again (it may have just been updated by a concurrent payment)
+      // and decide whether to refresh the page and retry. Refetch to
+      // pull the current paid_minor / status.
+      refetch();
+    }
   };
 
   return (
