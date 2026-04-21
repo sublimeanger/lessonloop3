@@ -312,16 +312,31 @@ filed items.
   stripped the regex escapes.
 - **J3-F9** JSX structure fine in source — same paste artifact.
 
+#### Fixed (Commit 7)
+- **J3-F8** Preview parity via server-side render mode. Edge
+  function now accepts `preview=true` flag — renders the full
+  HTML (branding, bank details, installment schedule, portal
+  links) and returns without sending, logging, or flipping
+  status. Client replaces local `buildPreviewHtml` +
+  `escapeHtml` with a fetch to the edge function. Source of
+  truth for email HTML is now the edge function exclusively —
+  no duplicate logic to maintain. Side wins: preview now shows
+  recent-send warning banner if invoice was sent within the
+  last 5 minutes (still allows closing the modal, disables the
+  Send button); preview footer copy changed from "Bank details
+  will also be included" to "This preview shows the exact
+  email your recipient will receive" reflecting the parity.
+
+Journey 3 closed on the big items. Filed: J3-F4 message_log
+warn, J3-F5 PDF, J3-F11 related_id, J3-F12 status atomicity,
+J3-F14 BulkActionsBar (separate commit coming), J3-F15-17
+polish items.
+
 #### Filed for later
 - **J3-F4** message_log insert failure is warn-only; consider
   surfacing to caller
 - **J3-F5** No PDF attachment — emails ship portal link only.
   UK UX gap for tax-archive use case. Product decision.
-- **J3-F8** Client preview HTML significantly simpler than
-  server HTML (no branded header, bank details, installments,
-  etc.). Teacher clicks Preview → bare-bones output → clicks
-  Send → parent receives branded email. Trust erosion risk.
-  Commit 7 candidate.
 - **J3-F11** `related_id` always points to invoice, never
   installment (even for payment-plan reminders). Cosmetic.
 - **J3-F12** Status flip (draft→sent) happens AFTER email send.

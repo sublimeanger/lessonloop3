@@ -11,6 +11,7 @@ interface InvoiceEmailRequest {
   invoiceId: string;
   isReminder: boolean;
   customMessage?: string;
+  preview?: boolean;
 }
 
 /** Format minor units (pence) to major units with 2 decimal places */
@@ -106,7 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { invoiceId, isReminder, customMessage }: InvoiceEmailRequest = await req.json();
+    const { invoiceId, isReminder, customMessage, preview }: InvoiceEmailRequest = await req.json();
 
     if (!invoiceId) {
       return new Response(JSON.stringify({ error: "invoiceId is required" }), {
@@ -116,11 +117,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // J3-F3: Split rate limits — reminders have their own bucket so a
-    // teacher sending initial invoices doesn't throttle overdue chases
-    const rateLimitKey = isReminder ? "send-invoice-reminder" : "send-invoice-email";
-    const rateLimitResult = await checkRateLimit(user.id, rateLimitKey);
-    if (!rateLimitResult.allowed) {
-      return rateLimitResponse(corsHeaders, rateLimitResult);
+    // teacher sending initial invoices doesn't throttle overdue chases.
+    // J3-F8: Preview mode bypasses rate limits entirely (read-only operation).
+    if (!preview) {
+      const rateLimitKey = isReminder ? "send-invoice-reminder" : "send-invoice-email";
+      const rateLimitResult = await checkRateLimit(user.id, rateLimitKey);
+      if (!rateLimitResult.allowed) {
+        return rateLimitResponse(corsHeaders, rateLimitResult);
+      }
     }
 
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
@@ -173,6 +177,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Prevents double-clicks and impatient retries from sending the
     // same invoice twice. Window is tight enough to still allow
     // legitimate re-sends (e.g., after confirmed bounce).
+    // J3-F8: In preview mode we still query the debounce state but
+    // surface it as a warning rather than blocking.
     const debounceWindowMs = 5 * 60 * 1000;
     const debounceCutoff = new Date(Date.now() - debounceWindowMs).toISOString();
     const expectedMessageType = isReminder ? "invoice_reminder" : "invoice";
@@ -187,6 +193,10 @@ const handler = async (req: Request): Promise<Response> => {
       .gte("created_at", debounceCutoff)
       .limit(1);
 
+    let recentSendInfo: { sentWithinDebounce: boolean; secondsAgo?: number; humanAgo?: string } = {
+      sentWithinDebounce: false,
+    };
+
     if (debounceError) {
       console.warn("[send-invoice-email] Idempotency check failed, proceeding:", debounceError.message);
     } else if (recentSends && recentSends.length > 0) {
@@ -194,13 +204,18 @@ const handler = async (req: Request): Promise<Response> => {
       const secondsAgo = Math.floor((Date.now() - lastSent.getTime()) / 1000);
       const minutesAgo = Math.floor(secondsAgo / 60);
       const humanAgo = minutesAgo > 0 ? `${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago` : `${secondsAgo} seconds ago`;
-      return new Response(
-        JSON.stringify({
-          error: `This ${isReminder ? "reminder" : "invoice"} was already sent ${humanAgo}. Please wait a few minutes before resending.`,
-          already_sent: true,
-        }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      recentSendInfo = { sentWithinDebounce: true, secondsAgo, humanAgo };
+
+      // In send mode (not preview) — block with 409
+      if (!preview) {
+        return new Response(
+          JSON.stringify({
+            error: `This ${isReminder ? "reminder" : "invoice"} was already sent ${humanAgo}. Please wait a few minutes before resending.`,
+            already_sent: true,
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     // ── Derive all email fields from DB data (not client-supplied) ──
@@ -403,6 +418,24 @@ const handler = async (req: Request): Promise<Response> => {
           <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
           <p>Thank you for your business,<br>${escapeHtml(orgName)}</p>
         </div>`;
+
+    // ── J3-F8: Preview mode short-circuit ──
+    // If preview=true, return the fully-rendered HTML without inserting
+    // a message_log row, without calling Resend, and without touching
+    // invoice status. Identical HTML to what would actually be sent.
+    if (preview) {
+      return new Response(
+        JSON.stringify({
+          preview: true,
+          html: htmlContent,
+          subject,
+          recipientEmail,
+          recipientName,
+          recentSendInfo,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // J3-F1: Derive recipient_type and recipient_id from actual payer,
     // not hardcoded to 'guardian'. Invoices can be payable by a student
