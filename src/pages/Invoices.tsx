@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '@/hooks/usePageMeta';
@@ -89,6 +91,7 @@ export default function Invoices() {
     setSearchParams(newParams, { replace: true });
   };
   const updateStatus = useUpdateInvoiceStatus();
+  const queryClient = useQueryClient();
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -133,51 +136,141 @@ export default function Invoices() {
     setVoidConfirmInvoice(null);
   };
 
-  const processInChunks = async (
-    items: typeof invoices,
-    action: (inv: typeof invoices[0]) => Promise<unknown>,
-  ) => {
-    let successCount = 0;
-    let failCount = 0;
-    const CHUNK_SIZE = 5;
-    for (let i = 0; i < items.length; i += CHUNK_SIZE) {
-      const chunk = items.slice(i, i + CHUNK_SIZE);
-      const results = await Promise.allSettled(chunk.map(action));
-      successCount += results.filter(r => r.status === 'fulfilled').length;
-      failCount += results.filter(r => r.status === 'rejected').length;
-    }
-    return { successCount, failCount };
-  };
-
   const handleBulkSend = async () => {
     const drafts = invoices.filter((inv) => selectedIds.has(inv.id) && inv.status === 'draft');
     if (drafts.length === 0) return;
 
     setBulkSending(true);
-    const { successCount, failCount } = await processInChunks(drafts, (inv) =>
-      updateStatus.mutateAsync({ id: inv.id, status: 'sent' }),
-    );
-    setBulkSending(false);
-    setSelectedIds(new Set());
 
-    if (failCount === 0) {
-      toast({ title: 'Invoices sent', description: `${successCount} invoice${successCount !== 1 ? 's' : ''} sent successfully.` });
+    // J3-F14a: Actually invoke send-invoice-email per invoice. Previous
+    // implementation only flipped status to 'sent' without sending any
+    // email — silent data lie. Now uses the same code path as single-
+    // invoice send including idempotency debounce, message_log row,
+    // status flip, retry, branding, etc.
+    //
+    // J3-F14d: Track which invoices failed so the selection can be
+    // preserved for retry. Successful sends are deselected; failures
+    // remain selected with toast surfacing the failure reason.
+    const failedIds: string[] = [];
+    const failureReasons: Map<string, string> = new Map();
+
+    const sendOne = async (inv: typeof invoices[0]): Promise<void> => {
+      const { data, error } = await supabase.functions.invoke('send-invoice-email', {
+        body: {
+          invoiceId: inv.id,
+          isReminder: false,
+          customMessage: '',
+        },
+      });
+      if (error) throw error;
+      if (data && typeof data === 'object' && 'error' in data && data.error) {
+        throw new Error((data as any).error as string);
+      }
+    };
+
+    const CHUNK_SIZE = 5;
+    let successCount = 0;
+    for (let i = 0; i < drafts.length; i += CHUNK_SIZE) {
+      const chunk = drafts.slice(i, i + CHUNK_SIZE);
+      const results = await Promise.allSettled(chunk.map(sendOne));
+      results.forEach((result, idx) => {
+        const inv = chunk[idx];
+        if (result.status === 'fulfilled') {
+          successCount++;
+        } else {
+          failedIds.push(inv.id);
+          const reason = result.reason instanceof Error
+            ? result.reason.message
+            : 'Unknown error';
+          failureReasons.set(inv.id, reason);
+        }
+      });
+    }
+
+    setBulkSending(false);
+
+    // Refresh list to pick up status changes from successful sends
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+
+    // J3-F14d: Preserve failed selections only
+    setSelectedIds(new Set(failedIds));
+
+    if (failedIds.length === 0) {
+      toast({
+        title: 'Invoices sent',
+        description: `${successCount} invoice${successCount !== 1 ? 's' : ''} sent successfully.`
+      });
     } else {
-      toast({ title: 'Some invoices failed', description: `${successCount} sent, ${failCount} failed.`, variant: 'destructive' });
+      // Find a representative reason for the toast (most common, or first)
+      const sampleReason = failureReasons.values().next().value || 'See details';
+      toast({
+        title: `${successCount} sent, ${failedIds.length} failed`,
+        description: `Failed invoices kept selected. First failure: ${sampleReason}`,
+        variant: 'destructive',
+      });
     }
   };
 
   const handleBulkVoidConfirm = async () => {
-    const { successCount, failCount } = await processInChunks(voidableInvoices, (inv) =>
-      updateStatus.mutateAsync({ id: inv.id, status: 'void', orgId: currentOrg?.id }),
-    );
-    setBulkVoidConfirmOpen(false);
-    setSelectedIds(new Set());
+    if (!currentOrg?.id) return;
+    if (voidableInvoices.length === 0) return;
 
-    if (failCount === 0) {
-      toast({ title: 'Invoices voided', description: `${successCount} invoice${successCount !== 1 ? 's' : ''} voided.` });
+    // J3-F14b: Use void_invoice RPC instead of direct status update.
+    // The RPC handles billing_run_id clearing, partially_paid
+    // installment defensive voiding, and audit logging — all bypassed
+    // by the previous direct-update path.
+    //
+    // J3-F14d: Preserve failed selections for retry.
+    const failedIds: string[] = [];
+    const failureReasons: Map<string, string> = new Map();
+
+    const voidOne = async (inv: typeof invoices[0]): Promise<void> => {
+      const { error } = await supabase.rpc('void_invoice', {
+        _invoice_id: inv.id,
+        _org_id: currentOrg.id,
+      });
+      if (error) throw error;
+    };
+
+    const CHUNK_SIZE = 5;
+    let successCount = 0;
+    for (let i = 0; i < voidableInvoices.length; i += CHUNK_SIZE) {
+      const chunk = voidableInvoices.slice(i, i + CHUNK_SIZE);
+      const results = await Promise.allSettled(chunk.map(voidOne));
+      results.forEach((result, idx) => {
+        const inv = chunk[idx];
+        if (result.status === 'fulfilled') {
+          successCount++;
+        } else {
+          failedIds.push(inv.id);
+          const reason = result.reason instanceof Error
+            ? result.reason.message
+            : 'Unknown error';
+          failureReasons.set(inv.id, reason);
+        }
+      });
+    }
+
+    setBulkVoidConfirmOpen(false);
+
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+
+    setSelectedIds(new Set(failedIds));
+
+    if (failedIds.length === 0) {
+      toast({
+        title: 'Invoices voided',
+        description: `${successCount} invoice${successCount !== 1 ? 's' : ''} voided.`
+      });
     } else {
-      toast({ title: 'Some invoices failed', description: `${successCount} voided, ${failCount} failed.`, variant: 'destructive' });
+      const sampleReason = failureReasons.values().next().value || 'See details';
+      toast({
+        title: `${successCount} voided, ${failedIds.length} failed`,
+        description: `Failed invoices kept selected. First failure: ${sampleReason}`,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -415,9 +508,50 @@ export default function Invoices() {
       <AlertDialog open={bulkVoidConfirmOpen} onOpenChange={setBulkVoidConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Void {voidableCount} Invoice{voidableCount !== 1 ? 's' : ''}</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to void {voidableCount} selected invoice{voidableCount !== 1 ? 's' : ''}? This action cannot be undone.
+            <AlertDialogTitle>Void {voidableCount} Invoice{voidableCount !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <div>This action cannot be undone. The selection breakdown:</div>
+
+                {(() => {
+                  const selectedForVoid = voidableInvoices;
+                  const draftSelected = selectedForVoid.filter(i => i.status === 'draft').length;
+                  const sentSelected = selectedForVoid.filter(i => i.status === 'sent').length;
+                  const overdueSelected = selectedForVoid.filter(i => i.status === 'overdue').length;
+                  return (
+                    <ul className="space-y-1 text-sm">
+                      {draftSelected > 0 && <li>• {draftSelected} draft</li>}
+                      {sentSelected > 0 && <li>• {sentSelected} sent</li>}
+                      {overdueSelected > 0 && <li>• {overdueSelected} overdue</li>}
+                    </ul>
+                  );
+                })()}
+
+                {voidableInvoices.some(i => i.status === 'sent' || i.status === 'overdue') && (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-700">
+                    <strong>Warning:</strong> Some of these invoices have been emailed to parents.
+                    Voiding will not notify them — those parents will still have the original
+                    emailed invoice referencing an invoice number that is now void in your records.
+                    Consider whether to contact them separately.
+                  </div>
+                )}
+
+                <div className="max-h-32 overflow-y-auto rounded-md border bg-muted/30 p-2">
+                  <ul className="space-y-1 text-xs font-mono">
+                    {voidableInvoices.slice(0, 10).map(inv => (
+                      <li key={inv.id} className="flex justify-between">
+                        <span>{inv.invoice_number}</span>
+                        <span className="text-muted-foreground">{inv.status}</span>
+                      </li>
+                    ))}
+                    {voidableInvoices.length > 10 && (
+                      <li className="text-muted-foreground italic">
+                        + {voidableInvoices.length - 10} more...
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

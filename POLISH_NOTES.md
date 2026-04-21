@@ -327,10 +327,43 @@ filed items.
   will also be included" to "This preview shows the exact
   email your recipient will receive" reflecting the parity.
 
-Journey 3 closed on the big items. Filed: J3-F4 message_log
-warn, J3-F5 PDF, J3-F11 related_id, J3-F12 status atomicity,
-J3-F14 BulkActionsBar (separate commit coming), J3-F15-17
-polish items.
+#### Fixed (Commit 8 — bulk surface overhaul)
+- **J3-F14a CRITICAL** Bulk send now actually sends emails.
+  Previous implementation only flipped status to 'sent' via direct
+  update — no email, no message_log, no retry, parents received
+  nothing. Silent data lie. Now invokes send-invoice-email per
+  invoice with full code path parity.
+- **J3-F14b CRITICAL** Bulk void now uses void_invoice RPC.
+  Previous direct status update bypassed billing_run_id clearing,
+  partially_paid defensive handling, and audit logging — all of
+  which the RPC handles atomically.
+- **J3-F14d** Selection preserved on partial bulk failures. Failed
+  invoices stay selected for retry; successful ones deselected.
+  Toast surfaces a sample failure reason rather than just counts.
+- **J3-F14g + J3-F14h + J3-F14i** Bulk void confirmation dialog
+  hardened: shows status breakdown (draft / sent / overdue counts),
+  amber warning when selection includes sent/overdue invoices
+  ("parents have been emailed — voiding will not notify them"),
+  and an inline list of the first 10 invoice numbers being
+  voided. No more "Void 8" with zero context.
+- **Dead code removed** processInChunks helper deleted now both
+  bulk operations have their own per-invoice loops with result
+  tracking.
+
+#### Filed (won't fix this pass)
+- **J3-F14c** Concurrency tuning. CHUNK_SIZE=5 is conservative;
+  could be raised once Resend tier confirmed. Current setup safe
+  under 50/hr per-user rate limit.
+- **J3-F14e** Bulk-send mid-flight interruption — covered by
+  J3-F2 5-min debounce (re-clicks on already-sent invoices return
+  409, treated as "fail" in counts but harmless).
+- **J3-F4, J3-F5, J3-F11, J3-F12, J3-F15-17** Unchanged from
+  prior filed list.
+
+**Journey 3 closed (21 April 2026).** 19 findings, 14 fixed across
+4 commits (6, 7, 7-followup, 8). 5 filed. Bulk surface now sends
+real emails, voids via proper RPC, preserves failed selections,
+and warns on destructive actions affecting parent-facing invoices.
 
 #### Filed for later
 - **J3-F4** message_log insert failure is warn-only; consider
@@ -343,9 +376,6 @@ polish items.
   If email succeeds but status update fails, teacher sees
   "sent" toast, invoice stays draft, resends duplicate. Needs
   atomicity or reconciliation. Architectural, filed.
-- **J3-F14** BulkActionsBar bulk send flow not yet walked.
-  Expected concerns: per-invoice resilience, rate-limit cascade,
-  progress reporting.
 - **J3-F15** No unsubscribe link (legally fine for transactional)
 - **J3-F16** Hardcoded `billing@lessonloop.net` sender
 - **J3-F17** No email open/click tracking
