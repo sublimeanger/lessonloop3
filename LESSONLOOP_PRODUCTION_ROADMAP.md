@@ -173,7 +173,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Walked:** 21-22 April 2026  
 **Findings:** 29 (J4-F1-F29) · **Fixed:** 13 across 8 commits · **Filed:** 16  
-**Key commits:** `3146b6b` · `73829f2` · `30cd45b` · `12fdcc4` · `cc8569c` · `d592c8f` · `78f2a40` (docs) · 8A-8D (see git log for hashes)  
+**Key commits:** `3146b6b` · `73829f2` · `30cd45b` · `12fdcc4` · `cc8569c` · `d592c8f` · `78f2a40` (docs) · `1682abd` · `b381c4c` · `4000389` · `55169e3` (docs close)  
 **Notable:** **J4-F24 was a critical silent-data-lie bug** — recalc failures after Stripe refunds left `invoice.paid_minor` stale and I1 ledger identity broken. Variant of J3-F14a. Closed with retry+audit helper, manual retry banner, and finance-team-safe RPCs avoiding audit_log RLS changes (Track 0.2 risk). Latent bug caught in `?action=refund` flow: first-payment check excluded fully-refunded first payments. Discoverability fix for paid-invoice header Refund button closes April 2026 QA feedback.
 
 ### Journey 5 — Refunds & disputes 🔜 NEXT
