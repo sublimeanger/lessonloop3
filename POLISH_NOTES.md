@@ -383,6 +383,143 @@ and warns on destructive actions affecting parent-facing invoices.
   (`looopassist-chat`, `looopassist-execute`) — not our Journey
   3 concern but flagged
 
+### Journey 4 — Managing existing invoice
+
+Walked 21 April 2026. 29 findings across InvoiceDetail.tsx +
+RefundDialog + useRefund + useInvoicePdf + stripe-process-refund +
+stripe-webhook charge.refunded handler + InvoiceList. 12 fixed
+across 7 commits. 17 filed.
+
+#### Fixed (Commit 1 of 7 — RecordPaymentModal state)
+
+- **J4-F5** Reset effect now keys on `invoice?.id` as well as
+  `open`/`defaultAmount`/`defaultMethod` — stale amount survived
+  invoice swaps while modal was mounted. Also resets `reference`
+  on open (previously only cleared after successful submit).
+
+#### Fixed (Commit 2 of 7 — shared paymentUtils)
+
+- **J4-F8** Three sites in InvoiceDetail duck-typed
+  `payment.provider === 'stripe' && payment.provider_reference`
+  for Stripe vs manual classification. Extracted to
+  `src/lib/paymentUtils.ts`: `isStripePayment`, `isManualPayment`,
+  `refundedForPayment`, `getFirstRefundablePayment`,
+  `hasRefundablePayment`. Fragile inline checks had a latent
+  mis-classification for Stripe payments missing
+  `provider_reference`.
+- Also fixed a latent bug in the `?action=refund` auto-open flow:
+  it checked only the FIRST payment for refundable balance, not
+  the first REFUNDABLE payment. A fully-refunded first payment
+  silently aborted the dialog open.
+
+#### Fixed (Commit 3 of 7 — header + list Refund discoverability)
+
+- **J4-F1 + J4-F2** Paid/partially-paid invoices had no Refund
+  affordance in the InvoiceDetail header — Refund was reachable
+  only by scrolling to Payment History. QA flagged this in April
+  2026. Header Refund button now visible whenever a refundable
+  payment exists (uses `getFirstRefundablePayment`), regardless
+  of invoice status (paid, sent, overdue).
+- **J4-F26** List dropdown Refund action was gated on
+  `status === 'paid'`. Partially-paid sent/overdue invoices had
+  no list-level refund path. Now gates on
+  `paid_minor > 0 && status !== 'void'` (safe proxy — recalculate
+  keeps `paid_minor` in sync with net payments).
+
+#### Fixed (Commit 4 of 7 — intent chain copy + success nudge)
+
+- **J4-F6** Void warning on partially-paid invoices now ends
+  with "After refunding all payments, return here to void."
+  Operator no longer has to guess at the return-path from
+  RefundDialog.
+- **J4-F28** RefundDialog success screen surfaces a nudge when
+  post-refund `invoice.paid_minor === 0`: "This invoice's paid
+  balance is now zero. You can void it from the header if the
+  invoice itself should no longer stand." Threads `netPaidMinor`
+  through `useRefund.processRefund` and `processManualRefund`
+  via a post-success SELECT on `invoices.paid_minor`
+  (best-effort — never blocks the success return).
+- **J4-F4** `handleConfirm` useCallback missing `isManual`,
+  `invoiceId`, `orgId`, `processManualRefund`, `currencyCode`,
+  `onRefundSuccess` from deps. Stale-closure risk on dialog
+  re-render with different payment type.
+
+#### Fixed (Commit 5 of 7 — void-confirm error handling)
+
+- **J4-F29** `handleVoidConfirm` caught no errors — dialog closed
+  unconditionally on `await mutateAsync`. If `void_invoice`
+  rejected (e.g. A5 guard fired because a payment landed between
+  render and click), operator saw a toast but lost the in-dialog
+  warning context. Now wrapped in try/catch: dialog stays open
+  on rejection and refetches so the amount-paid copy reflects
+  current state.
+
+#### Fixed (Commit 6 of 7 — PDF Remaining)
+
+- **J4-F23** `useInvoicePdf` "Remaining" in the Payment Schedule
+  section computed Paid as sum of installments with
+  `status='paid'`, ignoring `partially_paid`. A £200 installment
+  that's 50% paid contributed £0 to Paid, overstating Remaining
+  by £100. Now uses `invoice.paid_minor` (maintained net of
+  refunds and inclusive of partial installment payments by
+  `recalculate_invoice_paid`).
+
+#### Not yet fixed — separate Lovable session
+
+- **J4-F24** `recalculate_invoice_paid` errors are swallowed
+  (console.error only) in both `stripe-process-refund` (line
+  189-191 of current code) and `stripe-webhook`
+  `handleChargeRefunded` (line 983-985). If recalc fails after
+  Stripe has already moved money, `invoices.paid_minor` is
+  stale, invoice shows wrong outstanding, ledger identity (I1)
+  breaks. This is a variant of the J3-F14a silent-data-lie class
+  of bug. Fix requires edge function changes + a new audit_log
+  entry type + a UI banner when a recent `recalc_failed` entry
+  exists for the invoice. Scheduled for a dedicated commit +
+  Lovable deploy following this doc commit.
+
+#### Filed (won't fix this pass)
+
+- **J4-F3** Voided-invoice header has only Back + Download PDF —
+  no "view payment history" jump. Cosmetic; the page body
+  already shows history. Decision: file, not fix.
+- **J4-F7** Client-side PDF generation (jsPDF). Extracted into
+  new Journey 11.
+- **J4-F12** `useInvoice` fetches payments + refunds as two
+  separate queries. Could be a single `payments(*, refunds(*))`
+  FK join.
+- **J4-F13** `invoice.refunds` typed as `any[]` throughout
+  InvoiceDetail.
+- **J4-F14** `recalculate_invoice_paid` holds FOR UPDATE on
+  invoice only, not on payments/refunds during SUM. Race window
+  on simultaneous refunds. Low probability on current volume.
+  Cross-reference: I1 ledger identity invariant track.
+- **J4-F15** RefundDialog `isProcessing` is component-local.
+  Dialog unmount mid-request completes the refund invisibly.
+- **J4-F16** `stripe-process-refund` fires
+  `send-refund-notification` via fetch with no failure tracking.
+  Same class as J3-F4 filed item.
+- **J4-F17** RefundDialog success auto-closes after 2500ms.
+  Forced-close before user finishes reading.
+- **J4-F18** `invoice.status === 'cancelled'` referenced in
+  `stripe-process-refund` line 68, but enum has no 'cancelled'
+  value. Dead branch. Enum cleanup pass.
+- **J4-F19** `record_manual_refund` audit_log
+  `entity_type='invoice'` — C50 case, already filed
+  cross-cutting.
+- **J4-F22** `useInvoicePdf` audit_log write uses `.then(...)`
+  not await. If page unmounts mid-write, silent loss.
+- **J4-F25** `stripe-process-refund` inserts pending refund row
+  BEFORE calling Stripe. Crash between the two leaves an orphan.
+  Webhook reconciles the post-succeeded case but not
+  pending-forever. Needs a cleanup cron.
+- **J4-F27** InvoiceList Void action on partially-paid invoices
+  hits A5 guard instead of pre-filtering the option. Polish —
+  the error message is clear, just asks the user to click twice.
+
+**Journey 4 in progress as of 21 April 2026.** Closure pending
+J4-F24 commit + Lovable edge function deploy.
+
 ---
 
 ## Process improvements

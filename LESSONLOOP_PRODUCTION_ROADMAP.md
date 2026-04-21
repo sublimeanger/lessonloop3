@@ -144,7 +144,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 ## Area 1 — Billing & invoicing 🟡
 
-**Status:** In progress. Journey 4 next.
+**Status:** In progress. Journey 4 in flight.
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -169,10 +169,12 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 **Key commits:** `9b2e76f` · `7741084` · `9a62e33` · `bc6124d` (CRITICAL)  
 **Notable:** **J3-F14a was a critical silent-data-lie bug** — bulk send flipped status without sending emails. Caught pre-customer. Bulk void now uses `void_invoice` RPC. Server-rendered preview removes duplicate HTML logic.
 
-### Journey 4 — Managing existing invoice 🔜 NEXT
+### Journey 4 — Managing existing invoice 🟡 IN PROGRESS
 
-**Scope:** `InvoiceDetail.tsx` actions — view, single-record payment, single-void, single-refund, status transitions (sent/overdue/paid), installment timeline, PDF download (currently client-only jsPDF — known gap).  
-**Priors:** much touched by original BILLING_FORENSICS audit; confirmatory walk expected rather than full discovery.
+**Walked:** 21 April 2026  
+**Findings:** 29 (J4-F1-F29) — see POLISH_NOTES.md  
+**Scope:** `InvoiceDetail.tsx` actions — view, single-record payment, single-void, single-refund, status transitions (sent/overdue/paid), installment timeline, PDF download (now filed as Journey 11 — dedicated server-side rewrite).  
+**Priors:** much touched by original BILLING_FORENSICS audit; confirmatory walk surfaced fresh discoverability + correctness gaps beyond the audit.
 
 ### Journey 5 — Refunds & disputes ⚪
 
@@ -198,6 +200,11 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Scope:** `stripe-auto-pay-installment`, off-session payment method usage, failure handling, customer notification, subscription-separate charge model.
 
+### Journey 11 — Server-side PDF generation ⚪
+
+**Scope:** Replace client-side jsPDF in `useInvoicePdf.ts` with an edge function using headless rendering (Puppeteer or equivalent). Branding-aware (org logo, brand/accent colors). Shared template between portal download, staff download, and invoice-email attachment (closes J3-F5). Likely ~1 session of work + a Lovable deploy for the edge function. Low coupling to other Journey 4 work — extracted during J4 walk because it's architectural, not polish.  
+**Why extracted:** J3-F5 filed this as "PDF attachment on invoice emails". J4 walk confirmed the PDF itself is client-only, which means (a) no email attachment possible today, (b) any improvement has to move the renderer server-side first. One journey, not a patch.
+
 ### Filed for Area 1
 
 - C50 audit_log entity_type singular/plural consolidation (cross-cutting — see Track 0.1)
@@ -213,6 +220,18 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 - J3-F12 send-then-flip atomicity
 - J3-F14c bulk send concurrency tuning
 - J3-F15-17 polish (unsubscribe, per-org sender, open/click tracking)
+- J4-F3 voided-invoice "view payment history" jump (cosmetic)
+- J4-F7 server-side PDF → Journey 11
+- J4-F12 payments + refunds fetched as two queries (polish)
+- J4-F13 invoice.refunds typed as any[] (typing pass)
+- J4-F14 recalculate_invoice_paid FOR UPDATE only locks invoice, not payments/refunds (I1 invariant track)
+- J4-F15 RefundDialog isProcessing scoped to component (low priority)
+- J4-F16 refund notification email fire-and-forget (J3-F4 class)
+- J4-F17 RefundDialog success forced-close at 2.5s (polish)
+- J4-F18 'cancelled' enum value dead references (enum cleanup)
+- J4-F22 PDF audit_log write .then-chained not awaited (polish)
+- J4-F25 orphaned pending refund rows accumulate on edge function crash (polish — cron cleanup)
+- J4-F27 list Void on partially-paid hits A5 guard instead of pre-filter (polish)
 
 ---
 
@@ -544,6 +563,7 @@ Recording decisions made during roadmap construction so future sessions understa
 - **21 April 2026:** Audit log gap re-scoped after discovery found 14/19 tables (not "10 billing-adjacent" as initially noted) lack triggers. Elevated to production blocker.
 - **21 April 2026:** Stripe dispute handling flagged as blocker after webhook event-list inspection.
 - **21 April 2026:** Settings treated as 23 sub-journeys not 1 area. Each tab is its own polish pass.
+- **21 April 2026 (Journey 4 walk):** Extracted server-side PDF generation from J3-F5 filed list into dedicated Journey 11 — it's an architectural rewrite, not polish. Unblocks invoice PDF email attachment.
 
 ---
 
