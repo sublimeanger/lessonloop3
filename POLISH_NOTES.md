@@ -517,8 +517,46 @@ across 7 commits. 17 filed.
   hits A5 guard instead of pre-filtering the option. Polish —
   the error message is clear, just asks the user to click twice.
 
-**Journey 4 in progress as of 21 April 2026.** Closure pending
-J4-F24 commit + Lovable edge function deploy.
+#### Fixed (Commit 8 — J4-F24 recalc failure surfacing)
+
+- **J4-F24** `recalculate_invoice_paid` errors were swallowed in
+  both `stripe-process-refund` and `stripe-webhook`
+  `charge.refunded` handler. When recalc failed after Stripe had
+  moved money, `invoices.paid_minor` went stale and the I1 ledger
+  identity broke silently. Variant of the J3-F14a silent-data-lie
+  class.
+  - **Sub-commit 8A** — new
+    `supabase/functions/_shared/recalc-with-retry.ts` helper: 3×
+    attempt with 500ms linear backoff, writes audit_log
+    `action='invoice_recalc_failed'` on final failure with
+    source/attempts/error/extra context. Both edge functions now
+    use it. `stripe-process-refund` returns
+    `warning: 'recalc_failed'` in the success JSON when recalc
+    didn't land — refund itself never fails the user-visible
+    outcome.
+  - **Sub-commit 8B** — two SECURITY DEFINER RPCs:
+    `admin_recalculate_invoice_paid` (finance-team-only manual
+    retry, records `invoice_recalc_manual` audit entry) and
+    `get_recent_recalc_failures_for_invoice` (7-day window,
+    filtered to exclude failures superseded by successful manual
+    retry). Deliberately narrow — avoids relaxing `audit_log`
+    SELECT RLS which today only allows `is_org_admin` and would
+    otherwise exclude the finance role + solo_teacher non-owners
+    from seeing the banner.
+  - **Sub-commit 8C** — `RecalcFailureBanner` component +
+    `useInvoiceRecalcFailures` / `useAdminRecalculateInvoice`
+    hooks. Amber card at top of InvoiceDetail when recent failure
+    exists, shows source/timestamp/attempts/last error, single
+    "Retry recalculation" button. Gated on
+    `canManageBilling && !isParent`.
+  - Lovable deploy required for both edge functions + the one
+    migration. See Jamie's separate Lovable prompt.
+
+**Journey 4 closed (22 April 2026).** 29 findings, 13 fixed across
+11 commits (8 sub-commits spanning 4 logical fix batches + doc
+commit), 16 filed. Recalc failures no longer silent; operator has
+a visible, actionable recovery path when Stripe refund recalc
+breaks down.
 
 ---
 

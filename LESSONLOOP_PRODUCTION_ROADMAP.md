@@ -76,7 +76,7 @@ This is substantially larger than typical SaaS polish scope. The roadmap below i
 | # | Area | Status | Journeys closed | Commits |
 |---|---|---|---|---|
 | 0 | Cross-cutting invariants | ⚪ | 0 of 4 tracks | 0 |
-| 1 | Billing & invoicing | 🟡 | 3 of 10 | 9 |
+| 1 | Billing & invoicing | 🟡 | 4 of 11 | 20 |
 | 2 | Parent portal | ⚪ | 0 of 8 | 0 |
 | 3 | Students & guardians | ⚪ | 0 of 6 | 0 |
 | 4 | Calendar | ⚪ | 0 of 9 | 0 |
@@ -106,7 +106,7 @@ This is substantially larger than typical SaaS polish scope. The roadmap below i
 
 **Status legend:** ⚪ Not started · 🟡 In progress · 🟢 Closed · 🔴 Blocked · 🟠 Has known production blocker
 
-**Total scoped journeys across all areas:** ~167.
+**Total scoped journeys across all areas:** ~168 (Journey 11 added during J4 walk).
 
 ---
 
@@ -144,7 +144,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 ## Area 1 — Billing & invoicing 🟡
 
-**Status:** In progress. Journey 4 in flight.
+**Status:** In progress. Journey 5 next.
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -169,14 +169,14 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 **Key commits:** `9b2e76f` · `7741084` · `9a62e33` · `bc6124d` (CRITICAL)  
 **Notable:** **J3-F14a was a critical silent-data-lie bug** — bulk send flipped status without sending emails. Caught pre-customer. Bulk void now uses `void_invoice` RPC. Server-rendered preview removes duplicate HTML logic.
 
-### Journey 4 — Managing existing invoice 🟡 IN PROGRESS
+### Journey 4 — Managing existing invoice 🟢 CLOSED
 
-**Walked:** 21 April 2026  
-**Findings:** 29 (J4-F1-F29) — see POLISH_NOTES.md  
-**Scope:** `InvoiceDetail.tsx` actions — view, single-record payment, single-void, single-refund, status transitions (sent/overdue/paid), installment timeline, PDF download (now filed as Journey 11 — dedicated server-side rewrite).  
-**Priors:** much touched by original BILLING_FORENSICS audit; confirmatory walk surfaced fresh discoverability + correctness gaps beyond the audit.
+**Walked:** 21-22 April 2026  
+**Findings:** 29 (J4-F1-F29) · **Fixed:** 13 across 8 commits · **Filed:** 16  
+**Key commits:** `3146b6b` · `73829f2` · `30cd45b` · `12fdcc4` · `cc8569c` · `d592c8f` · `78f2a40` (docs) · 8A-8D (see git log for hashes)  
+**Notable:** **J4-F24 was a critical silent-data-lie bug** — recalc failures after Stripe refunds left `invoice.paid_minor` stale and I1 ledger identity broken. Variant of J3-F14a. Closed with retry+audit helper, manual retry banner, and finance-team-safe RPCs avoiding audit_log RLS changes (Track 0.2 risk). Latent bug caught in `?action=refund` flow: first-payment check excluded fully-refunded first payments. Discoverability fix for paid-invoice header Refund button closes April 2026 QA feedback.
 
-### Journey 5 — Refunds & disputes ⚪
+### Journey 5 — Refunds & disputes 🔜 NEXT
 
 **Scope:** `stripe-process-refund`, manual refund path (`record_manual_refund` RPC), partial refunds, refund-of-refund edge cases, `validate_refund_amount` RPC. **Production blocker:** Stripe webhook does NOT handle `charge.dispute.*` events — chargebacks silently unhandled. Fix required before launch.
 
@@ -564,6 +564,7 @@ Recording decisions made during roadmap construction so future sessions understa
 - **21 April 2026:** Stripe dispute handling flagged as blocker after webhook event-list inspection.
 - **21 April 2026:** Settings treated as 23 sub-journeys not 1 area. Each tab is its own polish pass.
 - **21 April 2026 (Journey 4 walk):** Extracted server-side PDF generation from J3-F5 filed list into dedicated Journey 11 — it's an architectural rewrite, not polish. Unblocks invoice PDF email attachment.
+- **22 April 2026 (Journey 4 close):** J4-F24 (silent recalc failure) closed via 3-attempt retry helper + audit_log trail + finance-team-safe read RPC + InvoiceDetail banner. Deliberately avoided relaxing audit_log SELECT RLS — narrow RPC approach keeps Track 0.2 risk surface unchanged.
 
 ---
 
@@ -585,4 +586,4 @@ This file is version-controlled in the main repo. History is git log.
 
 ---
 
-_Last meaningful update: 21 April 2026 (Commit 9 — roadmap creation at bc6124d tip + discovery)._
+_Last meaningful update: 22 April 2026 (Journey 4 closed — recalc failure surfacing shipped)._
