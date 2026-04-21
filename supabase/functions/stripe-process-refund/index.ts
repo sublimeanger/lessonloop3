@@ -7,6 +7,21 @@ import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { recalcWithRetry } from "../_shared/recalc-with-retry.ts";
 
 /**
+ * Map LessonLoop refund reason labels to Stripe's 3-value enum.
+ * The client sends "Label: notes" or just "Label"; we parse the
+ * label prefix and map. Stripe's reason field affects reporting
+ * and fee reversal behaviour (duplicates waive the refund fee).
+ */
+function mapToStripeReason(reasonText: string | null | undefined): Stripe.RefundCreateParams.Reason {
+  if (!reasonText) return "requested_by_customer";
+  const label = reasonText.split(":")[0].trim().toLowerCase();
+  if (label === "duplicate payment" || label === "duplicate") return "duplicate";
+  // LessonLoop has no "fraudulent" option today — reserved for
+  // future chargeback reversal flow. Everything else is customer-request.
+  return "requested_by_customer";
+}
+
+/**
  * Process a full or partial refund for a Stripe payment.
  * Auth: owner/admin, or any role in solo_teacher orgs (canManageBilling equivalent).
  * Body: { paymentId: string, amount?: number (minor), reason?: string }
@@ -166,7 +181,7 @@ serve(async (req) => {
     const refundParams: Stripe.RefundCreateParams = {
       payment_intent: payment.provider_reference,
       amount: refundAmount,
-      reason: "requested_by_customer",
+      reason: mapToStripeReason(reason),
     };
 
     // PAY-H3 FIX: Always refund on the platform account.
