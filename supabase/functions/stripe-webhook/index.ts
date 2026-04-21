@@ -902,13 +902,16 @@ async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
       .maybeSingle();
 
     if (orphanedPending) {
-      // Update the orphaned row instead of inserting a duplicate
       const refundStatus = refund.status === "succeeded" ? "succeeded" : refund.status === "failed" ? "failed" : "pending";
       await supabase
         .from("refunds")
         .update({ stripe_refund_id: refund.id, status: refundStatus })
         .eq("id", orphanedPending.id);
       log(`Reconciled orphaned pending refund ${truncate(orphanedPending.id)} with Stripe refund ${truncate(refund.id)}`);
+
+      // J5-F9: orphaned reconciliation doesn't need a notification —
+      // stripe-process-refund already sent one when it created the
+      // pending row. Skip.
       continue;
     }
 
@@ -951,6 +954,45 @@ async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
         source: "stripe_webhook",
       },
     });
+
+    // J5-F9: Webhook-path refund notification. Admin-initiated refunds
+    // trigger the email from stripe-process-refund directly; webhook
+    // refunds (Stripe Dashboard) must trigger it from here. Best-effort
+    // — notification failure does not block webhook ack.
+    if (refundStatus === "succeeded") {
+      // Read newly-inserted refund row ID for idempotency keying.
+      const { data: newRefund } = await supabase
+        .from("refunds")
+        .select("id, org_id")
+        .eq("stripe_refund_id", refund.id)
+        .maybeSingle();
+
+      const { data: orgForCurrency } = await supabase
+        .from("organisations")
+        .select("currency_code")
+        .eq("id", payment.org_id)
+        .single();
+
+      try {
+        await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/send-refund-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+          },
+          body: JSON.stringify({
+            refundId: newRefund?.id,
+            paymentId: payment.id,
+            invoiceId: payment.invoice_id,
+            orgId: payment.org_id,
+            amountMinor: refund.amount,
+            currencyCode: orgForCurrency?.currency_code || "GBP",
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to trigger refund notification from webhook:", err);
+      }
+    }
 
     log(`Refund ${truncate(refund.id)} recorded: ${refund.amount} for payment ${truncate(payment.id)}`);
   }

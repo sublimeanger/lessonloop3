@@ -33,6 +33,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const {
+      refundId,
       paymentId,
       invoiceId,
       orgId,
@@ -111,6 +112,27 @@ const handler = async (req: Request): Promise<Response> => {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    // J5-F8: Idempotency — prevent duplicate sends of the same refund
+    // notification. Keyed on refund_id when available, else payment_id
+    // + amount so legacy callers still get best-effort dedup.
+    const dedupKey = refundId ?? `${paymentId}-${amountMinor}`;
+    const { data: existingSent } = await supabase
+      .from('message_log')
+      .select('id, status, sent_at')
+      .eq('message_type', 'refund_notification')
+      .eq('related_id', dedupKey)
+      .eq('status', 'sent')
+      .gte('sent_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+      .limit(1);
+
+    if (existingSent && existingSent.length > 0) {
+      console.log(`Refund notification already sent for ${dedupKey} within 5 minutes — skipping`);
+      return new Response(
+        JSON.stringify({ success: true, message: "Already sent recently" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     // Format amount
@@ -227,6 +249,8 @@ const handler = async (req: Request): Promise<Response> => {
       recipient_email: recipientEmail,
       recipient_name: recipientName,
       message_type: 'refund_notification',
+      related_id: refundId ?? `${paymentId}-${amountMinor}`,
+      related_type: 'refund',
       status: emailResponse.ok ? 'sent' : 'failed',
       sent_at: emailResponse.ok ? new Date().toISOString() : null,
     });
