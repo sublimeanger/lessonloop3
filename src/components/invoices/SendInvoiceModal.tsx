@@ -55,6 +55,7 @@ export function SendInvoiceModal({
   }, [invoice, currentOrg, isReminder]);
 
   const [previewHtml, setPreviewHtml] = useState<string>('');
+  const [previewSubject, setPreviewSubject] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [recentSendInfo, setRecentSendInfo] = useState<{
@@ -89,6 +90,7 @@ export function SendInvoiceModal({
         recentSendInfo?: { sentWithinDebounce: boolean; humanAgo?: string };
       };
       setPreviewHtml(d.html);
+      setPreviewSubject(d.subject);
       setRecentSendInfo(d.recentSendInfo || { sentWithinDebounce: false });
     } catch (err: unknown) {
       setPreviewError(err instanceof Error ? err.message : 'Failed to load preview');
@@ -149,6 +151,7 @@ export function SendInvoiceModal({
     setStep('compose');
     setCustomMessage('');
     setPreviewHtml('');
+    setPreviewSubject('');
     setPreviewError(null);
     setRecentSendInfo({ sentWithinDebounce: false });
     onOpenChange(false);
@@ -254,7 +257,7 @@ export function SendInvoiceModal({
                 </div>
                 <div className="flex gap-2">
                   <span className="text-muted-foreground font-medium w-12 shrink-0">Subject:</span>
-                  <span className="text-foreground">{subject}</span>
+                  <span className="text-foreground">{previewSubject || subject}</span>
                 </div>
               </div>
 
@@ -287,6 +290,7 @@ export function SendInvoiceModal({
                 onClick={() => {
                   setStep('compose');
                   setPreviewHtml('');
+                  setPreviewSubject('');
                   setPreviewError(null);
                   setRecentSendInfo({ sentWithinDebounce: false });
                 }}
