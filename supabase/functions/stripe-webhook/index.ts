@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { PLAN_LIMITS } from "../_shared/plan-config.ts";
+import { recalcWithRetry } from "../_shared/recalc-with-retry.ts";
 
 // Structured logging: only emits in non-production environments
 const isProduction = Deno.env.get("ENVIRONMENT") === "production";
@@ -975,14 +976,21 @@ async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
     return;
   }
 
-  // Atomically recalculate invoice paid_minor (handles status transitions)
-  const { error: recalcError } = await supabase.rpc('recalculate_invoice_paid', {
-    _invoice_id: payment.invoice_id,
+  // J4-F24: Retry recalc up to 3× with backoff, write audit_log on
+  // final failure. Webhook path has no end-user session — audit_log
+  // is the only channel for surfacing this to operators.
+  const recalc = await recalcWithRetry({
+    supabase,
+    invoiceId: payment.invoice_id,
+    orgId: payment.org_id,
+    source: 'stripe_refund_webhook',
+    actorUserId: null,
+    extra: { stripe_payment_intent: paymentIntentId },
   });
 
-  if (recalcError) {
-    console.error("Failed to recalculate invoice after refund:", recalcError);
+  if (!recalc.ok) {
+    log(`Invoice ${truncate(payment.invoice_id)} recalc failed after ${recalc.attempts} attempts — audit_log written`);
+  } else {
+    log(`Invoice ${truncate(payment.invoice_id)} recalculated after refund (${recalc.attempts} attempt${recalc.attempts === 1 ? '' : 's'})`);
   }
-
-  log(`Invoice ${truncate(payment.invoice_id)} recalculated after refund`);
 }

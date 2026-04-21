@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { log } from "../_shared/log.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { recalcWithRetry } from "../_shared/recalc-with-retry.ts";
 
 /**
  * Process a full or partial refund for a Stripe payment.
@@ -181,16 +182,27 @@ serve(async (req) => {
       );
     }
 
-    // Atomically recalculate invoice paid_minor
-    const { error: recalcError } = await supabase.rpc('recalculate_invoice_paid', {
-      _invoice_id: payment.invoice_id,
+    // J4-F24: Retry recalc up to 3× with backoff, write audit_log on
+    // final failure. Refund has succeeded in Stripe and in our refunds
+    // table — a stale paid_minor is recoverable but must not be silent.
+    const recalc = await recalcWithRetry({
+      supabase,
+      invoiceId: payment.invoice_id,
+      orgId: payment.org_id,
+      source: 'stripe_refund_admin',
+      actorUserId: user.id,
+      extra: {
+        refund_id: refundRecord?.id,
+        stripe_refund_id: stripeRefund.id,
+        amount_minor: refundAmount,
+      },
     });
 
-    if (recalcError) {
-      console.error("Failed to recalculate invoice after refund:", recalcError);
+    if (!recalc.ok) {
+      log(`Invoice recalc failed after ${recalc.attempts} attempts — audit_log written`);
+    } else {
+      log(`Invoice recalculated after refund (${recalc.attempts} attempt${recalc.attempts === 1 ? '' : 's'})`);
     }
-
-    log(`Invoice recalculated after refund`);
 
     // REF-H1: Audit log entry for admin-initiated refund
     await supabase.from("audit_log").insert({
@@ -238,6 +250,10 @@ serve(async (req) => {
         stripeRefundId: stripeRefund.id,
         amountMinor: refundAmount,
         status: stripeRefund.status,
+        // J4-F24: Non-blocking warning. Refund itself succeeded; only
+        // the parent invoice's paid_minor may be stale. Client can
+        // surface a banner and offer manual recalc.
+        warning: recalc.ok ? undefined : 'recalc_failed',
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
