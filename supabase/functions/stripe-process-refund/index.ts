@@ -95,28 +95,31 @@ serve(async (req) => {
       throw new Error("Insufficient permissions to process refunds");
     }
 
-    // Calculate refundable amount (original - already refunded)
+    // J5-F4: Application-layer best-effort check. Pending + succeeded
+    // refunds are summed INSIDE the DB trigger (validate_refund_amount)
+    // which holds a row lock on the payment — that's the concurrency-safe
+    // gate. This check here is UX only: reject obviously-invalid amounts
+    // early before we insert a pending row and call Stripe.
     const { data: existingRefunds } = await supabase
       .from("refunds")
       .select("amount_minor")
       .eq("payment_id", paymentId)
-      .eq("status", "succeeded");
+      .in("status", ["pending", "succeeded"]);
 
-    const totalRefunded = (existingRefunds || []).reduce(
+    const totalClaimed = (existingRefunds || []).reduce(
       (sum: number, r: any) => sum + r.amount_minor, 0
     );
-    const maxRefundable = payment.amount_minor - totalRefunded;
+    const maxRefundable = payment.amount_minor - totalClaimed;
 
     if (maxRefundable <= 0) {
       throw new Error("This payment has already been fully refunded");
     }
 
-    // REF-M2: Use != null to distinguish "no amount" (full) from zero (invalid)
     const refundAmount = amount != null ? Math.round(amount) : maxRefundable;
 
     if (refundAmount <= 0) throw new Error("Refund amount must be greater than zero");
     if (refundAmount > maxRefundable) {
-      throw new Error(`Maximum refundable amount is ${maxRefundable}. Already refunded: ${totalRefunded}`);
+      throw new Error(`Maximum refundable amount is ${maxRefundable}. Already claimed: ${totalClaimed}`);
     }
 
     // Process refund via Stripe
@@ -140,6 +143,20 @@ serve(async (req) => {
 
     if (refundInsertError) {
       console.error("Failed to insert pending refund record:", refundInsertError);
+      // Trigger rejection indicates a concurrent refund consumed the
+      // remaining refundable balance between our check and our insert.
+      // Distinguish over-refund race from other DB errors so the client
+      // can surface a useful message.
+      const msg = refundInsertError.message || "";
+      if (/exceed|claim/i.test(msg)) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "This payment was refunded by another session before this request completed. Refresh and try again."
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 409 }
+        );
+      }
       return new Response(
         JSON.stringify({ success: false, error: "Failed to create refund record" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
