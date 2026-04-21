@@ -267,8 +267,13 @@ _(All items below resolved in Commit 4b — see Fixed section.)_
   to surface this deferred — column + edge function wiring
   closed the gap for billing runs.
 
-**Journey 2 closed** except for polish (BR17-BR20) and genuine
-future work (BR6, BR13, BR16).
+**Journey 2 closed** (21 April 2026).
+
+10 real bugs fixed across 3 commits (4a / 4b / 5). Live state
+verified. Filed for later: BR6 preview/edge re-query race
+(accepted), BR10-full per-invoice plan failure summary surfacing,
+BR13 shared payer-group helper, BR16 batch-insert numbering order
+(accepted), BR17-BR20 polish/feature work.
 
 #### Filed for later
 - BR6 Preview/edge re-query difference (small race, accepted)
