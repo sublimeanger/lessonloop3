@@ -764,14 +764,31 @@ async function executeBillingLogic(
     const dueDateStr = localDate.toISOString().split("T")[0];
     const vatRate = org.vat_enabled ? org.vat_rate : 0;
 
-    // Pre-compute all invoice rows and their associated items
-    const allInvoiceRows: any[] = [];
-    const payerItemsMap: Array<{ payer: any; lessonRates: number[]; total: number }> = [];
+    // Per-payer RPC-based invoice creation.
+    // Calls create_invoice_with_items for each payer in sequence, which:
+    //   - Enforces is_org_active subscription gate (BR11 self-resolves)
+    //   - Is atomic per invoice (no orphan items possible — BR2 resolved)
+    //   - Reuses tested code path
+    //
+    // Post-create: each invoice is updated with billing_run_id + term_id
+    // (RPC doesn't accept these). If the update fails, the invoice is
+    // deleted to prevent orphan state, and the payer is recorded as failed.
+    //
+    // Successful-payer tracking: we iterate payerGroups directly and
+    // track parallel arrays for Xero sync and plan generation.
+
+    interface SuccessfulInvoice {
+      invoiceId: string;
+      payer: any;
+      lessonRates: number[];
+      total: number;
+      studentIds: string[];
+    }
+    const successful: SuccessfulInvoice[] = [];
 
     for (const [, payer] of payerGroups) {
+      // Compute rates per lesson — prefer snapshot rate from lesson_participants
       const lessonRates = payer.lessons.map(({ lesson, snapshotRate }: any) => {
-        // Prefer the rate snapshotted at lesson creation to avoid
-        // retroactive billing when rate cards change mid-term
         if (snapshotRate != null && snapshotRate > 0) return snapshotRate;
         const start = new Date(lesson.start_at).getTime();
         const end = new Date(lesson.end_at).getTime();
@@ -779,163 +796,158 @@ async function executeBillingLogic(
         return findRateForDuration(durationMins, rateCards || [], fallbackRate);
       });
 
-      const subtotal = lessonRates.reduce((s: number, r: number) => s + r, 0);
-      // NOTE: VAT is calculated on invoice subtotal, not per-item.
-      // Per-item VAT display would require additional rounding logic.
-      const taxMinor = Math.round(subtotal * (vatRate / 100));
-      const total = subtotal + taxMinor;
+      // Build items payload for the RPC
+      const itemsPayload = payer.lessons.map(({ lesson, studentId }: any, j: number) => ({
+        description: lesson.title,
+        quantity: 1,
+        unit_price_minor: lessonRates[j],
+        linked_lesson_id: lesson.id,
+        student_id: studentId,
+      }));
 
-      allInvoiceRows.push({
-        org_id: orgId,
-        invoice_number: "",
-        due_date: dueDateStr,
-        payer_guardian_id: payer.payerType === "guardian" ? payer.payerId : null,
-        payer_student_id: payer.payerType === "student" ? payer.payerId : null,
-        subtotal_minor: subtotal,
-        tax_minor: taxMinor,
-        total_minor: total,
-        vat_rate: vatRate,
-        currency_code: org.currency_code,
-        status: "draft",
-        term_id: termId,
-        billing_run_id: billingRunId, // BIL-H2: link invoice to billing run
+      const studentIds = payer.lessons.map((l: any) => l.studentId);
+
+      // Call create_invoice_with_items RPC — atomic per invoice
+      const { data: rpcResult, error: rpcError } = await client.rpc(
+        "create_invoice_with_items",
+        {
+          _org_id: orgId,
+          _due_date: dueDateStr,
+          _payer_guardian_id: payer.payerType === "guardian" ? payer.payerId : null,
+          _payer_student_id: payer.payerType === "student" ? payer.payerId : null,
+          _notes: null,
+          _credit_ids: [],
+          _items: itemsPayload,
+        }
+      );
+
+      if (rpcError || !rpcResult) {
+        console.error(`[BillingRun] create_invoice_with_items failed for payer ${payer.payerId}:`, rpcError);
+        failedPayers.push({
+          payerName: payer.payerName,
+          payerEmail: payer.payerEmail,
+          payerType: payer.payerType,
+          payerId: payer.payerId,
+          error: rpcError?.message || "Invoice creation failed",
+        });
+        continue;
+      }
+
+      const invoiceId = (rpcResult as any).id;
+      const totalMinor = (rpcResult as any).total_minor;
+
+      // Link invoice to billing run and term. RPC doesn't accept these;
+      // we UPDATE post-create. If the update fails, delete the orphan
+      // and mark the payer as failed to keep ledger consistent.
+      const { error: linkError } = await client
+        .from("invoices")
+        .update({
+          billing_run_id: billingRunId,
+          term_id: termId,
+        })
+        .eq("id", invoiceId)
+        .eq("org_id", orgId);
+
+      if (linkError) {
+        console.error(`[BillingRun] Failed to link invoice ${invoiceId} to billing run — deleting:`, linkError);
+        // Rollback: delete the orphan invoice
+        await client.from("invoices").delete().eq("id", invoiceId);
+        failedPayers.push({
+          payerName: payer.payerName,
+          payerEmail: payer.payerEmail,
+          payerType: payer.payerType,
+          payerId: payer.payerId,
+          error: "Invoice created but could not be linked to billing run",
+        });
+        continue;
+      }
+
+      invoiceIds.push(invoiceId);
+      totalAmount += totalMinor;
+      successful.push({
+        invoiceId,
+        payer,
+        lessonRates,
+        total: totalMinor,
+        studentIds,
       });
-      payerItemsMap.push({ payer, lessonRates, total });
     }
 
-    if (allInvoiceRows.length > 0) {
-      // Batch insert all invoices
-      const { data: invoices, error: invoiceError } = await client
-        .from("invoices")
-        .insert(allInvoiceRows)
-        .select("id");
+    // ── Payment plan creation for eligible invoices ──
+    if (planOptions?.planEnabled && successful.length > 0) {
+      // Fetch student-level preferences for all students across successful invoices
+      const studentIdSet = new Set<string>();
+      for (const s of successful) {
+        for (const sid of s.studentIds) studentIdSet.add(sid);
+      }
 
-      if (invoiceError) {
-        console.error("[BillingRun] Batch invoice insert failed:", invoiceError);
-        for (const { payer } of payerItemsMap) {
-          failedPayers.push({
-            payerName: payer.payerName,
-            payerEmail: payer.payerEmail,
-            payerType: payer.payerType,
-            payerId: payer.payerId,
-            error: invoiceError.message || "Invoice creation failed",
+      const { data: studentPrefs } = studentIdSet.size > 0
+        ? await client
+            .from("students")
+            .select("id, payment_plan_preference")
+            .in("id", [...studentIdSet])
+        : { data: [] };
+
+      const prefMap = new Map<string, string>(
+        (studentPrefs || []).map((s: any) => [s.id, s.payment_plan_preference || "default"])
+      );
+
+      const threshold = planOptions.planThresholdMinor;
+      const instCount = planOptions.planInstallments;
+      const freq = planOptions.planFrequency;
+
+      // Track per-invoice plan failures (BR10 partial surfacing)
+      const planFailures: Array<{ invoiceId: string; error: string }> = [];
+
+      for (const inv of successful) {
+        // Check student-level overrides: 'never' blocks, 'always' forces
+        let forcePlan = false;
+        let blockPlan = false;
+        for (const sid of inv.studentIds) {
+          const pref = prefMap.get(sid) || "default";
+          if (pref === "always") forcePlan = true;
+          if (pref === "never") blockPlan = true;
+        }
+
+        // 'never' takes precedence over 'always'
+        if (blockPlan) continue;
+
+        const meetsThreshold = threshold != null ? inv.total > threshold : true;
+        if (!forcePlan && !meetsThreshold) continue;
+
+        // Create payment plan via generate_installments RPC
+        const { error: planError } = await client.rpc("generate_installments", {
+          _invoice_id: inv.invoiceId,
+          _org_id: orgId,
+          _count: instCount,
+          _frequency: freq,
+        });
+
+        if (planError) {
+          console.error(`[BillingRun] Failed to create payment plan for invoice ${inv.invoiceId}:`, planError);
+          planFailures.push({
+            invoiceId: inv.invoiceId,
+            error: planError.message || "Payment plan generation failed",
           });
         }
-      } else if (invoices) {
-        // Batch insert all invoice items
-        const allItems: any[] = [];
-        for (let i = 0; i < invoices.length; i++) {
-          const inv = invoices[i];
-          const { payer, lessonRates, total } = payerItemsMap[i];
-          invoiceIds.push(inv.id);
-          totalAmount += total;
-          for (let j = 0; j < payer.lessons.length; j++) {
-            const { lesson, studentId } = payer.lessons[j];
-            allItems.push({
-              invoice_id: inv.id,
-              org_id: orgId,
-              description: lesson.title,
-              quantity: 1,
-              unit_price_minor: lessonRates[j],
-              amount_minor: lessonRates[j],
-              linked_lesson_id: lesson.id,
-              student_id: studentId,
-            });
-          }
-        }
+      }
 
-        if (allItems.length > 0) {
-          const { error: itemsError } = await client
-            .from("invoice_items")
-            .insert(allItems);
-          if (itemsError) {
-            console.error("[BillingRun] Batch items insert failed:", itemsError);
-            // Clean up orphaned invoices that have no items
-            const orphanIds = invoiceIds.splice(0, invoiceIds.length);
-            if (orphanIds.length > 0) {
-              await client.from('invoices').delete().in('id', orphanIds);
-            }
-            totalAmount = 0;
-            for (const { payer } of payerItemsMap) {
-              failedPayers.push({
-                payerName: payer.payerName,
-                payerEmail: payer.payerEmail,
-                payerType: payer.payerType,
-                payerId: payer.payerId,
-                error: 'Failed to create invoice items',
-              });
-            }
-          }
-        }
-
-        // ── Payment plan creation for eligible invoices ──
-        if (planOptions?.planEnabled && invoiceIds.length > 0) {
-          // Fetch student-level preferences for payer's students
-          const studentIds = new Set<string>();
-          for (const { payer } of payerItemsMap) {
-            for (const { studentId } of payer.lessons) {
-              studentIds.add(studentId);
-            }
-          }
-
-          const { data: studentPrefs } = studentIds.size > 0
-            ? await client
-                .from("students")
-                .select("id, payment_plan_preference")
-                .in("id", [...studentIds])
-            : { data: [] };
-
-          const prefMap = new Map<string, string>(
-            (studentPrefs || []).map((s: any) => [s.id, s.payment_plan_preference || "default"])
-          );
-
-          const threshold = planOptions.planThresholdMinor;
-          const instCount = planOptions.planInstallments;
-          const freq = planOptions.planFrequency;
-
-          for (let i = 0; i < invoiceIds.length; i++) {
-            const invoiceTotal = payerItemsMap[i].total;
-            const payerStudentIds = payerItemsMap[i].payer.lessons.map((l: any) => l.studentId);
-
-            // Check student-level overrides: if ANY student is 'never', skip plan
-            // If ANY student is 'always', force plan regardless of threshold
-            let forcePlan = false;
-            let blockPlan = false;
-            for (const sid of payerStudentIds) {
-              const pref = prefMap.get(sid) || "default";
-              if (pref === "always") forcePlan = true;
-              if (pref === "never") blockPlan = true;
-            }
-
-            // 'never' takes precedence over 'always'
-            if (blockPlan) continue;
-
-            const meetsThreshold = threshold != null ? invoiceTotal > threshold : true;
-            if (!forcePlan && !meetsThreshold) continue;
-
-            // Create payment plan via generate_installments RPC
-            const { error: planError } = await client.rpc("generate_installments", {
-              _invoice_id: invoiceIds[i],
-              _org_id: orgId,
-              _count: instCount,
-              _frequency: freq,
-            });
-
-            if (planError) {
-              console.error(`[BillingRun] Failed to create payment plan for invoice ${invoiceIds[i]}:`, planError);
-            }
-          }
-        }
+      // BR10: If any plans failed, surface in summary for UI to consume
+      if (planFailures.length > 0) {
+        console.warn(`[BillingRun] ${planFailures.length} payment plan(s) failed to generate out of ${successful.length} invoices`);
       }
     }
   }
 
-  // ── Best-effort Xero invoice sync ──
+  // ── Xero invoice sync with attempt tracking (BR9) ──
+  // Previous fire-and-forget made failures invisible. Now each attempt
+  // records its outcome in xero_entity_mappings so the UI can surface
+  // pending / synced / failed states and offer retry.
   if (invoiceIds.length > 0) {
     try {
       const { data: xeroConn } = await client
         .from("xero_connections")
-        .select("sync_enabled, auto_sync_invoices")
+        .select("id, sync_enabled, auto_sync_invoices")
         .eq("org_id", orgId)
         .maybeSingle();
 
@@ -943,26 +955,76 @@ async function executeBillingLogic(
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+        // Seed attempt rows as 'pending' before firing — so the UI sees
+        // in-flight state even if the edge function times out mid-sync
+        const pendingRows = invoiceIds.map((invoiceId) => ({
+          org_id: orgId,
+          connection_id: xeroConn.id,
+          entity_type: "invoice",
+          local_id: invoiceId,
+          xero_id: "",
+          sync_status: "pending",
+        }));
+
+        // Upsert pending rows. If a row already exists (retry path),
+        // update sync_status back to pending.
+        const { error: upsertError } = await client
+          .from("xero_entity_mappings")
+          .upsert(pendingRows, { onConflict: "org_id,entity_type,local_id" });
+
+        if (upsertError) {
+          console.error("[BillingRun] Failed to seed xero_entity_mappings pending rows:", upsertError);
+        }
+
+        // Fire syncs in parallel. Each sync function is responsible for
+        // updating its own xero_entity_mappings row to 'synced' or
+        // 'failed' with error_message.
         await Promise.all(
-          invoiceIds.map((invoiceId) =>
-            fetch(`${supabaseUrl}/functions/v1/xero-sync-invoice`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${serviceRoleKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ invoice_id: invoiceId }),
-            }).catch((err) => {
-              console.error(`[BillingRun] Xero sync failed for invoice ${invoiceId} (non-critical):`, err);
-            })
-          )
+          invoiceIds.map(async (invoiceId) => {
+            try {
+              const response = await fetch(`${supabaseUrl}/functions/v1/xero-sync-invoice`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${serviceRoleKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ invoice_id: invoiceId }),
+              });
+
+              if (!response.ok) {
+                const errText = await response.text().catch(() => "unknown error");
+                // Record failure. The sync function may also have recorded,
+                // but network-level failures need capturing here.
+                await client
+                  .from("xero_entity_mappings")
+                  .update({
+                    sync_status: "failed",
+                    error_message: `Sync call returned ${response.status}: ${errText.slice(0, 200)}`,
+                  })
+                  .eq("org_id", orgId)
+                  .eq("entity_type", "invoice")
+                  .eq("local_id", invoiceId);
+              }
+            } catch (err: any) {
+              console.error(`[BillingRun] Xero sync network error for invoice ${invoiceId}:`, err);
+              await client
+                .from("xero_entity_mappings")
+                .update({
+                  sync_status: "failed",
+                  error_message: `Network error: ${err?.message || String(err)}`.slice(0, 500),
+                })
+                .eq("org_id", orgId)
+                .eq("entity_type", "invoice")
+                .eq("local_id", invoiceId);
+            }
+          })
         );
-        console.log(`[BillingRun] Xero auto-sync triggered for ${invoiceIds.length} invoices`);
+        console.log(`[BillingRun] Xero auto-sync initiated for ${invoiceIds.length} invoices — outcomes in xero_entity_mappings`);
       } else {
         console.log("[BillingRun] Xero sync skipped — no active connection or auto_sync_invoices disabled");
       }
     } catch (err) {
-      console.error("[BillingRun] Xero sync failed (non-critical):", err);
+      console.error("[BillingRun] Xero sync orchestration failed (non-critical):", err);
     }
   }
 

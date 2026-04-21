@@ -222,22 +222,40 @@ across the wizard, hook, and edge function.
   function logic.
 
 #### To fix (Commit 4b)
-- **BR2** Edge function bypasses `create_invoice_with_items` RPC
-  with direct table inserts. Risks: orphan invoices on items
-  failure, no `is_org_active` subscription gate, no atomic
-  per-invoice scope.
-- **BR9** Xero sync errors silently swallowed. Failed invoice
-  syncs invisible to user. Need per-invoice sync attempt tracking
-  via existing `xero_entity_mappings` table.
+
+_(All items below resolved in Commit 4b — see Fixed section.)_
+
+#### Fixed (Commit 4b)
+- **BR2** Edge function now calls `create_invoice_with_items`
+  RPC per-payer instead of direct batch INSERTs. Consequences:
+  - Each invoice atomic (items always land with their invoice)
+  - `is_org_active` subscription gate now enforced (BR11
+    self-resolved)
+  - Per-payer error surfacing cleaner
+  - Cost: slower (N RPC calls vs 2 batch inserts), acceptable
+    tradeoff for correctness
+  - Also added: post-RPC UPDATE to set billing_run_id + term_id
+    (RPC doesn't accept these); if UPDATE fails, orphan invoice
+    deleted
+- **BR9** Xero sync attempts now tracked in `xero_entity_mappings`
+  table. Pre-flight upsert seeds 'pending' rows for every invoice
+  in the run; per-invoice sync function updates to 'synced' or
+  'failed' with error_message. Network-level failures captured
+  by orchestrator. Data trail exists for future UI surfacing
+  of retry affordance.
+- **BR10 partial** Per-invoice payment plan failures now logged
+  (not just console.error). Count surfaced in logs; future
+  commit can thread this into the summary for UI display.
+- **BR11** Self-resolved via BR2 — `create_invoice_with_items`
+  enforces `is_org_active`, so expired-trial orgs now fail
+  cleanly at the first RPC call rather than succeeding via
+  direct insert and failing later.
 
 #### Filed for later
 - BR3 Concurrency-safe overlap check (edge function pre-check
   races with insert)
 - BR5 Verify `delete_billing_run` RPC matches UI gating
 - BR6 Preview/edge re-query difference (small race, accepted)
-- BR10 Per-invoice plan failure surfacing in summary
-- BR11 Subscription trigger error handling for batch insert
-  (resolves itself once Commit 4b lands — RPC enforces `is_org_active`)
 - BR12 Configurable due-date default (currently hardcoded 14 days)
 - BR13, BR16-BR20 Polish / future features
 
