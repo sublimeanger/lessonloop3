@@ -31,6 +31,7 @@ import {
 } from '@/components/dashboard';
 import { UpcomingWeekWidget } from '@/components/dashboard/UpcomingWeekWidget';
 import { FinanceDashboard } from '@/components/dashboard/FinanceDashboard';
+import { ActiveDisputesCard } from '@/components/dashboard/ActiveDisputesCard';
 import {
   Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
   Building2, Loader2, AlertCircle, ChevronRight, BookOpen, X, Settings, CalendarDays
@@ -168,6 +169,10 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           <FirstRunExperience />
         </SectionErrorBoundary>
 
+        <SectionErrorBoundary name="Active Disputes">
+          <ActiveDisputesCard />
+        </SectionErrorBoundary>
+
         <SectionErrorBoundary name="Urgent Actions">
           <UrgentActionsBar />
         </SectionErrorBoundary>
@@ -279,6 +284,10 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
 
         <SectionErrorBoundary name="First Run Experience">
           <FirstRunExperience />
+        </SectionErrorBoundary>
+
+        <SectionErrorBoundary name="Active Disputes">
+          <ActiveDisputesCard />
         </SectionErrorBoundary>
 
         <SectionErrorBoundary name="Urgent Actions">

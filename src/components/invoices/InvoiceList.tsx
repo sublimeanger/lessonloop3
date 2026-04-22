@@ -10,13 +10,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Receipt, RotateCcw, Pencil } from 'lucide-react';
+import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Receipt, RotateCcw, Pencil, AlertTriangle } from 'lucide-react';
 import { InlineEmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
 import type { Database } from '@/integrations/supabase/types';
 import { formatCurrencyMinor, formatDateUK } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useInvoiceIdsWithActiveDispute } from '@/hooks/useInvoicesWithDisputes';
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
 type SortColumn = 'invoice_number' | 'payer' | 'due_date' | 'status' | 'amount';
@@ -212,10 +213,18 @@ function InvoiceActions({
   );
 }
 
+const DisputedFlag = () => (
+  <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+    <AlertTriangle className="h-3 w-3" />
+    Disputed
+  </span>
+);
+
 const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
   invoice,
   currency,
   selected,
+  hasDispute,
   onSelect,
   onNavigate,
   onSend,
@@ -227,6 +236,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
   invoice: InvoiceWithDetails;
   currency: string;
   selected: boolean;
+  hasDispute: boolean;
   onSelect: (checked: boolean) => void;
   onNavigate: () => void;
   onSend: (inv: InvoiceWithDetails) => void;
@@ -265,8 +275,9 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
         </div>
       </div>
       <div className="flex items-center justify-between mt-2 pl-7">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={invoice.status} dueDate={invoice.due_date} isCreditNote={invoice.is_credit_note} />
+          {hasDispute && <DisputedFlag />}
           <span className="text-xs text-muted-foreground">
             Due {formatDateUK(parseISO(invoice.due_date), 'dd MMM yyyy')}
           </span>
@@ -301,6 +312,7 @@ export function InvoiceList({
   const navigate = useNavigate();
   const { currentOrg } = useOrg();
   const currency = currentOrg?.currency_code || 'GBP';
+  const { data: disputedInvoiceIds } = useInvoiceIdsWithActiveDispute();
 
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -394,6 +406,7 @@ export function InvoiceList({
             invoice={invoice}
             currency={currency}
             selected={selectedIds.has(invoice.id)}
+            hasDispute={disputedInvoiceIds?.has(invoice.id) ?? false}
             onSelect={(checked) => handleSelectOne(invoice.id, !!checked)}
             onNavigate={() => navigate(`/invoices/${invoice.id}`)}
             onSend={onSend}
@@ -462,7 +475,10 @@ export function InvoiceList({
                 </span>
               </div>
               <div className="w-20 shrink-0">
-                <StatusBadge status={invoice.status} dueDate={invoice.due_date} isCreditNote={invoice.is_credit_note} />
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <StatusBadge status={invoice.status} dueDate={invoice.due_date} isCreditNote={invoice.is_credit_note} />
+                  {disputedInvoiceIds?.has(invoice.id) && <DisputedFlag />}
+                </div>
               </div>
               <div className="w-24 text-right shrink-0">
                 <span className={cn('text-sm font-semibold tabular-nums', invoice.is_credit_note ? 'text-success' : 'text-foreground')}>

@@ -7,6 +7,7 @@ import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { StatsGrid } from '@/components/shared/StatsGrid';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { DashboardHero } from '@/components/dashboard/DashboardHero';
+import { ActiveDisputesCard } from '@/components/dashboard/ActiveDisputesCard';
 import { PoundSterling, Receipt, AlertTriangle, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,12 @@ export function FinanceDashboard({ firstName }: FinanceDashboardProps) {
               hasLessons={(stats?.totalLessons ?? 0) > 0}
               timezone={currentOrg?.timezone}
             />
+          </SectionErrorBoundary>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="Active Disputes">
+            <ActiveDisputesCard />
           </SectionErrorBoundary>
         </motion.div>
 
