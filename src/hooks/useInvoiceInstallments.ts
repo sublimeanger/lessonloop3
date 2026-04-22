@@ -132,7 +132,11 @@ export function useGenerateInstallments() {
   });
 }
 
-/** Remove payment plan — deletes pending/overdue installments and resets invoice flags */
+/** Remove payment plan — atomic via cancel_payment_plan RPC which
+ *  guards on paid/partially_paid installments and runs the DELETE +
+ *  invoice UPDATE + audit_log in one transaction. Previous client-side
+ *  two-call implementation was non-atomic AND left partially_paid
+ *  installments orphaned on invoices with payment_plan_enabled=false. */
 export function useRemovePaymentPlan() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrg();
@@ -142,21 +146,10 @@ export function useRemovePaymentPlan() {
     mutationFn: async (invoiceId: string) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      // Only delete pending/overdue installments (preserve paid records)
-      const { error: deleteError } = await supabase
-        .from('invoice_installments')
-        .delete()
-        .eq('invoice_id', invoiceId)
-        .eq('org_id', currentOrg.id)
-        .in('status', ['pending', 'overdue']);
-      if (deleteError) throw deleteError;
-
-      const { error: updateError } = await supabase
-        .from('invoices')
-        .update({ payment_plan_enabled: false, installment_count: null })
-        .eq('id', invoiceId)
-        .eq('org_id', currentOrg.id);
-      if (updateError) throw updateError;
+      const { error } = await (supabase.rpc as any)('cancel_payment_plan', {
+        p_invoice_id: invoiceId,
+      });
+      if (error) throw error;
     },
     onSuccess: (_, invoiceId) => {
       queryClient.invalidateQueries({ queryKey: ['installments', invoiceId] });
