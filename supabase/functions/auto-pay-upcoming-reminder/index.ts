@@ -122,7 +122,38 @@ serve(async (req) => {
         }).format(minor / 100);
       };
 
-      const amountStr = formatAmount(inst.amount_minor);
+      // J7-F4: compute outstanding (same calc as stripe-auto-pay-installment
+      // will use when charging) so the heads-up matches reality for
+      // partially_paid installments. Mirrors J6-F7 on
+      // installment-upcoming-reminder. Without this, a partially_paid
+      // installment's upcoming reminder shows nominal amount_minor but
+      // Stripe charges outstanding — parent sees a mismatch.
+      const { data: priorPayments } = await supabase
+        .from("payments")
+        .select("id, amount_minor")
+        .eq("installment_id", inst.id);
+      const priorPaymentIds = (priorPayments || []).map((p: any) => p.id);
+      let priorRefunded = 0;
+      if (priorPaymentIds.length > 0) {
+        const { data: priorRefundRows } = await supabase
+          .from("refunds")
+          .select("amount_minor")
+          .in("payment_id", priorPaymentIds)
+          .eq("status", "succeeded");
+        priorRefunded = (priorRefundRows || []).reduce(
+          (s: number, r: any) => s + r.amount_minor, 0,
+        );
+      }
+      const priorApplied = (priorPayments || []).reduce(
+        (s: number, p: any) => s + p.amount_minor, 0,
+      ) - priorRefunded;
+      const outstanding = inst.amount_minor - priorApplied;
+
+      // Skip if already essentially paid (status lag from a payment
+      // that just landed).
+      if (outstanding < 100) continue;
+
+      const amountStr = formatAmount(outstanding);
       const dueDateStr = new Date(inst.due_date).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "long",
