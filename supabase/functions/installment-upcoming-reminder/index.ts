@@ -33,7 +33,8 @@ serve(async (req) => {
           id, invoice_number, total_minor, currency_code, org_id,
           paid_minor, installment_count,
           organisation:organisations!inner(name),
-          payer_guardian:guardians(id, full_name, email, user_id)
+          payer_guardian:guardians(id, full_name, email, user_id),
+          payer_student:students(id, first_name, last_name, email)
         )
       `)
       .in("status", ["pending", "partially_paid"])
@@ -49,11 +50,25 @@ serve(async (req) => {
         const invoice = installment.invoice as any;
         const org = invoice.organisation;
         const guardian = invoice.payer_guardian;
+        const student = invoice.payer_student;
 
-        if (!guardian?.email) continue;
+        // J6-F8: resolve recipient — guardian first, then student fallback.
+        // Student-payer invoices previously received no reminder at all.
+        const recipientEmail = guardian?.email || student?.email;
+        const recipientName = guardian?.full_name
+          || (student ? `${student.first_name} ${student.last_name}`.trim() : null);
+        const recipientType: "guardian" | "student" | null = guardian?.email
+          ? "guardian"
+          : student?.email
+          ? "student"
+          : null;
+        const recipientId = guardian?.email ? guardian?.id : student?.id;
 
-        // Check notification prefs
-        if (guardian.user_id) {
+        if (!recipientEmail || !recipientName || !recipientType) continue;
+
+        // Check notification prefs — only guardians have user_id for prefs.
+        // Students without a user_id always receive (no prefs to check).
+        if (recipientType === "guardian" && guardian.user_id) {
           const enabled = await isNotificationEnabled(supabase, invoice.org_id, guardian.user_id, "email_invoice_reminders");
           if (!enabled) continue;
         }
@@ -68,9 +83,36 @@ serve(async (req) => {
           .limit(1);
         if (existing && existing.length > 0) continue;
 
+        // J6-F7: compute outstanding on this installment so partially_paid
+        // installments show the real amount due, not the nominal amount.
+        const { data: priorPayments } = await supabase
+          .from("payments")
+          .select("id, amount_minor")
+          .eq("installment_id", installment.id);
+        const priorPaymentIds = (priorPayments || []).map((p: any) => p.id);
+        let priorRefunded = 0;
+        if (priorPaymentIds.length > 0) {
+          const { data: priorRefundRows } = await supabase
+            .from("refunds")
+            .select("amount_minor")
+            .in("payment_id", priorPaymentIds)
+            .eq("status", "succeeded");
+          priorRefunded = (priorRefundRows || []).reduce(
+            (s: number, r: any) => s + r.amount_minor, 0,
+          );
+        }
+        const priorApplied = (priorPayments || []).reduce(
+          (s: number, p: any) => s + p.amount_minor, 0,
+        ) - priorRefunded;
+        const outstanding = installment.amount_minor - priorApplied;
+
+        // Skip if essentially nothing owed on this installment
+        // (status lag from a payment that just landed).
+        if (outstanding < 100) continue;
+
         const formatter = new Intl.NumberFormat("en-GB", { style: "currency", currency: invoice.currency_code || "GBP" });
-        const installmentAmount = formatter.format(installment.amount_minor / 100);
-        const remainingAfter = formatter.format((invoice.total_minor - (invoice.paid_minor || 0) - installment.amount_minor) / 100);
+        const installmentAmount = formatter.format(outstanding / 100);
+        const remainingAfter = formatter.format((invoice.total_minor - (invoice.paid_minor || 0) - outstanding) / 100);
         const orgName = org?.name || "LessonLoop";
         const dueDate = new Date(installment.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
@@ -79,7 +121,7 @@ serve(async (req) => {
         const html = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h1 style="color: #333;">Upcoming Payment Reminder</h1>
-            <p>Dear ${escapeHtml(guardian.full_name)},</p>
+            <p>Dear ${escapeHtml(recipientName)},</p>
             <p>This is a friendly reminder that installment <strong>${installment.installment_number} of ${invoice.installment_count}</strong>
                for invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> is due in <strong>3 days</strong>.</p>
             <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
@@ -104,10 +146,10 @@ serve(async (req) => {
           subject,
           body: html,
           sender_user_id: null,
-          recipient_email: guardian.email,
-          recipient_name: guardian.full_name,
-          recipient_type: "guardian",
-          recipient_id: guardian.id,
+          recipient_email: recipientEmail,
+          recipient_name: recipientName,
+          recipient_type: recipientType,
+          recipient_id: recipientId,
           related_id: installment.id,
           message_type: "installment_upcoming",
           status: resendApiKey ? "pending" : "logged",
@@ -121,7 +163,7 @@ serve(async (req) => {
             headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
               from: `${orgName} <billing@lessonloop.net>`,
-              to: [guardian.email],
+              to: [recipientEmail],
               subject,
               html,
               headers: {
@@ -146,9 +188,9 @@ serve(async (req) => {
 
           if (response.ok) {
             remindersSent++;
-            console.log(`Sent upcoming reminder for installment #${installment.installment_number} of ${invoice.invoice_number} to ${guardian.email}`);
+            console.log(`Sent upcoming reminder for installment #${installment.installment_number} of ${invoice.invoice_number} to ${recipientEmail}`);
           } else {
-            errors.push(`Failed to send to ${guardian.email}: ${JSON.stringify(result)}`);
+            errors.push(`Failed to send to ${recipientEmail}: ${JSON.stringify(result)}`);
           }
         } else {
           remindersSent++;

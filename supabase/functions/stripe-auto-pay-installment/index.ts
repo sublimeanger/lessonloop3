@@ -152,6 +152,27 @@ serve(async (req) => {
 
         const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams, stripeOpts);
 
+        // J6-F15: Local audit trail independent of webhook delivery.
+        // Best-effort — failure here never aborts the auto-pay pass.
+        try {
+          await supabase.from("audit_log").insert({
+            org_id: invoice.org_id,
+            actor_user_id: null,
+            action: "auto_pay_initiated",
+            entity_type: "invoice",
+            entity_id: inst.invoice_id,
+            after: {
+              installment_id: inst.id,
+              installment_number: inst.installment_number,
+              outstanding_minor: outstanding,
+              payment_intent_id: paymentIntent.id,
+              stripe_status: paymentIntent.status,
+            },
+          });
+        } catch (auditErr) {
+          console.error("Failed to write auto_pay_initiated audit:", auditErr);
+        }
+
         if (paymentIntent.status === "succeeded") {
           // The webhook will handle recording the payment, so we just log success
           results.push({ installmentId: inst.id, status: "succeeded" });
@@ -169,6 +190,29 @@ serve(async (req) => {
         console.error(`Auto-pay failed for installment ${inst.id}:`, err.message);
         results.push({ installmentId: inst.id, status: "failed", error: err.message });
         failed++;
+
+        // J6-F15: Local audit trail for the failure path. Webhook never
+        // fires on a failed create — this is the only signal operators
+        // get that auto-pay was attempted and rejected.
+        try {
+          await supabase.from("audit_log").insert({
+            org_id: invoice.org_id,
+            actor_user_id: null,
+            action: "auto_pay_failed",
+            entity_type: "invoice",
+            entity_id: inst.invoice_id,
+            after: {
+              installment_id: inst.id,
+              installment_number: inst.installment_number,
+              outstanding_minor: outstanding,
+              error: err.message ?? String(err),
+              code: err.code ?? null,
+              type: err.type ?? null,
+            },
+          });
+        } catch (auditErr) {
+          console.error("Failed to write auto_pay_failed audit:", auditErr);
+        }
 
         // If card declined, notify the parent
         if (err.code === "card_declined" || err.type === "StripeCardError") {
