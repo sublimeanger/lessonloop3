@@ -715,6 +715,103 @@ blocker eliminated. Ledger identity (I1) reinforced: refund
 over-refund protected at DB layer, chargeback lost state reflected
 automatically via compensating-refund cascade.
 
+### Journey 6 — Payment plans / installments
+
+Walked 23 April 2026. Scope: `generate_installments`,
+`cancel_payment_plan`, `record_installment_payment`,
+`recalculate_installment_status`, `record_stripe_payment`,
+`record_payment_and_update_status`, parent-portal installment pay,
+installment cron functions, auto-pay, PaymentPlansDashboard.
+12 fixed across 4 commits. 4 filed.
+
+#### Fixed (Commit 1 — atomic plan removal)
+
+- **J6-F1 / F2** `useRemovePaymentPlan` previously ran DELETE +
+  UPDATE as two separate client-side calls. Non-atomic. Its
+  DELETE filter (`status IN ('pending','overdue')`) silently
+  skipped partially_paid installments, leaving them orphaned on
+  invoices with `payment_plan_enabled=false`. Sanity check of
+  the brief surfaced that `cancel_payment_plan` RPC
+  (migration 20260418092500) already has the correct semantics —
+  locks invoice FOR UPDATE, rejects on paid/partially_paid,
+  atomic DELETE + UPDATE + audit. Hook rewired to call it;
+  no new migration.
+
+#### Fixed (Commit 2 — payment RPCs delegate to recalculate)
+
+- **J6-F3 / F4** `record_stripe_payment` and
+  `record_payment_and_update_status` both computed paid_minor +
+  status + overpayment_minor + installment cascade inline.
+  `recalculate_invoice_paid` already does exactly this (post-J4
+  A4 due-date-aware branch + overpayment population + full
+  cascade). Duplicated logic drifts.
+- P1 additionally lacked A4 and never updated
+  `overpayment_minor` — delegation fixes both as a side effect.
+- Both RPCs now call `PERFORM recalculate_invoice_paid(...)`
+  after payment INSERT and (where present) installment cascade.
+  Running installment recalc twice is idempotent.
+- Signatures, auth guards, audit_log `'payment_recorded'` entry,
+  idempotency early-return on `provider_reference`,
+  `_pay_remaining` logic, and P1's installment cascade all
+  preserved. Return shape unchanged for callers.
+
+#### Fixed (Commit 3 — edge function installment fixes)
+
+- **J6-F6** `installment-overdue-check`: partially_paid
+  installments past their due_date now count as affected
+  invoices for the recalc pass, even though their installment
+  status stays `partially_paid` (A3 design keeps it distinct
+  from `overdue`).
+- **J6-F10** Time-based `sent → overdue` flip stays in the
+  cron — `recalculate_invoice_paid`'s A4 branch is refund-reopen
+  only, not time-based. Direct UPDATE flips sent→overdue as
+  today; cron then loops affected invoice IDs (flipped set ∪
+  partial-past-due set) through recalc best-effort, which picks
+  up refund drift (installment cascade) in the same pass.
+  Failures logged, never abort the cron.
+- **J6-F7** `installment-upcoming-reminder`: per-installment
+  outstanding now computed (amount_minor minus non-refunded
+  prior payments). Email shows real amount due for
+  partially_paid installments, not the nominal amount. Skip if
+  outstanding < £1.
+- **J6-F8** Student-payer fallback: invoices with
+  `payer_student_id` and no guardian previously received no
+  reminder. Recipient now resolves to guardian OR student;
+  `recipient_type` tagged accordingly (`message_log` CHECK
+  constraint already allows 'student').
+- **J6-F15** `stripe-auto-pay-installment`: audit_log
+  `auto_pay_initiated` on successful PI create +
+  `auto_pay_failed` in the catch branch. Best-effort. Webhook
+  never fires on failed create, so this was previously invisible
+  to operators.
+
+#### Fixed (Commit 4 — dashboard partially_paid)
+
+- **J6-F21** `getPlanHealth` now classifies partially_paid
+  past-due as 'overdue' (money attributed but insufficient AND
+  deadline passed), and partially_paid within 3 days of due as
+  'attention'.
+- **J6-F22** `getMaxOverdueDays` includes partially_paid-past-due
+  in the filter.
+- **J6-F23** "Next attention" installment picks: (1)
+  partially_paid past due, (2) pending/overdue past due,
+  (3) partially_paid not yet due, (4) next pending — stuck
+  partials at the top of operator attention. `paidCount` keeps
+  strictly-paid semantics; new `partialCount` surfaces as a
+  "· N partial" warning-tone suffix on the progress cell.
+
+#### Filed (won't fix this pass)
+
+- **J6-F12** filed — carried forward to a later polish pass.
+- **J6-F14** filed — carried forward to a later polish pass.
+- **J6-F17** filed — carried forward to a later polish pass.
+- **J6-F20** filed — carried forward to a later polish pass.
+
+**Journey 6 closed (23 April 2026).** 12 fixed across 4 commits,
+4 filed. Payment-plan atomicity restored, payment RPCs consolidated
+on `recalculate_invoice_paid`, partially_paid awareness added
+across cron functions, reminder emails, and PaymentPlansDashboard.
+
 ---
 
 ## Process improvements

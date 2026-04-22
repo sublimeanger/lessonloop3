@@ -76,7 +76,7 @@ This is substantially larger than typical SaaS polish scope. The roadmap below i
 | # | Area | Status | Journeys closed | Commits |
 |---|---|---|---|---|
 | 0 | Cross-cutting invariants | ⚪ | 0 of 4 tracks | 0 |
-| 1 | Billing & invoicing | 🟡 | 5 of 11 | 30 |
+| 1 | Billing & invoicing | 🟡 | 6 of 11 | 35 |
 | 2 | Parent portal | ⚪ | 0 of 8 | 0 |
 | 3 | Students & guardians | ⚪ | 0 of 6 | 0 |
 | 4 | Calendar | ⚪ | 0 of 9 | 0 |
@@ -144,7 +144,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 ## Area 1 — Billing & invoicing 🟡
 
-**Status:** In progress. Journey 6 next.
+**Status:** In progress. Journey 7 next.
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -183,11 +183,14 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 **Key commits:** `77a1034` · `ca82742` · `88c2129` · `f82ade7` (Track A) · Track B: see git log for hashes  
 **Notable:** Closed the Stripe webhook dispute handling production blocker. Three new webhook event handlers (charge.dispute.created/updated/closed), new payment_disputes table with finance-team RLS, lost-dispute compensating refund cascade via `apply_lost_dispute_cascade` RPC (status=succeeded with `refund_from_dispute_id` FK — `recalculate_invoice_paid` then naturally flips invoice paid→sent/overdue via A4). Dispute banner on InvoiceDetail, list flag, dashboard active-disputes card. Operator submits evidence via Stripe dashboard (no in-app evidence UI scoped in this journey). Track A refund hardening: DB-level SUM safety net on `validate_refund_amount` trigger, notification idempotency, webhook-path notification trigger for Stripe-Dashboard refunds, Stripe reason enum passthrough, `refund.updated/failed` handler for async reversal.
 
-### Journey 6 — Payment plans (installments) 🔜 NEXT
+### Journey 6 — Payment plans (installments) 🟢 CLOSED
 
-**Scope:** `generate_installments`, `update_payment_plan`, `cancel_payment_plan`, `record_installment_payment`, `recalculate_installment_status`, parent-portal installment pay flow, partially_paid state handling.
+**Walked:** 23 April 2026  
+**Findings:** 16 (J6-F1-F23, gaps included) · **Fixed:** 12 across 4 commits · **Filed:** 4  
+**Key commits:** `ce05679` · `c2b2301` · `e63d6e8` · `767e12b` · docs close  
+**Notable:** Payment plan removal now atomic via existing `cancel_payment_plan` RPC (previous client-side two-call path left partially_paid installments orphaned). Payment RPCs (`record_stripe_payment`, `record_payment_and_update_status`) now delegate status/paid_minor/overpayment/installment-cascade to `recalculate_invoice_paid` — single source of truth, A4 branch covered for both. Installment-overdue cron keeps its canonical time-based sent→overdue flip but additionally loops affected invoices through recalc so refund drift reconciles same-pass; partially_paid-past-due invoices included in the recalc set. Installment-upcoming reminder now computes real outstanding (not nominal) and falls back to student payer when no guardian. Auto-pay edge fn writes local audit trail (`auto_pay_initiated` / `auto_pay_failed`) independent of webhook delivery. PaymentPlansDashboard recognises partially_paid in health/overdue/next-attention computations and surfaces a "N partial" hint on the progress cell.
 
-### Journey 7 — Reminders & overdue automation ⚪
+### Journey 7 — Reminders & overdue automation 🔜 NEXT
 
 **Scope:** `auto-pay-upcoming-reminder`, `overdue-reminders`, `invoice-overdue-check`, `installment-overdue-check`, `installment-upcoming-reminder`, overdue-trigger logic, `overdue_reminder_days [7,14,30]` escalation cadence, message_log dedup (Fix 5a applied — verify).
 
@@ -570,6 +573,8 @@ Recording decisions made during roadmap construction so future sessions understa
 - **22 April 2026 (Journey 4 close):** J4-F24 (silent recalc failure) closed via 3-attempt retry helper + audit_log trail + finance-team-safe read RPC + InvoiceDetail banner. Deliberately avoided relaxing audit_log SELECT RLS — narrow RPC approach keeps Track 0.2 risk surface unchanged.
 - **22 April 2026 (Journey 5 close):** Dispute state surfaces via new `payment_disputes` table + UI banner + list flag, NOT via `invoice_status` enum extension. Kept enum blast radius at zero. Lost-dispute cascade uses existing `refunds` table with `refund_from_dispute_id` FK — `recalculate_invoice_paid` A4 path handles the invoice state flip naturally, no trigger or RPC changes to that function.
 - **22 April 2026:** Journey 5 chose NOT to build in-app dispute evidence UI. Operator submits evidence via Stripe dashboard link surfaced in DisputeBanner. Keeps journey scope finite; evidence upload is a candidate for a later polish pass.
+- **23 April 2026 (Journey 6 close):** Did NOT duplicate `cancel_payment_plan` — existing RPC already had the right semantics (locks + paid/partially_paid guard + atomic DELETE+UPDATE+audit). Pointed the hook at it instead of creating `remove_payment_plan`.
+- **23 April 2026 (Journey 6, audit):** Kept the time-based `sent → overdue` flip in the `installment-overdue-check` cron rather than folding it into `recalculate_invoice_paid`. The helper's A4 branch covers refund-reopen only; a generic "time-aware" helper would widen its contract and affect every delegating RPC. Cron-only concern stays in the cron; recalc stays pure.
 
 ---
 
@@ -591,4 +596,4 @@ This file is version-controlled in the main repo. History is git log.
 
 ---
 
-_Last meaningful update: 22 April 2026 (Journey 5 closed — Stripe dispute handling blocker eliminated)._
+_Last meaningful update: 23 April 2026 (Journey 6 closed — payment plans / installments hardened)._
