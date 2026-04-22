@@ -76,7 +76,7 @@ This is substantially larger than typical SaaS polish scope. The roadmap below i
 | # | Area | Status | Journeys closed | Commits |
 |---|---|---|---|---|
 | 0 | Cross-cutting invariants | ⚪ | 0 of 4 tracks | 0 |
-| 1 | Billing & invoicing | 🟡 | 4 of 11 | 20 |
+| 1 | Billing & invoicing | 🟡 | 5 of 11 | 30 |
 | 2 | Parent portal | ⚪ | 0 of 8 | 0 |
 | 3 | Students & guardians | ⚪ | 0 of 6 | 0 |
 | 4 | Calendar | ⚪ | 0 of 9 | 0 |
@@ -144,7 +144,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 ## Area 1 — Billing & invoicing 🟡
 
-**Status:** In progress. Journey 5 next.
+**Status:** In progress. Journey 6 next.
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -176,11 +176,14 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 **Key commits:** `3146b6b` · `73829f2` · `30cd45b` · `12fdcc4` · `cc8569c` · `d592c8f` · `78f2a40` (docs) · `1682abd` · `b381c4c` · `4000389` · `55169e3` (docs close)  
 **Notable:** **J4-F24 was a critical silent-data-lie bug** — recalc failures after Stripe refunds left `invoice.paid_minor` stale and I1 ledger identity broken. Variant of J3-F14a. Closed with retry+audit helper, manual retry banner, and finance-team-safe RPCs avoiding audit_log RLS changes (Track 0.2 risk). Latent bug caught in `?action=refund` flow: first-payment check excluded fully-refunded first payments. Discoverability fix for paid-invoice header Refund button closes April 2026 QA feedback.
 
-### Journey 5 — Refunds & disputes 🔜 NEXT
+### Journey 5 — Refunds & disputes 🟢 CLOSED
 
-**Scope:** `stripe-process-refund`, manual refund path (`record_manual_refund` RPC), partial refunds, refund-of-refund edge cases, `validate_refund_amount` RPC. **Production blocker:** Stripe webhook does NOT handle `charge.dispute.*` events — chargebacks silently unhandled. Fix required before launch.
+**Walked:** 22 April 2026  
+**Findings:** 27 (J5-F1-F27) · **Fixed:** 17 across 10 commits · **Filed:** 10  
+**Key commits:** `77a1034` · `ca82742` · `88c2129` · `f82ade7` (Track A) · Track B: see git log for hashes  
+**Notable:** Closed the Stripe webhook dispute handling production blocker. Three new webhook event handlers (charge.dispute.created/updated/closed), new payment_disputes table with finance-team RLS, lost-dispute compensating refund cascade via `apply_lost_dispute_cascade` RPC (status=succeeded with `refund_from_dispute_id` FK — `recalculate_invoice_paid` then naturally flips invoice paid→sent/overdue via A4). Dispute banner on InvoiceDetail, list flag, dashboard active-disputes card. Operator submits evidence via Stripe dashboard (no in-app evidence UI scoped in this journey). Track A refund hardening: DB-level SUM safety net on `validate_refund_amount` trigger, notification idempotency, webhook-path notification trigger for Stripe-Dashboard refunds, Stripe reason enum passthrough, `refund.updated/failed` handler for async reversal.
 
-### Journey 6 — Payment plans (installments) ⚪
+### Journey 6 — Payment plans (installments) 🔜 NEXT
 
 **Scope:** `generate_installments`, `update_payment_plan`, `cancel_payment_plan`, `record_installment_payment`, `recalculate_installment_status`, parent-portal installment pay flow, partially_paid state handling.
 
@@ -548,7 +551,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 Must be closed before any paid customer signs up:
 
-1. **Stripe webhook missing dispute handling** (Area 18 Journey 8) — chargebacks invisible. Real money loss.
+1. ~~**Stripe webhook missing dispute handling** (Area 18 Journey 8) — chargebacks invisible. Real money loss.~~ **CLOSED** in Area 1 Journey 5, 22 April 2026. Three dispute event handlers landed, lost-cascade wired, operator notification + UI surfaces shipped. Area 18 Journey 8 now scoped to other missing events (`invoice.finalized`, `invoice.voided`, `payment_method.attached`, `customer.updated`) + broader webhook reliability.
 2. **Audit log gaps on 14 business-critical tables** (Track 0.1) — money-adjacent data modifiable without trail.
 3. **Recurring invoice templates have no scheduler** (Area 1 Journey 9) — UI suggests feature works; no cron fires. Verify and fix or remove UI.
 4. **RLS walk not done** (Track 0.2) — March 2026 fix cluster suggests pressure; residual gaps likely.
@@ -565,6 +568,8 @@ Recording decisions made during roadmap construction so future sessions understa
 - **21 April 2026:** Settings treated as 23 sub-journeys not 1 area. Each tab is its own polish pass.
 - **21 April 2026 (Journey 4 walk):** Extracted server-side PDF generation from J3-F5 filed list into dedicated Journey 11 — it's an architectural rewrite, not polish. Unblocks invoice PDF email attachment.
 - **22 April 2026 (Journey 4 close):** J4-F24 (silent recalc failure) closed via 3-attempt retry helper + audit_log trail + finance-team-safe read RPC + InvoiceDetail banner. Deliberately avoided relaxing audit_log SELECT RLS — narrow RPC approach keeps Track 0.2 risk surface unchanged.
+- **22 April 2026 (Journey 5 close):** Dispute state surfaces via new `payment_disputes` table + UI banner + list flag, NOT via `invoice_status` enum extension. Kept enum blast radius at zero. Lost-dispute cascade uses existing `refunds` table with `refund_from_dispute_id` FK — `recalculate_invoice_paid` A4 path handles the invoice state flip naturally, no trigger or RPC changes to that function.
+- **22 April 2026:** Journey 5 chose NOT to build in-app dispute evidence UI. Operator submits evidence via Stripe dashboard link surfaced in DisputeBanner. Keeps journey scope finite; evidence upload is a candidate for a later polish pass.
 
 ---
 
@@ -586,4 +591,4 @@ This file is version-controlled in the main repo. History is git log.
 
 ---
 
-_Last meaningful update: 22 April 2026 (Journey 4 closed — recalc failure surfacing shipped)._
+_Last meaningful update: 22 April 2026 (Journey 5 closed — Stripe dispute handling blocker eliminated)._

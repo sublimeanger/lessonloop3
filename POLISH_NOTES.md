@@ -558,6 +558,163 @@ commit), 16 filed. Recalc failures no longer silent; operator has
 a visible, actionable recovery path when Stripe refund recalc
 breaks down.
 
+### Journey 5 — Refunds & disputes
+
+Walked 22 April 2026. 27 findings across two tracks: Refund
+hardening (J5-F1-F13) and Dispute infrastructure build from zero
+(J5-F14-F27). 17 fixed across 10 commits. 10 filed.
+
+#### Fixed — Track A (Refunds)
+
+**Commit 1 (J5-F1, F3, F4) — DB-level SUM safety net:**
+- `validate_refund_amount` trigger upgraded from single-row
+  NEW.amount ≤ payment.amount to SUM(pending + succeeded) + NEW
+  ≤ payment. Locks payment row FOR UPDATE to serialise concurrent
+  INSERTs across RPC and edge-fn paths.
+- Service-role direct inserts and any future RPC paths now
+  safeguarded at DB layer — application-layer SUM checks remain
+  but are no longer the only gate.
+- `stripe-process-refund` application-layer check now sums
+  pending+succeeded (not just succeeded) so in-flight refunds
+  block new ones. Race winner path: first request inserts pending,
+  Stripe call proceeds; second request's trigger rejection returns
+  409 with clear retry copy.
+- `record_manual_refund` RPC already locks payment row FOR UPDATE
+  (20260331160000) — needed no change.
+
+**Commit 2 (J5-F8, F9) — Notification idempotency + webhook wiring:**
+- `send-refund-notification` 5-min debounce on
+  `message_log.related_id = refund_id` (fallback
+  `payment_id-amount`). Duplicate invocations skip cleanly.
+- `message_log` row enriched with `related_id`,
+  `related_type='refund'` for dedup read.
+- `stripe-webhook` `handleChargeRefunded` now fires
+  `send-refund-notification` for fresh Stripe-Dashboard-initiated
+  refunds (previously silent). Orphan-reconcile branch skips —
+  admin edge fn already notified when it inserted the pending row.
+
+**Commit 3 (J5-F10) — Stripe reason passthrough:**
+- `stripe-process-refund` maps LessonLoop reason labels to Stripe's
+  3-value enum (duplicate, fraudulent, requested_by_customer) via
+  `mapToStripeReason()`. "Duplicate payment" now correctly passes
+  `reason=duplicate` — Stripe waives the refund fee for duplicates.
+  All others → `requested_by_customer`.
+
+**Commit 4 (J5-F6) — refund.updated / refund.failed webhook:**
+- New event cases in `stripe-webhook`. `handleRefundUpdated` maps
+  Stripe status to our three-state enum, writes audit_log
+  before/after, and on succeeded→failed transition fires
+  `recalcWithRetry` to re-sync `invoices.paid_minor` (failed
+  refunds no longer reduce paid).
+- Async refund reversals (ACH return, issuer block) now surface
+  correctly instead of leaving ledger out of sync with Stripe.
+
+#### Fixed — Track B (Disputes)
+
+**Commit 5 (J5-F17, F24) — payment_disputes table:**
+- Full dispute schema: `stripe_dispute_id` UNIQUE (webhook retry
+  dedup), `stripe_charge_id`, `stripe_payment_intent_id`,
+  `amount_minor`, `currency_code`, `reason`, `network_reason_code`,
+  `status`, `evidence_due_by`, `stripe_dashboard_url`, `outcome`,
+  `opened_at`, `closed_at`, `stripe_metadata` jsonb.
+- Partial index `idx_payment_disputes_active` on active statuses
+  for dashboard urgent-actions queries.
+- RLS: finance-team SELECT, service-role INSERT/UPDATE.
+- `refunds.refund_from_dispute_id` FK added for lost-dispute
+  cascade traceability.
+- Two SECURITY DEFINER RPCs: `get_disputes_for_invoice`,
+  `get_active_disputes_for_org` (ordered by `evidence_due_by` ASC).
+
+**Commit 6 (J5-F14, F15, F16, F19, F25) — Dispute webhook handlers:**
+- `handleDisputeCreated`: resolves payment via `payment_intent`
+  match on `payments.provider_reference`, inserts dispute row
+  (UNIQUE dedups retries), writes `dispute_opened` audit, fires
+  `send-dispute-notification` best-effort. Stores
+  `stripe_dashboard_url` for operator one-click evidence submission
+  (livemode detection via dispute ID prefix).
+- `handleDisputeUpdated`: mutates existing row to match Stripe
+  (status, `evidence_due_by`, `network_reason_code`). Out-of-order
+  delivery falls back to created-handler. Audit entry only on
+  actual status change.
+- `handleDisputeClosed`: maps Stripe status to outcome
+  (won/lost/warning_closed/charge_refunded), idempotent on outcome
+  already set, fires close notification. Lost-cascade wired in
+  Commit 7.
+
+**Commit 7 (J5-F18) — Lost-dispute cascade:**
+- `apply_lost_dispute_cascade(_dispute_id)` RPC (SECURITY DEFINER,
+  service-role only — `auth.uid() IS NULL` guard blocks
+  authenticated callers). Idempotent: returns existing cascade
+  refund if already applied.
+- Inserts `refunds` row with `status='succeeded'`,
+  `stripe_refund_id=NULL` (not a Stripe Refund object),
+  `reason='Chargeback lost: <stripe_reason>'`,
+  `refund_from_dispute_id=<dispute>`. Calls
+  `recalculate_invoice_paid` — A4 due-date-aware branch flips
+  invoice paid→sent/overdue naturally. Writes
+  `dispute_lost_cascade_applied` audit entry.
+- `handleDisputeClosed` calls the RPC on outcome='lost'. Cascade
+  failure writes `dispute_lost_cascade_failed` audit entry AND
+  re-throws — forces Stripe webhook retry (ledger drift must not
+  be silent).
+
+**Commit 8 (J5-F20) — send-dispute-notification edge fn:**
+- New edge function notifies all active org owners (resolved via
+  `org_memberships` + `auth.admin.getUserById` + `profiles.full_name`).
+  Four event shapes: opened (red-orange, evidence deadline +
+  Stripe link CTA), won (green), lost (dark red, explains
+  auto-compensating refund), closed (grey informational).
+- 5-min idempotency via
+  `message_log.related_id = dispute-<id>-<event>`.
+- Wired from `handleDisputeCreated` (event=opened) and
+  `handleDisputeClosed` (event=won/lost/closed).
+
+**Commit 9 (J5-F21, F22, F27) — Frontend surfaces:**
+- `DisputeBanner` on InvoiceDetail: renders all disputes per
+  invoice, active ones first. Five visual tones (urgent, active,
+  won, lost, closed), deadline countdown (hours remaining in red
+  when <48h), direct Stripe dashboard link CTA on active disputes.
+- "Disputed" amber pill on InvoiceList next to status badge.
+  Desktop row + mobile card. Data via
+  `useInvoiceIdsWithActiveDispute` — cheap `Set<invoice_id>`
+  backed by partial index.
+- `ActiveDisputesCard` on staff dashboard: up to 5 active disputes
+  ordered by evidence deadline, click-through to InvoiceDetail.
+  Rendered in SoloTeacher, Academy, and Finance dashboards.
+- Three hooks: `useInvoiceDisputes`, `useActiveDisputesForOrg`,
+  `useInvoiceIdsWithActiveDispute`.
+
+#### Filed (won't fix this pass)
+
+- **J5-F2** Orphaned pending refund cleanup (J4-F25 carried
+  forward). Needs a cron edge fn — separate polish pass.
+- **J5-F5** refund.updated succeeded→failed creates compensating
+  payment row (architectural — current implementation recalculates
+  but doesn't insert a payment; low probability path, deferred).
+- **J5-F7** Refund reason enum vs freeform text. Needs product
+  decision on taxonomy. Polish.
+- **J5-F11** RefundDialog no minimum amount enforcement — Stripe
+  rejects below its floor anyway. Polish.
+- **J5-F12** /refunds org-wide report. Area 16 Reports scope.
+- **J5-F13** Teacher payroll correction on refund (academies only).
+  Cross-area — Area 8 Teachers & payroll.
+- **J5-F23** Auto-email parent on lost-dispute cascade — product
+  decision, deferred. Default: no email (parent already got money
+  back via card issuer).
+- **J5-F26** Connect dispute fee behaviour + platform fee reversal
+  — reporting polish, not correctness.
+- In-app dispute evidence submission UI — architectural; operator
+  currently submits via Stripe dashboard. Scoped for a future
+  journey.
+- Cron-based evidence-deadline escalation (email at 48h remaining)
+  — scoped but not built this pass. Filed for next polish pass.
+
+**Journey 5 closed (22 April 2026).** 27 findings, 17 fixed across
+10 commits, 10 filed. Stripe webhook dispute-handling production
+blocker eliminated. Ledger identity (I1) reinforced: refund
+over-refund protected at DB layer, chargeback lost state reflected
+automatically via compensating-refund cascade.
+
 ---
 
 ## Process improvements
