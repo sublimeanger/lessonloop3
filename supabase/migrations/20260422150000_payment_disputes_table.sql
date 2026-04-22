@@ -62,24 +62,26 @@ CREATE TABLE IF NOT EXISTS payment_disputes (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX idx_payment_disputes_stripe_id ON payment_disputes (stripe_dispute_id);
-CREATE INDEX idx_payment_disputes_payment ON payment_disputes (payment_id);
-CREATE INDEX idx_payment_disputes_invoice ON payment_disputes (invoice_id);
-CREATE INDEX idx_payment_disputes_org_status ON payment_disputes (org_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_disputes_stripe_id ON payment_disputes (stripe_dispute_id);
+CREATE INDEX IF NOT EXISTS idx_payment_disputes_payment ON payment_disputes (payment_id);
+CREATE INDEX IF NOT EXISTS idx_payment_disputes_invoice ON payment_disputes (invoice_id);
+CREATE INDEX IF NOT EXISTS idx_payment_disputes_org_status ON payment_disputes (org_id, status);
 -- Partial index for active-dispute queries (dashboard urgent actions)
-CREATE INDEX idx_payment_disputes_active
+CREATE INDEX IF NOT EXISTS idx_payment_disputes_active
   ON payment_disputes (org_id, evidence_due_by)
   WHERE status IN ('needs_response', 'warning_needs_response');
 
 ALTER TABLE payment_disputes ENABLE ROW LEVEL SECURITY;
 
 -- Finance team can view disputes. Matches refunds / invoice RLS pattern.
+DROP POLICY IF EXISTS "Finance team can view disputes" ON payment_disputes;
 CREATE POLICY "Finance team can view disputes"
   ON payment_disputes FOR SELECT
   USING (is_org_finance_team(auth.uid(), org_id));
 
 -- Service role only writes (webhook path). No admin-facing INSERT/UPDATE
 -- RPC in this journey — evidence submission happens via Stripe dashboard.
+DROP POLICY IF EXISTS "Service role manages disputes" ON payment_disputes;
 CREATE POLICY "Service role manages disputes"
   ON payment_disputes FOR ALL
   USING (auth.uid() IS NULL)
@@ -96,6 +98,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_payment_disputes_updated_at ON payment_disputes;
 CREATE TRIGGER trg_payment_disputes_updated_at
   BEFORE UPDATE ON payment_disputes
   FOR EACH ROW EXECUTE FUNCTION payment_disputes_touch_updated_at();
