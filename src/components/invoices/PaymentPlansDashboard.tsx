@@ -29,6 +29,7 @@ interface PlanRow {
   totalMinor: number;
   currencyCode: string;
   paidCount: number;
+  partialCount: number;
   totalCount: number;
   nextDueDate: string | null;
   nextDueAmount: number;
@@ -38,30 +39,64 @@ interface PlanRow {
   installments: Installment[];
 }
 
+// J6-F21: partially_paid installments count as 'has payment attributed'
+// — when their due_date is past, the plan should register as overdue
+// (the money is attributed but insufficient, and the deadline has passed).
+// When within 3 days, registers as attention like pending.
 function getPlanHealth(installments: Installment[]): PlanHealth {
   const today = startOfToday();
+  const isPastDue = (i: Installment) => differenceInDays(today, parseISO(i.due_date)) > 0;
   const hasOverdue = installments.some((i: Installment) =>
-    i.status === 'overdue' || (i.status === 'pending' && differenceInDays(today, parseISO(i.due_date)) > 0)
+    i.status === 'overdue'
+    || (i.status === 'pending' && isPastDue(i))
+    || (i.status === 'partially_paid' && isPastDue(i))
   );
   if (hasOverdue) return 'overdue';
 
-  const nextPending = installments.find((i: Installment) => i.status === 'pending');
-  if (nextPending) {
-    const daysUntilDue = differenceInDays(parseISO(nextPending.due_date), today);
+  const nextAwaiting = installments.find(
+    (i: Installment) => i.status === 'pending' || i.status === 'partially_paid',
+  );
+  if (nextAwaiting) {
+    const daysUntilDue = differenceInDays(parseISO(nextAwaiting.due_date), today);
     if (daysUntilDue <= 3) return 'attention';
   }
 
   return 'on_track';
 }
 
+// J6-F22: include partially_paid-past-due in the max-overdue-days calc.
 function getMaxOverdueDays(installments: Installment[]): number {
   const today = startOfToday();
+  const isPastDue = (i: Installment) => differenceInDays(today, parseISO(i.due_date)) > 0;
   return installments
-    .filter((i: Installment) => i.status === 'overdue' || (i.status === 'pending' && differenceInDays(today, parseISO(i.due_date)) > 0))
+    .filter((i: Installment) =>
+      i.status === 'overdue'
+      || (i.status === 'pending' && isPastDue(i))
+      || (i.status === 'partially_paid' && isPastDue(i)),
+    )
     .reduce((max: number, i: Installment) => {
       const days = differenceInDays(today, parseISO(i.due_date));
       return Math.max(max, days);
     }, 0);
+}
+
+// J6-F23: preferred "next needs attention" ordering:
+//   1. partially_paid past due (stuck partials at top of operator attention)
+//   2. pending/overdue past due
+//   3. partially_paid not yet due
+//   4. next pending
+function findNextAttentionInstallment(installments: Installment[]): Installment | undefined {
+  const today = startOfToday();
+  const isPastDue = (i: Installment) => differenceInDays(today, parseISO(i.due_date)) > 0;
+  const sorted = [...installments].sort(
+    (a, b) => a.installment_number - b.installment_number,
+  );
+  return (
+    sorted.find((i) => i.status === 'partially_paid' && isPastDue(i))
+    ?? sorted.find((i) => (i.status === 'pending' || i.status === 'overdue') && isPastDue(i))
+    ?? sorted.find((i) => i.status === 'partially_paid')
+    ?? sorted.find((i) => i.status === 'pending' || i.status === 'overdue')
+  );
 }
 
 const healthOrder: Record<PlanHealth, number> = { overdue: 0, attention: 1, on_track: 2 };
@@ -89,7 +124,8 @@ export function PaymentPlansDashboard() {
         status: i.status as Installment['status'],
       }));
       const paidInstallments = installments.filter((i: Installment) => i.status === 'paid');
-      const nextPending = installments.find((i: Installment) => i.status === 'pending' || i.status === 'overdue');
+      const partialInstallments = installments.filter((i: Installment) => i.status === 'partially_paid');
+      const nextAttention = findNextAttentionInstallment(installments);
       const health = getPlanHealth(installments);
       const overdueDays = getMaxOverdueDays(installments);
 
@@ -106,10 +142,11 @@ export function PaymentPlansDashboard() {
         totalMinor: plan.total_minor,
         currencyCode: plan.currency_code,
         paidCount: paidInstallments.length,
+        partialCount: partialInstallments.length,
         totalCount: plan.installment_count ?? installments.length,
-        nextDueDate: nextPending?.due_date ?? null,
-        nextDueAmount: nextPending?.amount_minor ?? 0,
-        nextInstallmentId: nextPending?.id ?? null,
+        nextDueDate: nextAttention?.due_date ?? null,
+        nextDueAmount: nextAttention?.amount_minor ?? 0,
+        nextInstallmentId: nextAttention?.id ?? null,
         health,
         overdueDays,
         installments,
@@ -205,7 +242,12 @@ export function PaymentPlansDashboard() {
                 <div className="space-y-1">
                   <Progress value={pct} className="h-2" />
                   <p className="text-xs text-muted-foreground">
-                    {row.paidCount}/{row.totalCount} · {formatCurrencyMinor(row.paidMinor, row.currencyCode)}/{formatCurrencyMinor(row.totalMinor, row.currencyCode)}
+                    {row.paidCount}/{row.totalCount}
+                    {row.partialCount > 0 && (
+                      <span className="ml-1 text-warning">· {row.partialCount} partial</span>
+                    )}
+                    {' · '}
+                    {formatCurrencyMinor(row.paidMinor, row.currencyCode)}/{formatCurrencyMinor(row.totalMinor, row.currencyCode)}
                   </p>
                 </div>
 
@@ -276,7 +318,12 @@ export function PaymentPlansDashboard() {
                     <div className="space-y-1 min-w-[140px]">
                       <Progress value={pct} className="h-2" />
                       <p className="text-xs text-muted-foreground">
-                        {row.paidCount}/{row.totalCount} · {formatCurrencyMinor(row.paidMinor, row.currencyCode)}/{formatCurrencyMinor(row.totalMinor, row.currencyCode)}
+                        {row.paidCount}/{row.totalCount}
+                        {row.partialCount > 0 && (
+                          <span className="ml-1 text-warning">· {row.partialCount} partial</span>
+                        )}
+                        {' · '}
+                        {formatCurrencyMinor(row.paidMinor, row.currencyCode)}/{formatCurrencyMinor(row.totalMinor, row.currencyCode)}
                       </p>
                     </div>
                   </TableCell>
