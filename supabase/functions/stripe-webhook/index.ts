@@ -1375,10 +1375,41 @@ async function handleDisputeClosed(supabase: any, dispute: Stripe.Dispute) {
     },
   });
 
-  // Lost cascade — Commit 7 adds this. Leave stub; wire in Commit 7.
-  // if (outcome === "lost") {
-  //   await applyLostDisputeCascade(supabase, existing, dispute);
-  // }
+  // J5-F18: Lost dispute cascade. Insert compensating refund via RPC;
+  // refund recalc cascade through recalculate_invoice_paid flips the
+  // parent invoice paid → sent/overdue. Uses recalcWithRetry via RPC
+  // — if anything fails here, audit_log dispute_closed is already
+  // written, but the ledger drift will need operator intervention.
+  if (outcome === "lost") {
+    const { data: cascadeResult, error: cascadeErr } = await supabase.rpc(
+      "apply_lost_dispute_cascade",
+      { _dispute_id: existing.id },
+    );
+
+    if (cascadeErr) {
+      console.error(`Lost-dispute cascade failed for dispute ${truncate(dispute.id)}:`, cascadeErr);
+      // Write a distinct audit entry so operators can see the cascade
+      // failed (generic dispute_closed audit entry was already written
+      // above and doesn't capture the cascade state).
+      await supabase.from("audit_log").insert({
+        org_id: existing.org_id,
+        actor_user_id: null,
+        action: "dispute_lost_cascade_failed",
+        entity_type: "invoice",
+        entity_id: existing.invoice_id,
+        after: {
+          dispute_id: existing.id,
+          stripe_dispute_id: dispute.id,
+          error: cascadeErr.message,
+        },
+      });
+      // Throw to force Stripe retry — the cascade must land or the
+      // ledger is wrong.
+      throw new Error(`Lost-dispute cascade failed: ${cascadeErr.message}`);
+    }
+
+    log(`Lost-dispute cascade applied for ${truncate(dispute.id)}: ${JSON.stringify(cascadeResult)}`);
+  }
 
   // Notification (Commit 8) — best-effort.
   try {
