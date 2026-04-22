@@ -29,6 +29,14 @@ serve(async (req) => {
   let installmentsMarkedOverdue = 0;
   let planInvoicesUpdated = 0;
 
+  // J7-F2: collect every invoice ID touched by this run so we can loop
+  // recalculate_invoice_paid afterwards (same pattern as J6-F10 on
+  // installment-overdue-check). The direct time-based UPDATEs above
+  // are the canonical sent→overdue flip; the recalc loop catches
+  // refund-driven installment-status drift and paid_minor staleness
+  // that only the generic helper can reconcile.
+  const touchedInvoiceIds = new Set<string>();
+
   for (const org of orgs || []) {
     const tz = org.timezone || "Europe/London";
     // Get today's date in the org's timezone
@@ -48,6 +56,7 @@ serve(async (req) => {
       console.error(`Failed to update overdue invoices for org ${org.id}:`, error);
     } else {
       totalUpdated += data?.length ?? 0;
+      (data || []).forEach((row: { id: string }) => touchedInvoiceIds.add(row.id));
     }
 
     // 2. Mark individual installments as overdue
@@ -75,7 +84,8 @@ serve(async (req) => {
         installmentsMarkedOverdue += updated?.length ?? 0;
 
         // 3. For payment plan invoices: only mark parent as overdue if ALL installments are overdue
-        const affectedInvoiceIds = [...new Set((updated || []).map((i: any) => i.invoice_id))];
+        const affectedInvoiceIds = [...new Set((updated || []).map((i: any) => i.invoice_id as string))];
+        affectedInvoiceIds.forEach((id) => touchedInvoiceIds.add(id));
 
         for (const invId of affectedInvoiceIds) {
           // Check if any installments are still pending (not overdue/paid/void)
@@ -104,12 +114,37 @@ serve(async (req) => {
     }
   }
 
-  console.log(`Marked ${totalUpdated} non-plan invoice(s) as overdue, ${installmentsMarkedOverdue} installment(s) overdue, ${planInvoicesUpdated} plan invoice(s) overdue`);
+  // J7-F2: best-effort recalc over every invoice touched in this run.
+  // Service role has auth.uid() IS NULL so the helper's auth gate passes.
+  // Failures log and continue — a single bad invoice must not abort
+  // the whole cron pass.
+  let recalcOk = 0;
+  let recalcFailed = 0;
+  for (const invoiceId of touchedInvoiceIds) {
+    const { error: recalcErr } = await supabase.rpc("recalculate_invoice_paid", {
+      _invoice_id: invoiceId,
+    });
+    if (recalcErr) {
+      console.error(`recalc failed for invoice ${invoiceId}:`, recalcErr.message);
+      recalcFailed++;
+    } else {
+      recalcOk++;
+    }
+  }
+
+  console.log(
+    `Marked ${totalUpdated} non-plan invoice(s) as overdue, ` +
+    `${installmentsMarkedOverdue} installment(s) overdue, ` +
+    `${planInvoicesUpdated} plan invoice(s) overdue; ` +
+    `${touchedInvoiceIds.size} invoices recalc'd (${recalcOk} ok, ${recalcFailed} failed)`
+  );
 
   return new Response(JSON.stringify({
     updated: totalUpdated,
     installments_marked_overdue: installmentsMarkedOverdue,
     plan_invoices_updated: planInvoicesUpdated,
+    invoices_recalculated: recalcOk,
+    recalc_failed: recalcFailed,
   }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
