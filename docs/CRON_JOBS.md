@@ -69,8 +69,22 @@ Each uses the SUPABASE_SERVICE_ROLE_KEY as Bearer token auth.
 - **Schedule:** `0 9 * * *` (9:00 AM UTC daily)
 - **Function:** installment-upcoming-reminder
 - **Body:** `{}`
-- **Purpose:** Sends email reminders about installments due in the next 7 days.
+- **Purpose:** Sends email reminders about installments due in **3 days**.
 - **If missing:** Parents aren't reminded about upcoming installments.
+
+### 9a. overdue-reminders
+- **Schedule:** `0 9 * * *` (9:00 AM UTC daily)
+- **Function:** overdue-reminders
+- **Body:** `{}`
+- **Purpose:** Sends escalating overdue reminder emails to guardians or
+  student payers for invoices and plan installments past their due_date.
+  Tier cadence is per-org-configurable via `organisations.overdue_reminder_days`
+  (default `[7, 14, 30]`). Post-J7, gate fires the highest missing tier
+  for each entity — catches up on missed cron days rather than exact-day
+  matching. message_type taxonomy: `overdue_reminder_d{N}` /
+  `installment_reminder_d{N}` where N is the firing tier.
+- **If missing:** No overdue reminder emails sent. Parents aren't chased
+  on overdue invoices or overdue installments.
 
 ### 10. enrolment-offer-expiry
 - **Schedule:** `0 3 * * *` (3:00 AM UTC daily)

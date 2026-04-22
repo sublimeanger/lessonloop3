@@ -812,6 +812,174 @@ installment cron functions, auto-pay, PaymentPlansDashboard.
 on `recalculate_invoice_paid`, partially_paid awareness added
 across cron functions, reminder emails, and PaymentPlansDashboard.
 
+### Journey 7 — Reminders & overdue automation
+
+Walked 23 April 2026. 24 findings across five cron functions
+(`auto-pay-upcoming-reminder`, `overdue-reminders`,
+`invoice-overdue-check`, `installment-overdue-check`,
+`installment-upcoming-reminder`), cadence config, and cross-function
+dedup / auth / timezone consistency. 3 High · 8 Medium · 8 Low ·
+4 Filed (out-of-scope). 5 fixed across 6 commits (including 2
+docs-only fixes in the close commit); 15 filed.
+
+#### Fixed (Commit 1 — student-payer fallback)
+
+- **J7-F1** `overdue-reminders` invoice and installment paths both
+  hard-rejected when `guardian.email` was null. Student-payer
+  invoices received zero overdue reminders. Direct port of J6-F8
+  pattern: SELECT expansions (`payer_student email` on both paths,
+  `payer_student` join newly added on installment path), new
+  `resolveRecipient` helper, `logAndSend` generalised to take
+  `recipient.type` and `recipient.id` rather than hardcoded
+  `'guardian'`. `message_log.recipient_type='student'` already
+  allowed by the existing CHECK constraint — no schema change.
+
+#### Fixed (Commit 2 — invoice-overdue-check recalc drift)
+
+- **J7-F2** `invoice-overdue-check` had no J6-F10-style loop-and-recalc
+  drift cleanup. Direct time-based UPDATEs (sent→overdue, plan-parent
+  flip) preserved as the canonical transition path — `recalculate_invoice_paid`
+  A4 branch covers refund-reopen only, not time-based. After the
+  UPDATEs, a Set of every touched invoice ID is iterated through
+  `recalculate_invoice_paid` best-effort. Catches refund-driven
+  installment-status drift (partially_paid ↔ pending flip-backs)
+  and paid_minor staleness. Failures log and continue; single-invoice
+  failure doesn't abort the cron pass.
+
+#### Fixed (Commit 3 — cadence catch-up)
+
+- **J7-F3** Exact-day-match gate (`reminderDays.includes(daysOverdue)`)
+  replaced with a tier-aware "fire highest missing tier" gate. A
+  missed day-7 cron run (outage, deploy, pg_cron pause) no longer
+  permanently loses that reminder — next run fires tier-7 as catch-up.
+- `message_type` taxonomy split from generic `'overdue_reminder'` /
+  `'installment_reminder'` into dynamic tier-suffixed values
+  `${baseType}_d${tier}`. Suffix is the firing tier (the entry
+  from `overdue_reminder_days` that matched), so any per-org
+  cadence works — not just the default `[7, 14, 30]`.
+- New inline helpers: `checkRecipientNotifEnabled` (prefs check,
+  extracted from removed `shouldSkipRecipient`),
+  `hasTierReminderBeenSent` (lifetime tier lookup, excludes
+  status='failed' so failed sends retry), `pickFiringTier` (gate
+  logic). Iterates eligible tiers highest-first; fires the first
+  that hasn't been sent. Returns null → skip.
+- **Highest-missing-only semantics:** after a long outage where
+  tier-7 AND tier-14 are both owed, only tier-14 fires. Trade-off:
+  avoids back-to-back spam, but tier-7 is skipped forever for
+  that entity. Rationale: escalated tone wins; don't send two
+  reminders in one cron run.
+- **Urgency keyed to tier, not daysOverdue.** `urgencyLevel =
+  firingTier >= 30 ? 'urgent' : firingTier >= 14 ? 'important'
+  : 'friendly'`. A tier-7 catch-up on day 9 stays 'friendly'; a
+  tier-30 catch-up on day 35 stays 'urgent'. Copy still shows
+  actual `daysOverdue` (truthful). Installment path stays
+  tone-neutral — F12 filed.
+- **Deploy-day impact accepted.** Existing rows under the generic
+  type are invisible to the tier lookup. One-time spike of ≤1
+  extra reminder per entity per deploy-hour expected. Trial users
+  only. No data backfill migration.
+
+#### Fixed (Commit 4 — auto-pay amount mismatch)
+
+- **J7-F4** `auto-pay-upcoming-reminder` previously showed
+  `inst.amount_minor` (nominal) in the heads-up email, but
+  `stripe-auto-pay-installment` charges the outstanding
+  (amount_minor − non-refunded prior payments). For a partially_paid
+  installment, parent saw "£50 will be charged tomorrow" and Stripe
+  actually took £30 (or vice versa). Outstanding now computed
+  identically to the charging path — mirrors J6-F7 pattern. Skip
+  if outstanding < £1 (status lag from just-landed payment).
+
+#### Fixed (Commit 5 — failed-send retry unblocked)
+
+- **J7-F5** Dedup queries in `auto-pay-upcoming-reminder` and
+  `installment-upcoming-reminder` now filter on `.in('status',
+  ['sent', 'pending', 'logged'])` — a previously-failed send no
+  longer counts as "already sent today." `overdue-reminders` picked
+  this up implicitly in Commit 3 via `hasTierReminderBeenSent`
+  filtering `.in('status', ['sent', 'pending'])`.
+
+#### Fixed (Commit 6 — docs)
+
+- **J7-F10** `overdue-reminders` added to `docs/CRON_JOBS.md` as
+  entry 9a (same 09:00 UTC slot as upcoming reminders). Fresh
+  Supabase environments set up from the doc will now schedule it.
+- **J7-F11** CRON_JOBS.md entry 9 corrected: `installment-upcoming-reminder`
+  sends at **3 days** before due, not 7 days. Docs matched code.
+
+#### Filed — carried forward
+
+- **J7-F6 (Med)** Race window: cron snapshot vs parent payment.
+  `overdue-reminders` queries overdue invoices at start-of-run;
+  parent pays mid-iteration → email still goes out. Fix: refetch
+  invoice status inside `processInvoiceReminder`/`processInstallmentReminder`
+  just before send. Seconds-wide race, rare but real. Polish pass.
+- **J7-F7 (Med)** Auth inconsistency: `auto-pay-upcoming-reminder`
+  uses an ad-hoc `authHeader.includes(SERVICE_ROLE_KEY)` substring
+  check; the other four use `validateCronAuth` (`x-cron-secret`).
+  Unify on `validateCronAuth`. Polish pass.
+- **J7-F8 (Med)** Timezone inconsistency: `invoice-overdue-check`
+  uses org-local date (iterates orgs, `en-CA` locale + tz); the
+  other four use UTC. Reminders fire at 09:00 UTC everywhere
+  regardless of org timezone. Related to C11 (out-of-scope this
+  journey).
+- **J7-F9 (Med)** Duplicate `pending → overdue` installment
+  transition across `invoice-overdue-check:55-70` and
+  `installment-overdue-check:21-39`. Second run's UPDATE is a
+  no-op; wasted query, not correctness. Consolidate home to
+  `installment-overdue-check`. Pre-existing BILLING_FORENSICS B19.
+- **J7-F12 (Med)** Plan-installment reminder copy has no urgency
+  tier escalation — always neutral "Payment reminder" subject
+  regardless of days overdue. Tier-keyed urgency applies to
+  invoice path only post-J7. Future polish: add urgency tiers to
+  installment path.
+- **J7-F13 (Low)** `installment-upcoming-reminder` doesn't use
+  `sanitiseFromName` (unlike `overdue-reminders`). Copy-injection
+  surface on org names with `<`/`>`/`,`.
+- **J7-F14 (Low)** No `reply-to` header on any of the three email
+  crons. Parents replying get a bounce.
+- **J7-F15 (Low)** `List-Unsubscribe` header points at a React
+  settings route, not an RFC 8058 POST endpoint. One-click
+  unsubscribe from Gmail/Outlook doesn't actually toggle the pref.
+- **J7-F16 (Low)** No plain-text alternative body. Spam-filter
+  penalty on HTML-only emails.
+- **J7-F17 (Low)** No shared `send_reminder_email` helper. Each
+  cron inlines Resend fetch + message_log insert + status update.
+  Refactor opportunity.
+- **J7-F18 (Low)** No per-invoice dunning pause. No `pause_invoice_reminders(_invoice_id)`
+  RPC, no UI toggle. Teacher who agreed "wait until Friday"
+  verbally can't tell the system. Product decision.
+- **J7-F19 (Low)** No teacher escalation. Dashboard count is the
+  only surface. Product decision.
+- **J7-F20 (Low)** No multi-invoice digest — a guardian with 3
+  overdue invoices on day 7 gets 3 separate emails same morning.
+  Product decision.
+- **J7-F21 (Filed)** Weekend / UK bank-holiday suppression — C11
+  prerequisite. Out of scope per brief.
+- **J7-F22 (Filed)** Guest-parent opt-out: guardians without a
+  `user_id` have no notification_preferences row and no opt-out
+  path. GDPR/PECR concern. Data-model decision.
+- **J7-F23 (Filed)** BACS / bank-transfer details missing from
+  reminder email bodies. UK music-school UX gap.
+- **J7-F24 (Filed)** PDF attachment on reminder emails — blocked
+  on J11 (server-side PDF generation).
+- **J7-F25 (Filed — polish)** Tier-reminder retry logic has no
+  circuit breaker on persistent send failure. `hasTierReminderBeenSent`
+  filter excludes `status='failed'` so failed sends retry next
+  cron tick. Acceptable at current cadence (daily cron, 3-day
+  tier gaps, max 3 tiers then silent forever per entity). A
+  broken send channel surfaces via failed `message_log` rows;
+  operator intervention expected. Candidate for a `send_attempts`
+  counter + max-attempts gate in a future polish pass.
+
+**Journey 7 closed (23 April 2026).** 5 fixes landed (F1 student
+fallback, F2 recalc drift, F3 cadence catch-up, F4 auto-pay
+amount, F5 failed-retry) + 2 docs corrections (F10, F11) across
+6 commits. 15 filed for later passes; 4 explicitly out-of-scope
+per the brief (F21-F24). Exact-day-match cadence brittleness is
+the most operationally meaningful fix — missed cron days no longer
+silently lose reminders.
+
 ---
 
 ## Process improvements

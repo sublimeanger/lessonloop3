@@ -76,7 +76,7 @@ This is substantially larger than typical SaaS polish scope. The roadmap below i
 | # | Area | Status | Journeys closed | Commits |
 |---|---|---|---|---|
 | 0 | Cross-cutting invariants | ⚪ | 0 of 4 tracks | 0 |
-| 1 | Billing & invoicing | 🟡 | 6 of 11 | 35 |
+| 1 | Billing & invoicing | 🟡 | 7 of 11 | 41 |
 | 2 | Parent portal | ⚪ | 0 of 8 | 0 |
 | 3 | Students & guardians | ⚪ | 0 of 6 | 0 |
 | 4 | Calendar | ⚪ | 0 of 9 | 0 |
@@ -144,7 +144,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 ## Area 1 — Billing & invoicing 🟡
 
-**Status:** In progress. Journey 7 next.
+**Status:** In progress. Journey 8 next.
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -190,11 +190,14 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 **Key commits:** `ce05679` · `c2b2301` · `e63d6e8` · `767e12b` · docs close  
 **Notable:** Payment plan removal now atomic via existing `cancel_payment_plan` RPC (previous client-side two-call path left partially_paid installments orphaned). Payment RPCs (`record_stripe_payment`, `record_payment_and_update_status`) now delegate status/paid_minor/overpayment/installment-cascade to `recalculate_invoice_paid` — single source of truth, A4 branch covered for both. Installment-overdue cron keeps its canonical time-based sent→overdue flip but additionally loops affected invoices through recalc so refund drift reconciles same-pass; partially_paid-past-due invoices included in the recalc set. Installment-upcoming reminder now computes real outstanding (not nominal) and falls back to student payer when no guardian. Auto-pay edge fn writes local audit trail (`auto_pay_initiated` / `auto_pay_failed`) independent of webhook delivery. PaymentPlansDashboard recognises partially_paid in health/overdue/next-attention computations and surfaces a "N partial" hint on the progress cell.
 
-### Journey 7 — Reminders & overdue automation 🔜 NEXT
+### Journey 7 — Reminders & overdue automation 🟢 CLOSED
 
-**Scope:** `auto-pay-upcoming-reminder`, `overdue-reminders`, `invoice-overdue-check`, `installment-overdue-check`, `installment-upcoming-reminder`, overdue-trigger logic, `overdue_reminder_days [7,14,30]` escalation cadence, message_log dedup (Fix 5a applied — verify).
+**Walked:** 23 April 2026  
+**Findings:** 24 (J7-F1-F25, see POLISH_NOTES — F25 added late during docs commit) · **Fixed:** 5 code + 2 docs across 6 commits · **Filed:** 15 (11 fix-later + 4 out-of-scope per brief)  
+**Key commits:** `fab0b03f` · `14828a41` · `1dba1d8d` · `ef762451` · `5fde2b58` · docs close  
+**Notable:** Exact-day-match cadence replaced with tier-aware "highest missing tier" gate — missed cron days no longer silently lose reminders. message_type taxonomy split into dynamic `${baseType}_d${tier}` suffix keyed to per-org `overdue_reminder_days` array. Student-payer fallback ported from J6 to the overdue surface. `invoice-overdue-check` gained the J6-F10 loop-and-recalc drift cleanup. `auto-pay-upcoming-reminder` email now shows outstanding (not nominal) to match what Stripe will actually charge. Dedup queries across all reminder crons now exclude `status='failed'` so failed sends retry.
 
-### Journey 8 — Credits interaction with invoices ⚪
+### Journey 8 — Credits interaction with invoices 🔜 NEXT
 
 **Scope:** credit application during invoice create/edit (done in Area 1 but credit lifecycle per Area 9), credit freeing on void, credit expiry cascade, `validate_refund_amount` interaction with redeemed credits.
 
@@ -575,6 +578,7 @@ Recording decisions made during roadmap construction so future sessions understa
 - **22 April 2026:** Journey 5 chose NOT to build in-app dispute evidence UI. Operator submits evidence via Stripe dashboard link surfaced in DisputeBanner. Keeps journey scope finite; evidence upload is a candidate for a later polish pass.
 - **23 April 2026 (Journey 6 close):** Did NOT duplicate `cancel_payment_plan` — existing RPC already had the right semantics (locks + paid/partially_paid guard + atomic DELETE+UPDATE+audit). Pointed the hook at it instead of creating `remove_payment_plan`.
 - **23 April 2026 (Journey 6, audit):** Kept the time-based `sent → overdue` flip in the `installment-overdue-check` cron rather than folding it into `recalculate_invoice_paid`. The helper's A4 branch covers refund-reopen only; a generic "time-aware" helper would widen its contract and affect every delegating RPC. Cron-only concern stays in the cron; recalc stays pure.
+- **23 April 2026 (Journey 7 close):** Tier-reminder cadence uses dynamic `${baseType}_d${tier}` suffix keyed to per-org `overdue_reminder_days` array. Gate fires highest missing tier only — accepts that a long outage can skip a lower tier forever in favour of the escalated version. Urgency keyed to tier (friendly/important/urgent) not daysOverdue to prevent accidental tone flip on catch-up. No data backfill; accepts one-time deploy-day spike of ≤1 extra reminder per entity.
 
 ---
 
@@ -596,4 +600,4 @@ This file is version-controlled in the main repo. History is git log.
 
 ---
 
-_Last meaningful update: 23 April 2026 (Journey 6 closed — payment plans / installments hardened)._
+_Last meaningful update: 23 April 2026 (Journey 7 closed — reminder cron cadence catch-up + cross-function consistency)._
