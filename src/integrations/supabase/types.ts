@@ -3722,6 +3722,104 @@ export type Database = {
           },
         ]
       }
+      payment_disputes: {
+        Row: {
+          amount_minor: number
+          closed_at: string | null
+          created_at: string
+          currency_code: string
+          evidence_due_by: string | null
+          id: string
+          invoice_id: string
+          network_reason_code: string | null
+          opened_at: string
+          org_id: string
+          outcome: string | null
+          payment_id: string
+          reason: string
+          status: string
+          stripe_charge_id: string | null
+          stripe_dashboard_url: string | null
+          stripe_dispute_id: string
+          stripe_metadata: Json | null
+          stripe_payment_intent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_minor: number
+          closed_at?: string | null
+          created_at?: string
+          currency_code: string
+          evidence_due_by?: string | null
+          id?: string
+          invoice_id: string
+          network_reason_code?: string | null
+          opened_at?: string
+          org_id: string
+          outcome?: string | null
+          payment_id: string
+          reason: string
+          status: string
+          stripe_charge_id?: string | null
+          stripe_dashboard_url?: string | null
+          stripe_dispute_id: string
+          stripe_metadata?: Json | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_minor?: number
+          closed_at?: string | null
+          created_at?: string
+          currency_code?: string
+          evidence_due_by?: string | null
+          id?: string
+          invoice_id?: string
+          network_reason_code?: string | null
+          opened_at?: string
+          org_id?: string
+          outcome?: string | null
+          payment_id?: string
+          reason?: string
+          status?: string
+          stripe_charge_id?: string | null
+          stripe_dashboard_url?: string | null
+          stripe_dispute_id?: string
+          stripe_metadata?: Json | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_disputes_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_disputes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_disputes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_disputes_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_notifications: {
         Row: {
           amount_minor: number
@@ -4369,6 +4467,7 @@ export type Database = {
           org_id: string
           payment_id: string
           reason: string | null
+          refund_from_dispute_id: string | null
           refunded_by: string | null
           status: string
           stripe_refund_id: string | null
@@ -4381,6 +4480,7 @@ export type Database = {
           org_id: string
           payment_id: string
           reason?: string | null
+          refund_from_dispute_id?: string | null
           refunded_by?: string | null
           status?: string
           stripe_refund_id?: string | null
@@ -4393,6 +4493,7 @@ export type Database = {
           org_id?: string
           payment_id?: string
           reason?: string | null
+          refund_from_dispute_id?: string | null
           refunded_by?: string | null
           status?: string
           stripe_refund_id?: string | null
@@ -4424,6 +4525,13 @@ export type Database = {
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_refund_from_dispute_id_fkey"
+            columns: ["refund_from_dispute_id"]
+            isOneToOne: false
+            referencedRelation: "payment_disputes"
             referencedColumns: ["id"]
           },
         ]
@@ -6151,6 +6259,10 @@ export type Database = {
       }
       anonymise_guardian: { Args: { guardian_id: string }; Returns: undefined }
       anonymise_student: { Args: { student_id: string }; Returns: undefined }
+      apply_lost_dispute_cascade: {
+        Args: { _dispute_id: string }
+        Returns: Json
+      }
       bulk_cancel_lessons: {
         Args: { p_lesson_ids: string[] }
         Returns: Database["public"]["CompositeTypes"]["bulk_lesson_result"]
@@ -6304,7 +6416,69 @@ export type Database = {
         }
       }
       generate_invoice_number: { Args: { _org_id: string }; Returns: string }
+      get_active_disputes_for_org: {
+        Args: { _org_id: string }
+        Returns: {
+          amount_minor: number
+          closed_at: string | null
+          created_at: string
+          currency_code: string
+          evidence_due_by: string | null
+          id: string
+          invoice_id: string
+          network_reason_code: string | null
+          opened_at: string
+          org_id: string
+          outcome: string | null
+          payment_id: string
+          reason: string
+          status: string
+          stripe_charge_id: string | null
+          stripe_dashboard_url: string | null
+          stripe_dispute_id: string
+          stripe_metadata: Json | null
+          stripe_payment_intent_id: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "payment_disputes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_calendar_error_count: { Args: { p_org_id: string }; Returns: number }
+      get_disputes_for_invoice: {
+        Args: { _invoice_id: string; _org_id: string }
+        Returns: {
+          amount_minor: number
+          closed_at: string | null
+          created_at: string
+          currency_code: string
+          evidence_due_by: string | null
+          id: string
+          invoice_id: string
+          network_reason_code: string | null
+          opened_at: string
+          org_id: string
+          outcome: string | null
+          payment_id: string
+          reason: string
+          status: string
+          stripe_charge_id: string | null
+          stripe_dashboard_url: string | null
+          stripe_dispute_id: string
+          stripe_metadata: Json | null
+          stripe_payment_intent_id: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "payment_disputes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_guardian_ids_for_user: {
         Args: { _user_id: string }
         Returns: string[]
