@@ -73,12 +73,15 @@ serve(async (req) => {
           if (!enabled) continue;
         }
 
-        // Deduplicate
+        // Deduplicate. J7-F5: exclude status='failed' so a previously-failed
+        // send doesn't block same-day retry — failed rows mean the parent
+        // never actually received anything.
         const { data: existing } = await supabase
           .from("message_log")
           .select("id")
           .eq("related_id", installment.id)
           .eq("message_type", "installment_upcoming")
+          .in("status", ["sent", "pending", "logged"])
           .gte("created_at", today.toISOString())
           .limit(1);
         if (existing && existing.length > 0) continue;

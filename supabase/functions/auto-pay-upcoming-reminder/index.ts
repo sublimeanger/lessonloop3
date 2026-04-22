@@ -193,12 +193,15 @@ serve(async (req) => {
       </div>`;
 
       // Deduplicate: skip if a reminder for this installment already
-      // sent today (cron re-fire protection)
+      // sent today (cron re-fire protection). J7-F5: exclude status='failed'
+      // so a previously-failed send doesn't block same-day retry —
+      // failed rows mean the parent never actually received anything.
       const { data: existing } = await supabase
         .from("message_log")
         .select("id")
         .eq("related_id", inst.id)
         .eq("message_type", "auto_pay_reminder")
+        .in("status", ["sent", "pending", "logged"])
         .gte("created_at", today.toISOString())
         .limit(1);
       if (existing && existing.length > 0) continue;
