@@ -170,30 +170,75 @@ function resolveRecipient(
 }
 
 // deno-lint-ignore no-explicit-any
-async function shouldSkipRecipient(
-  supabase: any, orgId: string, recipient: ResolvedRecipient, relatedId: string, messageType: string, today: Date
+async function checkRecipientNotifEnabled(
+  supabase: any, orgId: string, recipient: ResolvedRecipient,
 ): Promise<boolean> {
-  // Check notification prefs — only guardians have user_id for prefs.
-  // Students without a user_id always receive (no prefs to check).
+  // Only guardians have user_id for notification_preferences. Students
+  // without a user_id always receive (no prefs to check).
   if (recipient.type === "guardian" && recipient.userId) {
     const enabled = await isNotificationEnabled(supabase, orgId, recipient.userId, "email_invoice_reminders");
     if (!enabled) {
       console.log(`${recipient.type} ${recipient.email} has invoice reminders disabled, skipping`);
-      return true;
+      return false;
     }
   }
+  return true;
+}
 
-  // Deduplicate — already sent today?
-  const { data: existing } = await supabase
+/**
+ * J7-F3: lifetime tier lookup. Has any reminder of this tier been
+ * successfully sent (or is pending) for this entity? Filter excludes
+ * status='failed' — a failed send didn't reach the parent, so the
+ * tier is still owed. Tier-reminders are once-per-lifetime per entity
+ * per tier (unlike the prior same-day dedup which was time-windowed).
+ *
+ * message_type uses a dynamic suffix `${baseType}_d${tier}` so this
+ * helper works for any org's overdue_reminder_days array, not just
+ * the default [7, 14, 30].
+ */
+// deno-lint-ignore no-explicit-any
+async function hasTierReminderBeenSent(
+  supabase: any,
+  entityId: string,
+  tier: number,
+  baseType: "overdue_reminder" | "installment_reminder",
+): Promise<boolean> {
+  const { data } = await supabase
     .from("message_log")
     .select("id")
-    .eq("related_id", relatedId)
-    .eq("message_type", messageType)
-    .gte("created_at", today.toISOString())
+    .eq("related_id", entityId)
+    .eq("message_type", `${baseType}_d${tier}`)
+    .in("status", ["sent", "pending"])
     .limit(1);
+  return !!(data && data.length > 0);
+}
 
-  if (existing && existing.length > 0) return true;
-  return false;
+/**
+ * J7-F3: given a reminder-days cadence and current daysOverdue,
+ * return the highest tier that is eligible to fire now AND has not
+ * yet been successfully sent. Returns null if nothing owed.
+ *
+ * Firing highest-missing-only (not all missing) avoids spamming a
+ * parent with back-to-back tier-7 + tier-14 after a long outage.
+ * The most escalated relevant tier wins.
+ */
+// deno-lint-ignore no-explicit-any
+async function pickFiringTier(
+  supabase: any,
+  entityId: string,
+  daysOverdue: number,
+  reminderDays: number[],
+  baseType: "overdue_reminder" | "installment_reminder",
+): Promise<number | null> {
+  const eligibleTiers = reminderDays
+    .filter((d) => daysOverdue >= d)
+    .sort((a, b) => b - a); // highest first
+  for (const tier of eligibleTiers) {
+    if (!(await hasTierReminderBeenSent(supabase, entityId, tier, baseType))) {
+      return tier;
+    }
+  }
+  return null;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -281,13 +326,18 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
   const reminderDays: number[] = org?.overdue_reminder_days || [7, 14, 30];
   const daysOverdue = calcDaysOverdue(invoice.due_date, today);
 
-  if (!reminderDays.includes(daysOverdue)) return "skip";
-
   // J7-F1: student-payer fallback. Student-payer invoices previously
   // received no overdue reminder when no guardian email was on file.
   const recipient = resolveRecipient(invoice.payer_guardian, invoice.payer_student);
   if (!recipient) return "skip";
-  if (await shouldSkipRecipient(supabase, invoice.org_id, recipient, invoice.id, "overdue_reminder", today)) return "skip";
+  if (!(await checkRecipientNotifEnabled(supabase, invoice.org_id, recipient))) return "skip";
+
+  // J7-F3: tier-based cadence catch-up. Fire the highest eligible
+  // tier that hasn't already been sent for this invoice. Handles
+  // missed cron days (outage / deploy downtime) without duplicating
+  // — exact-day match logic is gone.
+  const firingTier = await pickFiringTier(supabase, invoice.id, daysOverdue, reminderDays, "overdue_reminder");
+  if (firingTier === null) return "skip";
 
   const orgName = org?.name || "LessonLoop";
   const brandColor = org?.brand_primary_color || "#2563eb";
@@ -295,7 +345,9 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
   const remainingMinor = invoice.total_minor - (invoice.paid_minor || 0);
   const amount = formatCurrency(remainingMinor, invoice.currency_code);
   const portalLink = `${FRONTEND_URL}/portal/invoices?invoice=${invoice.id}&action=pay`;
-  const urgencyLevel = daysOverdue >= 30 ? "urgent" : daysOverdue >= 14 ? "important" : "friendly";
+  // Urgency keyed to tier (not daysOverdue) so a tier-7 catch-up on
+  // day 9 stays "friendly" rather than flipping tone by accident.
+  const urgencyLevel = firingTier >= 30 ? "urgent" : firingTier >= 14 ? "important" : "friendly";
 
   const subject = urgencyLevel === "urgent"
     ? `⚠️ URGENT: Invoice ${invoice.invoice_number} is ${daysOverdue} days overdue`
@@ -337,11 +389,11 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
 
   const sent = await logAndSend(supabase, resendApiKey, {
     orgId: invoice.org_id, orgName, subject, html,
-    recipient, relatedId: invoice.id, messageType: "overdue_reminder",
+    recipient, relatedId: invoice.id, messageType: `overdue_reminder_d${firingTier}`,
   });
 
   if (sent) {
-    console.log(`Sent ${daysOverdue}-day reminder for invoice ${invoice.invoice_number} to ${recipient.email}`);
+    console.log(`Sent tier-${firingTier} (${daysOverdue} days actual) reminder for invoice ${invoice.invoice_number} to ${recipient.email}`);
     return "sent";
   }
   return "error";
@@ -377,11 +429,16 @@ async function processInstallmentReminder(supabase: any, installment: OverdueIns
   // J7-F1: student-payer fallback (mirrors J6-F8 for installment-upcoming).
   const recipient = resolveRecipient(invoice.payer_guardian, invoice.payer_student);
   if (!recipient) return "skip";
+  if (!(await checkRecipientNotifEnabled(supabase, invoice.org_id, recipient))) return "skip";
+
   const reminderDays: number[] = org?.overdue_reminder_days || [7, 14, 30];
   const daysOverdue = calcDaysOverdue(installment.due_date, today);
 
-  if (!reminderDays.includes(daysOverdue)) return "skip";
-  if (await shouldSkipRecipient(supabase, invoice.org_id, recipient, installment.id, "installment_reminder", today)) return "skip";
+  // J7-F3: tier-based cadence catch-up, same gate as invoice path.
+  // Installment copy stays tone-neutral (F12 filed — urgency tiers
+  // not applied to plan-installment reminders this journey).
+  const firingTier = await pickFiringTier(supabase, installment.id, daysOverdue, reminderDays, "installment_reminder");
+  if (firingTier === null) return "skip";
 
   const orgName = org?.name || "LessonLoop";
   const brandColor = org?.brand_primary_color || "#2563eb";
@@ -445,11 +502,11 @@ async function processInstallmentReminder(supabase: any, installment: OverdueIns
 
   const sent = await logAndSend(supabase, resendApiKey, {
     orgId: invoice.org_id, orgName, subject, html,
-    recipient, relatedId: installment.id, messageType: "installment_reminder",
+    recipient, relatedId: installment.id, messageType: `installment_reminder_d${firingTier}`,
   });
 
   if (sent) {
-    console.log(`Sent ${daysOverdue}-day installment reminder (#${installment.installment_number}) for ${invoice.invoice_number} to ${recipient.email}`);
+    console.log(`Sent tier-${firingTier} (${daysOverdue} days actual) installment reminder (#${installment.installment_number}) for ${invoice.invoice_number} to ${recipient.email}`);
     return "sent";
   }
   return "error";
