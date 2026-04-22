@@ -167,6 +167,22 @@ serve(async (req) => {
         break;
       }
 
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        await handleDisputeCreated(supabase, dispute);
+        break;
+      }
+      case "charge.dispute.updated": {
+        const dispute = event.data.object as Stripe.Dispute;
+        await handleDisputeUpdated(supabase, dispute);
+        break;
+      }
+      case "charge.dispute.closed": {
+        const dispute = event.data.object as Stripe.Dispute;
+        await handleDisputeClosed(supabase, dispute);
+        break;
+      }
+
       default:
         log(`Unhandled event type: ${event.type}`);
     }
@@ -1124,4 +1140,263 @@ async function handleRefundUpdated(supabase: any, refund: Stripe.Refund) {
   }
 
   log(`Refund ${truncate(refund.id)} status changed ${existing.status} → ${newStatus}`);
+}
+
+// ───── Dispute handlers ─────
+
+/**
+ * Build the Stripe Dashboard URL for a dispute. Livemode uses root
+ * path; test mode uses /test/ prefix. Livemode signal comes from
+ * the event's livemode field (not on the dispute object itself).
+ */
+function buildDisputeDashboardUrl(disputeId: string, livemode: boolean): string {
+  return livemode
+    ? `https://dashboard.stripe.com/disputes/${disputeId}`
+    : `https://dashboard.stripe.com/test/disputes/${disputeId}`;
+}
+
+async function handleDisputeCreated(supabase: any, dispute: Stripe.Dispute) {
+  // Resolve the payment this dispute is against. Stripe gives us the
+  // charge ID; we stored payment_intent as provider_reference on the
+  // payment row, so we need to retrieve the charge to get its PI.
+  const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+  const paymentIntentId = typeof dispute.payment_intent === "string"
+    ? dispute.payment_intent
+    : dispute.payment_intent?.id ?? null;
+
+  if (!paymentIntentId) {
+    console.error(`Dispute ${truncate(dispute.id)} has no payment_intent — cannot resolve payment`);
+    return;
+  }
+
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("id, invoice_id, org_id")
+    .eq("provider_reference", paymentIntentId)
+    .maybeSingle();
+
+  if (!payment) {
+    console.error(`Dispute ${truncate(dispute.id)} for unknown payment PI ${truncate(paymentIntentId)}`);
+    return;
+  }
+
+  const { data: org } = await supabase
+    .from("organisations")
+    .select("currency_code")
+    .eq("id", payment.org_id)
+    .single();
+
+  const livemode = !dispute.id.startsWith("dp_test_") && !dispute.id.startsWith("du_test_");
+  const dashboardUrl = buildDisputeDashboardUrl(dispute.id, livemode);
+
+  // Idempotent on stripe_dispute_id via UNIQUE index. 23505 = duplicate.
+  const { data: inserted, error: insertErr } = await supabase
+    .from("payment_disputes")
+    .insert({
+      payment_id: payment.id,
+      invoice_id: payment.invoice_id,
+      org_id: payment.org_id,
+      stripe_dispute_id: dispute.id,
+      stripe_charge_id: chargeId,
+      stripe_payment_intent_id: paymentIntentId,
+      amount_minor: dispute.amount,
+      currency_code: (dispute.currency || org?.currency_code || "gbp").toUpperCase(),
+      reason: dispute.reason,
+      network_reason_code: dispute.network_reason_code ?? null,
+      status: dispute.status,
+      evidence_due_by: dispute.evidence_details?.due_by
+        ? new Date(dispute.evidence_details.due_by * 1000).toISOString()
+        : null,
+      stripe_dashboard_url: dashboardUrl,
+      stripe_metadata: dispute as any,
+    })
+    .select("id")
+    .single();
+
+  if (insertErr) {
+    if (insertErr.code === "23505") {
+      log(`Dispute ${truncate(dispute.id)} already recorded — skipping`);
+      return;
+    }
+    console.error(`Failed to insert dispute ${truncate(dispute.id)}:`, insertErr);
+    throw new Error(`DB insert failed for charge.dispute.created: ${insertErr.message}`);
+  }
+
+  // Audit log — dispute open is a major operator-visible event.
+  await supabase.from("audit_log").insert({
+    org_id: payment.org_id,
+    actor_user_id: null,
+    action: "dispute_opened",
+    entity_type: "invoice",
+    entity_id: payment.invoice_id,
+    after: {
+      dispute_id: inserted.id,
+      stripe_dispute_id: dispute.id,
+      amount_minor: dispute.amount,
+      reason: dispute.reason,
+      status: dispute.status,
+      evidence_due_by: dispute.evidence_details?.due_by
+        ? new Date(dispute.evidence_details.due_by * 1000).toISOString()
+        : null,
+      stripe_dashboard_url: dashboardUrl,
+    },
+  });
+
+  log(`Dispute ${truncate(dispute.id)} opened for invoice ${truncate(payment.invoice_id)}, amount ${dispute.amount}, reason ${dispute.reason}`);
+
+  // Fire notification (Commit 8 edge fn — best-effort, non-blocking).
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/send-dispute-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+      },
+      body: JSON.stringify({
+        disputeId: inserted.id,
+        orgId: payment.org_id,
+        event: "opened",
+      }),
+    });
+  } catch (err) {
+    console.error("Failed to trigger dispute notification:", err);
+  }
+}
+
+async function handleDisputeUpdated(supabase: any, dispute: Stripe.Dispute) {
+  // Mid-lifecycle update: evidence submitted, status moves to under_review,
+  // evidence_due_by extended, etc. Mutate the existing row to match Stripe.
+  const { data: existing } = await supabase
+    .from("payment_disputes")
+    .select("id, invoice_id, org_id, status")
+    .eq("stripe_dispute_id", dispute.id)
+    .maybeSingle();
+
+  if (!existing) {
+    // Out-of-order delivery — dispute.updated landed before dispute.created.
+    // Best-effort fallback: treat as a created event.
+    log(`dispute.updated for unknown dispute ${truncate(dispute.id)} — treating as created`);
+    return handleDisputeCreated(supabase, dispute);
+  }
+
+  const newStatus = dispute.status;
+  const newEvidenceDueBy = dispute.evidence_details?.due_by
+    ? new Date(dispute.evidence_details.due_by * 1000).toISOString()
+    : null;
+
+  const { error: updateErr } = await supabase
+    .from("payment_disputes")
+    .update({
+      status: newStatus,
+      evidence_due_by: newEvidenceDueBy,
+      network_reason_code: dispute.network_reason_code ?? null,
+      stripe_metadata: dispute as any,
+    })
+    .eq("id", existing.id);
+
+  if (updateErr) {
+    console.error(`Failed to update dispute ${truncate(dispute.id)}:`, updateErr);
+    throw new Error(`DB update failed for charge.dispute.updated: ${updateErr.message}`);
+  }
+
+  if (existing.status !== newStatus) {
+    await supabase.from("audit_log").insert({
+      org_id: existing.org_id,
+      actor_user_id: null,
+      action: "dispute_status_changed",
+      entity_type: "invoice",
+      entity_id: existing.invoice_id,
+      before: { status: existing.status },
+      after: {
+        status: newStatus,
+        dispute_id: existing.id,
+        stripe_dispute_id: dispute.id,
+      },
+    });
+  }
+
+  log(`Dispute ${truncate(dispute.id)} updated: ${existing.status} → ${newStatus}`);
+}
+
+async function handleDisputeClosed(supabase: any, dispute: Stripe.Dispute) {
+  // Terminal transition. status moves to won/lost/warning_closed/charge_refunded.
+  // Commit 7 handles the LOST branch cascade (compensating refund).
+  const { data: existing } = await supabase
+    .from("payment_disputes")
+    .select("id, invoice_id, org_id, status, payment_id, amount_minor, outcome")
+    .eq("stripe_dispute_id", dispute.id)
+    .maybeSingle();
+
+  if (!existing) {
+    log(`dispute.closed for unknown dispute ${truncate(dispute.id)} — treating as created`);
+    return handleDisputeCreated(supabase, dispute);
+  }
+
+  if (existing.outcome) {
+    log(`Dispute ${truncate(dispute.id)} already closed (outcome=${existing.outcome}) — skipping`);
+    return;
+  }
+
+  // Map Stripe status to outcome.
+  const outcome =
+    dispute.status === "won" ? "won" :
+    dispute.status === "lost" ? "lost" :
+    dispute.status === "warning_closed" ? "warning_closed" :
+    dispute.status === "charge_refunded" ? "charge_refunded" :
+    null;
+
+  const { error: updateErr } = await supabase
+    .from("payment_disputes")
+    .update({
+      status: dispute.status,
+      outcome,
+      closed_at: new Date().toISOString(),
+      stripe_metadata: dispute as any,
+    })
+    .eq("id", existing.id);
+
+  if (updateErr) {
+    console.error(`Failed to close dispute ${truncate(dispute.id)}:`, updateErr);
+    throw new Error(`DB update failed for charge.dispute.closed: ${updateErr.message}`);
+  }
+
+  await supabase.from("audit_log").insert({
+    org_id: existing.org_id,
+    actor_user_id: null,
+    action: "dispute_closed",
+    entity_type: "invoice",
+    entity_id: existing.invoice_id,
+    before: { status: existing.status },
+    after: {
+      status: dispute.status,
+      outcome,
+      dispute_id: existing.id,
+      stripe_dispute_id: dispute.id,
+    },
+  });
+
+  // Lost cascade — Commit 7 adds this. Leave stub; wire in Commit 7.
+  // if (outcome === "lost") {
+  //   await applyLostDisputeCascade(supabase, existing, dispute);
+  // }
+
+  // Notification (Commit 8) — best-effort.
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/send-dispute-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+      },
+      body: JSON.stringify({
+        disputeId: existing.id,
+        orgId: existing.org_id,
+        event: outcome === "won" ? "won" : outcome === "lost" ? "lost" : "closed",
+      }),
+    });
+  } catch (err) {
+    console.error("Failed to trigger dispute close notification:", err);
+  }
+
+  log(`Dispute ${truncate(dispute.id)} closed: outcome=${outcome}`);
 }
