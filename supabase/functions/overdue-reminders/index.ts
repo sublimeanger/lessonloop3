@@ -32,7 +32,7 @@ serve(async (req) => {
         id, invoice_number, total_minor, paid_minor, currency_code, due_date, org_id, payment_plan_enabled,
         organisation:organisations!inner(name, overdue_reminder_days, logo_url, brand_primary_color),
         payer_guardian:guardians(id, full_name, email, user_id),
-        payer_student:students(id, first_name, last_name)
+        payer_student:students(id, first_name, last_name, email)
       `)
       .eq("status", "overdue");
 
@@ -69,7 +69,8 @@ serve(async (req) => {
           id, invoice_number, total_minor, currency_code, org_id, status,
           paid_minor, installment_count,
           organisation:organisations!inner(name, overdue_reminder_days, logo_url, brand_primary_color),
-          payer_guardian:guardians(id, full_name, email, user_id)
+          payer_guardian:guardians(id, full_name, email, user_id),
+          payer_student:students(id, first_name, last_name, email)
         )
       `)
       .in("status", ["overdue", "partially_paid"])
@@ -130,17 +131,54 @@ function buildBrandedHeader(orgName: string, logoUrl: string | null, brandColor:
       </div>`;
 }
 
-// deno-lint-ignore no-explicit-any
-async function shouldSkipGuardian(
-  supabase: any, orgId: string, guardian: { email?: string; user_id?: string | null } | null, relatedId: string, messageType: string, today: Date
-): Promise<boolean> {
-  if (!guardian?.email) return true;
+interface ResolvedRecipient {
+  email: string;
+  name: string;
+  type: "guardian" | "student";
+  id: string;
+  /** Only populated for guardian recipients — students don't have user_id
+      for notification_preferences. */
+  userId: string | null;
+}
 
-  // Check notification prefs
-  if (guardian.user_id) {
-    const enabled = await isNotificationEnabled(supabase, orgId, guardian.user_id, "email_invoice_reminders");
+// J7-F1: resolve reminder recipient — guardian first, then student
+// fallback. Returns null when neither is reachable (skip). Mirrors the
+// J6-F8 pattern from installment-upcoming-reminder (commit e63d6e80).
+function resolveRecipient(
+  guardian: { id: string; full_name: string; email: string; user_id: string | null } | null,
+  student: { id: string; first_name: string; last_name: string; email: string } | null,
+): ResolvedRecipient | null {
+  if (guardian?.email) {
+    return {
+      email: guardian.email,
+      name: guardian.full_name,
+      type: "guardian",
+      id: guardian.id,
+      userId: guardian.user_id,
+    };
+  }
+  if (student?.email) {
+    return {
+      email: student.email,
+      name: `${student.first_name} ${student.last_name}`.trim(),
+      type: "student",
+      id: student.id,
+      userId: null,
+    };
+  }
+  return null;
+}
+
+// deno-lint-ignore no-explicit-any
+async function shouldSkipRecipient(
+  supabase: any, orgId: string, recipient: ResolvedRecipient, relatedId: string, messageType: string, today: Date
+): Promise<boolean> {
+  // Check notification prefs — only guardians have user_id for prefs.
+  // Students without a user_id always receive (no prefs to check).
+  if (recipient.type === "guardian" && recipient.userId) {
+    const enabled = await isNotificationEnabled(supabase, orgId, recipient.userId, "email_invoice_reminders");
     if (!enabled) {
-      console.log(`Guardian ${guardian.email} has invoice reminders disabled, skipping`);
+      console.log(`${recipient.type} ${recipient.email} has invoice reminders disabled, skipping`);
       return true;
     }
   }
@@ -161,7 +199,7 @@ async function shouldSkipGuardian(
 // deno-lint-ignore no-explicit-any
 async function logAndSend(
   supabase: any, resendApiKey: string | undefined,
-  opts: { orgId: string; orgName: string; subject: string; html: string; recipientEmail: string; recipientName: string; guardianId: string; relatedId: string; messageType: string }
+  opts: { orgId: string; orgName: string; subject: string; html: string; recipient: ResolvedRecipient; relatedId: string; messageType: string }
 ): Promise<boolean> {
   const status = resendApiKey ? "pending" : "logged";
 
@@ -171,10 +209,10 @@ async function logAndSend(
     subject: opts.subject,
     body: opts.html,
     sender_user_id: null,
-    recipient_email: opts.recipientEmail,
-    recipient_name: opts.recipientName,
-    recipient_type: "guardian",
-    recipient_id: opts.guardianId,
+    recipient_email: opts.recipient.email,
+    recipient_name: opts.recipient.name,
+    recipient_type: opts.recipient.type,
+    recipient_id: opts.recipient.id,
     related_id: opts.relatedId,
     message_type: opts.messageType,
     status,
@@ -188,7 +226,7 @@ async function logAndSend(
       headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from: `${sanitiseFromName(opts.orgName)} <billing@lessonloop.net>`,
-        to: [opts.recipientEmail],
+        to: [opts.recipient.email],
         subject: opts.subject,
         html: opts.html,
         headers: {
@@ -213,7 +251,7 @@ async function logAndSend(
       .limit(1);
 
     if (!response.ok) {
-      console.error(`Email send failed for ${opts.recipientEmail}:`, result);
+      console.error(`Email send failed for ${opts.recipient.email}:`, result);
       return false;
     }
   }
@@ -234,7 +272,7 @@ interface OverdueInvoice {
   payment_plan_enabled: boolean | null;
   organisation: { name: string; overdue_reminder_days: number[] | null; logo_url: string | null; brand_primary_color: string | null } | null;
   payer_guardian: { id: string; full_name: string; email: string; user_id: string | null } | null;
-  payer_student: { id: string; first_name: string; last_name: string } | null;
+  payer_student: { id: string; first_name: string; last_name: string; email: string } | null;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -245,9 +283,11 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
 
   if (!reminderDays.includes(daysOverdue)) return "skip";
 
-  const guardian = invoice.payer_guardian;
-  if (!guardian?.email) return "skip";
-  if (await shouldSkipGuardian(supabase, invoice.org_id, guardian, invoice.id, "overdue_reminder", today)) return "skip";
+  // J7-F1: student-payer fallback. Student-payer invoices previously
+  // received no overdue reminder when no guardian email was on file.
+  const recipient = resolveRecipient(invoice.payer_guardian, invoice.payer_student);
+  if (!recipient) return "skip";
+  if (await shouldSkipRecipient(supabase, invoice.org_id, recipient, invoice.id, "overdue_reminder", today)) return "skip";
 
   const orgName = org?.name || "LessonLoop";
   const brandColor = org?.brand_primary_color || "#2563eb";
@@ -272,7 +312,7 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
       <h1 style="color: ${accentColor}; margin-bottom: 20px;">
         Payment ${urgencyLevel === "urgent" ? "Urgently Required" : "Reminder"}
       </h1>
-      <p>Dear ${escapeHtml(guardian.full_name)},</p>
+      <p>Dear ${escapeHtml(recipient.name)},</p>
       <p>Invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> is now <strong>${daysOverdue} days overdue</strong>.</p>
       <div style="background: ${bgColor}; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${accentColor};">
         <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${escapeHtml(invoice.invoice_number)}</p>
@@ -297,12 +337,11 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
 
   const sent = await logAndSend(supabase, resendApiKey, {
     orgId: invoice.org_id, orgName, subject, html,
-    recipientEmail: guardian.email, recipientName: guardian.full_name,
-    guardianId: guardian.id, relatedId: invoice.id, messageType: "overdue_reminder",
+    recipient, relatedId: invoice.id, messageType: "overdue_reminder",
   });
 
   if (sent) {
-    console.log(`Sent ${daysOverdue}-day reminder for invoice ${invoice.invoice_number} to ${guardian.email}`);
+    console.log(`Sent ${daysOverdue}-day reminder for invoice ${invoice.invoice_number} to ${recipient.email}`);
     return "sent";
   }
   return "error";
@@ -327,6 +366,7 @@ interface OverdueInstallment {
     installment_count: number | null;
     organisation: { name: string; overdue_reminder_days: number[] | null; logo_url: string | null; brand_primary_color: string | null } | null;
     payer_guardian: { id: string; full_name: string; email: string; user_id: string | null } | null;
+    payer_student: { id: string; first_name: string; last_name: string; email: string } | null;
   };
 }
 
@@ -334,13 +374,14 @@ interface OverdueInstallment {
 async function processInstallmentReminder(supabase: any, installment: OverdueInstallment, today: Date, resendApiKey: string | undefined): Promise<string> {
   const invoice = installment.invoice;
   const org = invoice.organisation;
-  const guardian = invoice.payer_guardian;
-  if (!guardian?.email) return "skip";
+  // J7-F1: student-payer fallback (mirrors J6-F8 for installment-upcoming).
+  const recipient = resolveRecipient(invoice.payer_guardian, invoice.payer_student);
+  if (!recipient) return "skip";
   const reminderDays: number[] = org?.overdue_reminder_days || [7, 14, 30];
   const daysOverdue = calcDaysOverdue(installment.due_date, today);
 
   if (!reminderDays.includes(daysOverdue)) return "skip";
-  if (await shouldSkipGuardian(supabase, invoice.org_id, guardian, installment.id, "installment_reminder", today)) return "skip";
+  if (await shouldSkipRecipient(supabase, invoice.org_id, recipient, installment.id, "installment_reminder", today)) return "skip";
 
   const orgName = org?.name || "LessonLoop";
   const brandColor = org?.brand_primary_color || "#2563eb";
@@ -382,7 +423,7 @@ async function processInstallmentReminder(supabase: any, installment: OverdueIns
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       ${buildBrandedHeader(orgName, logoUrl, brandColor)}
       <h1 style="color: #333;">Payment Plan Reminder</h1>
-      <p>Dear ${escapeHtml(guardian.full_name)},</p>
+      <p>Dear ${escapeHtml(recipient.name)},</p>
       <p>Installment <strong>${installment.installment_number} of ${invoice.installment_count}</strong>
          for invoice <strong>${escapeHtml(invoice.invoice_number)}</strong>
          is now <strong>${daysOverdue} days overdue</strong>.</p>
@@ -404,12 +445,11 @@ async function processInstallmentReminder(supabase: any, installment: OverdueIns
 
   const sent = await logAndSend(supabase, resendApiKey, {
     orgId: invoice.org_id, orgName, subject, html,
-    recipientEmail: guardian.email, recipientName: guardian.full_name,
-    guardianId: guardian.id, relatedId: installment.id, messageType: "installment_reminder",
+    recipient, relatedId: installment.id, messageType: "installment_reminder",
   });
 
   if (sent) {
-    console.log(`Sent ${daysOverdue}-day installment reminder (#${installment.installment_number}) for ${invoice.invoice_number} to ${guardian.email}`);
+    console.log(`Sent ${daysOverdue}-day installment reminder (#${installment.installment_number}) for ${invoice.invoice_number} to ${recipient.email}`);
     return "sent";
   }
   return "error";
