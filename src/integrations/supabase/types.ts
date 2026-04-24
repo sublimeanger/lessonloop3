@@ -3124,6 +3124,7 @@ export type Database = {
           related_id: string | null
           sender_user_id: string | null
           sent_at: string | null
+          source: string | null
           status: string
           subject: string
           thread_id: string | null
@@ -3146,6 +3147,7 @@ export type Database = {
           related_id?: string | null
           sender_user_id?: string | null
           sent_at?: string | null
+          source?: string | null
           status?: string
           subject: string
           thread_id?: string | null
@@ -3168,6 +3170,7 @@ export type Database = {
           related_id?: string | null
           sender_user_id?: string | null
           sent_at?: string | null
+          source?: string | null
           status?: string
           subject?: string
           thread_id?: string | null
