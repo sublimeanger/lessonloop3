@@ -1913,6 +1913,8 @@ export type Database = {
           credit_applied_minor: number
           currency_code: string
           due_date: string
+          generated_from_run_id: string | null
+          generated_from_template_id: string | null
           id: string
           installment_count: number | null
           invoice_number: string
@@ -1941,6 +1943,8 @@ export type Database = {
           credit_applied_minor?: number
           currency_code?: string
           due_date: string
+          generated_from_run_id?: string | null
+          generated_from_template_id?: string | null
           id?: string
           installment_count?: number | null
           invoice_number: string
@@ -1969,6 +1973,8 @@ export type Database = {
           credit_applied_minor?: number
           currency_code?: string
           due_date?: string
+          generated_from_run_id?: string | null
+          generated_from_template_id?: string | null
           id?: string
           installment_count?: number | null
           invoice_number?: string
@@ -2003,6 +2009,20 @@ export type Database = {
             columns: ["billing_run_id"]
             isOneToOne: false
             referencedRelation: "billing_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_generated_from_run_id_fkey"
+            columns: ["generated_from_run_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_template_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_generated_from_template_id_fkey"
+            columns: ["generated_from_template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_invoice_templates"
             referencedColumns: ["id"]
           },
           {
@@ -4404,44 +4424,72 @@ export type Database = {
       recurring_invoice_templates: {
         Row: {
           active: boolean
+          apply_credits_automatically: boolean
           auto_send: boolean
           billing_mode: string
           created_at: string
           created_by: string
+          delivered_statuses: string[]
+          due_date_offset_days: number | null
           frequency: string
           id: string
+          last_run_id: string | null
           name: string
           next_run_date: string | null
+          notes: string | null
           org_id: string
+          term_id: string | null
           updated_at: string
+          upfront_source: string | null
         }
         Insert: {
           active?: boolean
+          apply_credits_automatically?: boolean
           auto_send?: boolean
           billing_mode?: string
           created_at?: string
           created_by: string
+          delivered_statuses?: string[]
+          due_date_offset_days?: number | null
           frequency?: string
           id?: string
+          last_run_id?: string | null
           name: string
           next_run_date?: string | null
+          notes?: string | null
           org_id: string
+          term_id?: string | null
           updated_at?: string
+          upfront_source?: string | null
         }
         Update: {
           active?: boolean
+          apply_credits_automatically?: boolean
           auto_send?: boolean
           billing_mode?: string
           created_at?: string
           created_by?: string
+          delivered_statuses?: string[]
+          due_date_offset_days?: number | null
           frequency?: string
           id?: string
+          last_run_id?: string | null
           name?: string
           next_run_date?: string | null
+          notes?: string | null
           org_id?: string
+          term_id?: string | null
           updated_at?: string
+          upfront_source?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "recurring_invoice_templates_last_run_id_fkey"
+            columns: ["last_run_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_template_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recurring_invoice_templates_org_id_fkey"
             columns: ["org_id"]
@@ -4454,6 +4502,281 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_invoice_templates_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_template_items: {
+        Row: {
+          amount_minor: number
+          created_at: string
+          description: string
+          id: string
+          order_index: number
+          org_id: string
+          quantity: number
+          tax_code: string | null
+          template_id: string
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string
+          description: string
+          id?: string
+          order_index?: number
+          org_id: string
+          quantity?: number
+          tax_code?: string | null
+          template_id: string
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string
+          description?: string
+          id?: string
+          order_index?: number
+          org_id?: string
+          quantity?: number
+          tax_code?: string | null
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_template_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_invoice_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_template_recipients: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          id: string
+          is_active: boolean
+          org_id: string
+          paused_reason: string | null
+          student_id: string
+          template_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          is_active?: boolean
+          org_id: string
+          paused_reason?: string | null
+          student_id: string
+          template_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          is_active?: boolean
+          org_id?: string
+          paused_reason?: string | null
+          student_id?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_template_recipients_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_recipients_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_recipients_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_recipients_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_invoice_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_template_run_errors: {
+        Row: {
+          error_code: string
+          error_message: string
+          id: string
+          occurred_at: string
+          org_id: string
+          run_id: string
+          student_id: string
+          template_id: string
+        }
+        Insert: {
+          error_code: string
+          error_message: string
+          id?: string
+          occurred_at?: string
+          org_id: string
+          run_id: string
+          student_id: string
+          template_id: string
+        }
+        Update: {
+          error_code?: string
+          error_message?: string
+          id?: string
+          occurred_at?: string
+          org_id?: string
+          run_id?: string
+          student_id?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_template_run_errors_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_run_errors_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_run_errors_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_template_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_run_errors_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_run_errors_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_invoice_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_template_runs: {
+        Row: {
+          audit_metadata: Json | null
+          completed_at: string | null
+          error_summary: string | null
+          id: string
+          invoices_generated: number
+          org_id: string
+          outcome: string | null
+          period_end: string
+          period_start: string
+          recipients_skipped: number
+          recipients_total: number
+          run_date: string
+          started_at: string
+          template_id: string
+          triggered_by: string
+          triggered_by_user_id: string | null
+        }
+        Insert: {
+          audit_metadata?: Json | null
+          completed_at?: string | null
+          error_summary?: string | null
+          id?: string
+          invoices_generated?: number
+          org_id: string
+          outcome?: string | null
+          period_end: string
+          period_start: string
+          recipients_skipped?: number
+          recipients_total?: number
+          run_date: string
+          started_at?: string
+          template_id: string
+          triggered_by: string
+          triggered_by_user_id?: string | null
+        }
+        Update: {
+          audit_metadata?: Json | null
+          completed_at?: string | null
+          error_summary?: string | null
+          id?: string
+          invoices_generated?: number
+          org_id?: string
+          outcome?: string | null
+          period_end?: string
+          period_start?: string
+          recipients_skipped?: number
+          recipients_total?: number
+          run_date?: string
+          started_at?: string
+          template_id?: string
+          triggered_by?: string
+          triggered_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_template_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_runs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_invoice_templates"
             referencedColumns: ["id"]
           },
         ]
