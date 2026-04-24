@@ -76,7 +76,7 @@ This is substantially larger than typical SaaS polish scope. The roadmap below i
 | # | Area | Status | Journeys closed | Commits |
 |---|---|---|---|---|
 | 0 | Cross-cutting invariants | ⚪ | 0 of 4 tracks | 0 |
-| 1 | Billing & invoicing | 🟡 | 8 of 11 | 45 |
+| 1 | Billing & invoicing | 🟡 | 8 of 11 | 51 |
 | 2 | Parent portal | ⚪ | 0 of 8 | 0 |
 | 3 | Students & guardians | ⚪ | 0 of 6 | 0 |
 | 4 | Calendar | ⚪ | 0 of 9 | 0 |
@@ -167,7 +167,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 ## Area 1 — Billing & invoicing 🟡
 
-**Status:** In progress. Journey 9 next (🟠 suspected ship-broken — no scheduler edge function found; verify before fixing).
+**Status:** In progress. Journey 9 Phase 1 complete (schema foundation landed 24 April 2026). Phase 2 generator RPC next.
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -227,9 +227,23 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 **Key commits:** `cfe0248` · `8ac1849` · `0442096` · `6360171` · docs close  
 **Notable:** Closed a silent credit-resurrection path in `update_invoice_with_items` — the edit-draft flow missed the `voided_at` and `expired_at` guards that `create_invoice_with_items` and `redeem_make_up_credit` both have, meaning a voided credit could be re-applied via invoice edit. `delete_billing_run` now frees applied credits (previously orphaned them as unusable redeemed rows). `credit-expiry-warning` gained student-payer fallback and retry-unblocked dedup so failed Resend outages don't permanently consume the warning. New `issue_make_up_credit` RPC replaces the client-side non-atomic INSERT+audit pattern. `void_invoice` preserves original credit notes instead of overwriting. Minor polish: parent-portal SELECT drops always-null fields; IssueCreditModal expiry uses end-of-local-day (matches cron) and exposes the 90-day org-default option.
 
-### Journey 9 — Recurring invoice templates 🔜 NEXT 🟠
+### Journey 9 — Recurring invoice templates 🟡 IN PROGRESS (multi-phase)
 
-**Scope:** `recurring_invoice_templates` table + `RecurringBillingTab` UI + `useRecurringInvoiceTemplates` hook. **Suspected ship-broken:** no edge function found that schedules template-triggered invoice creation. Journey 9 must first confirm whether the scheduler is missing entirely or just unscheduled (cron-gap like J7-F10 / Track 0.6 pattern). If missing: either build it or remove the UI surface. High priority — shipped feature with no engine behind it.
+**Scope:** `recurring_invoice_templates` table + `RecurringBillingTab` UI + `useRecurringInvoiceTemplates` hook. Phase 0 walk (24 April 2026) confirmed ship-broken: UI fully built, zero backend (no scheduler, no generator, no child schema). Multi-phase rebuild scoped in design doc.
+
+**Design doc:** `docs/RECURRING_BILLING_DESIGN.md` (v2 — decisions locked 24 April 2026).
+
+**Phase 0 — Design (closed 24 April 2026).** Design doc committed; 10 locked decisions in §11.
+
+**Phase 1 — Schema foundation (closed 24 April 2026).** 6 commits, all migrations. Extended `recurring_invoice_templates` with generator-contract columns; reconciled J9-F2 duplicate policy drift; new tables `recurring_template_recipients`, `recurring_template_items`, `recurring_template_runs`, `recurring_template_run_errors`; `invoices.generated_from_template_id`/`generated_from_run_id`; partial unique index on `invoice_items.linked_lesson_id` for DB-level duplicate-invoice defence; existing inert templates auto-paused. No runtime behaviour change.
+
+**Phase 2 — Generator RPC.** NEXT. `generate_invoices_from_template(_template_id, _triggered_by)` with savepoint-per-recipient isolation, delivered/upfront/hybrid modes, provenance writeback.
+
+**Phase 3 — Scheduler + notifications.** Edge fn `recurring-billing-scheduler` on daily cron; operator failure alerts.
+
+**Phase 4 — Operator UX.** Template detail page, run detail page, recent runs dashboard card, bulk-void-run action.
+
+**Phase 5 — Close-out.** Docs + roadmap close.
 
 ### Journey 10 — Stripe auto-pay ⚪
 
@@ -629,4 +643,4 @@ This file is version-controlled in the main repo. History is git log.
 
 ---
 
-_Last meaningful update: 24 April 2026 (Journey 8 closed — credits × invoices hardened)._
+_Last meaningful update: 24 April 2026 (Journey 9 Phase 1 complete — recurring billing schema foundation)._

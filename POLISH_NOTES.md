@@ -1134,6 +1134,61 @@ credit-issue replaced by atomic RPC. Biggest structural gap
 flagged but NOT fixed here: `credit-expiry` cron missing from
 schedule (Track 0.6 territory).
 
+### Journey 9 — Recurring invoice templates
+
+Multi-phase project. Phase 0 walk (24 April 2026) surfaced that the
+existing `recurring_invoice_templates` surface is architectural
+vaporware — UI fully built but zero backend (no scheduler, no
+generator, no child schema). Design doc committed at
+`docs/RECURRING_BILLING_DESIGN.md` (v2 — decisions locked).
+
+#### Phase 1 — Schema foundation (24 April 2026)
+
+6 commits, all migrations, zero runtime behaviour. Builds the skeleton
+that Phases 2-4 will plug the generator, scheduler, and UX into.
+
+- **J9-P1-C1** `1a6b83f` — template schema extensions + policy reconciliation
+- **J9-P1-C2** `adc2ab2` — `recurring_template_recipients` table + RLS
+- **J9-P1-C3** `6b2bdce` — `recurring_template_items` table + RLS
+- **J9-P1-C4** `61a9bd5` — `recurring_template_runs` + `run_errors` tables + `last_run_id` FK
+- **J9-P1-C5** `9c55654` — `invoices.generated_from_*` + `invoice_items` duplicate-invoice defence
+- **J9-P1-C6** — auto-pause existing template rows + Phase 1 docs close (this commit)
+
+Shipped:
+- `recurring_invoice_templates` extended with `delivered_statuses`,
+  `upfront_source`, `due_date_offset_days`,
+  `apply_credits_automatically`, `term_id`, `notes`, `last_run_id`.
+  `billing_mode` CHECK now allows `'hybrid'`. Duplicate policy drift
+  from J9-F2 (two overlapping RLS policies) reconciled to a single
+  finance-team-only gate per Phase 0 decision 1.
+- New tables: `recurring_template_recipients` (explicit per-template
+  student list with pause flag), `recurring_template_items` (flat
+  line items for hybrid/flat modes), `recurring_template_runs`
+  (provenance anchor, one row per generator invocation),
+  `recurring_template_run_errors` (per-recipient failure log).
+  Finance-team SELECT + service-role FOR ALL on runs/errors
+  (generator writes as service role); finance-team FOR ALL on
+  recipients/items.
+- `invoices.generated_from_template_id` + `generated_from_run_id`
+  back-references + partial indexes (for the Phase 4 run detail
+  "find invoices from this run" lookup).
+- Partial unique index on `invoice_items.linked_lesson_id` WHERE
+  NOT NULL — DB-level duplicate-invoice defence (§11 decision 8).
+  `void_invoice` already nulls the link, so voided invoices free
+  the lesson for re-invoicing and the unique constraint stays
+  consistent across the void lifecycle.
+- Migration C5 includes a DO-block pre-check that aborts loudly
+  if existing data holds duplicate non-null `linked_lesson_id`
+  values — safer than letting the unique-index creation fail with
+  a cryptic constraint-violation.
+- Existing inert template rows auto-paused (`active = false` +
+  notes annotation) so the upcoming scheduler doesn't attempt to
+  run templates that lack recipients/items. Idempotent on re-run
+  via sentinel-string check in notes.
+
+No findings filed — Phase 1 is mechanical schema. Next: Phase 2
+generator RPC with savepoint-per-recipient isolation.
+
 ---
 
 ## Process improvements
