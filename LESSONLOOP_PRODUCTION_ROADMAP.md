@@ -140,6 +140,23 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Scope:** Inventory every notification trigger point. Map channels (email, push, in-app). Identify gaps (invoice sent ≠ push notification today). Normalise recipient-preference checks.
 
+### Track 0.6 — Cron schedule reconciliation (known BILLING_FORENSICS territory) 🟠
+
+**Problem:** Audit on 24 April 2026 found 7 of 8 documented reminder / expiry / auto-pay crons deviate from `docs/CRON_JOBS.md` expected schedule:
+
+- `overdue-reminders` — MISSING until 24 April 2026 (fixed, scheduled `0 9 * * *` UTC, jobid 16). J7 was not production-live for the 6-hour window between J7 close and this fix.
+- `auto-pay-upcoming-reminder` — MISSING. Expected `0 8 * * *`. Guardians do not receive the 3-day pre-due auto-pay notice email.
+- `stripe-auto-pay-installment` — MISSING. Expected `0 9 * * *`. **High impact — silent feature loss:** no auto-pay ever fires. Guardians who enabled auto-pay in-app never get charged; installments fall overdue despite stored default payment method.
+- `credit-expiry` — MISSING. Expected `0 2 * * *`. **Structural break:** warnings fire but credits never actually expire. Parents receive "expires in 3 days" emails about credits that silently stay usable past their `expires_at` date.
+- `credit-expiry-warning-daily` — wrong schedule: `0 8 * * *` (expected `55 1 * * *`). Moot until `credit-expiry` is scheduled; then needs re-ordering to run first.
+- `invoice-overdue-check` — wrong schedule: `30 5 * * *` (expected `0 2 * * *`). May be intentional.
+- `installment-overdue-check` — wrong schedule: `0 6 * * *` (expected `0 2 * * *`). May be intentional.
+- `installment-upcoming-reminder` — MATCH at `0 8 * * *`.
+
+**Scope:** full audit walk — for each missing/wrong schedule, determine (a) when the gap opened via commit history, (b) impact on users / features shipped, (c) whether time mismatches are intentional or drift, (d) the reconciliation plan. Mirror BILLING_FORENSICS methodology: walk → report → triage → batch-fix.
+
+**Priority:** high. Three shipped features (auto-pay charges, credit expiry cascade, overdue dunning until 24 April) confirmed silently non-functional in production.
+
 ---
 
 ## Area 1 — Billing & invoicing 🟡
