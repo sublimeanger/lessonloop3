@@ -277,8 +277,8 @@ SET search_path TO 'public';
    - Call `create_invoice_with_items(...)` with:
      - payer_guardian_id or payer_student_id
      - items
-     - currency_code from template
-     - tax_mode from template
+     - `currency_code` inherited from `organisations.currency_code` at generation time
+     - VAT inherited from `organisations.vat_rate` / `organisations.vat_number` (same resolution path as manual invoices)
      - invoice_number: generated via normal path
      - `generated_from_template_id = _template_id`
      - `generated_from_run_id = _run_id`
@@ -399,11 +399,11 @@ Recipient has student_id but no active primary-payer guardian AND student has no
 
 ### Org currency change
 
-Template stores `currency_code` at create time. If org currency changes, template's currency is preserved (it's a snapshot). Operator can edit template's currency explicitly.
+Org-level currency changes propagate. Generator reads `organisations.currency_code` at run time. Past invoices preserve their resolved currency (stored at invoice creation). Decision 7 locked: no per-template currency snapshot.
 
 ### VAT / tax change
 
-Template stores `tax_mode` (inherit / exempt / standard). At invoice generation, resolves to current org VAT rate if `inherit`. Historical invoices keep their resolved rate.
+Org-level VAT settings (`organisations.vat_rate`, `organisations.vat_number`) apply at generation time. No per-template override. Past invoices preserve their resolved VAT rate (stored at invoice creation). Decision 5 locked: no `tax_mode` column.
 
 ### Term boundaries (termly mode)
 
