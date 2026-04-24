@@ -1,6 +1,6 @@
 # Recurring Billing — Design Document
 
-**Status:** Draft v1 · 24 April 2026
+**Status:** v2 — decisions locked · 24 April 2026
 **Author:** Jamie McKaye (with Claude Opus 4.7)
 **Context:** Journey 9 Phase 0. The existing `recurring_invoice_templates` surface is architectural vaporware — UI promises scheduled invoicing; no scheduler, generator, or child schema exists. This doc designs the full subsystem before any build begins.
 
@@ -76,10 +76,11 @@ Extensions needed:
 ALTER TABLE recurring_invoice_templates
   ADD COLUMN IF NOT EXISTS delivered_statuses text[] NOT NULL DEFAULT '{attended}',
   ADD COLUMN IF NOT EXISTS upfront_source text CHECK (upfront_source IN ('scheduled_lessons', 'flat_fee')),
-  ADD COLUMN IF NOT EXISTS currency_code text,  -- inherited from org at create, editable
-  ADD COLUMN IF NOT EXISTS tax_mode text NOT NULL DEFAULT 'inherit' CHECK (tax_mode IN ('inherit', 'exempt', 'standard')),
   ADD COLUMN IF NOT EXISTS notes text,
-  ADD COLUMN IF NOT EXISTS last_run_id uuid;  -- FK added after runs table exists
+  ADD COLUMN IF NOT EXISTS due_date_offset_days integer,
+  ADD COLUMN IF NOT EXISTS apply_credits_automatically boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS term_id uuid REFERENCES terms(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS last_run_id uuid;
 
 -- Amend frequency check to align with code (currently accepts 'weekly', 'monthly', 'termly')
 -- Amend billing_mode check to include 'hybrid'
@@ -88,6 +89,14 @@ ALTER TABLE recurring_invoice_templates
   ADD CONSTRAINT recurring_invoice_templates_billing_mode_check
     CHECK (billing_mode IN ('delivered', 'upfront', 'hybrid'));
 ```
+
+Design decisions locked in Phase 0:
+
+- **No `currency_code` column.** Generator reads `organisations.currency_code` at run time. Org-level currency change propagates.
+- **No `tax_mode` column.** Generator inherits org VAT settings (`organisations.vat_rate`, `organisations.vat_number`) at generation time. Same as manual invoices.
+- **`due_date_offset_days` nullable.** When null, generator uses `organisations.default_payment_terms_days` (already exists, default 14). When set, template value overrides.
+- **`apply_credits_automatically` defaults true.** Generator honours existing `create_invoice_with_items` auto-apply credit logic per template.
+- **`term_id` nullable.** Required only for termly-mode templates.
 
 **J9-F2 cleanup**: the duplicate CREATE TABLE in migration `20260225001655` (with `billing_mode DEFAULT 'per_lesson'`) created a policy drift. The hardened migration must:
 - Drop the `Finance team can manage recurring templates` policy if both exist, canonicalise to `Staff can manage templates` (the 224 policy) — or flip, finance-team is probably the right gate for production use. **Decision point: which role tier?** My vote: finance team + admin, not all staff. Teachers shouldn't configure recurring billing. Align with `is_org_finance_team`.
@@ -214,6 +223,16 @@ ALTER TABLE invoices
 CREATE INDEX IF NOT EXISTS idx_invoices_from_template ON invoices (generated_from_template_id) WHERE generated_from_template_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_invoices_from_run ON invoices (generated_from_run_id) WHERE generated_from_run_id IS NOT NULL;
 ```
+
+### `invoice_items` duplicate-invoice defence
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invoice_items_linked_lesson_unique
+  ON invoice_items (linked_lesson_id)
+  WHERE linked_lesson_id IS NOT NULL;
+```
+
+DB-level guard against double-invoicing a lesson. `void_invoice` already nulls out `linked_lesson_id` on void, so released lessons become available again.
 
 ---
 
@@ -551,28 +570,17 @@ Filed for post-launch:
 
 ---
 
-## 11. Open questions — need Jamie's input before Phase 1 starts
+## 11. Locked decisions (Phase 0 close)
 
-1. **Role gate.** `is_org_finance_team` (owner + admin + finance) or wider? My vote: finance team.
-2. **Termly mode requires `terms` table link.** Does the `terms` table exist? If yes, template takes `term_id`. If no, termly-mode ships in Phase 2 or later — weekly/monthly only for v1.
-3. **Rate card storage at lesson level.** Is rate stored on the lesson row at creation, or resolved at billing time? Correct answer for idempotent historical billing: stored at lesson. If not currently stored, needs a separate migration before Phase 2.
-4. **Send-invoice edge fn.** Does a reusable `send-invoice` edge fn already exist? If yes, generator calls it for auto-send. If no, add to Phase 3 scope.
-5. **Tax mode semantics.** Is `tax_mode = 'inherit'` a real thing in the org model, or do invoices just copy org VAT? My draft assumes inherit-at-generation-time. Confirm.
-6. **Due date offset.** Templates need `due_date_offset_days` (e.g. "net 14 days"). Add to template schema. Default value: 14? 30? Org-level default inherited?
-7. **Currency resolution.** Template snapshots currency at create. Org-level currency change doesn't cascade. Acceptable?
-8. **Lesson invoicing defence — the partial unique index.** Does this conflict with anything existing? The proposal: `UNIQUE (lesson_id) WHERE NOT EXISTS (... join invoices on voided_at)`. Needs a trigger not an index since Postgres partial indexes can't join. Design alternative: check in `create_invoice_with_items` (already locks lessons) augmented with "reject if any non-voided invoice already has this lesson". Confirm current state of this check.
-9. **Scheduler observability.** Does Track 0.7 (manual cron trigger button) cover this, or does recurring need its own "run now" operator path separate from the generic cron trigger?
-10. **Demo data.** Any recurring templates in demo seed? If so, demo seed needs updating to include recipients/items.
+All questions from the design phase resolved:
 
----
-
-## Review checklist
-
-Before committing this doc:
-- [ ] Jamie has reviewed all §10 open questions and answered them
-- [ ] Phase plan granularity acceptable
-- [ ] Edge case list (§6) complete — anything missing from your 19 years of UK music academy experience?
-- [ ] Role gate decision made
-- [ ] Any concerns about existing data in production (Lauren's test academy mainly)
-
-Once checklist is clear, doc gets committed to `docs/RECURRING_BILLING_DESIGN.md` and Phase 1 briefing follows.
+1. **Role gate**: `is_org_finance_team` (owner + admin + finance).
+2. **Terms table**: exists (`20260209170759` migration). Termly mode ships in Phase 2.
+3. **Rate card at lesson level**: `lesson_participants.rate_minor` snapshotted at lesson creation. Delivered-mode uses this.
+4. **Send-invoice edge fn**: `send-invoice-email` exists. Generator calls it for auto-send.
+5. **Tax mode**: no per-template override. Org-level VAT applies at generation.
+6. **Due date offset**: `organisations.default_payment_terms_days` (default 14) with optional per-template override (`due_date_offset_days`, nullable).
+7. **Currency**: no per-template snapshot. Org-level currency at generation.
+8. **Lesson duplicate-invoice defence**: partial unique index on `invoice_items.linked_lesson_id`.
+9. **Scheduler observability**: product-level "Run now" button on template detail page. Track 0.7 (devops manual cron trigger) out of scope for this feature.
+10. **Demo data**: seed doesn't touch recurring templates. No update needed.
