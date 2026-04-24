@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { addMonths, format } from 'date-fns';
+import { addMonths, endOfDay, format } from 'date-fns';
 import { useMakeUpCredits } from '@/hooks/useMakeUpCredits';
 import { useOrg } from '@/contexts/OrgContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -37,21 +37,28 @@ export function IssueCreditModal({
 
   const symbol = getCurrencySymbol(currentOrg?.currency_code || 'GBP');
 
+  // J8-F10: expiry stored at end-of-local-day rather than the UTC
+  // midnight that toISOString() on a bare addMonths() produces.
+  // Matches the auto-issue cron pattern (credit valid through the
+  // full local day of its expiry date). Credit-expiry + redeem RPCs
+  // are timestamp-aware so no downstream trigger/RPC drift.
   const getExpiryDate = (): string | undefined => {
     const now = new Date();
     switch (expiryOption) {
       case '1month':
-        return addMonths(now, 1).toISOString();
+        return endOfDay(addMonths(now, 1)).toISOString();
       case '3months':
-        return addMonths(now, 3).toISOString();
+        return endOfDay(addMonths(now, 3)).toISOString();
       case '6months':
-        return addMonths(now, 6).toISOString();
+        return endOfDay(addMonths(now, 6)).toISOString();
       case '12months':
-        return addMonths(now, 12).toISOString();
+        return endOfDay(addMonths(now, 12)).toISOString();
+      case '90days':
+        return endOfDay(new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)).toISOString();
       case 'never':
         return undefined;
       default:
-        return addMonths(now, 3).toISOString();
+        return endOfDay(addMonths(now, 3)).toISOString();
     }
   };
 
@@ -116,6 +123,7 @@ export function IssueCreditModal({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="1month">In 1 month</SelectItem>
+                <SelectItem value="90days">In 90 days (org default)</SelectItem>
                 <SelectItem value="3months">In 3 months</SelectItem>
                 <SelectItem value="6months">In 6 months</SelectItem>
                 <SelectItem value="12months">In 12 months</SelectItem>

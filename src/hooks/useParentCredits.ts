@@ -8,8 +8,6 @@ export interface ParentCredit {
   student_id: string;
   credit_value_minor: number;
   expires_at: string | null;
-  redeemed_at: string | null;
-  applied_to_invoice_id: string | null;
   notes: string | null;
   issued_at: string;
   student: {
@@ -51,11 +49,15 @@ export function useParentCredits() {
 
       const studentIds = links.map((l) => l.student_id);
 
+      // J8-F8: the available_credits view + credit_status='available'
+      // filter guarantees redeemed_at and applied_to_invoice_id are
+      // NULL. Selecting those columns in the earlier version was
+      // dead weight — always null post-filter.
       const { data, error } = await supabase
         .from('available_credits')
         .select(`
           id, student_id, credit_value_minor, expires_at,
-          redeemed_at, applied_to_invoice_id, notes, issued_at,
+          notes, issued_at,
           student:students!make_up_credits_student_id_fkey(id, first_name, last_name)
         `)
         .eq('org_id', currentOrg.id)

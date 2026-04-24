@@ -105,45 +105,24 @@ export function useMakeUpCredits(studentId?: string, activeOnly = false) {
 
   const totalAvailableValue = availableCredits.reduce((sum, c) => sum + c.credit_value_minor, 0);
 
-  // Create a new credit
+  // Create a new credit via atomic RPC (J8-F17). Previous path did
+  // INSERT + fire-and-forget audit_log — non-atomic; audit failures
+  // silent. RPC keeps both in one transaction.
   const createCredit = useMutation({
     mutationFn: async (input: CreateCreditInput) => {
       if (!currentOrg?.id || !user?.id) throw new Error('No org or user');
 
-      const { data, error } = await supabase
-        .from('make_up_credits')
-        .insert({
-          org_id: currentOrg.id,
-          student_id: input.student_id,
-          issued_for_lesson_id: input.issued_for_lesson_id,
-          credit_value_minor: input.credit_value_minor,
-          expires_at: input.expires_at,
-          notes: input.notes,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+      const { data, error } = await (supabase.rpc as any)('issue_make_up_credit', {
+        _org_id: currentOrg.id,
+        _student_id: input.student_id,
+        _credit_value_minor: input.credit_value_minor,
+        _expires_at: input.expires_at ?? null,
+        _issued_for_lesson_id: input.issued_for_lesson_id ?? null,
+        _notes: input.notes ?? null,
+      });
 
       if (error) throw error;
-
-      // FIX 7: Log credit issuance for admin visibility
-      supabase
-        .from('audit_log')
-        .insert({
-          org_id: currentOrg.id,
-          actor_user_id: user.id,
-          action: 'credit_issued',
-          entity_type: 'make_up_credit',
-          entity_id: data.id,
-          after: {
-            student_id: input.student_id,
-            credit_value_minor: input.credit_value_minor,
-            issued_for_lesson_id: input.issued_for_lesson_id,
-          } as any,
-        })
-        .then(({ error: auditErr }) => { if (auditErr) console.error('Audit log error:', auditErr); });
-
-      return data;
+      return data as MakeUpCredit;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
