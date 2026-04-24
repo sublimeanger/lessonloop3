@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     .from("make_up_credits")
     .select(`
       id, credit_value_minor, expires_at, org_id,
-      students!make_up_credits_student_id_fkey (id, first_name, last_name)
+      students!make_up_credits_student_id_fkey (id, first_name, last_name, email)
     `)
     .is("redeemed_at", null)
     .is("expired_at", null)
@@ -67,13 +67,18 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Deduplicate: avoid sending multiple warnings for same credit
-  // Check message_log for already-sent warnings
+  // Deduplicate: avoid sending multiple warnings for same credit.
+  // J8-F15: filter on status='sent' — a previously-failed send
+  // must NOT block retry on the next cron run. Pre-fix, any
+  // message_log row (including failed) dedupe'd the credit out,
+  // meaning a transient Resend outage silently consumed the
+  // expiry warning forever.
   const creditIds = validCredits.map((c) => c.id);
   const { data: alreadySent } = await supabase
     .from("message_log")
     .select("related_id")
     .eq("message_type", "credit_expiry_warning")
+    .eq("status", "sent")
     .in("related_id", creditIds);
 
   const sentSet = new Set((alreadySent ?? []).map((m) => m.related_id));
@@ -83,12 +88,22 @@ Deno.serve(async (req) => {
 
   for (const credit of unsent) {
     try {
-      const student = (credit.students as any) as { id: string; first_name: string; last_name: string } | null;
+      const student = (credit.students as any) as { id: string; first_name: string; last_name: string; email: string | null } | null;
       if (!student) continue;
 
       const studentName = `${student.first_name} ${student.last_name}`.trim();
 
-      // Find primary guardian
+      // J8-F13: recipient resolution with student-payer fallback.
+      // Primary-guardian path first; if no primary-payer link exists,
+      // or the guardian row has no email, fall back to the student's
+      // own email. Mirrors J7-F1 pattern for reminders — no
+      // notification_preferences check for students (no user_id
+      // column on that table).
+      let recipientEmail: string | null = null;
+      let recipientName: string = studentName;
+      let recipientType: "guardian" | "student" = "guardian";
+      let recipientId: string | null = null;
+
       const { data: sgRow } = await supabase
         .from("student_guardians")
         .select("guardian_id")
@@ -97,24 +112,41 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      if (!sgRow) continue;
+      if (sgRow) {
+        const { data: guardian } = await supabase
+          .from("guardians")
+          .select("id, full_name, email, user_id")
+          .eq("id", sgRow.guardian_id)
+          .is("deleted_at", null)
+          .maybeSingle();
 
-      const { data: guardian } = await supabase
-        .from("guardians")
-        .select("id, full_name, email, user_id")
-        .eq("id", sgRow.guardian_id)
-        .is("deleted_at", null)
-        .maybeSingle();
+        if (guardian?.email) {
+          // Check notification preference (guardians only — students
+          // don't have user_id so no preference row exists).
+          if (guardian.user_id) {
+            const enabled = await isNotificationEnabled(supabase, credit.org_id, guardian.user_id, "email_makeup_offers");
+            if (!enabled) {
+              log(`Guardian ${guardian.id} has makeup emails disabled, skipping credit ${credit.id}`);
+              continue;
+            }
+          }
+          recipientEmail = guardian.email;
+          recipientName = guardian.full_name || studentName;
+          recipientType = "guardian";
+          recipientId = guardian.id;
+        }
+      }
 
-      if (!guardian?.email) continue;
-
-      // Check notification preference
-      if (guardian.user_id) {
-        const enabled = await isNotificationEnabled(supabase, credit.org_id, guardian.user_id, "email_makeup_offers");
-        if (!enabled) {
-          log(`Guardian ${guardian.id} has makeup emails disabled, skipping credit ${credit.id}`);
+      // Student fallback: no guardian path resolved above.
+      if (!recipientEmail) {
+        if (!student.email) {
+          log(`No primary-guardian email or student email for credit ${credit.id}, skipping`);
           continue;
         }
+        recipientEmail = student.email;
+        recipientName = studentName;
+        recipientType = "student";
+        recipientId = student.id;
       }
 
       // Get org name and currency
@@ -141,7 +173,7 @@ Deno.serve(async (req) => {
       const html = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
           <h2 style="color: #1a1a1a;">Make-Up Credit Expiring Soon</h2>
-          <p>Hi ${escapeHtml(guardian.full_name || "there")},</p>
+          <p>Hi ${escapeHtml(recipientName || "there")},</p>
           <p>Just a heads-up — <strong>${escapeHtml(studentName)}</strong> has a make-up credit worth <strong>${currencySymbol}${creditValue}</strong> that expires on <strong>${escapeHtml(expiryDate)}</strong>.</p>
 
           <div style="border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 24px 0; background-color: #fffbeb;">
@@ -177,7 +209,7 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({
               from: "LessonLoop <notifications@lessonloop.net>",
-              to: [guardian.email],
+              to: [recipientEmail],
               subject,
               html,
               headers: {
@@ -189,16 +221,16 @@ Deno.serve(async (req) => {
 
           if (emailRes.ok) {
             emailSent = true;
-            log(`Sent credit expiry warning to ${guardian.email} for credit ${credit.id}`);
+            log(`Sent credit expiry warning to ${recipientEmail} (${recipientType}) for credit ${credit.id}`);
           } else {
             const errText = await emailRes.text();
-            logError(`Failed to send to ${guardian.email}:`, errText);
+            logError(`Failed to send to ${recipientEmail}:`, errText);
           }
         } catch (emailErr) {
-          logError(`Error sending to ${guardian.email}:`, emailErr);
+          logError(`Error sending to ${recipientEmail}:`, emailErr);
         }
       } else {
-        log(`[DRY RUN] Would send credit expiry warning to ${guardian.email}`);
+        log(`[DRY RUN] Would send credit expiry warning to ${recipientEmail} (${recipientType})`);
       }
 
       // Log to message_log
@@ -208,10 +240,10 @@ Deno.serve(async (req) => {
         channel: "email",
         subject,
         body: `Credit ${currencySymbol}${creditValue} for ${studentName} expires ${expiryDate}`,
-        recipient_email: guardian.email,
-        recipient_name: guardian.full_name || "",
-        recipient_id: guardian.id,
-        recipient_type: "guardian",
+        recipient_email: recipientEmail,
+        recipient_name: recipientName || "",
+        recipient_id: recipientId,
+        recipient_type: recipientType,
         related_id: credit.id,
         status: emailSent ? "sent" : "failed",
         sent_at: emailSent ? new Date().toISOString() : null,
