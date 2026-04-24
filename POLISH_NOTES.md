@@ -1189,6 +1189,106 @@ Shipped:
 No findings filed — Phase 1 is mechanical schema. Next: Phase 2
 generator RPC with savepoint-per-recipient isolation.
 
+#### Phase 2 — Generator & Manual Run Path (24 April 2026)
+
+6 commits. Schema-only prerequisites, send-pipeline refactor,
+generator RPC, manual Run-now wiring.
+
+- **J9-P2-C1** `359c958` — `message_log.source` column + CIWI
+  service-role bypass
+- **J9-P2-C2** `0740f60` — extract shared `_shared/send-invoice-email-core.ts`;
+  `send-invoice-email` becomes a thin user-JWT wrapper. Behaviour-
+  preserving for existing callers (manual send, parent portal).
+- **J9-P2-C3** `5d66d6d` — `send-invoice-email-internal` edge fn
+  (service-role auth, `generated_from_template_id` defence-in-depth
+  guard) for the scheduler path. Shares logic with the user-JWT
+  wrapper via the core module.
+- **J9-P2-C4** `f5da294` — `generate_invoices_from_template` RPC +
+  `cancel_template_run` RPC. Includes 3 Phase 1 schema fixes
+  bundled (see below).
+- **J9-P2-C5** `0bdf643` — Run-now button + `useRunRecurringTemplate`
+  hook on the recurring billing settings tab. Sequential auto-send
+  via user-JWT `send-invoice-email` for `auto_send=true` templates.
+- **J9-P2-C6** — Phase 2 docs close (this commit).
+
+Shipped:
+- `message_log.source` column with CHECK (`user_manual`,
+  `recurring_scheduler`, `recurring_manual_run`, `parent_portal`)
+  for send-path attribution.
+- CIWI auth guard amended with `auth.uid() IS NULL` carve-out for
+  trusted in-DB SECURITY DEFINER callers (the generator). Service-
+  role HTTP callers cannot reach CIWI directly because PostgREST
+  doesn't route service-role to RPC endpoints — see design doc
+  Appendix A.
+- `_shared/send-invoice-email-core.ts` extracted from the existing
+  `send-invoice-email` edge fn. The user-JWT wrapper and the new
+  internal wrapper both delegate template rendering, Resend API
+  call, message_log writes, and the draft → sent transition to
+  the same core. Net-zero functional change for existing callers.
+- `send-invoice-email-internal` edge fn: service-role only, skips
+  per-user rate limit (system-triggered sends), writes
+  `message_log.sender_user_id = NULL` and the caller-supplied
+  `source` value. Defence-in-depth: rejects invoices that lack
+  `generated_from_template_id` to prevent the internal path from
+  being used to send manual invoices.
+- `generate_invoices_from_template(template_id, triggered_by, source)`
+  RPC: per-recipient savepoint isolation via BEGIN/EXCEPTION blocks;
+  weekly/monthly/termly period computation with term_id one-shot
+  vs rolling semantics; payer resolution chain (primary guardian
+  → student email → no_payer_resolved skip); rate resolution chain
+  (lp.rate_minor → student default → org default → no_rate_card
+  per-lesson skip); attendance LEFT JOIN with text-array status
+  match; pre-flight exclusion of already-billed lessons; post-CIWI
+  provenance UPDATE; termly-rolling auto-pause when no next term;
+  audit_log entry; returns `{ run_id, outcome, invoice_count,
+  recipients_skipped, recipients_total, invoice_ids, period_start,
+  period_end }`.
+- `cancel_template_run(run_id)` RPC: finance-team-gated bulk void
+  via `void_invoice(invoice_id, org_id)` per generated invoice.
+  Sets `runs.outcome = 'cancelled'`, writes audit_log entry.
+- Run-now UI on `RecurringBillingTab`. Sequential `send-invoice-email`
+  per returned `invoice_id` for templates with `auto_send=true` —
+  preserves operator identity on `message_log.sender_user_id` and
+  applies their per-user rate limit. Per-card running state via
+  `runningTemplateId` so only the targeted card shows the spinner.
+- Phase 1 schema fixes bundled into J9-P2-C4 (caught during C4
+  sanity check):
+  1. `recurring_template_runs.outcome` CHECK extended to include
+     `'cancelled'` (Phase 1 omitted this value, blocking
+     `cancel_template_run`).
+  2. `recurring_invoice_templates.delivered_statuses` DEFAULT
+     corrected from `'{attended}'` (not a valid `attendance_status`
+     enum value — would match zero rows) to `'{present}'`. Existing
+     rows with the invalid default migrated in the same statement.
+  3. `recurring_template_run_errors.student_id` NOT NULL dropped —
+     template-scoped errors like `no_next_term` aren't per-student
+     and the constraint blocked the legitimate insert.
+
+##### Phase 2 deferrals (product decisions, not gaps)
+
+- `apply_credits_automatically`: generator ships with empty
+  `_credit_ids` array. Auto-selecting eligible credits per recipient
+  is underspecified in the design doc and has its own audit surface.
+  Operator applies credits manually post-generation. Queued as a
+  follow-up journey.
+- PDF attachment on invoice emails: J11 on the production roadmap
+  is the planned retrofit for BOTH user-JWT and service-role send
+  paths. Recurring invoices (Phase 2) ship with the same HTML-only
+  send behaviour as manual invoices today; J11 upgrades both paths
+  in lockstep so Phase 2 doesn't introduce PDF expectations that
+  J11 has to reconcile separately.
+- Operator template-detail page + run detail page: Phase 4 scope
+  per design doc §10. Phase 2 wires Run-now into the existing
+  inline-card surface; the dedicated detail pages with recipients
+  / items management and per-run drill-down ship in Phase 4.
+
+##### Phase 3 scope (next)
+
+- `recurring-billing-scheduler` edge fn (cron `0 4 * * *` UTC)
+- `send-recurring-billing-alert` edge fn (operator notification on
+  partial / failed runs)
+- Audit_log wiring at scheduler batch level
+
 ---
 
 ## Process improvements

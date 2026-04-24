@@ -167,7 +167,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 ## Area 1 — Billing & invoicing 🟡
 
-**Status:** In progress. Journey 9 Phase 1 complete (schema foundation landed 24 April 2026). Phase 2 generator RPC next.
+**Status:** In progress. Journey 9 Phase 2 complete (generator RPC + Run-now UI landed 24 April 2026). Phase 3 scheduler next.
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -237,9 +237,9 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Phase 1 — Schema foundation (closed 24 April 2026).** 6 commits, all migrations. Extended `recurring_invoice_templates` with generator-contract columns; reconciled J9-F2 duplicate policy drift; new tables `recurring_template_recipients`, `recurring_template_items`, `recurring_template_runs`, `recurring_template_run_errors`; `invoices.generated_from_template_id`/`generated_from_run_id`; partial unique index on `invoice_items.linked_lesson_id` for DB-level duplicate-invoice defence; existing inert templates auto-paused. No runtime behaviour change.
 
-**Phase 2 — Generator RPC.** NEXT. `generate_invoices_from_template(_template_id, _triggered_by)` with savepoint-per-recipient isolation, delivered/upfront/hybrid modes, provenance writeback.
+**Phase 2 — Generator + manual run path (closed 24 April 2026).** 6 commits. `message_log.source` column + CIWI service-role bypass; `_shared/send-invoice-email-core.ts` extracted from existing send fn (behaviour-preserving refactor); `send-invoice-email-internal` service-role wrapper for the scheduler path; `generate_invoices_from_template` RPC with per-recipient savepoint isolation, weekly/monthly/termly period computation, payer + rate + item resolution chains, post-CIWI provenance UPDATE, and audit_log writes; `cancel_template_run` RPC for bulk void; Run-now UI on `RecurringBillingTab` with sequential auto-send via user-JWT path. Phase 1 schema fixes bundled into C4 (outcome CHECK, delivered_statuses default, run_errors.student_id NOT NULL drop).
 
-**Phase 3 — Scheduler + notifications.** Edge fn `recurring-billing-scheduler` on daily cron; operator failure alerts.
+**Phase 3 — Scheduler + notifications.** NEXT. Edge fn `recurring-billing-scheduler` on cron `0 4 * * *` UTC; `send-recurring-billing-alert` operator failure alerts; batch-level audit_log writes.
 
 **Phase 4 — Operator UX.** Template detail page, run detail page, recent runs dashboard card, bulk-void-run action.
 
@@ -643,4 +643,4 @@ This file is version-controlled in the main repo. History is git log.
 
 ---
 
-_Last meaningful update: 24 April 2026 (Journey 9 Phase 1 complete — recurring billing schema foundation)._
+_Last meaningful update: 24 April 2026 (Journey 9 Phase 2 complete — recurring billing generator + manual run path)._
