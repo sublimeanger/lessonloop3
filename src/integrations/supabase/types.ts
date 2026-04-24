@@ -6683,6 +6683,41 @@ export type Database = {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
+      issue_make_up_credit: {
+        Args: {
+          _credit_value_minor: number
+          _expires_at?: string
+          _issued_for_lesson_id?: string
+          _notes?: string
+          _org_id: string
+          _student_id: string
+        }
+        Returns: {
+          applied_to_invoice_id: string | null
+          created_at: string
+          created_by: string | null
+          credit_value_minor: number
+          expired_at: string | null
+          expires_at: string | null
+          id: string
+          issued_at: string
+          issued_for_lesson_id: string | null
+          notes: string | null
+          org_id: string
+          redeemed_at: string | null
+          redeemed_lesson_id: string | null
+          student_id: string
+          updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "make_up_credits"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       materialise_continuation_lessons: {
         Args: {
           p_created_by?: string
