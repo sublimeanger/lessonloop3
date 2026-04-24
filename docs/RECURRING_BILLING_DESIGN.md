@@ -93,7 +93,7 @@ ALTER TABLE recurring_invoice_templates
 Design decisions locked in Phase 0:
 
 - **No `currency_code` column.** Generator reads `organisations.currency_code` at run time. Org-level currency change propagates.
-- **No `tax_mode` column.** Generator inherits org VAT settings (`organisations.vat_rate`, `organisations.vat_number`) at generation time. Same as manual invoices.
+- **No `tax_mode` column.** Generator inherits org VAT settings (`organisations.vat_rate`, `organisations.vat_registration_number`) at generation time. Same as manual invoices.
 - **`due_date_offset_days` nullable.** When null, generator uses `organisations.default_payment_terms_days` (already exists, default 14). When set, template value overrides.
 - **`apply_credits_automatically` defaults true.** Generator honours existing `create_invoice_with_items` auto-apply credit logic per template.
 - **`term_id` nullable.** Required only for termly-mode templates.
@@ -278,7 +278,7 @@ SET search_path TO 'public';
      - payer_guardian_id or payer_student_id
      - items
      - `currency_code` inherited from `organisations.currency_code` at generation time
-     - VAT inherited from `organisations.vat_rate` / `organisations.vat_number` (same resolution path as manual invoices)
+     - VAT inherited from `organisations.vat_rate` / `organisations.vat_registration_number` (same resolution path as manual invoices)
      - invoice_number: generated via normal path
      - `generated_from_template_id = _template_id`
      - `generated_from_run_id = _run_id`
@@ -403,7 +403,7 @@ Org-level currency changes propagate. Generator reads `organisations.currency_co
 
 ### VAT / tax change
 
-Org-level VAT settings (`organisations.vat_rate`, `organisations.vat_number`) apply at generation time. No per-template override. Past invoices preserve their resolved VAT rate (stored at invoice creation). Decision 5 locked: no `tax_mode` column.
+Org-level VAT settings (`organisations.vat_rate`, `organisations.vat_registration_number`) apply at generation time. No per-template override. Past invoices preserve their resolved VAT rate (stored at invoice creation). Decision 5 locked: no `tax_mode` column.
 
 ### Term boundaries (termly mode)
 
