@@ -300,7 +300,7 @@ SET search_path TO 'public';
           _items             := <resolved item payload>
         )
         ```
-        CIWI returns `{id: invoice_id, ...}`. Currency is inherited from `organisations.currency_code` inside CIWI (no pass-through). VAT rate is inherited from `organisations.vat_rate` (+ `vat_enabled`) inside CIWI. `organisations.vat_registration_number` is read at invoice-display time (PDF renderer), not by CIWI.
+        CIWI returns `{id: invoice_id, ...}`. Currency is inherited from `organisations.currency_code` inside CIWI (no pass-through). VAT rate is inherited from `organisations.vat_rate` (+ `vat_enabled`) inside CIWI. `organisations.vat_registration_number` is read at invoice-display time by the HTML email template (and, when J11 lands, the server-side PDF renderer) — not by CIWI.
 
      5. Immediately after CIWI returns, still within the same savepoint:
         ```sql
@@ -396,7 +396,7 @@ Every generator call writes:
    - Accepts ONLY service-role authentication (no user-JWT path).
    - Skips the per-user rate-limit check (system-triggered sends are not subject to user rate limits).
    - Writes `message_log` with `sender_user_id = NULL` and `source = 'recurring_scheduler'` (or whatever source the caller passes, e.g. `'recurring_manual_run'`).
-   - Delegates all template rendering, PDF attachment, Resend API call, and audit writes to the shared core module.
+   - Delegates all template rendering, Resend API call (HTML-only; PDF attachment is future work — see J11 on the production roadmap), message_log writes, and the `draft → sent` invoice-status transition to the shared core module.
 
    The user-JWT variant `send-invoice-email` is refactored in the same phase to import the same shared core module — net-zero functional change for its existing callers (manual send, parent portal), verified by Phase 3 sanity check.
 
