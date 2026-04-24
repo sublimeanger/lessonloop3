@@ -76,7 +76,7 @@ This is substantially larger than typical SaaS polish scope. The roadmap below i
 | # | Area | Status | Journeys closed | Commits |
 |---|---|---|---|---|
 | 0 | Cross-cutting invariants | ⚪ | 0 of 4 tracks | 0 |
-| 1 | Billing & invoicing | 🟡 | 7 of 11 | 41 |
+| 1 | Billing & invoicing | 🟡 | 8 of 11 | 45 |
 | 2 | Parent portal | ⚪ | 0 of 8 | 0 |
 | 3 | Students & guardians | ⚪ | 0 of 6 | 0 |
 | 4 | Calendar | ⚪ | 0 of 9 | 0 |
@@ -157,11 +157,17 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Priority:** high. Three shipped features (auto-pay charges, credit expiry cascade, overdue dunning until 24 April) confirmed silently non-functional in production.
 
+### Track 0.7 — Operator manual-trigger UI for cron functions ⚪
+
+**Problem:** Cron reconciliation (Track 0.6), backfill operations, and debug-a-broken-cron workflows all require operator intervention via Supabase Dashboard. No in-app surface. A future cron-gap or schedule drift means operator has to leave the app, authenticate to Supabase, find the right edge-function invoke button.
+
+**Scope:** small admin-only surface (settings tab or audit page) listing every cron edge function with a "Run now" button, rate-limited per-function, writes to `audit_log` with actor. Companion feature for Track 0.6 ongoing health monitoring. Low priority individually but compounds with every future cron gap.
+
 ---
 
 ## Area 1 — Billing & invoicing 🟡
 
-**Status:** In progress. Journey 8 next.
+**Status:** In progress. Journey 9 next (🟠 suspected ship-broken — no scheduler edge function found; verify before fixing).
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -214,13 +220,16 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 **Key commits:** `fab0b03f` · `14828a41` · `1dba1d8d` · `ef762451` · `5fde2b58` · docs close  
 **Notable:** Exact-day-match cadence replaced with tier-aware "highest missing tier" gate — missed cron days no longer silently lose reminders. message_type taxonomy split into dynamic `${baseType}_d${tier}` suffix keyed to per-org `overdue_reminder_days` array. Student-payer fallback ported from J6 to the overdue surface. `invoice-overdue-check` gained the J6-F10 loop-and-recalc drift cleanup. `auto-pay-upcoming-reminder` email now shows outstanding (not nominal) to match what Stripe will actually charge. Dedup queries across all reminder crons now exclude `status='failed'` so failed sends retry.
 
-### Journey 8 — Credits interaction with invoices 🔜 NEXT
+### Journey 8 — Credits interaction with invoices 🟢 CLOSED
 
-**Scope:** credit application during invoice create/edit (done in Area 1 but credit lifecycle per Area 9), credit freeing on void, credit expiry cascade, `validate_refund_amount` interaction with redeemed credits.
+**Walked:** 24 April 2026  
+**Findings:** 21 (J8-F1-F21) · **Fixed:** 5 code fixes across 4 commits · **Filed:** 11 (some non-bugs verified clean, see POLISH_NOTES)  
+**Key commits:** `cfe0248` · `8ac1849` · `0442096` · `6360171` · docs close  
+**Notable:** Closed a silent credit-resurrection path in `update_invoice_with_items` — the edit-draft flow missed the `voided_at` and `expired_at` guards that `create_invoice_with_items` and `redeem_make_up_credit` both have, meaning a voided credit could be re-applied via invoice edit. `delete_billing_run` now frees applied credits (previously orphaned them as unusable redeemed rows). `credit-expiry-warning` gained student-payer fallback and retry-unblocked dedup so failed Resend outages don't permanently consume the warning. New `issue_make_up_credit` RPC replaces the client-side non-atomic INSERT+audit pattern. `void_invoice` preserves original credit notes instead of overwriting. Minor polish: parent-portal SELECT drops always-null fields; IssueCreditModal expiry uses end-of-local-day (matches cron) and exposes the 90-day org-default option.
 
-### Journey 9 — Recurring invoice templates ⚪
+### Journey 9 — Recurring invoice templates 🔜 NEXT 🟠
 
-**Scope:** `recurring_invoice_templates` table + `RecurringBillingTab` UI + `useRecurringInvoiceTemplates` hook. **Suspected gap:** no edge function found that schedules template-triggered invoice creation. May be ship-broken.
+**Scope:** `recurring_invoice_templates` table + `RecurringBillingTab` UI + `useRecurringInvoiceTemplates` hook. **Suspected ship-broken:** no edge function found that schedules template-triggered invoice creation. Journey 9 must first confirm whether the scheduler is missing entirely or just unscheduled (cron-gap like J7-F10 / Track 0.6 pattern). If missing: either build it or remove the UI surface. High priority — shipped feature with no engine behind it.
 
 ### Journey 10 — Stripe auto-pay ⚪
 
@@ -596,6 +605,9 @@ Recording decisions made during roadmap construction so future sessions understa
 - **23 April 2026 (Journey 6 close):** Did NOT duplicate `cancel_payment_plan` — existing RPC already had the right semantics (locks + paid/partially_paid guard + atomic DELETE+UPDATE+audit). Pointed the hook at it instead of creating `remove_payment_plan`.
 - **23 April 2026 (Journey 6, audit):** Kept the time-based `sent → overdue` flip in the `installment-overdue-check` cron rather than folding it into `recalculate_invoice_paid`. The helper's A4 branch covers refund-reopen only; a generic "time-aware" helper would widen its contract and affect every delegating RPC. Cron-only concern stays in the cron; recalc stays pure.
 - **23 April 2026 (Journey 7 close):** Tier-reminder cadence uses dynamic `${baseType}_d${tier}` suffix keyed to per-org `overdue_reminder_days` array. Gate fires highest missing tier only — accepts that a long outage can skip a lower tier forever in favour of the escalated version. Urgency keyed to tier (friendly/important/urgent) not daysOverdue to prevent accidental tone flip on catch-up. No data backfill; accepts one-time deploy-day spike of ≤1 extra reminder per entity.
+- **24 April 2026 (Journey 8 close):** Credit-apply eligibility checks unified across `create_invoice_with_items` / `update_invoice_with_items` / `redeem_make_up_credit` — all four guards (`voided_at`, `redeemed_at`, `expired_at`, `expires_at < CURRENT_DATE`) now present in every path. Edit-draft flow no longer a credit-resurrection hole.
+- **24 April 2026 (Journey 8):** `delete_billing_run` extended to free applied credits. Prior semantics left redeemed-but-orphaned credit rows; no intent to leave them as tombstones. `voided_at IS NULL` guard on the UPDATE preserves the separate CRD-H4 invariant (a voided credit stays voided).
+- **24 April 2026 (Journey 8):** IssueCreditModal expiry computed via `endOfDay()` to match the server-side auto-issue pattern. Credit-expiry cron and `redeem_make_up_credit` are timestamp-aware so no downstream trigger drift — the frontend change aligns UX with server behaviour.
 
 ---
 
@@ -617,4 +629,4 @@ This file is version-controlled in the main repo. History is git log.
 
 ---
 
-_Last meaningful update: 23 April 2026 (Journey 7 closed — reminder cron cadence catch-up + cross-function consistency)._
+_Last meaningful update: 24 April 2026 (Journey 8 closed — credits × invoices hardened)._

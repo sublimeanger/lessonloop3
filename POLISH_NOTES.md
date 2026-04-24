@@ -980,6 +980,160 @@ per the brief (F21-F24). Exact-day-match cadence brittleness is
 the most operationally meaningful fix — missed cron days no longer
 silently lose reminders.
 
+### Journey 8 — Credits × invoices
+
+Walked 24 April 2026. Scope: `update_invoice_with_items` credit
+path, `delete_billing_run` vs applied credits, `credit-expiry-warning`
+recipient resolution, manual credit issuance atomicity,
+`void_invoice` notes preservation, IssueCreditModal expiry
+semantics. 5 code fixes across 4 commits. 11 filed.
+
+#### Fixed (Commit 1 — update_invoice_with_items eligibility)
+
+- **J8-F1 / F2** Edit-draft credit eligibility was missing two of
+  the four checks that `create_invoice_with_items` (CRD-H3) and
+  `redeem_make_up_credit` (CRD-C3) both have:
+  - **F1 voided_at guard:** a manually-voided credit was eligible
+    for reapply via the edit path, silently resurrecting a credit
+    that should be dead.
+  - **F2 expired_at guard:** explicit expiry-cron marker was
+    bypassed (distinct from the `expires_at < CURRENT_DATE`
+    comparison that WAS present).
+- New migration `20260424120000_update_invoice_credit_eligibility_fix.sql`
+  rewrites the function from the live Lovable-applied version
+  (`20260421080040`), preserving all other behaviour verbatim.
+
+#### Fixed (Commit 2 — delete_billing_run frees credits)
+
+- **J8-F6** `delete_billing_run` DELETEd draft invoices + items
+  but did NOT free credits that had been applied to those
+  invoices. Result: orphan redeemed credits — `redeemed_at=NOW()`,
+  `applied_to_invoice_id` pointing at a deleted invoice id.
+  Unusable (can't re-apply because redeemed_at is set) but still
+  blocking any new apply attempts.
+- Added `UPDATE make_up_credits SET redeemed_at=NULL,
+  applied_to_invoice_id=NULL, notes='Credit restored — billing
+  run deleted'` step before the DELETE chain. Skips voided
+  credits (don't resurrect a manually-voided credit).
+  Freed-credit count surfaces in audit_log and RPC return value.
+
+#### Fixed (Commit 3 — credit-expiry-warning hardening)
+
+- **J8-F13** Student-payer fallback. Previous recipient resolution
+  hard-rejected on either no primary-payer guardian link OR null
+  guardian email. Student-payer credits received no warning.
+  Now: try guardian first, fall back to `student.email` when no
+  primary guardian is available. recipient_type tagged `'student'`
+  in `message_log` (CHECK constraint at `20260223152118` already
+  allows it). Mirrors J7-F1 pattern.
+- **J8-F15** Retry-unblocked dedup. Previous dedup pulled ALL
+  message_log rows for these credits regardless of status.
+  A Resend outage silently consumed the warning forever — the
+  credit never got another chance. Now `.eq('status', 'sent')`:
+  failed sends retry next cron day. Mirrors J7-F5 pattern.
+- SELECT expanded to include `students.email`. Downstream copy
+  uses resolved `recipientName` (guardian.full_name or student's
+  joined name).
+
+#### Fixed (Commit 4 — atomic issue RPC + polish pass)
+
+- **J8-F17** Atomic `issue_make_up_credit` RPC. Previous
+  `useMakeUpCredits.createCredit` did INSERT + fire-and-forget
+  audit_log INSERT — non-atomic; audit failures silent. New
+  SECURITY DEFINER RPC gates on `is_org_staff` (owner / admin /
+  teacher / finance), validates org active, validates student
+  belongs to org, validates value>0, INSERT + audit_log in one
+  transaction. Hook rewired; ~40 lines of client-side
+  non-atomic logic removed.
+- **J8-F4** `void_invoice` credit-restore now appends to the
+  original `notes` field rather than overwriting. Preserves
+  issuance context (reason, linked-lesson info) across apply →
+  void → reapply cycles. Appended restore note includes the
+  voided invoice's number and date for traceability.
+  Implementation: `COALESCE(notes, '') || CASE WHEN notes IS NULL
+  OR notes = '' THEN '' ELSE ' | ' END || 'Credit restored — ...'`.
+- **J8-F8** `useParentCredits` drops `redeemed_at` and
+  `applied_to_invoice_id` from SELECT and `ParentCredit`
+  interface. The `available_credits` view +
+  `credit_status='available'` filter guarantees both are NULL;
+  they were always-null noise.
+- **J8-F10** `IssueCreditModal` expiry now uses `endOfDay()`
+  before `toISOString()`. Previously `addMonths(now, N).toISOString()`
+  produced UTC-midnight-of-that-day, so a credit issued in UK
+  summer "expires in 3 months" was cut off just before that
+  calendar day ended in local time. `endOfDay` matches the
+  server-side auto-issue pattern — credit-expiry cron + redeem
+  RPC are timestamp-aware so no downstream drift.
+- **J8-F11** `IssueCreditModal` adds `"In 90 days (org default)"`
+  option between 1 month and 3 months. Exposes the cron's default
+  for consistency. UI default selection stays at 3 months.
+
+#### Filed — carried forward or verified clean
+
+- **J8-F3 (verified clean)** `create_invoice_with_items` credit
+  eligibility confirmed all four checks present (CRD-H3 fix).
+  No action needed; walked only to rule out drift vs
+  update_invoice_with_items.
+- **J8-F5 (filed)** `credit-expiry` cron (the cascade that
+  actually marks credits expired) is MISSING from Supabase
+  schedule per Track 0.6. Structural gap — scheduled in Track 0.6
+  reconciliation walk, not re-scoped here.
+- **J8-F7 (filed)** No per-credit revocation audit trail. Void
+  RPC writes to audit_log but doesn't snapshot the credit state
+  at void time. Low priority.
+- **J8-F9 (filed)** `ParentCredit.student` nullability: the join
+  could theoretically return null on an orphaned credit. Defensive
+  filter candidate; no production instance observed.
+- **J8-F12 (filed)** Credit-issue from the absence-cancellation
+  trigger doesn't honour org-level "issue credit on teacher
+  cancel" toggle consistently across all cancellation surfaces.
+  Cross-area with Area 5 (Lessons & attendance) — deferred to
+  that journey.
+- **J8-F14 (verified clean)** `available_credits` view excludes
+  voided/expired/redeemed. Confirmed. No action.
+- **J8-F16 (filed)** IssueCreditModal has no preview of the
+  resulting expiry date when "Never expires" is NOT selected.
+  Minor UX polish.
+- **J8-F18 (filed)** Credit lifecycle surface (per-student
+  credit history with status transitions) absent from the UI.
+  Product decision. Cross-area with Area 9 (Make-up credits &
+  waitlists).
+- **J8-F19 (filed)** Redeemed credits aren't shown on the
+  invoice PDF line items — only aggregated as
+  `credit_applied_minor`. Parents can't see which credits were
+  consumed. Tied to J11 server-side PDF; deferred.
+- **J8-F20 (filed)** No concurrency lock on the credit-apply
+  path in `update_invoice_with_items`. Two operators editing
+  the same draft invoice could double-apply the same credit
+  (FOR UPDATE locks the credit row inside the loop but not
+  before the caller reads the list). Low probability; rare
+  admin-only path.
+- **J8-F21 (filed)** Credit refunds (redeem → refund → free
+  credit) not covered. `record_manual_refund` doesn't restore
+  consumed credits on the invoice. Architectural; data-model
+  decision about whether credit consumption is reversible.
+
+#### Additional filings from other journeys
+
+- **J7-F26 (filed — polish):** "Last reminder sent" surface on
+  InvoiceDetail. Small read-only card pulled from message_log
+  with tier + timestamp (e.g. "Last reminder: tier-7 overdue,
+  sent Apr 18"). Future dunning-visibility polish pass.
+- **Area 0 polish — Track 0.7 filed in ROADMAP:** operator-facing
+  manual cron trigger button. Listed under Cross-cutting
+  invariants. Unblocks Track 0.6 reconciliation, cron debugging,
+  and backfill operations without leaving the app.
+
+**Journey 8 closed (24 April 2026).** 5 fixes landed across 4
+commits, 11 filed (some verified clean, some cross-area deferred,
+some product decisions). Credit eligibility checks now unified
+across create / edit / redeem paths; orphan-credit hole in
+billing-run deletion closed; credit-expiry warning reaches
+student payers and retries on transient failure; client-side
+credit-issue replaced by atomic RPC. Biggest structural gap
+flagged but NOT fixed here: `credit-expiry` cron missing from
+schedule (Track 0.6 territory).
+
 ---
 
 ## Process improvements
