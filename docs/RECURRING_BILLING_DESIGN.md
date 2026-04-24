@@ -196,7 +196,7 @@ CREATE TABLE recurring_template_run_errors (
   template_id uuid NOT NULL REFERENCES recurring_invoice_templates(id) ON DELETE CASCADE,
   student_id uuid NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   org_id uuid NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
-  error_code text NOT NULL,  -- e.g. 'no_rate_card', 'no_payer', 'no_lessons_in_period', 'db_error'
+  error_code text NOT NULL,  -- e.g. 'no_rate_card', 'no_payer', 'no_payer_resolved', 'no_lessons_in_period', 'no_next_term', 'no_attendance_recorded', 'db_error'
   error_message text NOT NULL,
   occurred_at timestamptz NOT NULL DEFAULT now()
 );
@@ -269,24 +269,65 @@ SET search_path TO 'public';
    - Resolve payer (primary guardian, fallback to student-payer).
    - If payer unresolvable: insert error row `('no_payer', ...)`, skip.
    - Build line items:
-     - **Delivered-mode**: query lessons in period where `student_id IN lesson_participants` AND `attendance_status = ANY(_template.delivered_statuses)` AND not already invoiced (cross-check `invoice_items.lesson_id`). Build one item per lesson at lesson's rate.
+     - **Delivered-mode**: query lessons in the billing period via LEFT JOIN to `attendance_records` (which is where `attendance_status` lives — not on `lessons` or `lesson_participants`). Join on `(attendance_records.lesson_id = lessons.id AND attendance_records.student_id = lesson_participants.student_id)`. Include a lesson in the billing set only if: (a) the lesson's `start_at` / `end_at` falls in the billing period; (b) `lesson_participants.student_id` is in the recipient student set; (c) `attendance_records.attendance_status = ANY(_template.delivered_statuses)`; (d) the lesson is not already invoiced (cross-check `invoice_items.linked_lesson_id`, excluding voided invoices). Lessons with NO `attendance_records` row for the student-lesson pair are SKIPPED (not billed, not errored) — unmarked attendance is 'pending operator action', not a billing failure. Operator reviews skipped-lesson counts in the run detail page. Build one item per lesson at the lesson's rate (see rate resolution chain, §6).
      - **Upfront flat**: copy items from `recurring_template_items`.
      - **Upfront scheduled**: query lessons scheduled in upcoming period, one item per scheduled lesson.
      - **Hybrid**: both sets, merged.
    - If zero items produced: insert error row `('no_lessons_in_period' or 'no_items_configured', ...)`, skip. Don't create empty invoices.
-   - Call `create_invoice_with_items(...)` with:
-     - payer_guardian_id or payer_student_id
-     - items
-     - `currency_code` inherited from `organisations.currency_code` at generation time
-     - VAT inherited from `organisations.vat_rate` / `organisations.vat_registration_number` (same resolution path as manual invoices)
-     - invoice_number: generated via normal path
-     - `generated_from_template_id = _template_id`
-     - `generated_from_run_id = _run_id`
-     - due_date: operator-configurable offset from run_date (e.g. "net 14 days"). Add to template schema.
-     - Credits applied: respect existing `create_invoice_with_items` auto-apply logic if student has available credits. Operator-configurable per-template via `apply_credits_automatically boolean`.
-   - If `auto_send = true`: call the send pipeline (Resend via `send-invoice` edge fn or equivalent). Status transitions to `sent`. Failure to send emails the operator but does not roll back the invoice (invoice is already valid data).
+   - **Per-recipient invoice creation** (inside savepoint `sp_recipient_<recipient_id>`):
+
+     1. Resolve payer for the recipient (see §6 payer resolution order).
+
+     2. Resolve billable items (delivered: lesson-backed with rate resolution; upfront-flat: fixed items from `recurring_template_items`; upfront-scheduled: future-period lesson-backed; hybrid: delivered + flat merged).
+
+     3. For each billable item, resolve `rate_minor` using the chain:
+        `lesson_participants.rate_minor` (snapshot) →
+        `students.default_rate_card_id` → `rate_cards.rate_amount * 100` →
+        `organisations.default_rate_card_id` → `rate_cards.rate_amount * 100` →
+        skip item (or recipient, if no items resolve) with `error_code = 'no_rate_card'`.
+
+     4. Call `create_invoice_with_items(...)`:
+        ```sql
+        create_invoice_with_items(
+          _org_id            := template.org_id,
+          _due_date          := run_date + COALESCE(template.due_date_offset_days, organisations.default_payment_terms_days),
+          _payer_guardian_id := <resolved or NULL>,
+          _payer_student_id  := <resolved or NULL>,
+          _notes             := template.notes,
+          _credit_ids        := CASE WHEN template.apply_credits_automatically
+                                  THEN <auto-selected credit_ids>
+                                  ELSE ARRAY[]::uuid[] END,
+          _items             := <resolved item payload>
+        )
+        ```
+        CIWI returns `{id: invoice_id, ...}`. Currency is inherited from `organisations.currency_code` inside CIWI (no pass-through). VAT rate is inherited from `organisations.vat_rate` (+ `vat_enabled`) inside CIWI. `organisations.vat_registration_number` is read at invoice-display time (PDF renderer), not by CIWI.
+
+     5. Immediately after CIWI returns, still within the same savepoint:
+        ```sql
+        UPDATE invoices
+           SET generated_from_template_id = _template_id,
+               generated_from_run_id      = _run_id
+         WHERE id = <returned invoice_id>;
+        ```
+        This sets the provenance columns added in Phase 1 migration `20260424200000`. CIWI's signature is NOT extended to accept provenance params — keeping CIWI's surface area stable across callers outweighs the single-caller-optimisation of adding two params. See Appendix A for the one change CIWI DOES receive (the service-role auth carve-out).
+
+     6. Append `invoice_id` to the per-recipient result set. Increment `invoices_generated` counter.
+
+   - **On exception inside the savepoint**: roll back to `sp_recipient_<id>`, append an error row to `recurring_template_run_errors` with the recipient `student_id`, `error_code` (mapped from the raised exception: `no_payer_resolved`, `no_rate_card`, `no_lessons_in_period`, `no_attendance_recorded`, `db_error`), and `error_message`. Continue to next recipient — do not abort the run.
+   - **Auto-send is NOT invoked from inside the generator RPC.** Supabase `plpgsql` cannot call edge functions, and `send-invoice-email` requires a user JWT. Instead, the RPC returns the list of created invoice IDs to its caller. The orchestrator (scheduler edge fn for cron path, UI for Run-now path) is responsible for iterating the returned IDs and invoking the appropriate send function per invoice. See §4 (scheduler) and §5 (Run-now) for the auto-send sequences.
    - Increment `invoices_generated` counter.
-8. **Advance next_run_date** on template by one frequency unit.
+8. **Advance next_run_date** on template based on `template.frequency`:
+   - **weekly**: `next_run_date = current_run_date + interval '7 days'`.
+   - **monthly**: `next_run_date = current_run_date + interval '1 month'`.
+   - **termly**: logic depends on `template.term_id` (see §6 term_id semantics):
+     - If `term_id IS NOT NULL` (one-shot for a specific term): set `template.active = false` after this run. Do NOT advance `next_run_date` (not meaningful — template is retired).
+     - If `term_id IS NULL` (rolling termly):
+       ```sql
+       SELECT MIN(start_date) FROM terms
+         WHERE org_id = template.org_id
+           AND start_date > (SELECT end_date FROM terms WHERE id = <current period's term_id>)
+       ```
+       If a future term is found: `next_run_date = that start_date`. If no future term exists: set `template.active = false`, `last_run_status = 'partial'`, and append an entry to `recurring_template_run_errors` with `error_code = 'no_next_term'` so the run row surfaces the reason. Template stays in the list as needs-attention for the operator to add the next term.
 9. **Update run row**: `outcome` = `'completed'` (all recipients succeeded), `'partial'` (some errors but some invoices), `'failed'` (zero invoices produced). Set `completed_at`.
 10. **Update template**: `last_run_id`, `last_run_at`, `last_run_status`, `last_run_invoice_count`.
 11. **Write audit_log** entry `'template_run_completed'` with summary.
@@ -342,9 +383,25 @@ Every generator call writes:
 
 1. Fetch active templates where `next_run_date <= CURRENT_DATE`. Order by `org_id, next_run_date` for locality.
 2. For each template, call `generate_invoices_from_template(_template_id, 'scheduler')` via Supabase RPC.
-3. Collect results: `{ template_id, run_id, outcome, invoices, errors }`.
-4. Log summary to console and (for visibility) write an `audit_log` entry with the batch summary at org level.
-5. If any template's outcome is `'failed'` or `'partial'` with significant errors, fire `send-recurring-billing-alert` to org owners (operator notification edge fn).
+3. Collect results: `{ template_id, run_id, outcome, invoice_ids, errors }`.
+4. **Auto-send sequence (scheduler path)**. After the RPC returns successfully, for each `invoice_id` where the parent template has `auto_send = true`:
+
+   ```
+   POST <project>/functions/v1/send-invoice-email-internal
+   Headers: Authorization: Bearer <service-role-key>
+   Body:    { invoice_id: <uuid>, source: 'recurring_scheduler' }
+   ```
+
+   `send-invoice-email-internal` is a new edge fn (landed in Phase 3) that shares its core send logic with `send-invoice-email` via a shared module `_shared/send-invoice-email-core.ts`. The internal variant:
+   - Accepts ONLY service-role authentication (no user-JWT path).
+   - Skips the per-user rate-limit check (system-triggered sends are not subject to user rate limits).
+   - Writes `message_log` with `sender_user_id = NULL` and `source = 'recurring_scheduler'` (or whatever source the caller passes, e.g. `'recurring_manual_run'`).
+   - Delegates all template rendering, PDF attachment, Resend API call, and audit writes to the shared core module.
+
+   The user-JWT variant `send-invoice-email` is refactored in the same phase to import the same shared core module — net-zero functional change for its existing callers (manual send, parent portal), verified by Phase 3 sanity check.
+
+5. Log summary to console and (for visibility) write an `audit_log` entry with the batch summary at org level.
+6. If any template's outcome is `'failed'` or `'partial'` with significant errors, fire `send-recurring-billing-alert` to org owners (operator notification edge fn).
 
 ### Failure isolation
 
@@ -360,14 +417,24 @@ Scheduler does NOT auto-retry. If a template's run produces errors, operator int
 
 When template's `auto_send = true`:
 - Generator creates invoice via `create_invoice_with_items` with initial status `draft`.
-- Immediately after creation, generator calls the send-invoice edge fn (or the internal `send_invoice` RPC if that's the preferred path).
+- Immediately after the generator returns, the orchestrator (scheduler edge fn for cron path, UI for Run-now path) invokes the send pipeline for each returned `invoice_id` — see §4 (scheduler sequence) and the "Run-now sequence" subsection below. The generator itself does NOT send.
 - On send success: invoice transitions to `sent`, parent email fires.
-- On send failure: invoice stays `draft`, error logged to `recurring_template_run_errors` with code `send_failed`, generator continues (the invoice row is intact; an operator can retry the send from InvoiceDetail).
+- On send failure: invoice stays `draft`, error logged (scheduler path: to `audit_log` with `action = 'recurring_send_failed'`; Run-now path: to UI error summary). The invoice row is intact; an operator can retry the send from InvoiceDetail.
 
 When `auto_send = false`:
 - Generator creates invoice in `draft` status.
 - Operator reviews the batch in a new "Recent recurring runs" dashboard surface (see §7).
 - Operator sends invoices manually via normal send flow.
+
+### Run-now sequence (manual path)
+
+1. UI calls `generate_invoices_from_template` RPC with the operator's user JWT (must have `is_org_finance_team = true`). The RPC's `_triggered_by` param is set to `'manual'`.
+
+2. RPC returns `{ run_id, invoice_ids[], error_rows[], outcome }`.
+
+3. For each `invoice_id` where the parent template has `auto_send = true`, the UI sequentially invokes the EXISTING `send-invoice-email` edge fn (user-JWT path) — NOT the internal variant. This preserves the operator's identity on the send (`message_log.sender_user_id = operator_user_id`) and applies the operator's per-user rate limits.
+
+4. UI displays a progress indicator and an error summary if any recipient's savepoint rolled back. Operator can drill into the run detail page to inspect `error_rows`.
 
 ---
 
@@ -428,6 +495,32 @@ Error row: `no_lessons_in_period`. Skipped. No invoice created. This is the expe
 ### Duplicate lesson payment path
 
 If a lesson appears in both a recurring invoice AND a manual billing-run invoice: whichever invoice is created first wins (locked). The other path should see the lesson as already invoiced and skip. Defence: `invoice_items.lesson_id` has a partial unique index `WHERE invoice.voided_at IS NULL` — enforce at DB level.
+
+### term_id semantics
+
+- `template.term_id = NULL` → **rolling termly**. Period resolution: "term ending most recently before `next_run_date`" for delivered mode; "term starting on/after `next_run_date`" for upfront. Advance rule: `MIN(start_date)` of the next term (see §3 step 8).
+- `template.term_id IS NOT NULL` → **one-shot for that specific term**. Generator bills for exactly that term, then sets `active = false`. Does not advance `next_run_date`.
+
+### Attendance marking requirement
+
+Delivered-mode billing SKIPS lessons with no `attendance_records` row for the student-lesson pair. This is deliberate — unmarked attendance is "pending operator action", not a billing error. Operator reviews skipped counts in the run detail page. If the operator then marks attendance and wants to re-bill, they trigger Run-now for the template (or wait for the next scheduled run). No separate `no_attendance_recorded` error is raised for individual skipped lessons (the count is surfaced via the run's skipped-lesson tally); the `no_attendance_recorded` error_code is reserved for the case where a recipient has zero billable lessons in the period entirely because ALL of their period lessons are unmarked.
+
+### Payer resolution order
+
+For each recipient (a `student_id` on the template):
+
+1. `guardian_students` WHERE `student_id = recipient` AND `is_primary_payer = true` AND `active = true` — pick `guardian_id`. Set `payer_guardian_id = guardian_id`, `payer_student_id = NULL`.
+2. If no primary-payer guardian, fall back to the student themselves if `students.email IS NOT NULL`. Set `payer_student_id = recipient`, `payer_guardian_id = NULL`.
+3. If neither, skip the recipient with `error_code = 'no_payer_resolved'`.
+
+### Rate resolution order
+
+(Restated here for reference; detailed in §3 step 11.)
+
+`lesson_participants.rate_minor` (snapshot at lesson creation) →
+`students.default_rate_card_id` → `rate_cards.rate_amount * 100` →
+`organisations.default_rate_card_id` → `rate_cards.rate_amount * 100` →
+skip item with `error_code = 'no_rate_card'`.
 
 ---
 
@@ -577,10 +670,37 @@ All questions from the design phase resolved:
 1. **Role gate**: `is_org_finance_team` (owner + admin + finance).
 2. **Terms table**: exists (`20260209170759` migration). Termly mode ships in Phase 2.
 3. **Rate card at lesson level**: `lesson_participants.rate_minor` snapshotted at lesson creation. Delivered-mode uses this.
-4. **Send-invoice edge fn**: `send-invoice-email` exists. Generator calls it for auto-send.
+4. **Send-invoice edge fn**: `send-invoice-email` (user-JWT) exists; `send-invoice-email-internal` (service-role, new in Phase 3) shares a core module. Generator returns `invoice_ids`; the orchestrator (scheduler or UI) invokes the appropriate send fn. Generator itself does NOT send. See Appendix A note + §3 step 7 ("Auto-send is NOT invoked from inside the generator RPC") + §4 / §5 sequences.
 5. **Tax mode**: no per-template override. Org-level VAT applies at generation.
 6. **Due date offset**: `organisations.default_payment_terms_days` (default 14) with optional per-template override (`due_date_offset_days`, nullable).
 7. **Currency**: no per-template snapshot. Org-level currency at generation.
 8. **Lesson duplicate-invoice defence**: partial unique index on `invoice_items.linked_lesson_id`.
 9. **Scheduler observability**: product-level "Run now" button on template detail page. Track 0.7 (devops manual cron trigger) out of scope for this feature.
 10. **Demo data**: seed doesn't touch recurring templates. No update needed.
+
+---
+
+## Appendix A — CIWI auth amendment (Phase 2 prerequisite)
+
+The generator RPC calls `create_invoice_with_items` (CIWI) from inside a `SECURITY DEFINER` context. Current CIWI auth guard (migration `20260316260000`, line 291):
+
+```sql
+IF NOT is_org_finance_team(auth.uid(), _org_id) THEN
+  RAISE EXCEPTION 'Not authorised';
+END IF;
+```
+
+When called from the scheduler edge fn path (service-role key), `auth.uid()` is NULL, `is_org_finance_team` returns false, and every recipient's savepoint rolls back with `'Not authorised'`. 100% skip rate on scheduled runs.
+
+**Phase 2 Commit 1 amends the guard to:**
+
+```sql
+IF auth.uid() IS NOT NULL
+   AND NOT is_org_finance_team(auth.uid(), _org_id) THEN
+  RAISE EXCEPTION 'Not authorised';
+END IF;
+```
+
+**Semantics.** When `auth.uid() IS NULL` (service role), skip the row-level check. Service-role callers reach CIWI ONLY through `SECURITY DEFINER` wrappers (currently: the new `generate_invoices_from_template` RPC; no others). Each such wrapper must implement its own auth gate before calling CIWI.
+
+**Non-weakening argument.** This is not a weakening of CIWI's auth posture — it's an explicit carve-out for the single trusted in-database caller pattern. No external service-role HTTP caller can reach CIWI directly because Supabase RPC exposure is scoped to authenticated JWTs (PostgREST does not route service-role to RPC endpoints without explicit policy). Even if a future change exposed CIWI to service-role HTTP, the carve-out is safe: service role already bypasses all RLS by definition, so the auth check would be redundant not protective.
