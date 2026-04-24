@@ -4644,7 +4644,7 @@ export type Database = {
           occurred_at: string
           org_id: string
           run_id: string
-          student_id: string
+          student_id: string | null
           template_id: string
         }
         Insert: {
@@ -4654,7 +4654,7 @@ export type Database = {
           occurred_at?: string
           org_id: string
           run_id: string
-          student_id: string
+          student_id?: string | null
           template_id: string
         }
         Update: {
@@ -4664,7 +4664,7 @@ export type Database = {
           occurred_at?: string
           org_id?: string
           run_id?: string
-          student_id?: string
+          student_id?: string | null
           template_id?: string
         }
         Relationships: [
@@ -6617,6 +6617,7 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: undefined
       }
+      cancel_template_run: { Args: { _run_id: string }; Returns: Json }
       check_rate_limit: {
         Args: {
           _action_type: string
@@ -6742,6 +6743,10 @@ export type Database = {
         }
       }
       generate_invoice_number: { Args: { _org_id: string }; Returns: string }
+      generate_invoices_from_template: {
+        Args: { _source: string; _template_id: string; _triggered_by: string }
+        Returns: Json
+      }
       get_active_disputes_for_org: {
         Args: { _org_id: string }
         Returns: {
