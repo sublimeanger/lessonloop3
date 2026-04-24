@@ -23,8 +23,9 @@ import {
   useDeleteRecurringTemplate,
   type RecurringTemplate,
 } from '@/hooks/useRecurringInvoiceTemplates';
+import { useRunRecurringTemplate } from '@/hooks/useRunRecurringTemplate';
 import {
-  Plus, Loader2, CalendarClock, Trash2, Pencil, ToggleLeft, ToggleRight,
+  Plus, Loader2, CalendarClock, Trash2, Pencil, ToggleLeft, ToggleRight, Play,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -43,15 +44,19 @@ const MODE_LABELS: Record<string, string> = {
 function TemplateCard({
   template,
   canEdit,
+  isRunning,
   onEdit,
   onToggle,
   onDelete,
+  onRunNow,
 }: {
   template: RecurringTemplate;
   canEdit: boolean;
+  isRunning: boolean;
   onEdit: (t: RecurringTemplate) => void;
   onToggle: (t: RecurringTemplate) => void;
   onDelete: (t: RecurringTemplate) => void;
+  onRunNow: (t: RecurringTemplate) => void;
 }) {
   return (
     <div className={cn(
@@ -83,6 +88,24 @@ function TemplateCard({
       </div>
       {canEdit && (
         <div className="flex items-center gap-1 shrink-0">
+          <Button
+            variant="default"
+            size="sm"
+            className="h-9 gap-1.5 px-3 text-xs"
+            onClick={() => onRunNow(template)}
+            disabled={!template.active || isRunning}
+            title={
+              !template.active
+                ? 'Resume the template before running.'
+                : 'Generate invoices now using the template configuration. Auto-send templates will email invoices immediately.'
+            }
+          >
+            {isRunning ? (
+              <><Loader2 className="h-3.5 w-3.5 animate-spin" />Running…</>
+            ) : (
+              <><Play className="h-3.5 w-3.5" />Run now</>
+            )}
+          </Button>
           <Button
             variant={template.active ? 'outline' : 'default'}
             size="sm"
@@ -116,6 +139,8 @@ export function RecurringBillingTab() {
   const createMutation = useCreateRecurringTemplate();
   const updateMutation = useUpdateRecurringTemplate();
   const deleteMutation = useDeleteRecurringTemplate();
+  const runMutation = useRunRecurringTemplate();
+  const [runningTemplateId, setRunningTemplateId] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<RecurringTemplate | null>(null);
@@ -194,6 +219,20 @@ export function RecurringBillingTab() {
     setDeleteTarget(null);
   };
 
+  const handleRunNow = async (template: RecurringTemplate) => {
+    setRunningTemplateId(template.id);
+    try {
+      await runMutation.mutateAsync({
+        templateId: template.id,
+        autoSend: template.auto_send ?? false,
+      });
+    } catch {
+      // toast handled in hook onError
+    } finally {
+      setRunningTemplateId(null);
+    }
+  };
+
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
@@ -234,9 +273,11 @@ export function RecurringBillingTab() {
                 key={t.id}
                 template={t}
                 canEdit={canEdit}
+                isRunning={runningTemplateId === t.id}
                 onEdit={openEdit}
                 onToggle={handleToggle}
                 onDelete={setDeleteTarget}
+                onRunNow={handleRunNow}
               />
             ))}
           </div>
