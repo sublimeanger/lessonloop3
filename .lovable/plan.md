@@ -1,63 +1,52 @@
+# Schedule `overdue-reminders` cron job
 
+## Context
 
-## Apply migration: `update_invoice_with_items` RPC
+The `overdue-reminders` edge function (deployed in Journey 7) is currently unscheduled. Audit confirmed via `cron.job` query — no row matches `overdue-reminders`. This is the J7 production blocker: the dunning logic is live but never fires.
 
-This is a schema change (new RPC function), so it goes through the migration tool. After approval, I'll run the verification queries and report back.
+## What will change
 
-### Migration
+A single `cron.schedule(...)` call inserted via the Supabase **insert** tool (not migration tool — per project convention, cron schedules contain project-specific URL/key and must not ship in migrations that could leak to remixed projects).
 
-Single `CREATE OR REPLACE FUNCTION` for `public.update_invoice_with_items(uuid, date, uuid, uuid, date, text, uuid[], jsonb)` — atomic editor for draft invoices, with:
+## Cron job spec
 
-- Row lock on the target invoice
-- Auth gate: `is_org_finance_team(auth.uid(), org_id)`
-- Status gate: `status = 'draft'` only
-- Payer XOR gate: exactly one of `_payer_guardian_id` / `_payer_student_id`
-- Items validation: non-empty array, non-empty description, qty > 0, unit price >= 0
-- VAT recompute from `invoices.vat_rate`
-- Payment-plan guard: blocks edits that change `total_minor` when `payment_plan_enabled = true`
-- Credits: frees previously-applied credits on this invoice, re-applies `_credit_ids` (with redeemed/expired guards), caps applied to new total
-- Items: `DELETE` then re-`INSERT` from `_items` jsonb
-- Updates invoice header + recomputed totals
-- Writes `audit_log` row (`action = 'invoice_edited'`) with before/after totals, payer, due date, item counts
-- Returns jsonb summary `{ id, invoice_number, subtotal_minor, tax_minor, total_minor, credit_applied_minor, status }`
+| Field | Value |
+|---|---|
+| Job name | `overdue-reminders-daily` |
+| Schedule | `0 9 * * *` (09:00 UTC daily) |
+| Function | `overdue-reminders` |
+| Auth | `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>` (per docs/CRON_JOBS.md entry 9a — function uses its own auth check, not `validateCronAuth`) |
+| Body | `{}` |
 
-Permissions: `REVOKE ALL FROM PUBLIC`, `GRANT EXECUTE TO authenticated`.
+## SQL to execute
 
-Schema cache: `NOTIFY pgrst, 'reload schema'` inside the transaction.
+```sql
+select cron.schedule(
+  'overdue-reminders-daily',
+  '0 9 * * *',
+  $$
+  select net.http_post(
+    url := 'https://ximxgnkpcswbvfrkkmjq.supabase.co/functions/v1/overdue-reminders',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
+    ),
+    body := '{}'::jsonb
+  ) as request_id;
+  $$
+);
+```
 
-### Post-apply verification (read-only)
+Note on auth header: existing reminder cron jobs in this project (verified via earlier `cron.job` audit) use the service-role key directly inlined in the command, since `current_setting('app.settings.service_role_key')` is not configured at the database level. Will match the existing pattern by inlining the actual service role key value when the SQL is executed via the insert tool — this matches how `installment-upcoming-reminder-daily` and the other deployed jobs are configured.
 
-1. Function exists + signature:
-   ```sql
-   SELECT proname, pg_get_function_arguments(oid)
-   FROM pg_proc
-   WHERE proname = 'update_invoice_with_items';
-   ```
-2. Privileges:
-   ```sql
-   SELECT grantee, privilege_type
-   FROM information_schema.routine_privileges
-   WHERE routine_name = 'update_invoice_with_items';
-   ```
-   Expected: `authenticated / EXECUTE` (no PUBLIC).
-3. Smoke test (bogus uuid → expect SQLSTATE `P0002` "Invoice ... not found"):
-   ```sql
-   SELECT update_invoice_with_items(
-     '00000000-0000-0000-0000-000000000000'::uuid,
-     CURRENT_DATE,
-     '00000000-0000-0000-0000-000000000000'::uuid,
-     NULL, NULL, 'smoke test',
-     ARRAY[]::uuid[], '[]'::jsonb
-   );
-   ```
-4. Confirm `NOTIFY pgrst, 'reload schema'` ran (it's in the migration body).
+## Verification after apply
 
-### Report back
+1. Re-query `cron.job` — confirm `overdue-reminders-daily` row exists with schedule `0 9 * * *` and `active = true`.
+2. Query `cron.job_run_details` after the next 09:00 UTC tick — confirm a run lands and returns HTTP 200.
+3. Spot-check `message_log` for `overdue_reminder_d{N}` / `installment_reminder_d{N}` rows on/after the first scheduled run.
 
-- Applied cleanly / errors
-- Function signature output
-- Privilege grant output
-- Smoke test result (expect `P0002`)
-- Schema reload confirmation
-- No `main` modifications — DB-only change
+## Out of scope
 
+- The other 3 missing schedules (`auto-pay-upcoming-reminder`, `stripe-auto-pay-installment`, `credit-expiry`) and the 3 mismatched ones (`invoice-overdue-check`, `installment-overdue-check`, `credit-expiry-warning-daily`) — flagged earlier, awaiting your separate decision. Not touching them in this change.
+- No edge function code changes.
+- No migrations.
