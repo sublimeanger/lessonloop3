@@ -29,12 +29,12 @@ export function useRunRecurringTemplate() {
       autoSend: boolean;
     }): Promise<RunTemplateOutcome> => {
       const { data, error } = await supabase.rpc(
-        'generate_invoices_from_template' as never,
+        'generate_invoices_from_template',
         {
           _template_id: args.templateId,
           _triggered_by: 'manual',
           _source: 'recurring_manual_run',
-        } as never,
+        },
       );
       if (error) throw error;
       const runResult = data as unknown as RunTemplateResult;

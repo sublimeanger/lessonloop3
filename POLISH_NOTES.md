@@ -1282,12 +1282,43 @@ Shipped:
   inline-card surface; the dedicated detail pages with recipients
   / items management and per-run drill-down ship in Phase 4.
 
-##### Phase 3 scope (next)
+#### Phase 3 — Scheduler & Alerts (closed 24 April 2026)
 
-- `recurring-billing-scheduler` edge fn (cron `0 4 * * *` UTC)
-- `send-recurring-billing-alert` edge fn (operator notification on
-  partial / failed runs)
-- Audit_log wiring at scheduler batch level
+4 commits.
+
+- Added `recurring-billing-scheduler` edge fn (cron-auth-gated via
+  `validateCronAuth` + `INTERNAL_CRON_SECRET`). Registered cron at
+  `0 4 * * *` UTC.
+- Added `send-recurring-billing-alert` edge fn. Mirrors
+  `send-dispute-notification` structure; recipients broadened from
+  owners-only to full finance team (owner + admin + finance,
+  active). 5-min dedup on (template_id, run_id, outcome).
+- Extended `message_log.source` CHECK to include
+  `'recurring_scheduler_alert'`.
+- Scheduler flow: find due templates, invoke generator RPC per
+  template (continue-on-error), auto-send filtered to `status='draft'`
+  (idempotency guard for day-N+1 retries of prior partial runs),
+  alert on partial/failed outcomes with error samples.
+- Phase 2 F1 cleanup: removed `as never` type assertions in
+  `useRunRecurringTemplate.ts` (Lovable regenerated `types.ts`
+  post-Phase-2 deploy).
+
+##### Phase 3 observability
+
+Intentional simplification: no `cron_run_log` table. Scheduler logs
+via `console.log` + returns aggregate summary in HTTP response.
+Partial/failed runs trigger alert emails. If observability becomes
+a pain point (e.g. silent regressions in the cron path), a Phase 4+
+journey can introduce a runs log table.
+
+##### Phase 4 scope (next)
+
+- Dedicated template detail page (currently Run-now button wired
+  onto inline cards in Settings tab)
+- Run detail page with void/retry actions
+- Recent runs dashboard card
+- Recipient bulk-add UI
+- Failure banner on settings tab
 
 ---
 

@@ -167,7 +167,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 ## Area 1 — Billing & invoicing 🟡
 
-**Status:** In progress. Journey 9 Phase 2 complete (generator RPC + Run-now UI landed 24 April 2026). Phase 3 scheduler next.
+**Status:** In progress. Journey 9 Phase 3 complete (scheduler + alerts landed 24 April 2026). Phase 4 operator UX next.
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -239,7 +239,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Phase 2 — Generator + manual run path (closed 24 April 2026).** 6 commits. `message_log.source` column + CIWI service-role bypass; `_shared/send-invoice-email-core.ts` extracted from existing send fn (behaviour-preserving refactor); `send-invoice-email-internal` service-role wrapper for the scheduler path; `generate_invoices_from_template` RPC with per-recipient savepoint isolation, weekly/monthly/termly period computation, payer + rate + item resolution chains, post-CIWI provenance UPDATE, and audit_log writes; `cancel_template_run` RPC for bulk void; Run-now UI on `RecurringBillingTab` with sequential auto-send via user-JWT path. Phase 1 schema fixes bundled into C4 (outcome CHECK, delivered_statuses default, run_errors.student_id NOT NULL drop).
 
-**Phase 3 — Scheduler + notifications.** NEXT. Edge fn `recurring-billing-scheduler` on cron `0 4 * * *` UTC; `send-recurring-billing-alert` operator failure alerts; batch-level audit_log writes.
+**Phase 3 — Scheduler + notifications (closed 24 April 2026).** 4 commits. `recurring-billing-scheduler` edge fn registered on cron `0 4 * * *` UTC (cron-auth-gated, continue-on-error per template, draft-only auto-send for day-N+1 idempotency); `send-recurring-billing-alert` edge fn for partial/failed outcomes (finance-team recipients — owner + admin + finance, 5-min dedup on (template_id, run_id, outcome) triple); `message_log.source` CHECK extended for `'recurring_scheduler_alert'`. Phase 2 F1 cleanup: `as never` type assertions removed from `useRunRecurringTemplate.ts` post-types.ts regen. Observability via edge fn logs + alert emails (no separate `cron_run_log` table — intentional simplification).
 
 **Phase 4 — Operator UX.** Template detail page, run detail page, recent runs dashboard card, bulk-void-run action.
 
@@ -599,7 +599,7 @@ Must be closed before any paid customer signs up:
 
 1. ~~**Stripe webhook missing dispute handling** (Area 18 Journey 8) — chargebacks invisible. Real money loss.~~ **CLOSED** in Area 1 Journey 5, 22 April 2026. Three dispute event handlers landed, lost-cascade wired, operator notification + UI surfaces shipped. Area 18 Journey 8 now scoped to other missing events (`invoice.finalized`, `invoice.voided`, `payment_method.attached`, `customer.updated`) + broader webhook reliability.
 2. **Audit log gaps on 14 business-critical tables** (Track 0.1) — money-adjacent data modifiable without trail.
-3. **Recurring invoice templates have no scheduler** (Area 1 Journey 9) — UI suggests feature works; no cron fires. Verify and fix or remove UI.
+3. ~~**Recurring invoice templates have no scheduler** (Area 1 Journey 9) — UI suggests feature works; no cron fires.~~ **CLOSED** by Journey 9 Phase 3, 24 April 2026. `recurring-billing-scheduler` edge fn + cron `0 4 * * *` UTC live; partial/failed runs trigger finance-team alerts.
 4. **RLS walk not done** (Track 0.2) — March 2026 fix cluster suggests pressure; residual gaps likely.
 
 ---
@@ -643,4 +643,4 @@ This file is version-controlled in the main repo. History is git log.
 
 ---
 
-_Last meaningful update: 24 April 2026 (Journey 9 Phase 2 complete — recurring billing generator + manual run path)._
+_Last meaningful update: 24 April 2026 (Journey 9 Phase 3 complete — recurring billing scheduler + finance-team alerts)._
