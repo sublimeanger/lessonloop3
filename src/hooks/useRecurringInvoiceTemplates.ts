@@ -57,6 +57,9 @@ export function useCreateRecurringTemplate() {
           auto_send: input.auto_send,
           next_run_date: input.next_run_date,
           term_id: input.term_id ?? null,
+          // New templates start paused — operator activates from the
+          // detail page after adding recipients / items / term.
+          active: false,
         } satisfies RecurringTemplateInsert)
         .select()
         .single();

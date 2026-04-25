@@ -1357,6 +1357,63 @@ from generating invoices, plus a role parity fix:
 Phase 4B is polish on top of a working system. Phase 4A unblocks
 end-to-end usability; Phase 4B improves operator experience.
 
+#### Phase 4B — Operator UX polish (closed)
+
+Operator-grade surfaces on top of Phase 4A's working baseline:
+
+- `retry_failed_recipients` RPC + `parent_run_id` schema: reattempts
+  only failed students using the parent run's stored period.
+  'I fixed the underlying issue, bill those students.'
+- `useRecurringTemplateRuns` / `useRecurringTemplateRun` /
+  `useRecentPartialOrFailedRuns` / `useCancelTemplateRun` /
+  `useRetryFailedRecipients` hooks.
+- `/settings/recurring-billing/:templateId` — canonical edit surface.
+  Recipients, items, term mode, run history all in one page.
+  Activate banner gates `active=true` behind validation.
+- `/settings/recurring-billing/runs/:runId` — full run picture with
+  void and retry actions, friendly `error_code` labels, generated
+  invoices list, parent run linkage display.
+- `RecurringRunsCard` on Dashboard + FinanceDashboard.
+- `RecurringFailuresBanner` on Settings tab.
+- `TemplateCard` click-through to detail page.
+- Slim create dialog (basic fields only).
+- `active=false` on creation; activate from detail page.
+- UX refinements: email visibility in recipient picker, dedicated
+  paused-chip restore icon, grid layout for items rows.
+
+##### Phase 4B architecture notes
+
+- Retry semantics: new run row with `parent_run_id` linkage,
+  `triggered_by='retry'`. Reuses parent's period (NOT the template's
+  `next_run_date` which has already advanced). New `error_code`
+  `already_invoiced` for upfront/hybrid pre-check.
+- `active=false` default replaces Phase 4A inline validation. Dialog
+  no longer has recipients/items state; detail page validates on
+  activate.
+- Dashboard card + Settings banner share `useRecentPartialOrFailedRuns`
+  hook (single query, 14-day window).
+- `retry_failed_recipients` updates `template.last_run_id` ONLY when
+  the retry produces invoices. A retry that fully fails preserves
+  the parent run's `last_run_id` pointer on the template.
+
+##### Phase 4B commit ledger
+
+- **J9-P4B-C1** `ca37c9c` — `retry_failed_recipients` RPC +
+  `parent_run_id` migration.
+- **J9-P4B-C2** `21a8e15` — hooks for runs, run detail, cancel, retry.
+- **J9-P4B-C3** `f15f528` — template detail page.
+- **J9-P4B-C4** `a531af5` — run detail page with void + retry.
+- **J9-P4B-C5** `235dd42` — dashboard card for recent partial/failed
+  runs.
+- **J9-P4B-C6** `081fdfa` — failure banner + template card
+  click-through.
+- **J9-P4B-C7** `2818097` — slim create dialog + UX refinements.
+- **J9-P4B-C8** — docs close (this commit).
+
+J9 fully closed. Recurring billing is operator-grade end-to-end:
+schema, generator, scheduler, alerts, manual run, retry, void,
+detail surfaces, failure visibility.
+
 ---
 
 ## Process improvements

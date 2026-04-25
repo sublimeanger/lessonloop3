@@ -49,12 +49,15 @@ export function ItemsField({ value, onChange, currencyCode }: ItemsFieldProps) {
         </p>
       )}
       {value.map((row, idx) => (
-        <div key={idx} className="flex flex-wrap items-center gap-2">
+        <div
+          key={idx}
+          className="grid grid-cols-[1fr_8rem_5rem_auto] items-center gap-2"
+        >
           <Input
             placeholder="e.g. Studio fee"
             value={row.description}
             onChange={(e) => updateRow(idx, { description: e.target.value })}
-            className="flex-1 min-w-[180px]"
+            className="min-w-0"
           />
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
@@ -71,7 +74,7 @@ export function ItemsField({ value, onChange, currencyCode }: ItemsFieldProps) {
                   updateRow(idx, { amount_major: next });
                 }
               }}
-              className="w-28 pl-7"
+              className="w-full pl-7"
             />
           </div>
           <Input
@@ -83,7 +86,7 @@ export function ItemsField({ value, onChange, currencyCode }: ItemsFieldProps) {
               const n = parseInt(e.target.value, 10);
               updateRow(idx, { quantity: Number.isFinite(n) && n > 0 ? n : 1 });
             }}
-            className="w-20"
+            className="w-full"
           />
           <Button
             type="button"

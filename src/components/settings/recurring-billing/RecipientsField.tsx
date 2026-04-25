@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, Check, Pause, ChevronsUpDown, Users } from 'lucide-react';
+import { X, Check, Pause, ChevronsUpDown, Users, RotateCw } from 'lucide-react';
 import { useStudents } from '@/hooks/useStudents';
 import type { RecipientWithStudent } from '@/hooks/useRecurringTemplateRecipients';
 
@@ -114,9 +114,16 @@ export function RecipientsField({
                         onSelect={() => toggle(s.id)}
                         className="gap-2"
                       >
-                        <span className="flex-1 truncate">
-                          {s.first_name} {s.last_name}
-                        </span>
+                        <div className="flex-1 min-w-0 flex flex-col">
+                          <span className="truncate">
+                            {s.first_name} {s.last_name}
+                          </span>
+                          {s.email && (
+                            <span className="truncate text-xs text-muted-foreground">
+                              {s.email}
+                            </span>
+                          )}
+                        </div>
                         {isSelected && (
                           <Check className="h-4 w-4 shrink-0 text-primary" />
                         )}
@@ -158,12 +165,22 @@ export function RecipientsField({
             <Badge
               key={r.id}
               variant="outline"
-              className="gap-1 opacity-50 cursor-pointer hover:opacity-75"
-              onClick={() => onChange([...selectedIds, r.student_id])}
-              title="Click to restore this paused recipient"
+              className="gap-1 opacity-60 group"
             >
               <Pause className="h-3 w-3" />
-              {studentNameById.get(r.student_id) || 'Unknown'}
+              <span>{studentNameById.get(r.student_id) || 'Unknown'}</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange([...selectedIds, r.student_id]);
+                }}
+                className="ml-1 rounded hover:bg-background/20"
+                aria-label="Restore recipient"
+                title="Restore recipient"
+              >
+                <RotateCw className="h-3 w-3" />
+              </button>
             </Badge>
           ))}
         </div>

@@ -32,6 +32,7 @@ import {
 import { UpcomingWeekWidget } from '@/components/dashboard/UpcomingWeekWidget';
 import { FinanceDashboard } from '@/components/dashboard/FinanceDashboard';
 import { ActiveDisputesCard } from '@/components/dashboard/ActiveDisputesCard';
+import { RecurringRunsCard } from '@/components/dashboard/RecurringRunsCard';
 import {
   Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
   Building2, Loader2, AlertCircle, ChevronRight, BookOpen, X, Settings, CalendarDays
@@ -173,6 +174,10 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           <ActiveDisputesCard />
         </SectionErrorBoundary>
 
+        <SectionErrorBoundary name="Recurring Runs">
+          <RecurringRunsCard />
+        </SectionErrorBoundary>
+
         <SectionErrorBoundary name="Urgent Actions">
           <UrgentActionsBar />
         </SectionErrorBoundary>
@@ -288,6 +293,10 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
 
         <SectionErrorBoundary name="Active Disputes">
           <ActiveDisputesCard />
+        </SectionErrorBoundary>
+
+        <SectionErrorBoundary name="Recurring Runs">
+          <RecurringRunsCard />
         </SectionErrorBoundary>
 
         <SectionErrorBoundary name="Urgent Actions">

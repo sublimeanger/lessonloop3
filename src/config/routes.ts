@@ -63,6 +63,8 @@ const TeacherPerformanceReport = lazy(() => import('@/pages/reports/TeacherPerfo
 const AttendanceReport = lazy(() => import('@/pages/reports/AttendanceReport'));
 const Continuation = lazy(() => import('@/pages/Continuation'));
 const NotesExplorer = lazy(() => import('@/pages/NotesExplorer'));
+const RecurringTemplateDetail = lazy(() => import('@/pages/RecurringTemplateDetail'));
+const RecurringRunDetail = lazy(() => import('@/pages/RecurringRunDetail'));
 
 // ─── Lazy: Public ───────────────────────────────────────
 const BookingPage = lazy(() => import('@/pages/public/BookingPage'));
@@ -157,6 +159,8 @@ export const appRoutes: RouteConfig[] = [
   { path: '/continuation', component: Continuation, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Continuation' },
   { path: '/notes', component: NotesExplorer, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher'], label: 'Lesson Notes' },
   { path: '/settings', component: Settings, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Settings' },
+  { path: '/settings/recurring-billing/runs/:runId', component: RecurringRunDetail, auth: 'protected', allowedRoles: ['owner', 'admin', 'finance'], label: 'Recurring Run Detail' },
+  { path: '/settings/recurring-billing/:templateId', component: RecurringTemplateDetail, auth: 'protected', allowedRoles: ['owner', 'admin', 'finance'], label: 'Recurring Template Detail' },
   { path: '/help', component: Help, auth: 'protected', label: 'Help' },
 ];
 
