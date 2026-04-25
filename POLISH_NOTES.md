@@ -1992,10 +1992,15 @@ Closes T05-F9.
   `processed_at TIMESTAMPTZ NOT NULL DEFAULT now()`. Confirmed
   exactly that on read (`20260222220737_*.sql:8`).
 
-### Deploy + smoke (placeholders)
+### Deploy + smoke
 
-- Deploy date: <YYYY-MM-DD>
-- Smoke test result: <pending>
+- Deploy date: 2026-04-25 (22:50 UTC)
+- Smoke test result: Schema verification passed (4-row check via
+  Lovable). End-to-end Stripe webhook smoke deferred until first live
+  event arrives — two-phase dedup is observable via the
+  `stripe_webhook_events.processed_at` column on first real webhook
+  arrival. Operator follow-ups (run when live traffic provides the
+  signal):
   - Manually re-deliver a `payment_intent.succeeded` event from
     Stripe Dashboard. Confirm first delivery 200, second 200
     `duplicate=true`.
@@ -2006,7 +2011,8 @@ Closes T05-F9.
   - Force a stale row by inserting `(event_id, event_type,
     processed_at=NULL, created_at=now() - interval '120 seconds')`
     then sending an event with the same id; confirm
-    `webhook_stale_recovery` log line and successful processing.
+    `webhook_stale_recovery` row in `platform_audit_log` and
+    successful processing.
   - Re-deliver a `payment_intent.succeeded` and confirm the
     parent receives exactly one receipt email (UNIQUE on
     `message_log.payment_id`).
