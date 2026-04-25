@@ -6599,6 +6599,14 @@ export type Database = {
         Args: { _dispute_id: string }
         Returns: Json
       }
+      backfill_guardian_default_pm_set: {
+        Args: {
+          _guardian_id: string
+          _org_id: string
+          _payment_method_id: string
+        }
+        Returns: Json
+      }
       bulk_cancel_lessons: {
         Args: { p_lesson_ids: string[] }
         Returns: Database["public"]["CompositeTypes"]["bulk_lesson_result"]
