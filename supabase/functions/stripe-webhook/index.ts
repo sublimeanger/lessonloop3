@@ -758,6 +758,47 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
     });
   }
 
+  // J10-F1: Persist default payment method for off-session auto-pay.
+  // Stripe attaches the PM to the customer because setup_future_usage='off_session'
+  // was set on the source PI in stripe-create-payment-intent. Auto-promote the
+  // first card to default. Best-effort: never abort the webhook on failure (the
+  // payment row already landed via record_stripe_payment, which is the critical write).
+  if (paymentIntent.payment_method && resolvedOrgId && invoice?.payer_guardian_id) {
+    try {
+      const pmId = typeof paymentIntent.payment_method === "string"
+        ? paymentIntent.payment_method
+        : paymentIntent.payment_method.id;
+
+      const { data: existingPrefs } = await supabase
+        .from("guardian_payment_preferences")
+        .select("default_payment_method_id")
+        .eq("guardian_id", invoice.payer_guardian_id)
+        .eq("org_id", resolvedOrgId)
+        .maybeSingle();
+
+      if (!existingPrefs?.default_payment_method_id) {
+        const { error: upsertErr } = await supabase
+          .from("guardian_payment_preferences")
+          .upsert(
+            {
+              guardian_id: invoice.payer_guardian_id,
+              org_id: resolvedOrgId,
+              default_payment_method_id: pmId,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "guardian_id,org_id" }
+          );
+        if (upsertErr) {
+          console.error("[stripe-webhook] Failed to set default_payment_method_id:", upsertErr);
+        } else {
+          log(`Set default PM for guardian ${truncate(invoice.payer_guardian_id)} to ${truncate(pmId)}`);
+        }
+      }
+    } catch (pmErr) {
+      console.error("[stripe-webhook] Default PM upsert failed (non-critical):", pmErr);
+    }
+  }
+
   // Send receipt email (best-effort, non-blocking)
   if (resolvedOrgId && paymentId) {
     try {
