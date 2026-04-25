@@ -44,6 +44,7 @@ export function useCreateRecurringTemplate() {
       billing_mode: string;
       auto_send: boolean;
       next_run_date: string;
+      term_id?: string | null;
     }) => {
       const { data, error } = await supabase
         .from('recurring_invoice_templates')
@@ -55,6 +56,7 @@ export function useCreateRecurringTemplate() {
           billing_mode: input.billing_mode,
           auto_send: input.auto_send,
           next_run_date: input.next_run_date,
+          term_id: input.term_id ?? null,
         } satisfies RecurringTemplateInsert)
         .select()
         .single();
@@ -85,6 +87,7 @@ export function useUpdateRecurringTemplate() {
       auto_send?: boolean;
       next_run_date?: string;
       active?: boolean;
+      term_id?: string | null;
     }) => {
       const { id, ...updates } = input;
       const { error } = await supabase
