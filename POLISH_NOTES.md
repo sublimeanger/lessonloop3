@@ -2016,3 +2016,139 @@ Closes T05-F9.
   - Re-deliver a `payment_intent.succeeded` and confirm the
     parent receives exactly one receipt email (UNIQUE on
     `message_log.payment_id`).
+
+## Track 0.5 Phase 2 — Webhook surface retention + migration conventions
+
+### Why
+
+Phase 1 closed the dedup-correctness gap on `stripe_webhook_events`
+and added `platform_audit_log` for org-less events. Phase 2 closes the
+three operational follow-ups filed during the Phase 1 walk:
+
+- **T05-F10** — both surfaces grow unbounded with no retention.
+- **T05-F11** — `NOTIFY pgrst, 'reload schema'` usage was inconsistent
+  across recent migrations; reviewers had to guess when it was needed.
+- **T05-F12** — `ENABLE ROW LEVEL SECURITY` with no `CREATE POLICY` is
+  intentional for service-role-only tables, but the convention was
+  undocumented and indistinguishable from a bug to a future security
+  audit.
+
+### Code commits (2) + docs (2)
+
+#### C1 — feat(retention): cleanup_webhook_retention SQL function (T05-P2-C1) — `b5f7146`
+
+`supabase/migrations/20260503100000_webhook_event_ttl.sql` adds
+`public.cleanup_webhook_retention()`. SECURITY DEFINER with
+`SET search_path TO 'public'`, `REVOKE ALL ... FROM PUBLIC` then
+`GRANT EXECUTE ... TO service_role`. Body deletes completed
+`stripe_webhook_events` (`processed_at IS NOT NULL`) older than 90d,
+then deletes `platform_audit_log` rows older than 90d
+(severity info/warning) or 365d (severity error/critical). Returns a
+jsonb summary `{ webhook_events_deleted, platform_audit_log_deleted,
+ran_at }` and writes the same payload as a `webhook_retention_sweep`
+row into `platform_audit_log` so each run is itself observable.
+
+#### C2 — feat(retention): cleanup-webhook-retention edge fn + daily cron (T05-P2-C2) — `7fd2a52`
+
+`supabase/functions/cleanup-webhook-retention/index.ts` follows the
+`cleanup-orphaned-resources` template: `validateCronAuth`, service-role
+client, RPC `cleanup_webhook_retention()`, fallback insert of an
+`error`-severity `webhook_retention_sweep_failed` row if the RPC
+itself fails so the operator signal is preserved.
+
+`supabase/migrations/20260503100100_webhook_retention_cron.sql`
+registers `webhook-retention-daily` at `30 3 * * *` (03:30 UTC) using
+the canonical Pattern C `DO $$ ... unschedule ... END $$;` then
+`SELECT cron.schedule(...)` template from
+`docs/CRON_AUTH.md`. 03:30 sits between `cleanup-orphaned-resources`
+(03:00) and `recurring-billing-scheduler` (04:00), avoiding the
+busier 06:00–09:00 window.
+
+#### C3 — chore(docs): migration conventions reference (T05-P2-C3) — `1dfaaf0`
+
+New `docs/MIGRATION_CONVENTIONS.md`. Captures the conventions
+reviewers were previously inferring from recent migrations:
+
+- Idempotency wrappers per object type (table, column, index,
+  function, policy, cron, constraint).
+- `NOTIFY pgrst, 'reload schema'` rule (when needed for PostgREST
+  visibility, when not).
+- Two coexisting RLS postures (user-readable vs service-role-only)
+  with the required `COMMENT ON TABLE` for the latter so the intent
+  is discoverable from `psql`.
+- Function security: `SECURITY DEFINER` + pinned `search_path` +
+  `REVOKE ALL FROM PUBLIC` then explicit `GRANT EXECUTE`.
+- Cron auth pointer to `docs/CRON_AUTH.md` (Pattern C only).
+- Commit subject format conventions used by journeys (J{N}) and
+  tracks (T{NN}).
+
+Closes T05-F11 + T05-F12.
+
+#### C4 — chore(docs): Track 0.5 Phase 2 docs close (T05-P2-C4)
+
+- `docs/WEBHOOK_DEDUP.md`: replace the manual-only "TTL cleanup"
+  section with a "Retention" section pointing at the new daily cron;
+  manual `DELETE` example kept as an operator escape hatch.
+- `docs/PLATFORM_AUDIT_LOG.md`: replace "TTL guidance" stub with a
+  full "Retention" section documenting the two-tier policy (90d
+  info/warning, 365d error/critical) and the self-audit row each
+  sweep writes.
+- `docs/CRON_JOBS.md`: add `webhook-retention-daily` as entry #3
+  (03:30 UTC slot); renumber remaining entries 4-14.
+- `LESSONLOOP_PRODUCTION_ROADMAP.md`: Track 0.5 entry now reads
+  "CLOSED (Phases 1 + 2)" with a Phase 2 paragraph closing F10/F11/F12.
+- `POLISH_NOTES.md`: this section.
+
+### Findings closed
+
+- **T05-F10** — TTL retention undefined for both
+  `stripe_webhook_events` and `platform_audit_log`. **Resolved** by
+  C1 + C2 (daily sweep at 03:30 UTC; 90d for webhook events, 90/365d
+  by severity for audit log).
+- **T05-F11** — `NOTIFY pgrst` usage inconsistent across migrations.
+  **Resolved** by C3 (rule documented:
+  required for PostgREST-exposed schema changes, not for
+  internal-only objects).
+- **T05-F12** — RLS-enabled-no-policies convention undocumented.
+  **Resolved** by C3 (convention documented; future
+  service-role-only tables must carry an explanatory
+  `COMMENT ON TABLE`).
+
+### Deviations from brief
+
+- Brief assumed `validateCronAuth(req)` returns `{ ok: boolean,
+  reason?: string }`. Walk on `supabase/functions/_shared/cron-auth.ts`
+  showed the actual signature is `(req: Request) => Response | null`
+  (returns a 401 Response on failure, null on success). Adapted the
+  C2 edge fn to match the actual signature and the
+  `cleanup-orphaned-resources` canonical pattern. The brief's
+  explicit "match cleanup-orphaned-resources exactly" instruction
+  takes precedence over the template; behaviour is unchanged.
+- Brief instructed `deno check` on the new edge fn before commit;
+  Deno is not available in the local environment. Lovable's deploy
+  pipeline will exercise the type-check on apply.
+
+### Walk observations not in brief (filed for triage)
+
+- **T05-F13** — `docs/CRON_JOBS.md` opening line still claimed "All
+  12 crons" before this phase. Already 13 by the time of the Phase 1
+  walk (`send-lesson-reminders` was added later). Updated in C4 to
+  drop the literal count. Low priority; flag for any future doc
+  hygiene sweep.
+
+### Deploy + smoke
+
+- Deploy date: <pending>
+- Smoke test result: <pending>
+  - Verify `webhook-retention-daily` appears in `cron.job` with
+    schedule `30 3 * * *` after Lovable apply.
+  - Manually invoke `SELECT public.cleanup_webhook_retention();` as
+    service-role; confirm a `webhook_retention_sweep` row appears in
+    `platform_audit_log` with the deleted-counts payload.
+  - On the first cron tick (03:30 UTC), confirm a second
+    `webhook_retention_sweep` row appears with the cron's invocation
+    timestamp.
+  - Force the failure path (e.g. `REVOKE EXECUTE ON FUNCTION
+    public.cleanup_webhook_retention() FROM service_role` briefly)
+    and confirm a `webhook_retention_sweep_failed` row lands with
+    severity `error`.
