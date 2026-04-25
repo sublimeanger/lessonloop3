@@ -118,11 +118,42 @@ GROUP BY action, source, severity
 ORDER BY events DESC;
 ```
 
-### TTL guidance
+## Retention
 
-No hard TTL today. Retention is operator preference. A 90-day window
-mirroring `stripe_webhook_events` is a sensible default; revisit when
-volume becomes meaningful.
+Swept daily by the `webhook-retention-daily` cron at 03:30 UTC (the
+same sweep that retains `stripe_webhook_events`). Two-tier policy:
+
+| Severity                  | Retention |
+|---------------------------|-----------|
+| `info`, `warning`         | 90 days   |
+| `error`, `critical`       | 365 days  |
+
+Routine traffic (sweep self-audit, stale-recovery warnings) recycles
+quarterly. Real failures stay queryable for a year, long enough to
+investigate intermittent issues against the same audit row that first
+caught them.
+
+Each sweep itself writes a `webhook_retention_sweep` row (severity
+`info`) with the per-table delete counts in `details`, so the
+retention process is itself observable. A failed sweep writes
+`webhook_retention_sweep_failed` (severity `error`) from the edge fn
+fallback path — kept for the longer 365-day window so post-mortems
+have the trail.
+
+Migrations: `supabase/migrations/20260503100000_webhook_event_ttl.sql`
+(`cleanup_webhook_retention()` SQL function) +
+`supabase/migrations/20260503100100_webhook_retention_cron.sql` (cron).
+See [`docs/CRON_JOBS.md`](CRON_JOBS.md) for the registry entry and
+[`docs/WEBHOOK_DEDUP.md`](WEBHOOK_DEDUP.md) for the companion sweep
+on `stripe_webhook_events`.
+
+### Manual cleanup (operator escape hatch)
+
+```sql
+SELECT public.cleanup_webhook_retention();
+```
+
+Service-role only. Equivalent to one cron tick.
 
 ## Canonical migration
 

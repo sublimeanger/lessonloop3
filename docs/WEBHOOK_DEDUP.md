@@ -170,7 +170,31 @@ GROUP BY event_type
 ORDER BY events DESC;
 ```
 
-### TTL cleanup (manual)
+## Retention
+
+`stripe_webhook_events` is swept daily by the `webhook-retention-daily`
+cron at 03:30 UTC. The sweep deletes completed rows
+(`processed_at IS NOT NULL`) older than 90 days — sufficient for
+Stripe's max retry window (~3 days) plus operator audit visibility.
+In-flight rows (`processed_at IS NULL`) are managed by the two-phase
+stale-recovery path in this document and never reach the retention
+window in practice.
+
+The cron calls the `cleanup-webhook-retention` edge fn which RPCs the
+`cleanup_webhook_retention()` SQL function and records each sweep as a
+`webhook_retention_sweep` row in `platform_audit_log`. See
+[`docs/CRON_JOBS.md`](CRON_JOBS.md) for the schedule entry and
+[`docs/PLATFORM_AUDIT_LOG.md`](PLATFORM_AUDIT_LOG.md) for the
+retention policy on the audit log itself.
+
+Migrations: `supabase/migrations/20260503100000_webhook_event_ttl.sql`
+(SQL function) + `supabase/migrations/20260503100100_webhook_retention_cron.sql`
+(cron registration). The earlier
+`supabase/migrations/20260331170000_webhook_events_ttl_guidance.sql`
+remains in tree as a doc-comment-only migration; the new sweep
+supersedes its manual `DELETE` example.
+
+### Manual cleanup (operator escape hatch)
 
 ```sql
 DELETE FROM stripe_webhook_events
@@ -178,7 +202,7 @@ WHERE processed_at IS NOT NULL
   AND processed_at < now() - interval '90 days';
 ```
 
-Per `supabase/migrations/20260331170000_webhook_events_ttl_guidance.sql`.
+Equivalent to the daily sweep. Use only if the cron is paused.
 
 ## Canonical migrations
 

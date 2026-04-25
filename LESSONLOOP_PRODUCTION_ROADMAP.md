@@ -140,9 +140,9 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Scope:** Inventory every notification trigger point. Map channels (email, push, in-app). Identify gaps (invoice sent ≠ push notification today). Normalise recipient-preference checks.
 
-### Track 0.5 — Stripe webhook dedup correctness 🟢 CLOSED (Phase 1)
+### Track 0.5 — Stripe webhook dedup correctness 🟢 CLOSED (Phases 1 + 2)
 
-**Status:** Phase 1 (two-phase dedup + receipt idempotency) closed.
+**Status:** Phase 1 (two-phase dedup + receipt idempotency) closed. Phase 2 (retention + migration conventions) closed.
 
 **Problem:** The previous webhook dedup pattern inserted a row into `stripe_webhook_events` at handler entry. If the handler then threw — DB blip during `record_stripe_payment`, network glitch on a refund insert, anything transient — the row remained and Stripe's automatic retry hit the 23505 short-circuit and ack'd `duplicate=true` without ever re-running the handler. Real-money risk: a transient failure on `payment_intent.succeeded` could leave the customer charged with no `payments` row. Compounding the problem, `send-payment-receipt` had zero internal idempotency, so once handlers actually re-ran on retry the receipt would be double-sent.
 
@@ -157,9 +157,17 @@ Findings addressed: T05-F1, T05-F2, T05-F4, T05-F7, T05-F8.
 
 Findings closed in C6: **T05-F9 — `audit_log.org_id` is NOT NULL** so platform-level events (webhook stale recovery) can't be persisted to `audit_log`. Resolved by adding a separate `platform_audit_log` table (`supabase/migrations/20260502120000_platform_audit_log.sql`) for events with no org attribution. Stale recoveries now write `action=webhook_stale_recovery, severity=warning` rows there, with a `console.error` fallback only if the insert itself fails. Reference: [`docs/PLATFORM_AUDIT_LOG.md`](docs/PLATFORM_AUDIT_LOG.md).
 
-**PR:** https://github.com/sublimeanger/lessonloop3/pull/343
+**Phase 2 — retention + migration conventions (closed):** Four commits.
 
-**Reference:** [`docs/WEBHOOK_DEDUP.md`](docs/WEBHOOK_DEDUP.md)
+- `supabase/migrations/20260503100000_webhook_event_ttl.sql` adds `cleanup_webhook_retention()` — service-role-only SECURITY DEFINER SQL function that deletes completed `stripe_webhook_events` older than 90d and `platform_audit_log` rows older than 90d (info/warning) or 365d (error/critical). Self-audits each sweep into `platform_audit_log`.
+- `supabase/functions/cleanup-webhook-retention/index.ts` + `supabase/migrations/20260503100100_webhook_retention_cron.sql` register the `webhook-retention-daily` cron at 03:30 UTC. Canonical Pattern C; matches the `cleanup-orphaned-resources` shape.
+- New `docs/MIGRATION_CONVENTIONS.md` captures the previously-undocumented conventions for idempotency wrappers, `NOTIFY pgrst` rules, and the "RLS enabled, no policies" service-role-only posture (with the required `COMMENT ON TABLE` explaining intent).
+
+Findings closed in P2: **T05-F10 — TTL retention undefined for `stripe_webhook_events` and `platform_audit_log`.** Resolved by C1 + C2 (daily sweep at 03:30 UTC). **T05-F11 — `NOTIFY pgrst` usage inconsistent across migrations.** Resolved by C3 (rule documented in `docs/MIGRATION_CONVENTIONS.md`). **T05-F12 — RLS-enabled-no-policies convention undocumented.** Resolved by C3 (convention + required `COMMENT ON TABLE` documented in `docs/MIGRATION_CONVENTIONS.md`).
+
+**PRs:** Phase 1 — https://github.com/sublimeanger/lessonloop3/pull/343 · Phase 2 — TBD
+
+**Reference:** [`docs/WEBHOOK_DEDUP.md`](docs/WEBHOOK_DEDUP.md), [`docs/PLATFORM_AUDIT_LOG.md`](docs/PLATFORM_AUDIT_LOG.md), [`docs/MIGRATION_CONVENTIONS.md`](docs/MIGRATION_CONVENTIONS.md)
 
 ### Track 0.6 — Cron schedule reconciliation (known BILLING_FORENSICS territory) 🟠
 
