@@ -4,6 +4,8 @@ import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
+const log = (msg: string) => console.log(`[send-payment-receipt] ${msg}`);
+
 interface ReceiptRequest {
   paymentId: string;
   invoiceId: string;
@@ -84,6 +86,24 @@ const handler = async (req: Request): Promise<Response> => {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    // T05-F4: idempotency. The webhook may retry under the two-phase dedup
+    // pattern; without this guard, a successful first attempt followed by a
+    // retry would double-send the receipt.
+    const { data: existingReceipt } = await supabase
+      .from("message_log")
+      .select("id, status, sent_at")
+      .eq("message_type", "payment_receipt")
+      .eq("payment_id", paymentId)
+      .maybeSingle();
+
+    if (existingReceipt) {
+      log(`Receipt already sent for payment ${paymentId} (message_log row ${existingReceipt.id}, status ${existingReceipt.status})`);
+      return new Response(
+        JSON.stringify({ success: true, duplicate: true, message_log_id: existingReceipt.id }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     // Fetch payer details and email
@@ -226,7 +246,7 @@ const handler = async (req: Request): Promise<Response> => {
     </div>`;
 
     // Log to message_log
-    await supabase.from("message_log").insert({
+    const { error: insertErr } = await supabase.from("message_log").insert({
       org_id: orgId,
       channel: "email",
       subject,
@@ -235,9 +255,24 @@ const handler = async (req: Request): Promise<Response> => {
       recipient_name: recipientName,
       recipient_type: invoice.payer_guardian_id ? "guardian" : "student",
       related_id: invoiceId,
+      payment_id: paymentId, // T05-F4
       message_type: "payment_receipt",
       status: resendApiKey ? "pending" : "logged",
     });
+
+    if (insertErr) {
+      if (insertErr.code === "23505") {
+        // Pre-check passed but a concurrent invocation reached the
+        // UNIQUE first. The other instance is sending; defer.
+        log(`Race: another instance is sending receipt for payment ${paymentId}, deferring`);
+        return new Response(
+          JSON.stringify({ success: true, duplicate: true, race: true }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      console.error("Failed to log message:", insertErr);
+      // Non-fatal: continue to send. Worst case = email sent without log entry.
+    }
 
     if (!resendApiKey) {
       console.log("Receipt logged (RESEND_API_KEY not configured):", { to: recipientEmail, subject });
@@ -264,7 +299,8 @@ const handler = async (req: Request): Promise<Response> => {
     const result = await response.json();
     console.log("Receipt email sent:", result);
 
-    // Update message log status
+    // Update message log status. payment_id is unique per payment_receipt,
+    // so this targets exactly the row we just inserted.
     await supabase
       .from("message_log")
       .update({
@@ -272,10 +308,8 @@ const handler = async (req: Request): Promise<Response> => {
         sent_at: response.ok ? new Date().toISOString() : null,
         error_message: response.ok ? null : JSON.stringify(result),
       })
-      .eq("related_id", invoiceId)
-      .eq("message_type", "payment_receipt")
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .eq("payment_id", paymentId)
+      .eq("message_type", "payment_receipt");
 
     return new Response(JSON.stringify(result), {
       status: response.ok ? 200 : 500,
