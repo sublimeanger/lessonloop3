@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ import {
 import { RecipientsField } from './recurring-billing/RecipientsField';
 import { ItemsField } from './recurring-billing/ItemsField';
 import { TermModeField } from './recurring-billing/TermModeField';
+import { RecurringFailuresBanner } from './recurring-billing/RecurringFailuresBanner';
 import {
   Plus, Loader2, CalendarClock, Trash2, Pencil, ToggleLeft, ToggleRight, Play, AlertCircle,
 } from 'lucide-react';
@@ -63,6 +65,7 @@ function TemplateCard({
   onToggle,
   onDelete,
   onRunNow,
+  onOpen,
 }: {
   template: RecurringTemplate;
   canEdit: boolean;
@@ -72,12 +75,28 @@ function TemplateCard({
   onToggle: (t: RecurringTemplate) => void;
   onDelete: (t: RecurringTemplate) => void;
   onRunNow: (t: RecurringTemplate) => void;
+  onOpen: (t: RecurringTemplate) => void;
 }) {
+  const stop = (fn: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
   return (
-    <div className={cn(
-      'flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all sm:flex-row sm:items-center sm:gap-4',
-      !template.active && 'opacity-60',
-    )}>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(template)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen(template);
+        }
+      }}
+      className={cn(
+        'flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all cursor-pointer hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 sm:flex-row sm:items-center sm:gap-4',
+        !template.active && 'opacity-60',
+      )}
+    >
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
         <CalendarClock className="h-5 w-5" />
       </div>
@@ -105,12 +124,12 @@ function TemplateCard({
         </div>
       </div>
       {canEdit && (
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="default"
             size="sm"
             className="h-9 gap-1.5 px-3 text-xs"
-            onClick={() => onRunNow(template)}
+            onClick={stop(() => onRunNow(template))}
             disabled={!template.active || isRunning}
             title={
               !template.active
@@ -128,7 +147,7 @@ function TemplateCard({
             variant={template.active ? 'outline' : 'default'}
             size="sm"
             className="h-9 gap-1.5 px-3 text-xs"
-            onClick={() => onToggle(template)}
+            onClick={stop(() => onToggle(template))}
             title={template.active ? 'Pause recurring billing — no new invoices will be generated until resumed' : 'Resume recurring billing — invoices will be generated on schedule'}
           >
             {template.active ? (
@@ -137,10 +156,10 @@ function TemplateCard({
               <><ToggleLeft className="h-3.5 w-3.5" />Resume</>
             )}
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => onEdit(template)}>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={stop(() => onEdit(template))}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => onDelete(template)}>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={stop(() => onDelete(template))}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -150,6 +169,7 @@ function TemplateCard({
 }
 
 export function RecurringBillingTab() {
+  const navigate = useNavigate();
   const { isOrgAdmin, isOrgOwner, currentRole, currentOrg } = useOrg();
   const canEdit = isOrgOwner || isOrgAdmin || currentRole === 'finance';
 
@@ -377,8 +397,14 @@ export function RecurringBillingTab() {
     saveRecipientsMutation.isPending ||
     saveItemsMutation.isPending;
 
+  const handleOpenDetail = (t: RecurringTemplate) => {
+    navigate(`/settings/recurring-billing/${t.id}`);
+  };
+
   return (
-    <Card>
+    <div className="space-y-4">
+      <RecurringFailuresBanner />
+      <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -421,6 +447,7 @@ export function RecurringBillingTab() {
                 onToggle={handleToggle}
                 onDelete={setDeleteTarget}
                 onRunNow={handleRunNow}
+                onOpen={handleOpenDetail}
               />
             ))}
           </div>
@@ -561,5 +588,6 @@ export function RecurringBillingTab() {
         </AlertDialogContent>
       </AlertDialog>
     </Card>
+    </div>
   );
 }
