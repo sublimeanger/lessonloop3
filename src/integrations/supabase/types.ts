@@ -362,6 +362,93 @@ export type Database = {
           },
         ]
       }
+      auto_pay_attempts: {
+        Row: {
+          amount_minor: number
+          attempted_at: string
+          guardian_id: string
+          id: string
+          installment_id: string
+          invoice_id: string
+          notification_sent: boolean
+          org_id: string
+          outcome: string
+          stripe_error_code: string | null
+          stripe_error_message: string | null
+          stripe_error_type: string | null
+          stripe_payment_intent_id: string | null
+          stripe_status: string | null
+        }
+        Insert: {
+          amount_minor: number
+          attempted_at?: string
+          guardian_id: string
+          id?: string
+          installment_id: string
+          invoice_id: string
+          notification_sent?: boolean
+          org_id: string
+          outcome: string
+          stripe_error_code?: string | null
+          stripe_error_message?: string | null
+          stripe_error_type?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_status?: string | null
+        }
+        Update: {
+          amount_minor?: number
+          attempted_at?: string
+          guardian_id?: string
+          id?: string
+          installment_id?: string
+          invoice_id?: string
+          notification_sent?: boolean
+          org_id?: string
+          outcome?: string
+          stripe_error_code?: string | null
+          stripe_error_message?: string | null
+          stripe_error_type?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_pay_attempts_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_pay_attempts_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_pay_attempts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_pay_attempts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_pay_attempts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       availability_blocks: {
         Row: {
           created_at: string
@@ -1416,6 +1503,9 @@ export type Database = {
       guardian_payment_preferences: {
         Row: {
           auto_pay_enabled: boolean | null
+          auto_pay_paused_at: string | null
+          auto_pay_paused_reason: string | null
+          consecutive_failure_count: number
           created_at: string
           default_payment_method_id: string | null
           guardian_id: string
@@ -1426,6 +1516,9 @@ export type Database = {
         }
         Insert: {
           auto_pay_enabled?: boolean | null
+          auto_pay_paused_at?: string | null
+          auto_pay_paused_reason?: string | null
+          consecutive_failure_count?: number
           created_at?: string
           default_payment_method_id?: string | null
           guardian_id: string
@@ -1436,6 +1529,9 @@ export type Database = {
         }
         Update: {
           auto_pay_enabled?: boolean | null
+          auto_pay_paused_at?: string | null
+          auto_pay_paused_reason?: string | null
+          consecutive_failure_count?: number
           created_at?: string
           default_payment_method_id?: string | null
           guardian_id?: string
