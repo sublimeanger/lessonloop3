@@ -987,10 +987,10 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
 
 async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.Invoice) {
   const subscriptionId = invoice.subscription as string;
-  
+
   const { data: org } = await supabase
     .from("organisations")
-    .select("id")
+    .select("id, past_due_since")
     .eq("stripe_subscription_id", subscriptionId)
     .single();
 
@@ -999,19 +999,25 @@ async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.In
     return;
   }
 
+  // T05-F2: preserve the original past_due_since on retries. Without this,
+  // a Stripe retry of the same invoice.payment_failed event under the new
+  // two-phase dedup pattern would overwrite the original past-due timestamp
+  // with the retry time, breaking downstream grace-period calculations.
+  const updateData: Record<string, unknown> = { subscription_status: "past_due" };
+  if (org.past_due_since === null) {
+    updateData.past_due_since = new Date().toISOString();
+  }
+
   const { error } = await supabase
     .from("organisations")
-    .update({
-      subscription_status: "past_due",
-      past_due_since: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("id", org.id);
 
   if (error) {
     console.error("Failed to update org on payment failure:", error);
     throw new Error(`DB update failed for payment failure: ${error.message}`);
   }
-  log(`Org ${truncate(org.id)} marked past_due`);
+  log(`Org ${truncate(org.id)} marked past_due (past_due_since ${org.past_due_since ? 'preserved' : 'set'})`);
 }
 
 // Handle Connect account deauthorization (teacher disconnects from Stripe Dashboard)
