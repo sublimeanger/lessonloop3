@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,21 +25,10 @@ import {
   type RecurringTemplate,
 } from '@/hooks/useRecurringInvoiceTemplates';
 import { useRunRecurringTemplate } from '@/hooks/useRunRecurringTemplate';
-import {
-  useRecurringTemplateRecipients,
-  useRecipientCountsForOrg,
-  useSaveTemplateRecipients,
-} from '@/hooks/useRecurringTemplateRecipients';
-import {
-  useRecurringTemplateItems,
-  useSaveTemplateItems,
-} from '@/hooks/useRecurringTemplateItems';
-import { RecipientsField } from './recurring-billing/RecipientsField';
-import { ItemsField } from './recurring-billing/ItemsField';
-import { TermModeField } from './recurring-billing/TermModeField';
+import { useRecipientCountsForOrg } from '@/hooks/useRecurringTemplateRecipients';
 import { RecurringFailuresBanner } from './recurring-billing/RecurringFailuresBanner';
 import {
-  Plus, Loader2, CalendarClock, Trash2, Pencil, ToggleLeft, ToggleRight, Play, AlertCircle,
+  Plus, Loader2, CalendarClock, Trash2, Pencil, ToggleLeft, ToggleRight, Play,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -178,57 +167,23 @@ export function RecurringBillingTab() {
   const updateMutation = useUpdateRecurringTemplate();
   const deleteMutation = useDeleteRecurringTemplate();
   const runMutation = useRunRecurringTemplate();
-  const saveRecipientsMutation = useSaveTemplateRecipients();
-  const saveItemsMutation = useSaveTemplateItems();
   const [runningTemplateId, setRunningTemplateId] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<RecurringTemplate | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<RecurringTemplate | null>(null);
 
-  // Form state
+  // Form state — basics only. Recipients, items and term mode live on
+  // the detail page (Phase 4B C3).
   const [formName, setFormName] = useState('');
   const [formFrequency, setFormFrequency] = useState('monthly');
   const [formMode, setFormMode] = useState('delivered');
   const [formAutoSend, setFormAutoSend] = useState(false);
   const [formNextRunDate, setFormNextRunDate] = useState('');
-  const [formRecipientIds, setFormRecipientIds] = useState<string[]>([]);
-  const [formItems, setFormItems] = useState<Array<{
-    id?: string;
-    description: string;
-    amount_major: string;
-    quantity: number;
-  }>>([]);
-  const [formTermMode, setFormTermMode] = useState<'rolling' | 'one_shot'>('rolling');
-  const [formTermId, setFormTermId] = useState<string | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const { data: existingRecipients = [] } = useRecurringTemplateRecipients(
-    editingTemplate?.id ?? null,
-  );
-  const { data: existingItems = [] } = useRecurringTemplateItems(
-    editingTemplate?.id ?? null,
-  );
   const { data: recipientCounts = {} } = useRecipientCountsForOrg(
     currentOrg?.id,
   );
-
-  useEffect(() => {
-    if (!editingTemplate) return;
-    setFormRecipientIds(
-      existingRecipients.filter((r) => r.is_active).map((r) => r.student_id),
-    );
-    setFormItems(
-      existingItems.map((i) => ({
-        id: i.id,
-        description: i.description,
-        amount_major: (i.amount_minor / 100).toFixed(2),
-        quantity: i.quantity,
-      })),
-    );
-    setFormTermMode(editingTemplate.term_id ? 'one_shot' : 'rolling');
-    setFormTermId(editingTemplate.term_id);
-  }, [editingTemplate, existingRecipients, existingItems]);
 
   const resetForm = () => {
     setFormName('');
@@ -236,11 +191,6 @@ export function RecurringBillingTab() {
     setFormMode('delivered');
     setFormAutoSend(false);
     setFormNextRunDate('');
-    setFormRecipientIds([]);
-    setFormItems([]);
-    setFormTermMode('rolling');
-    setFormTermId(null);
-    setValidationError(null);
     setEditingTemplate(null);
   };
 
@@ -260,48 +210,13 @@ export function RecurringBillingTab() {
     setFormMode(template.billing_mode);
     setFormAutoSend(template.auto_send);
     setFormNextRunDate(template.next_run_date || '');
-    setValidationError(null);
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
-    setValidationError(null);
-
     if (!formName.trim() || !formNextRunDate) return;
 
-    const isActiveTarget = editingTemplate ? editingTemplate.active : true;
-    if (isActiveTarget && formRecipientIds.length === 0) {
-      setValidationError(
-        'Add at least one recipient before saving an active template.',
-      );
-      return;
-    }
-
-    const needsItems = formMode === 'upfront' || formMode === 'hybrid';
-    if (needsItems) {
-      const validItems = formItems.filter(
-        (i) => i.description.trim() && parseFloat(i.amount_major) > 0,
-      );
-      if (validItems.length === 0) {
-        setValidationError(
-          'Add at least one valid item for upfront or hybrid mode.',
-        );
-        return;
-      }
-    }
-
-    const finalTermId =
-      formFrequency === 'termly' && formTermMode === 'one_shot'
-        ? formTermId
-        : null;
-
-    if (formFrequency === 'termly' && formTermMode === 'one_shot' && !finalTermId) {
-      setValidationError('Pick a term for the one-shot termly template.');
-      return;
-    }
-
     try {
-      let templateId: string;
       if (editingTemplate) {
         await updateMutation.mutateAsync({
           id: editingTemplate.id,
@@ -310,9 +225,9 @@ export function RecurringBillingTab() {
           billing_mode: formMode,
           auto_send: formAutoSend,
           next_run_date: formNextRunDate,
-          term_id: finalTermId,
         });
-        templateId = editingTemplate.id;
+        setDialogOpen(false);
+        resetForm();
       } else {
         const created = await createMutation.mutateAsync({
           name: formName.trim(),
@@ -320,46 +235,14 @@ export function RecurringBillingTab() {
           billing_mode: formMode,
           auto_send: formAutoSend,
           next_run_date: formNextRunDate,
-          term_id: finalTermId,
         });
-        templateId = created.id;
+        setDialogOpen(false);
+        resetForm();
+        // Jump straight to the detail page — operator adds recipients,
+        // items and term mode there, then activates.
+        navigate(`/settings/recurring-billing/${created.id}`);
       }
-
-      if (currentOrg) {
-        await saveRecipientsMutation.mutateAsync({
-          templateId,
-          orgId: currentOrg.id,
-          studentIds: formRecipientIds,
-          existingRecipients: existingRecipients,
-        });
-      }
-
-      // Items save: full replace with minor units. When mode is
-      // delivered, save EMPTY array (clears any leftover items
-      // from a previous mode).
-      if (currentOrg) {
-        const itemsForSave =
-          formMode === 'delivered'
-            ? []
-            : formItems
-                .filter((i) => i.description.trim() && parseFloat(i.amount_major) > 0)
-                .map((i) => ({
-                  description: i.description.trim(),
-                  amount_minor: Math.round(parseFloat(i.amount_major) * 100),
-                  quantity: Math.max(1, Math.floor(i.quantity)),
-                }));
-        await saveItemsMutation.mutateAsync({
-          templateId,
-          orgId: currentOrg.id,
-          items: itemsForSave,
-        });
-      }
-
-      setDialogOpen(false);
-      resetForm();
     } catch (err) {
-      // Mutation onError already toasts. Don't double-toast; just
-      // leave dialog open so operator can retry.
       console.error('Template save failed:', err);
     }
   };
@@ -393,9 +276,7 @@ export function RecurringBillingTab() {
 
   const isSaving =
     createMutation.isPending ||
-    updateMutation.isPending ||
-    saveRecipientsMutation.isPending ||
-    saveItemsMutation.isPending;
+    updateMutation.isPending;
 
   const handleOpenDetail = (t: RecurringTemplate) => {
     navigate(`/settings/recurring-billing/${t.id}`);
@@ -521,42 +402,10 @@ export function RecurringBillingTab() {
               <Switch checked={formAutoSend} onCheckedChange={setFormAutoSend} />
             </div>
 
-            <div className="space-y-2">
-              <Label>Recipients</Label>
-              <RecipientsField
-                templateId={editingTemplate?.id ?? null}
-                selectedIds={formRecipientIds}
-                onChange={setFormRecipientIds}
-                existingRecipients={existingRecipients}
-              />
-            </div>
-
-            {(formMode === 'upfront' || formMode === 'hybrid') && (
-              <div className="space-y-2">
-                <Label>Items</Label>
-                <ItemsField
-                  value={formItems}
-                  onChange={setFormItems}
-                  currencyCode={currentOrg?.currency_code || 'GBP'}
-                />
-              </div>
-            )}
-
-            {formFrequency === 'termly' && (
-              <div className="space-y-2">
-                <Label>Term mode</Label>
-                <TermModeField
-                  value={{ mode: formTermMode, termId: formTermId }}
-                  onChange={(v) => { setFormTermMode(v.mode); setFormTermId(v.termId); }}
-                />
-              </div>
-            )}
-
-            {validationError && (
-              <div className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{validationError}</span>
-              </div>
+            {!editingTemplate && (
+              <p className="text-xs text-muted-foreground">
+                After creating, you'll add recipients, items and term mode on the template detail page. Activate once everything is set.
+              </p>
             )}
           </div>
 
