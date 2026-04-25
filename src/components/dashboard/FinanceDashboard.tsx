@@ -8,6 +8,7 @@ import { StatsGrid } from '@/components/shared/StatsGrid';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { ActiveDisputesCard } from '@/components/dashboard/ActiveDisputesCard';
+import { RecurringRunsCard } from '@/components/dashboard/RecurringRunsCard';
 import { PoundSterling, Receipt, AlertTriangle, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,12 @@ export function FinanceDashboard({ firstName }: FinanceDashboardProps) {
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Active Disputes">
             <ActiveDisputesCard />
+          </SectionErrorBoundary>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="Recurring Runs">
+            <RecurringRunsCard />
           </SectionErrorBoundary>
         </motion.div>
 
