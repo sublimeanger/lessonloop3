@@ -51,27 +51,17 @@ serve(async (req) => {
 
     if (!prefs?.stripe_customer_id) throw new Error("No saved payment methods found");
 
-    // Get the org's connected account
-    const { data: org } = await supabase
-      .from("organisations")
-      .select("stripe_connect_account_id")
-      .eq("id", orgId)
-      .single();
-
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-    const stripeOpts: Stripe.RequestOptions = {};
-    if (org?.stripe_connect_account_id) {
-      stripeOpts.stripeAccount = org.stripe_connect_account_id;
-    }
 
-    // Verify the payment method belongs to this customer
-    const pm = await stripe.paymentMethods.retrieve(paymentMethodId, stripeOpts);
+    // J10-F3: PMs are platform-attached (see stripe-list-payment-methods
+    // for the rationale). Retrieve and detach on the platform account
+    // — never on the connected account, which never holds these PMs.
+    const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
     if (pm.customer !== prefs.stripe_customer_id) {
       throw new Error("Payment method does not belong to this customer");
     }
 
-    // Detach the payment method
-    await stripe.paymentMethods.detach(paymentMethodId, stripeOpts);
+    await stripe.paymentMethods.detach(paymentMethodId);
 
     // If this was the default, clear it
     if (prefs.default_payment_method_id === paymentMethodId) {

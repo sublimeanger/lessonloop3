@@ -61,25 +61,18 @@ serve(async (req) => {
       });
     }
 
-    // Get the org's connected account (if any) to determine which Stripe account to query
-    const { data: org } = await supabase
-      .from("organisations")
-      .select("stripe_connect_account_id")
-      .eq("id", orgId)
-      .single();
-
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // List payment methods for this customer
-    const stripeOpts: Stripe.RequestOptions = {};
-    if (org?.stripe_connect_account_id) {
-      stripeOpts.stripeAccount = org.stripe_connect_account_id;
-    }
-
-    const methods = await stripe.paymentMethods.list(
-      { customer: prefs.stripe_customer_id, type: "card" },
-      stripeOpts
-    );
+    // J10-F3: PMs are platform-attached. The source PI in
+    // stripe-create-payment-intent runs on the platform account (with
+    // transfer_data.destination for Connect) and sets
+    // setup_future_usage='off_session', so Stripe attaches the PM to
+    // the platform customer. Listing on the connected account returns
+    // empty under any Connect-enabled org.
+    const methods = await stripe.paymentMethods.list({
+      customer: prefs.stripe_customer_id,
+      type: "card",
+    });
 
     const paymentMethods = methods.data.map((pm: any) => ({
       id: pm.id,
