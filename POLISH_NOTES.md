@@ -1527,6 +1527,145 @@ J10-F6.
   J10 Phase 1 closes the capture and reminder gaps; the actual
   charge-attempt failure paths are Phase 2 territory.
 
+#### Phase 2 — Charge failure handling, pause + recovery (closed 25 April 2026)
+
+5 commits + docs close. Findings addressed: J10-F8, J10-F9, J10-F11,
+J10-F12, J10-F14. Closes the J10-F7 follow-up filed at end of Phase 1.
+
+Before Phase 2: a stuck installment retried on the same idempotency
+key every day, the catch block sent a single hard-coded "card declined"
+email regardless of error code, parents got that email every day, and
+operators got nothing. After Phase 2: every charge attempt is logged,
+guardians pause after 3 consecutive failures, parents get error-code-
+aware emails (deduped on same-error-within-20h), and operators get one
+per-org summary alert per cron run with any failures.
+
+- **J10-F8 attempt log** — new `auto_pay_attempts` table with one row
+  per cron-attempted charge regardless of outcome (`succeeded`,
+  `failed`, `requires_action`, `skipped_paused`). Captures Stripe PI
+  id, status, error code/type/message, plus a `notification_sent` flag
+  for dedup. RLS: org staff SELECT via `is_org_staff(auth.uid(), org_id)`;
+  service role writes only.
+- **J10-F12 pause state** — `guardian_payment_preferences` extended
+  with `auto_pay_paused_at`, `auto_pay_paused_reason`,
+  `consecutive_failure_count` (NOT NULL DEFAULT 0). Cron skips
+  paused guardians, logging a `skipped_paused` attempt for visibility.
+  Counter increments on every failure / requires_action; pauses at 3.
+  Counter resets on success but pause flag is NOT cleared on success
+  — pause survives a manual portal payment; parent must explicitly
+  re-enable from the portal.
+- **J10-F9 + F14 tailored notification** — new
+  `send-auto-pay-failure-notification` edge fn (service-role auth,
+  exact bearer match) with error-code-aware copy: `expired_card`,
+  `insufficient_funds`, `requires_action` + `authentication_*`,
+  `card_not_supported`, `card_declined`, fallback. Pause notice block
+  appended when `is_pause_threshold=true`. Dedup uses
+  `auto_pay_attempts` (the table is the source of truth) — same
+  installment + same `stripe_error_code` within 20h is suppressed; a
+  changed error code escapes dedup because the change is informative
+  (yesterday `card_declined` → today `expired_card`).
+- **J10-F12 operator alert** — new `send-auto-pay-alert` edge fn
+  mirrors J9 P3's `send-recurring-billing-alert` recipient pattern
+  (owner + admin + finance via `org_memberships`, auth admin API for
+  emails, batched `recipient_type='finance_team'` message_log row).
+  Cron tail-end loop groups results by org and fires one alert per
+  org with any failure / requires_action / paused. 6h dedup keyed on
+  `org_id` (related_id is uuid; can't pack run_date into it).
+- **J10-F11 reminder coordination** — `overdue-reminders` now batches
+  a single `guardian_payment_preferences` query and skips guardians
+  with active auto-pay (enabled + has default PM + not paused).
+  Layered on top of the existing `payment_plan_enabled` skip (the
+  invoice loop already has). Paused guardians and guardians without a
+  default PM are NOT skipped — they need the standard channel.
+
+##### Phase 2 architecture notes
+
+- **Pause scope is per-guardian-per-org.** A parent paused at one
+  academy can still be active-auto-pay at another. `guardian_payment_preferences`
+  has UNIQUE(guardian_id, org_id) so the pause flag lives on the
+  per-org row; multi-org parents are independently paused.
+- **Pause resume is explicit, not automatic.** A succeeded charge
+  resets `consecutive_failure_count` but does not clear
+  `auto_pay_paused_at`. Operator/parent intent: a parent who fixes
+  the card once, re-enables once. A manual portal payment shouldn't
+  silently re-arm auto-pay.
+- **Notification dedup uses the attempt log, not message_log.**
+  message_log has no metadata column to pack `error_code` into for
+  comparison, and `related_id` is uuid. Using `auto_pay_attempts`
+  (which has `stripe_error_code` and `notification_sent`) keeps the
+  dedup logic simple and lets the table itself drive the comparison.
+- **Cross-cron coordination is one-way.** Auto-pay doesn't gate on
+  overdue-reminders (it's the primary channel); overdue-reminders
+  defers to auto-pay only when active. Pausing flips the flag back —
+  no signal needed between the two crons because both read the same
+  `guardian_payment_preferences` row.
+- **Race between two cron invocations of the same guardian is
+  acceptable.** Within a single cron pass the loop is sequential.
+  Cross-pass races (e.g. operator manual trigger overlapping the
+  scheduled cron) could double-increment the counter or send one
+  extra failure email. The 20h notification dedup catches over-sends;
+  the worst-case "one extra failure email" is far better than the
+  pre-Phase-2 "every day forever".
+- **`source='auto_pay_cron'`** added to the `message_log.source`
+  CHECK in the C1 migration. New value because none of the existing
+  values (`recurring_scheduler`, `parent_portal`, etc.) describe a
+  charge-cron-initiated send.
+
+##### Phase 2 commit ledger
+
+- **J10-P2-C1** `2807d00` — auto_pay_attempts table + pause columns
+  on guardian_payment_preferences; message_log.source CHECK extended.
+- **J10-P2-C2** `ad29309` — send-auto-pay-failure-notification fn
+  with error-code copy + 20h same-code dedup via auto_pay_attempts.
+- **J10-P2-C3** `4c911bb` — cron writes attempt log on every path,
+  increments counter and pauses at 3, resets on success, invokes
+  notification fn (replaces inline Resend email).
+- **J10-P2-C4** `b0c9e6c` — send-auto-pay-alert fn + tail-end hook
+  in the cron that fires one alert per affected org per run.
+- **J10-P2-C5** `db87d6a` — overdue-reminders batch-skips guardians
+  with active auto-pay.
+- **J10-P2-C6** — docs close (this commit).
+
+##### Phase 2 deviations from brief
+
+- **`is_org_staff` argument order.** Brief documented
+  `(org_id, user_id)` but the function signature in
+  `20260120215727` is `(_user_id, _org_id)` and every existing call
+  site uses `is_org_staff(auth.uid(), org_id)`. C1 migration uses
+  the correct order.
+- **`message_log.metadata` does not exist.** Brief specified inserting
+  `metadata: { error_code, attempt_id, is_pause_threshold }` but
+  the column is absent. C2 dedups via `auto_pay_attempts` (which
+  has the same data on its own row) instead of mutating message_log
+  schema for one consumer.
+- **`source='cron'` is not in the CHECK constraint.** Added
+  `'auto_pay_cron'` to `message_log_source_check` in C1 (additive,
+  idempotent).
+- **`from` address for parent-facing emails.** Brief said
+  `noreply@mail.lessonloop.net` but every other parent-facing
+  payment email in the repo (J5 send-refund-notification, J9
+  send-recurring-billing-alert) uses `billing@lessonloop.net`.
+  Matched repo convention.
+- **`/settings/billing` route doesn't exist.** Brief's documented
+  fallback was `/dashboard`; used that for the operator alert CTA.
+- **`message_log.related_id` is uuid.** Brief's J9 P3 alert pattern
+  used a string dedup key, which would silently fail INSERT. C4
+  alert dedups on `(message_type, related_id=org_id)` over a 6h
+  window — uuid-clean and the cron runs once daily.
+
+##### Phase 2 follow-ups (filed earlier; not in this phase)
+
+- **J10-F10** — `payment_intent.payment_failed` webhook is a no-op.
+  Phase 2 closes the synchronous-failure path (off-session card
+  declined at create time, the catch block); the async-failure path
+  (3DS confirmation that fails after the cron has moved on) is
+  filed separately.
+- **J10-F13** — transient vs permanent retry classification.
+  Currently every failure increments the counter equally; a Stripe
+  500 / network timeout shouldn't count toward the pause threshold
+  the same as a card_declined. Filed for a follow-up phase that
+  splits Stripe error types into retryable and non-retryable buckets.
+
 ---
 
 ## Process improvements

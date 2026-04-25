@@ -53,7 +53,18 @@ Each uses the SUPABASE_SERVICE_ROLE_KEY as Bearer token auth.
 - **Function:** stripe-auto-pay-installment
 - **Body:** `{}`
 - **Purpose:** Charges default payment method for installments due today or overdue,
-  where the guardian has auto-pay enabled.
+  where the guardian has auto-pay enabled and is not paused.
+- **Side effects (J10 P2):** Writes one row per attempted charge to
+  `auto_pay_attempts` regardless of outcome (`succeeded` / `failed` /
+  `requires_action` / `skipped_paused`). Increments
+  `guardian_payment_preferences.consecutive_failure_count` on every
+  failure / requires_action; pauses the guardian after 3 consecutive
+  failures (`auto_pay_paused_at` set). Resets the counter on success
+  but does NOT clear the pause flag — parent must explicitly re-enable
+  from the portal. Invokes `send-auto-pay-failure-notification` per
+  failure (with same-error-within-20h dedup against the attempt log).
+  At end of run, fires one `send-auto-pay-alert` per org with any
+  failure / requires_action / paused-today.
 - **If missing:** Auto-pay never fires. Parents opted into auto-pay still
   have to pay manually. Installments go overdue unnecessarily.
 
