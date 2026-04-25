@@ -3212,6 +3212,7 @@ export type Database = {
           message_type: string
           org_id: string
           parent_message_id: string | null
+          payment_id: string | null
           read_at: string | null
           recipient_email: string
           recipient_id: string | null
@@ -3235,6 +3236,7 @@ export type Database = {
           message_type: string
           org_id: string
           parent_message_id?: string | null
+          payment_id?: string | null
           read_at?: string | null
           recipient_email: string
           recipient_id?: string | null
@@ -3258,6 +3260,7 @@ export type Database = {
           message_type?: string
           org_id?: string
           parent_message_id?: string | null
+          payment_id?: string | null
           read_at?: string | null
           recipient_email?: string
           recipient_id?: string | null
@@ -3298,6 +3301,13 @@ export type Database = {
             columns: ["parent_message_id"]
             isOneToOne: false
             referencedRelation: "message_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_log_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
         ]
@@ -4077,6 +4087,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json
+          id: string
+          severity: string
+          source: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json
+          id?: string
+          severity?: string
+          source: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          severity?: string
+          source?: string
+        }
+        Relationships: []
       }
       practice_assignments: {
         Row: {
@@ -5306,19 +5343,22 @@ export type Database = {
       }
       stripe_webhook_events: {
         Row: {
+          created_at: string
           event_id: string
           event_type: string
-          processed_at: string
+          processed_at: string | null
         }
         Insert: {
+          created_at?: string
           event_id: string
           event_type: string
-          processed_at?: string
+          processed_at?: string | null
         }
         Update: {
+          created_at?: string
           event_id?: string
           event_type?: string
-          processed_at?: string
+          processed_at?: string | null
         }
         Relationships: []
       }
