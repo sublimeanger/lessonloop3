@@ -227,7 +227,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 **Key commits:** `cfe0248` · `8ac1849` · `0442096` · `6360171` · docs close  
 **Notable:** Closed a silent credit-resurrection path in `update_invoice_with_items` — the edit-draft flow missed the `voided_at` and `expired_at` guards that `create_invoice_with_items` and `redeem_make_up_credit` both have, meaning a voided credit could be re-applied via invoice edit. `delete_billing_run` now frees applied credits (previously orphaned them as unusable redeemed rows). `credit-expiry-warning` gained student-payer fallback and retry-unblocked dedup so failed Resend outages don't permanently consume the warning. New `issue_make_up_credit` RPC replaces the client-side non-atomic INSERT+audit pattern. `void_invoice` preserves original credit notes instead of overwriting. Minor polish: parent-portal SELECT drops always-null fields; IssueCreditModal expiry uses end-of-local-day (matches cron) and exposes the 90-day org-default option.
 
-### Journey 9 — Recurring invoice templates 🟢 PHASE 4A COMPLETE (Phase 4B optional)
+### Journey 9 — Recurring invoice templates 🟢 CLOSED (25 April 2026)
 
 **Scope:** `recurring_invoice_templates` table + `RecurringBillingTab` UI + `useRecurringInvoiceTemplates` hook. Phase 0 walk (24 April 2026) confirmed ship-broken: UI fully built, zero backend (no scheduler, no generator, no child schema). Multi-phase rebuild scoped in design doc.
 
@@ -243,9 +243,9 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Phase 4A — UI operability gaps (closed 25 April 2026).** 5 commits. New hooks `useRecurringTemplateRecipients` (with org-wide count helper) + `useRecurringTemplateItems` issuing direct `supabase.from(...)` calls (RLS via `is_org_finance_team`; no new RPCs). `useCreateRecurringTemplate` / `useUpdateRecurringTemplate` extended for `term_id`. Three new controlled sub-components — `RecipientsField` (multi-select picker, paused-recipient restore, 'add all active' bulk), `ItemsField` (currency-aware amount entry; major→minor at save), `TermModeField` (Rolling vs One-shot radio). Wired into `RecurringBillingTab` dialog: hybrid `billing_mode` option exposed; canEdit broadened to include `finance` role (parity with backend `is_org_finance_team`); 'No recipients' destructive Badge on each TemplateCard. Inline validation (≥1 recipient when active; ≥1 valid item when upfront/hybrid; term required for one-shot termly). Recipient save uses upsert-flips-is-active-on-conflict; item save uses full-replace.
 
-**Phase 4B — Operator UX polish (optional next).** Template detail page, run detail page, recent runs dashboard card, failure banner aggregating recent partial/failed runs at the top of the Settings tab. Phase 4A already unblocks end-to-end usability; 4B improves operator experience.
+**Phase 4B — Operator UX polish (closed 25 April 2026).** 8 commits. `retry_failed_recipients` RPC + `parent_run_id` run linkage (reuses parent run's period; per-recipient savepoint algorithm mirrors the generator; `already_invoiced` new error_code for upfront/hybrid pre-check; template `last_run_id` preserved on fully-failed retry). Five new hooks backing the new surfaces: `useRecurringTemplateRuns` / `useRecurringTemplateRun` / `useRecentPartialOrFailedRuns` / `useCancelTemplateRun` / `useRetryFailedRecipients`. Two new pages: `/settings/recurring-billing/:templateId` canonical edit surface (Activate banner gates `active=true` behind validation; recipients/items/term-mode/runs in one page) and `/settings/recurring-billing/runs/:runId` with void and retry actions + friendly error_code labels + generated invoices table. Dashboard gets `RecurringRunsCard` (amber when partial-only, red when any failed, auto-hidden when zero); Settings tab gets `RecurringFailuresBanner` and click-through TemplateCards. Create dialog slimmed to basics; new templates default `active=false` so operator activates from detail page after adding prerequisites. UX refinements: student email in recipient picker, dedicated RotateCw restore icon on paused chips (no more click-anywhere misclick reactivation), CSS grid layout for items rows (no more lonely X button).
 
-**Phase 5 — Close-out.** Docs + roadmap close.
+J9 now fully closed: schema, generator, scheduler, alerts, manual run, retry, void, detail surfaces, failure visibility.
 
 ### Journey 10 — Stripe auto-pay ⚪
 
@@ -645,4 +645,4 @@ This file is version-controlled in the main repo. History is git log.
 
 ---
 
-_Last meaningful update: 25 April 2026 (Journey 9 Phase 4A complete — recurring billing UI operability gaps closed; templates created via the UI now bill end-to-end)._
+_Last meaningful update: 25 April 2026 (Journey 9 Phase 4B complete — recurring billing operator UX polish: retry RPC, template/run detail pages, dashboard card, failure banner. J9 fully closed._
