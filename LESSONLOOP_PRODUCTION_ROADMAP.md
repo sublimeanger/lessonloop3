@@ -167,7 +167,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 ## Area 1 — Billing & invoicing 🟡
 
-**Status:** In progress. Journey 9 Phase 3 complete (scheduler + alerts landed 24 April 2026). Phase 4 operator UX next.
+**Status:** In progress. Journey 9 Phase 4A complete (recurring billing fully usable end-to-end via UI; landed 25 April 2026). Phase 4B operator UX polish optional next step.
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -227,7 +227,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 **Key commits:** `cfe0248` · `8ac1849` · `0442096` · `6360171` · docs close  
 **Notable:** Closed a silent credit-resurrection path in `update_invoice_with_items` — the edit-draft flow missed the `voided_at` and `expired_at` guards that `create_invoice_with_items` and `redeem_make_up_credit` both have, meaning a voided credit could be re-applied via invoice edit. `delete_billing_run` now frees applied credits (previously orphaned them as unusable redeemed rows). `credit-expiry-warning` gained student-payer fallback and retry-unblocked dedup so failed Resend outages don't permanently consume the warning. New `issue_make_up_credit` RPC replaces the client-side non-atomic INSERT+audit pattern. `void_invoice` preserves original credit notes instead of overwriting. Minor polish: parent-portal SELECT drops always-null fields; IssueCreditModal expiry uses end-of-local-day (matches cron) and exposes the 90-day org-default option.
 
-### Journey 9 — Recurring invoice templates 🟡 IN PROGRESS (multi-phase)
+### Journey 9 — Recurring invoice templates 🟢 PHASE 4A COMPLETE (Phase 4B optional)
 
 **Scope:** `recurring_invoice_templates` table + `RecurringBillingTab` UI + `useRecurringInvoiceTemplates` hook. Phase 0 walk (24 April 2026) confirmed ship-broken: UI fully built, zero backend (no scheduler, no generator, no child schema). Multi-phase rebuild scoped in design doc.
 
@@ -241,7 +241,9 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Phase 3 — Scheduler + notifications (closed 24 April 2026).** 4 commits. `recurring-billing-scheduler` edge fn registered on cron `0 4 * * *` UTC (cron-auth-gated, continue-on-error per template, draft-only auto-send for day-N+1 idempotency); `send-recurring-billing-alert` edge fn for partial/failed outcomes (finance-team recipients — owner + admin + finance, 5-min dedup on (template_id, run_id, outcome) triple); `message_log.source` CHECK extended for `'recurring_scheduler_alert'`. Phase 2 F1 cleanup: `as never` type assertions removed from `useRunRecurringTemplate.ts` post-types.ts regen. Observability via edge fn logs + alert emails (no separate `cron_run_log` table — intentional simplification).
 
-**Phase 4 — Operator UX.** Template detail page, run detail page, recent runs dashboard card, bulk-void-run action.
+**Phase 4A — UI operability gaps (closed 25 April 2026).** 5 commits. New hooks `useRecurringTemplateRecipients` (with org-wide count helper) + `useRecurringTemplateItems` issuing direct `supabase.from(...)` calls (RLS via `is_org_finance_team`; no new RPCs). `useCreateRecurringTemplate` / `useUpdateRecurringTemplate` extended for `term_id`. Three new controlled sub-components — `RecipientsField` (multi-select picker, paused-recipient restore, 'add all active' bulk), `ItemsField` (currency-aware amount entry; major→minor at save), `TermModeField` (Rolling vs One-shot radio). Wired into `RecurringBillingTab` dialog: hybrid `billing_mode` option exposed; canEdit broadened to include `finance` role (parity with backend `is_org_finance_team`); 'No recipients' destructive Badge on each TemplateCard. Inline validation (≥1 recipient when active; ≥1 valid item when upfront/hybrid; term required for one-shot termly). Recipient save uses upsert-flips-is-active-on-conflict; item save uses full-replace.
+
+**Phase 4B — Operator UX polish (optional next).** Template detail page, run detail page, recent runs dashboard card, failure banner aggregating recent partial/failed runs at the top of the Settings tab. Phase 4A already unblocks end-to-end usability; 4B improves operator experience.
 
 **Phase 5 — Close-out.** Docs + roadmap close.
 
@@ -643,4 +645,4 @@ This file is version-controlled in the main repo. History is git log.
 
 ---
 
-_Last meaningful update: 24 April 2026 (Journey 9 Phase 3 complete — recurring billing scheduler + finance-team alerts)._
+_Last meaningful update: 25 April 2026 (Journey 9 Phase 4A complete — recurring billing UI operability gaps closed; templates created via the UI now bill end-to-end)._

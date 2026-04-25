@@ -1311,14 +1311,51 @@ Partial/failed runs trigger alert emails. If observability becomes
 a pain point (e.g. silent regressions in the cron path), a Phase 4+
 journey can introduce a runs log table.
 
-##### Phase 4 scope (next)
+#### Phase 4A — UI operability gaps (closed)
 
-- Dedicated template detail page (currently Run-now button wired
-  onto inline cards in Settings tab)
+Closes the four gaps that prevented templates created via the UI
+from generating invoices, plus a role parity fix:
+
+- Recipients management UI (multi-select picker; previously-paused
+  students restorable with one click; 'Add all active' bulk action).
+- Items management UI for upfront/hybrid templates (description +
+  amount + quantity, currency-aware).
+- Hybrid billing_mode option exposed in the Select (was missing
+  despite Phase 1 adding it to the DB CHECK).
+- term_id selector for termly templates (Rolling vs One-shot).
+- canEdit broadened to include finance role (matches the
+  is_org_finance_team backend gate).
+- 'No recipients' destructive Badge on TemplateCard for any
+  template with zero active recipients. Sourced from a single
+  org-wide count query (no N+1).
+
+##### Phase 4A architecture notes
+
+- All UI uses direct `supabase.from(...)` operations against
+  `recurring_template_recipients` and `recurring_template_items`.
+  Both tables have RLS policies (`is_org_finance_team`) that gate
+  writes correctly; no new backend RPCs needed.
+- Recipient save uses upsert with ON CONFLICT (template_id,
+  student_id) DO UPDATE SET is_active = true so re-adding a paused
+  student flips them back active. Removed students are marked
+  is_active = false (preserve history; never delete).
+- Items save uses full-replace (delete all, insert all with
+  order_index = array index). Acceptable for small per-template
+  item counts.
+- Edit flow uses `useEffect` watching `editingTemplate +
+  existingRecipients + existingItems` to prepopulate form state.
+
+##### Phase 4B scope (deferred polish)
+
+- Dedicated template detail page (separate route)
 - Run detail page with void/retry actions
 - Recent runs dashboard card
-- Recipient bulk-add UI
-- Failure banner on settings tab
+- Failure banner aggregating recent partial/failed runs at the top
+  of the Settings tab
+- Optional: drag-and-drop reorder for items
+
+Phase 4B is polish on top of a working system. Phase 4A unblocks
+end-to-end usability; Phase 4B improves operator experience.
 
 ---
 
