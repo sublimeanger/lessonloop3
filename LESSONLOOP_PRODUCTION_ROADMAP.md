@@ -247,9 +247,13 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 J9 now fully closed: schema, generator, scheduler, alerts, manual run, retry, void, detail surfaces, failure visibility.
 
-### Journey 10 — Stripe auto-pay ⚪
+### Journey 10 — Stripe auto-pay 🟡 IN PROGRESS
 
 **Scope:** `stripe-auto-pay-installment`, off-session payment method usage, failure handling, customer notification, subscription-separate charge model.
+
+**Phase 1 — Auto-pay capture, scope fix, reminders polish (closed 25 April 2026).** 5 commits + docs close. Webhook now persists `default_payment_method_id` on PI success (the authoritative single-write point — `setup_future_usage='off_session'` makes Stripe attach the PM, but the prior code path never read `paymentIntent.payment_method`). Service-role backfill RPC + driver edge fn for guardians who opted into auto-pay before the capture fix landed. Saved-PM list and detach moved off the connected account onto the platform — they were querying the wrong scope under any Connect-enabled org and silently returning empty. New 24-hour final reminder runs alongside the existing 3-day one (independent dedup), both now showing `${brand} ending ${last4} (expires MM/YYYY)` with a red expiry-warning block + "[Action needed]" subject prefix when the card expires before the charge date. Findings addressed: F1, F3, F5, F6. Filed: F2 (shared brand dictionary), F4 (backfill observability), F7 (charge-time failure-mode coverage).
+
+**Phase 1 follow-ups:** Backfill driver run (operator-triggered, post-deploy). Charge-time failure-mode coverage (Phase 2).
 
 ### Journey 11 — Server-side PDF generation ⚪
 

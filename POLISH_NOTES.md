@@ -1414,6 +1414,119 @@ J9 fully closed. Recurring billing is operator-grade end-to-end:
 schema, generator, scheduler, alerts, manual run, retry, void,
 detail surfaces, failure visibility.
 
+### Journey 10 — Stripe auto-pay
+
+Multi-phase. Phase 1 (25 April 2026) closes the data-capture gap that
+silently broke auto-pay for every guardian who'd opted in: the saved
+default payment method was never written, so the `stripe-auto-pay-installment`
+cron skipped the gate at index.ts:85 and parents never saw a charge
+attempt. Also closes the symmetric scope bugs in saved-PM list/detach
+and the missing 24-hour final reminder + expiry-warning copy.
+
+#### Phase 1 — Auto-pay capture, scope fix, reminders polish (closed 25 April 2026)
+
+5 commits + docs close. Findings addressed: J10-F1, J10-F3, J10-F5,
+J10-F6.
+
+- **J10-F1 webhook capture** — `stripe-webhook` handler for
+  `payment_intent.succeeded` now persists `default_payment_method_id`
+  to `guardian_payment_preferences` after the existing `record_stripe_payment`
+  call. Reads `paymentIntent.payment_method` (populated because
+  `setup_future_usage='off_session'` is set on the source PI in
+  `stripe-create-payment-intent`), upserts only when the existing
+  default is NULL (auto-promote first card). Best-effort — payment
+  row already landed via `record_stripe_payment`, so PM upsert
+  failures must never abort the webhook. This is the authoritative
+  single-write point.
+- **J10-F1 backfill** — service-role-only RPC
+  `backfill_guardian_default_pm_set(_guardian_id, _org_id, _payment_method_id)`
+  patches existing guardians (auto_pay_enabled=true, history pre-C1
+  but `default_payment_method_id IS NULL`). Returns
+  `{updated, previous, action}` so the driver can report inserted /
+  updated / skipped tallies. Per-row no-op when default already set
+  — safe to re-run without clobbering. Driver edge fn
+  `admin-backfill-default-pm` lists PMs from Stripe (platform scope,
+  no `stripeAccount`) for each candidate row's `stripe_customer_id`,
+  takes the most-recently-created card, calls the RPC. Operator-
+  triggered via `validateCronAuth` (x-cron-secret + INTERNAL_CRON_SECRET);
+  not on a schedule. Per-guardian try/catch so one Stripe error
+  doesn't abort the run.
+- **J10-F3 PM list/detach scope** — `stripe-list-payment-methods` was
+  passing `stripeAccount=org.stripe_connect_account_id` to
+  `paymentMethods.list`, but PMs are platform-attached because the
+  source PI runs on the platform with `transfer_data.destination`
+  for Connect. Under any Connect-enabled org the call returned
+  empty; parents saw "No saved payment methods yet" after successful
+  payments. Removed the org lookup and the `stripeOpts.stripeAccount`
+  set; SDK call now runs on the platform implicitly. Symmetric fix
+  in `stripe-detach-payment-method` for the `paymentMethods.retrieve`
+  + `paymentMethods.detach` pair.
+- **J10-F5 24-hour final reminder** — extracted reminder body to
+  `_shared/auto-pay-reminder-core.ts` parameterised on
+  `(leadDays, messageType)`. Existing `auto-pay-upcoming-reminder`
+  is now a thin wrapper around `{leadDays: 3, messageType: 'auto_pay_reminder'}`
+  (behaviour-preserving for the 3-day cadence). New
+  `auto-pay-final-reminder` calls `{leadDays: 1, messageType:
+  'auto_pay_final_reminder'}`. Independent dedup keys mean the two
+  cadences never conflate. Cron `auto-pay-final-reminder-daily` at
+  `0 8 * * *` UTC, idempotent unschedule-then-schedule.
+- **J10-F6 PM brand/last4/expiry** — helper retrieves the saved PM
+  from Stripe and splices `${brand} ending ${last4} (expires
+  MM/YYYY)` into the email subject and body. If `exp_year`/`exp_month`
+  precedes the charge month, the helper prepends a red-bordered
+  expiry-warning block ("Your card expires before this payment date")
+  and prefixes the subject with "[Action needed]". Stripe retrieve
+  failure (detached PM, transient network, missing key) falls
+  through cleanly to the legacy "your saved card" wording —
+  reminder still goes out.
+
+##### Phase 1 architecture notes
+
+- **PM scope** — `setup_future_usage='off_session'` runs unconditionally
+  on the platform PI in `stripe-create-payment-intent` (line 312).
+  Stripe attaches the PM to the platform customer, not the connected
+  account. Every consumer (saved-PMs list, detach, off-session
+  charge, reminder PM lookup, backfill driver) must list/retrieve
+  on the platform. This was the underlying cause shared across
+  J10-F1, J10-F3, and J10-F5/6.
+- **Auth split** — `auto-pay-{upcoming,final}-reminder` keep the
+  legacy `authHeader.includes(service_role_key)` Bearer pattern to
+  match the existing cron migration. `admin-backfill-default-pm`
+  uses `validateCronAuth` (`x-cron-secret`) because it's
+  operator-triggered, not scheduled, and INTERNAL_CRON_SECRET is
+  the closest fit for the gate pattern.
+- **Brand dictionary duplication** — `BRAND_LABELS` in
+  `_shared/auto-pay-reminder-core.ts` mirrors `brandIcons` in
+  `src/components/portal/PaymentMethodsCard.tsx`. Edge fns can't
+  import frontend code. Filed J10-F2 for a longer-term shared
+  module if the duplication grows.
+
+##### Phase 1 commit ledger
+
+- **J10-P1-C1** `b3a16476` — webhook persists default_payment_method_id
+  on PI success.
+- **J10-P1-C2** `0f95fe09` — backfill_guardian_default_pm_set RPC.
+- **J10-P1-C3** `88505399` — admin-backfill-default-pm driver.
+- **J10-P1-C4** `93a43f17` — list/detach PMs on platform account.
+- **J10-P1-C5** `34690289` — 1-day final reminder + PM brand/last4/
+  expiry + warning.
+- **J10-P1-C6** — docs close (this commit).
+
+##### Phase 1 follow-ups (filed)
+
+- **J10-F2** — saved-PMs list and reminder PM lookup duplicate the
+  brand-label dictionary. Medium-term: shared TS module consumable
+  from both Vite (frontend) and Deno (edge fns). Low priority while
+  the dictionary stays this small.
+- **J10-F4** — observability for the backfill driver. Right now the
+  caller sees `{processed, updated, skipped, errors}`. Long-running
+  org-level audit_log entry with the same shape would let operators
+  diff before/after over time.
+- **J10-F7** — `stripe-auto-pay-installment` failure-mode coverage
+  (PM declined / requires_action / card expired at charge time).
+  J10 Phase 1 closes the capture and reminder gaps; the actual
+  charge-attempt failure paths are Phase 2 territory.
+
 ---
 
 ## Process improvements

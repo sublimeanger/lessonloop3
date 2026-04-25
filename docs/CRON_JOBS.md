@@ -58,12 +58,24 @@ Each uses the SUPABASE_SERVICE_ROLE_KEY as Bearer token auth.
   have to pay manually. Installments go overdue unnecessarily.
 
 ### 8. auto-pay-upcoming-reminder
-- **Schedule:** `0 9 * * *` (9:00 AM UTC daily)
+- **Schedule:** `0 8 * * *` (8:00 AM UTC daily)
 - **Function:** auto-pay-upcoming-reminder
 - **Body:** `{}`
-- **Purpose:** Sends email reminders to guardians with auto-pay enabled about
-  upcoming installments being charged in the next 3 days.
+- **Purpose:** Sends 3-day heads-up email to guardians with auto-pay enabled
+  about upcoming installments. Email shows the saved card brand/last4/
+  expiry and warns when the card expires before the charge date (J10 P1).
 - **If missing:** Parents aren't warned before auto-charges.
+
+### 8a. auto-pay-final-reminder
+- **Schedule:** `0 8 * * *` (8:00 AM UTC daily)
+- **Function:** auto-pay-final-reminder
+- **Body:** `{}`
+- **Purpose:** 24-hour final reminder for tomorrow's auto-pay installments.
+  Independent dedup key (`auto_pay_final_reminder` vs `auto_pay_reminder`)
+  so it never conflates with the 3-day notice. Same card-detail and
+  expiry-warning copy via `_shared/auto-pay-reminder-core.ts`.
+- **If missing:** Parents only get the 3-day notice — no last-chance
+  reminder if the card has expired or the parent missed the first email.
 
 ### 9. installment-upcoming-reminder
 - **Schedule:** `0 9 * * *` (9:00 AM UTC daily)
