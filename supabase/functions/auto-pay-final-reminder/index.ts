@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendAutoPayReminders } from "../_shared/auto-pay-reminder-core.ts";
+import { validateCronAuth } from "../_shared/cron-auth.ts";
 
 /**
  * J10-F5 — sends a 24-hour final auto-pay reminder.
@@ -10,17 +11,12 @@ import { sendAutoPayReminders } from "../_shared/auto-pay-reminder-core.ts";
  * + expiry warning shared with the 3-day fn via auto-pay-reminder-core.
  */
 serve(async (req) => {
+  const cronAuthError = validateCronAuth(req);
+  if (cronAuthError) return cronAuthError;
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader || !authHeader.includes(supabaseServiceKey)) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

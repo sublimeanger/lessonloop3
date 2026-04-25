@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { validateCronAuth } from "../_shared/cron-auth.ts";
 
 const PAUSE_THRESHOLD = 3;
 
@@ -82,21 +83,15 @@ async function invokeFailureNotification(
  * Intended to be called daily via pg_cron or a Supabase scheduled invocation.
  */
 serve(async (req) => {
+  const cronAuthError = validateCronAuth(req);
+  if (cronAuthError) return cronAuthError;
+
   try {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Verify caller is authorized (service role or cron secret)
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader || !authHeader.includes(supabaseServiceKey)) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });

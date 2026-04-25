@@ -1,57 +1,84 @@
 # LessonLoop — Required Cron Jobs
 
-All cron jobs must be configured in Supabase Dashboard → Edge Functions → Schedules.
-Each uses the SUPABASE_SERVICE_ROLE_KEY as Bearer token auth.
+All cron jobs are registered via committed migrations and run on
+pg_cron in the production Supabase project. Every cron-callable edge
+function authenticates the caller via `validateCronAuth` against
+`INTERNAL_CRON_SECRET` (Pattern C).
 
-## Daily Jobs (run in this order)
+## Canonical pattern
 
-### 1. credit-expiry-warning
-- **Schedule:** `55 1 * * *` (1:55 AM UTC)
-- **Function:** credit-expiry-warning
-- **Body:** `{}`
-- **Purpose:** Emails guardians about credits expiring in the next 3 days.
-- **Must run BEFORE credit-expiry** so warnings go out before credits are marked expired.
-- **If missing:** Parents aren't warned about expiring credits.
+See `docs/CRON_AUTH.md` for the canonical Pattern C template (vault
+→ `x-cron-secret` → `validateCronAuth`). All 12 crons below use it.
 
-### 2. credit-expiry
+## Scheduled jobs
+
+The schedules below reflect what's registered in the standardisation
+migration `20260501100000_cron_auth_standardisation.sql`. All use
+`auth: vault.INTERNAL_CRON_SECRET → x-cron-secret`.
+
+### 1. credit-expiry-daily
 - **Schedule:** `0 2 * * *` (2:00 AM UTC)
 - **Function:** credit-expiry
-- **Body:** `{}`
 - **Purpose:** Marks expired make-up credits. Protects credits linked to active waitlist entries.
 - **If missing:** Credits never expire. Students accumulate unlimited make-up credits.
 
-### 3. waitlist-expiry
-- **Schedule:** `5 2 * * *` (2:05 AM UTC)
-- **Function:** waitlist-expiry
-- **Body:** `{}`
-- **Purpose:** Expires stale waitlist entries. Returns unanswered "offered" entries to "waiting".
-- **If missing:** Waitlist entries never expire. Offered slots stay blocked forever.
+### 2. cleanup-orphaned-resources
+- **Schedule:** `0 3 * * *` (3:00 AM UTC)
+- **Function:** cleanup-orphaned-resources
+- **Purpose:** Deletes storage files in `teaching-resources` with no matching `resources` row.
+- **If missing:** Orphaned files accumulate in storage indefinitely.
+
+### 3. recurring-billing-scheduler-daily
+- **Schedule:** `0 4 * * *` (4:00 AM UTC)
+- **Function:** recurring-billing-scheduler
+- **Purpose:** Generates invoices from recurring templates whose `next_run_date` falls today.
+- **If missing:** Recurring invoices never auto-generate. Operators have to fire each template manually.
 
 ### 4. invoice-overdue-check
-- **Schedule:** `0 3 * * *` (3:00 AM UTC)
+- **Schedule:** `30 5 * * *` (5:30 AM UTC)
 - **Function:** invoice-overdue-check
-- **Body:** `{}`
-- **Purpose:** Transitions invoices from 'sent' → 'overdue' when past due. Marks overdue installments.
+- **Purpose:** Transitions invoices from `sent` → `overdue` when past due. Marks overdue installments.
 - **If missing:** Invoices never transition to overdue. Dashboard counts inaccurate.
 
-### 5. installment-overdue-check
-- **Schedule:** `5 3 * * *` (3:05 AM UTC)
+### 5. installment-overdue-check-daily
+- **Schedule:** `0 6 * * *` (6:00 AM UTC)
 - **Function:** installment-overdue-check
-- **Body:** `{}`
 - **Purpose:** Marks payment plan installments as overdue.
 - **If missing:** Installments never show as overdue.
 
-### 6. continuation process_deadline
+### 6. auto-pay-upcoming-reminder-daily
 - **Schedule:** `0 8 * * *` (8:00 AM UTC)
-- **Function:** create-continuation-run
-- **Body:** `{ "action": "process_deadline" }`
-- **Purpose:** Auto-processes continuation runs past their notice deadline. Converts pending responses to no_response or assumed_continuing.
-- **If missing:** Continuation deadlines never auto-process. Runs stay in 'sent' status forever.
+- **Function:** auto-pay-upcoming-reminder
+- **Purpose:** Sends 3-day heads-up email to guardians with auto-pay enabled
+  about upcoming installments. Email shows the saved card brand/last4/
+  expiry and warns when the card expires before the charge date (J10 P1).
+- **If missing:** Parents aren't warned before auto-charges.
 
-### 7. stripe-auto-pay-installment
-- **Schedule:** `0 6 * * *` (6:00 AM UTC daily)
+### 7. auto-pay-final-reminder-daily
+- **Schedule:** `0 8 * * *` (8:00 AM UTC)
+- **Function:** auto-pay-final-reminder
+- **Purpose:** 24-hour final reminder for tomorrow's auto-pay installments.
+  Independent dedup key (`auto_pay_final_reminder` vs `auto_pay_reminder`)
+  so it never conflates with the 3-day notice. Same card-detail and
+  expiry-warning copy via `_shared/auto-pay-reminder-core.ts`.
+- **If missing:** Parents only get the 3-day notice — no last-chance
+  reminder if the card has expired or the parent missed the first email.
+
+### 8. installment-upcoming-reminder-daily
+- **Schedule:** `0 8 * * *` (8:00 AM UTC)
+- **Function:** installment-upcoming-reminder
+- **Purpose:** Sends email reminders about installments due in 3 days.
+- **If missing:** Parents aren't reminded about upcoming installments.
+
+### 9. credit-expiry-warning-daily
+- **Schedule:** `0 8 * * *` (8:00 AM UTC)
+- **Function:** credit-expiry-warning
+- **Purpose:** Emails guardians about credits expiring in the next 3 days.
+- **If missing:** Parents aren't warned about expiring credits.
+
+### 10. stripe-auto-pay-installment-daily
+- **Schedule:** `0 9 * * *` (9:00 AM UTC)
 - **Function:** stripe-auto-pay-installment
-- **Body:** `{}`
 - **Purpose:** Charges default payment method for installments due today or overdue,
   where the guardian has auto-pay enabled and is not paused.
 - **Side effects (J10 P2):** Writes one row per attempted charge to
@@ -68,37 +95,9 @@ Each uses the SUPABASE_SERVICE_ROLE_KEY as Bearer token auth.
 - **If missing:** Auto-pay never fires. Parents opted into auto-pay still
   have to pay manually. Installments go overdue unnecessarily.
 
-### 8. auto-pay-upcoming-reminder
-- **Schedule:** `0 8 * * *` (8:00 AM UTC daily)
-- **Function:** auto-pay-upcoming-reminder
-- **Body:** `{}`
-- **Purpose:** Sends 3-day heads-up email to guardians with auto-pay enabled
-  about upcoming installments. Email shows the saved card brand/last4/
-  expiry and warns when the card expires before the charge date (J10 P1).
-- **If missing:** Parents aren't warned before auto-charges.
-
-### 8a. auto-pay-final-reminder
-- **Schedule:** `0 8 * * *` (8:00 AM UTC daily)
-- **Function:** auto-pay-final-reminder
-- **Body:** `{}`
-- **Purpose:** 24-hour final reminder for tomorrow's auto-pay installments.
-  Independent dedup key (`auto_pay_final_reminder` vs `auto_pay_reminder`)
-  so it never conflates with the 3-day notice. Same card-detail and
-  expiry-warning copy via `_shared/auto-pay-reminder-core.ts`.
-- **If missing:** Parents only get the 3-day notice — no last-chance
-  reminder if the card has expired or the parent missed the first email.
-
-### 9. installment-upcoming-reminder
-- **Schedule:** `0 9 * * *` (9:00 AM UTC daily)
-- **Function:** installment-upcoming-reminder
-- **Body:** `{}`
-- **Purpose:** Sends email reminders about installments due in **3 days**.
-- **If missing:** Parents aren't reminded about upcoming installments.
-
-### 9a. overdue-reminders
-- **Schedule:** `0 9 * * *` (9:00 AM UTC daily)
+### 11. overdue-reminders-daily
+- **Schedule:** `0 9 * * *` (9:00 AM UTC)
 - **Function:** overdue-reminders
-- **Body:** `{}`
 - **Purpose:** Sends escalating overdue reminder emails to guardians or
   student payers for invoices and plan installments past their due_date.
   Tier cadence is per-org-configurable via `organisations.overdue_reminder_days`
@@ -109,26 +108,38 @@ Each uses the SUPABASE_SERVICE_ROLE_KEY as Bearer token auth.
 - **If missing:** No overdue reminder emails sent. Parents aren't chased
   on overdue invoices or overdue installments.
 
-### 10. enrolment-offer-expiry
-- **Schedule:** `0 3 * * *` (3:00 AM UTC daily)
-- **Function:** enrolment-offer-expiry
-- **Body:** `{}`
-- **Purpose:** Expires enrolment waitlist offers that haven't been
-  responded to within the org's configured expiry period (default 48h).
-- **If missing:** Offers never expire. Families who ignore offers
-  block their waitlist position indefinitely.
+### 12. calendar-refresh-busy
+- **Schedule:** `*/15 * * * *` (every 15 minutes)
+- **Function:** calendar-refresh-busy
+- **Purpose:** Refreshes Google / Outlook busy-block caches for active
+  calendar connections.
+- **If missing:** Stale busy blocks; double-booking risk against external
+  calendars.
+- **Note:** The legacy `refresh-calendar-busy-blocks` cron at
+  `*/30 * * * *` was a duplicate targeting the same edge fn. Dropped
+  in `20260501100100_cron_auth_standardisation_patch.sql`.
+
+### 13. send-lesson-reminders
+- **Schedule:** `0 * * * *` (hourly on the hour)
+- **Function:** send-lesson-reminders
+- **Purpose:** Per-org reminder emails / push for lessons starting
+  within each org's configured `reminder_lesson_hours` window.
+- **If missing:** No lesson reminders fire. Parents miss lessons.
 
 ## Verification
 
-Check Supabase Dashboard → Edge Functions → Invocations to confirm each job runs daily.
-If any job hasn't run in 48+ hours, it needs reconfiguring.
+Check Supabase Dashboard → Edge Functions → Invocations to confirm each
+job runs on schedule. If any job hasn't run in 48+ hours (or 30 minutes
+for `calendar-refresh-busy`, 90 minutes for `send-lesson-reminders`),
+inspect `cron.job_run_details` and `net._http_response` for the failed
+invocation.
+
+A health-watchdog (T08-F5, filed for Track 0.8 Phase 2) will surface
+this in-app rather than requiring dashboard attention.
 
 ## Auth
 
-All cron jobs authenticate via:
-- **Header:** `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`
-- **Or:** Supabase cron secret header (for functions using `validateCronAuth`)
-
-The credit-expiry, credit-expiry-warning, and waitlist-expiry functions use `validateCronAuth`.
-The invoice and installment checks use their own auth.
-The continuation process_deadline checks for the service role key directly.
+All cron jobs use Pattern C: `x-cron-secret` header populated from
+`vault.decrypted_secrets` at call time, validated server-side via
+`validateCronAuth` in `supabase/functions/_shared/cron-auth.ts`. See
+`docs/CRON_AUTH.md` for the full canonical template and rationale.

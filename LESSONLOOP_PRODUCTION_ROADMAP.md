@@ -163,6 +163,24 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Scope:** small admin-only surface (settings tab or audit page) listing every cron edge function with a "Run now" button, rate-limited per-function, writes to `audit_log` with actor. Companion feature for Track 0.6 ongoing health monitoring. Low priority individually but compounds with every future cron gap.
 
+### Track 0.8 — Cron auth standardisation 🟡 IN PROGRESS
+
+**Status:** Phase 1 (auth standardisation) complete, Phase 2 (watchdog observability) pending.
+
+**Problem:** Audit on 25 April 2026 found 10 of 12 production crons silently 401-failing daily because four different auth patterns drifted into the codebase over time:
+- Pattern A (inline `Authorization: Bearer service_role_key`) — works but inconsistent.
+- Pattern C (`x-cron-secret` from `vault.INTERNAL_CRON_SECRET` → `validateCronAuth`) — canonical, but vault was empty until 25 April.
+- Pattern D (`x-cron-secret` from `current_setting('app.settings.internal_cron_secret')`) — config never set; dead.
+- Pattern E (`x-cron-secret` from `current_setting('app.settings.cron_secret')`) — config never set; dead.
+
+Two crons (`overdue-reminders-daily`, `recurring-billing-scheduler-daily`) sent Pattern A headers but the receiving fns expected `x-cron-secret` — header-name mismatch, 401-fail every run.
+
+**Phase 1 — auth standardisation (closed):** Single migration `20260501100000_cron_auth_standardisation.sql` re-registers all 12 crons with the canonical Pattern C template. Three edge fns previously using inline Pattern A (`auto-pay-upcoming-reminder`, `auto-pay-final-reminder`, `stripe-auto-pay-installment`) and one using a near-duplicate inline check (`cleanup-orphaned-resources`) now use the shared `validateCronAuth`. Hardcoded anon JWT in `cleanup-orphaned-resources` registration removed. `app.settings.internal_cron_secret` and `app.settings.cron_secret` are no longer referenced anywhere — they can be unset.
+
+Findings addressed: T08-F1 (vault not populated; operator-fixed), T08-F2 (4 patterns in tree), T08-F3 (cleanup-orphaned-resources hardcoded JWT + inline auth), T08-F4 (3 fns using inline Pattern A).
+
+Findings filed for Phase 2: **T08-F5 — cron-health watchdog**. Today there is no in-app signal when a cron silently 401-fails for days. Phase 2 adds a `cron.job_run_details` + `net._http_response` poller that surfaces failures on the admin dashboard within one cycle.
+
 ---
 
 ## Area 1 — Billing & invoicing 🟡

@@ -1668,6 +1668,154 @@ per-org summary alert per cron run with any failures.
 
 ---
 
+## Track 0.8 Phase 1 — Cron auth standardisation
+
+Closed 25 April 2026. Three code commits + one docs commit.
+
+### Why
+
+Audit found 10 of 12 production crons silently 401-failing every
+day. Four different auth patterns had drifted into the codebase:
+
+- **A inline** — `authHeader.includes(supabaseServiceKey)`. Worked
+  in three auto-pay fns; brittle substring match against a Bearer
+  token.
+- **C vault** — `x-cron-secret` from `vault.INTERNAL_CRON_SECRET`,
+  validated server-side via `validateCronAuth`. Canonical but the
+  vault entry was empty until 25 April.
+- **D config** — `x-cron-secret` from
+  `current_setting('app.settings.internal_cron_secret')`. The
+  PostgreSQL config was never set in production.
+- **E config** — `x-cron-secret` from
+  `current_setting('app.settings.cron_secret')`. Same.
+
+Two further crons (`overdue-reminders-daily`,
+`recurring-billing-scheduler-daily`) were registered with Pattern A
+headers but the edge fns used `validateCronAuth` — header-name
+mismatch (`Authorization` vs `x-cron-secret`), 401 every call.
+
+Net effect: only the three Pattern A inline fns
+(`auto-pay-upcoming-reminder`, `stripe-auto-pay-installment`,
+`auto-pay-final-reminder`) were actually working. Auto-pay charges,
+overdue reminders, credit expiry, recurring billing,
+calendar-busy refresh and orphan cleanup were all dead.
+
+### Code commits (3)
+
+#### C1 — fix(cron): standardise all cron auth on vault INTERNAL_CRON_SECRET (T08-P1-C1)
+
+Single migration `supabase/migrations/20260501100000_cron_auth_standardisation.sql`.
+Re-registers all 12 crons with the canonical Pattern C template:
+`x-cron-secret` populated from `vault.decrypted_secrets` at call
+time. The 12 DO blocks are intentionally repeated rather than
+refactored into a loop so each cron is readable in isolation.
+Existing schedules and job names preserved. Body is `'{}'::jsonb`
+across all 12 — verified every receiving fn ignores the request
+body.
+
+`cleanup-orphaned-resources` schedule (`0 3 * * *`) was sourced
+from the fn header doc-comment as no committed migration existed
+for it. Operator should reconcile post-deploy if production was
+running on a different cadence.
+
+#### C2 — fix(cron): three Pattern A edge fns now use validateCronAuth (T08-P1-C2)
+
+`auto-pay-upcoming-reminder`, `auto-pay-final-reminder`,
+`stripe-auto-pay-installment`. Each fn now imports
+`validateCronAuth` and calls it before any other work. The unused
+`authHeader` local and inline 401 block removed.
+`supabaseServiceKey` is still read for Supabase client construction
+— that concern unchanged.
+
+After C1's migration, these three fns receive `x-cron-secret`
+headers instead of `Authorization: Bearer`, so without C2 they
+would 401 on every cron call. C1 + C2 must ship together.
+
+#### C3 — fix(cron): cleanup-orphaned-resources uses validateCronAuth (T08-P1-C3)
+
+The fn carried its own inline `cronSecret !== Deno.env.get(
+"INTERNAL_CRON_SECRET")` check that was functionally equivalent to
+`validateCronAuth` but inconsistent. Replaced for consistency.
+
+C1 already drops the legacy hardcoded anon JWT from the cron
+registration; C3 closes the loop on the fn side.
+
+### Docs commit (1)
+
+`docs/CRON_AUTH.md` (new, ~70 lines) documents the canonical
+Pattern C template, why-this-pattern, the four-pattern history,
+and the "add a new cron" recipe.
+
+`docs/CRON_JOBS.md` rewritten to list all 12 crons with the
+schedules registered in the standardisation migration; auth column
+removed in favour of the global "all use Pattern C" header.
+
+`LESSONLOOP_PRODUCTION_ROADMAP.md` Track 0.8 entry added with
+Phase 1 status and Phase 2 (T08-F5 watchdog) outline.
+
+### Findings addressed
+
+- **T08-F1** — vault.INTERNAL_CRON_SECRET empty in production.
+  Operator populated 25 April; C1 standardises every cron to
+  consume it.
+- **T08-F2** — four auth patterns layered into the codebase. C1
+  standardises every registration on Pattern C; D and E config
+  keys are no longer referenced anywhere.
+- **T08-F3** — `cleanup-orphaned-resources` carried a hardcoded
+  anon JWT (legacy artefact) plus inline auth. Both removed.
+- **T08-F4** — three auto-pay fns used inline `authHeader.includes`
+  instead of `validateCronAuth`. C2 closes this.
+
+### Findings filed for Phase 2
+
+- **T08-F5** — cron-health watchdog. Today there is no in-app
+  signal when a cron silently 401-fails for days. Phase 2 adds a
+  poller against `cron.job_run_details` + `net._http_response` that
+  surfaces failures on the admin dashboard within one cycle, plus
+  an org-level alert when a cron is in a sustained-failure state.
+
+### Deviations from brief
+
+- Brief asked to query production `cron.job` to confirm the
+  `cleanup-orphaned-resources` schedule. No DB access is available
+  to this session. Used the fn header doc-comment ("Runs daily at
+  3 AM via pg_cron") and called this out explicitly in both the
+  migration body and the commit message. Operator must verify
+  post-deploy.
+
+### Patch (C5) — fold 2 missed HTTP crons + drop calendar duplicate
+
+Operator ran `SELECT jobname FROM cron.job` against production
+during deploy verification and found the C1 migration's 12-cron
+table was incomplete. Production actually had 16 crons:
+
+- **12 covered by C1.**
+- **2 SQL-only** (no HTTP, no auth concern, deliberately untouched):
+  `complete-expired-assignments`, `reset-stale-practice-streaks`.
+- **2 HTTP, silently dead with Pattern A header mismatch**:
+  `send-lesson-reminders` (hourly, fn uses `validateCronAuth`),
+  `calendar-refresh-busy` (every 15 min, fn uses
+  `validateCronAuth`).
+- **1 HTTP duplicate of calendar-refresh-busy at half cadence**:
+  `refresh-calendar-busy-blocks` (Pattern E, `app.settings.cron_secret`
+  NULL — dead from day one). The 15-minute one is canonical;
+  operator chose to drop the 30-min duplicate.
+
+Note: this `refresh-calendar-busy-blocks` registration was the same
+one C1 attempted to standardise (sourced from migration
+`20260223100000_calsync_cron_guardian_health.sql`). The C5 patch
+unschedules it again rather than re-registering — operator
+preference for the 15-min cadence supersedes the original 30-min
+schedule.
+
+Single migration `20260501100100_cron_auth_standardisation_patch.sql`:
+unschedules `refresh-calendar-busy-blocks`, then re-registers
+`calendar-refresh-busy` (`*/15 * * * *`) and `send-lesson-reminders`
+(`0 * * * *`) with the canonical Pattern C template.
+
+Coverage: 14 of 14 HTTP crons now on Pattern C; 2 SQL-only crons
+correctly untouched.
+
 ## Process improvements
 
 Discovered during the polish pass — applied to all subsequent
