@@ -6783,6 +6783,7 @@ export type Database = {
       }
       cleanup_expired_invites: { Args: never; Returns: number }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      cleanup_webhook_retention: { Args: never; Returns: Json }
       cleanup_withdrawal_credits: {
         Args: { _effective_date: string; _org_id: string; _student_id: string }
         Returns: Json
