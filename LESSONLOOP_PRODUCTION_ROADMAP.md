@@ -247,13 +247,15 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 J9 now fully closed: schema, generator, scheduler, alerts, manual run, retry, void, detail surfaces, failure visibility.
 
-### Journey 10 — Stripe auto-pay 🟡 IN PROGRESS
+### Journey 10 — Stripe auto-pay 🟢 CLOSED — Phases 1+2 complete; F10 + F13 filed for follow-up
 
 **Scope:** `stripe-auto-pay-installment`, off-session payment method usage, failure handling, customer notification, subscription-separate charge model.
 
 **Phase 1 — Auto-pay capture, scope fix, reminders polish (closed 25 April 2026).** 5 commits + docs close. Webhook now persists `default_payment_method_id` on PI success (the authoritative single-write point — `setup_future_usage='off_session'` makes Stripe attach the PM, but the prior code path never read `paymentIntent.payment_method`). Service-role backfill RPC + driver edge fn for guardians who opted into auto-pay before the capture fix landed. Saved-PM list and detach moved off the connected account onto the platform — they were querying the wrong scope under any Connect-enabled org and silently returning empty. New 24-hour final reminder runs alongside the existing 3-day one (independent dedup), both now showing `${brand} ending ${last4} (expires MM/YYYY)` with a red expiry-warning block + "[Action needed]" subject prefix when the card expires before the charge date. Findings addressed: F1, F3, F5, F6. Filed: F2 (shared brand dictionary), F4 (backfill observability), F7 (charge-time failure-mode coverage).
 
-**Phase 1 follow-ups:** Backfill driver run (operator-triggered, post-deploy). Charge-time failure-mode coverage (Phase 2).
+**Phase 2 — Charge failure handling, pause + recovery (closed 25 April 2026).** 5 commits + docs close. Per-attempt `auto_pay_attempts` table (succeeded / failed / requires_action / skipped_paused) replaces the previous "no observability" gap. Pause columns on `guardian_payment_preferences` (`auto_pay_paused_at`, `auto_pay_paused_reason`, `consecutive_failure_count`); cron pauses guardians after 3 consecutive failures, skipping them with a logged `skipped_paused` attempt; counter resets on success but pause flag survives a manual portal payment (parent must explicitly re-enable). New `send-auto-pay-failure-notification` fn with error-code-aware copy (`expired_card`, `insufficient_funds`, `requires_action`, `card_not_supported`, `card_declined`, fallback) replacing the inline hard-coded "card declined" email; same-code-within-20h dedup via the attempt log. New `send-auto-pay-alert` operator email — one per affected org per run, mirroring J9 P3's recurring-billing-alert pattern. `overdue-reminders` now batches a single auto-pay-state lookup and skips guardians with active auto-pay (paused guardians and PM-less guardians still get the standard channel). Findings addressed: F8, F9, F11, F12, F14. Filed: F10 (`payment_intent.payment_failed` webhook), F13 (transient vs permanent retry classification).
+
+**Filed for later phases:** F2 (shared brand dictionary), F4 (backfill observability), F10 (async webhook failure path), F13 (retry classification).
 
 ### Journey 11 — Server-side PDF generation ⚪
 

@@ -20,6 +20,7 @@ serve(async (req) => {
     today.setHours(0, 0, 0, 0);
 
     let remindersSent = 0;
+    let skippedAutoPay = 0;
     const errors: string[] = [];
     // ── STANDARD INVOICE REMINDERS ─────────────────────────────
     // Note: status transitions (pending→overdue) are handled by the dedicated
@@ -40,10 +41,36 @@ serve(async (req) => {
       throw new Error(`Failed to fetch overdue invoices: ${invoicesError.message}`);
     }
 
+    // J10-F11: skip standard reminders for guardians with active auto-pay.
+    // Auto-pay is the canonical channel for that parent — sending a standard
+    // reminder on the same day would double-send. Once auto-pay is paused,
+    // the standard channel takes over again.
+    //
+    // Active auto-pay = auto_pay_enabled=true AND default_payment_method_id
+    // IS NOT NULL AND auto_pay_paused_at IS NULL. Paused guardians and
+    // guardians without a default PM are NOT skipped — they need the
+    // standard reminder.
+    const invoicePairs = (overdueInvoices || [])
+      .filter((inv: any) => inv.payer_guardian?.id)
+      .map((inv: any) => ({ guardianId: inv.payer_guardian.id, orgId: inv.org_id }));
+    const invoiceAutoPayMap = await fetchActiveAutoPayMap(supabase, invoicePairs);
+
     for (const invoice of overdueInvoices || []) {
       try {
         // Skip invoices with active payment plans — they get installment-level reminders
         if (invoice.payment_plan_enabled) continue;
+
+        const guardianId = invoice.payer_guardian?.id;
+        if (
+          guardianId &&
+          invoiceAutoPayMap.has(`${guardianId}:${invoice.org_id}`)
+        ) {
+          console.log(
+            `Skipping invoice ${invoice.invoice_number}: guardian ${guardianId} has active auto-pay`,
+          );
+          skippedAutoPay++;
+          continue;
+        }
 
         const result = await processInvoiceReminder(supabase, invoice, today, resendApiKey);
         if (result === "sent") remindersSent++;
@@ -80,8 +107,31 @@ serve(async (req) => {
       console.error("Failed to fetch overdue installments:", installError.message);
     }
 
+    // J10-F11: same auto-pay skip as the invoice loop above. Batched.
+    const installmentPairs = (overdueInstallments || [])
+      .filter((i: any) => i.invoice?.payer_guardian?.id)
+      .map((i: any) => ({
+        guardianId: i.invoice.payer_guardian.id,
+        orgId: i.invoice.org_id,
+      }));
+    const installmentAutoPayMap = await fetchActiveAutoPayMap(supabase, installmentPairs);
+
     for (const installment of overdueInstallments || []) {
       try {
+        const guardianId = installment.invoice?.payer_guardian?.id;
+        const orgId = installment.invoice?.org_id;
+        if (
+          guardianId &&
+          orgId &&
+          installmentAutoPayMap.has(`${guardianId}:${orgId}`)
+        ) {
+          console.log(
+            `Skipping installment ${installment.id}: guardian ${guardianId} has active auto-pay`,
+          );
+          skippedAutoPay++;
+          continue;
+        }
+
         const result = await processInstallmentReminder(supabase, installment, today, resendApiKey);
         if (result === "sent") remindersSent++;
       } catch (err: unknown) {
@@ -90,7 +140,9 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Overdue reminder job complete. Sent: ${remindersSent}, Errors: ${errors.length}`);
+    console.log(
+      `Overdue reminder job complete. Sent: ${remindersSent}, Skipped (active auto-pay): ${skippedAutoPay}, Errors: ${errors.length}`,
+    );
 
     return new Response(
       JSON.stringify({ success: true, sent: remindersSent, errors: errors.length > 0 ? errors : undefined }),
@@ -106,6 +158,49 @@ serve(async (req) => {
 });
 
 // ── HELPERS ────────────────────────────────────────────────
+
+/**
+ * J10-F11: batched lookup of guardians with active auto-pay protection.
+ * Returns a Set of `${guardianId}:${orgId}` keys that should skip the
+ * standard reminder channel because auto-pay is the canonical channel
+ * for that parent on that org. "Active" means auto_pay_enabled AND has a
+ * default_payment_method_id AND not paused. Paused guardians and
+ * guardians without a default PM are NOT in the returned set — they
+ * need the standard reminder.
+ */
+// deno-lint-ignore no-explicit-any
+async function fetchActiveAutoPayMap(
+  supabase: any,
+  pairs: Array<{ guardianId: string; orgId: string }>,
+): Promise<Set<string>> {
+  const result = new Set<string>();
+  if (pairs.length === 0) return result;
+
+  const guardianIds = Array.from(new Set(pairs.map((p) => p.guardianId)));
+  const { data: prefs, error } = await supabase
+    .from("guardian_payment_preferences")
+    .select("guardian_id, org_id, auto_pay_enabled, default_payment_method_id, auto_pay_paused_at")
+    .in("guardian_id", guardianIds);
+
+  if (error) {
+    console.error("fetchActiveAutoPayMap query failed:", error);
+    return result;
+  }
+
+  const requestedKeys = new Set(pairs.map((p) => `${p.guardianId}:${p.orgId}`));
+  for (const row of prefs || []) {
+    const key = `${row.guardian_id}:${row.org_id}`;
+    if (!requestedKeys.has(key)) continue;
+    if (
+      row.auto_pay_enabled === true &&
+      row.default_payment_method_id != null &&
+      row.auto_pay_paused_at == null
+    ) {
+      result.add(key);
+    }
+  }
+  return result;
+}
 
 function calcDaysOverdue(dueDateStr: string, today: Date): number {
   const d = new Date(dueDateStr);
