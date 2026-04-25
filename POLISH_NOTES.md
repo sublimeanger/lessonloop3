@@ -1832,3 +1832,181 @@ RPC and migration work:
    audit_log INSERT — the function's own writes will have
    invalidated the result. Use a `_pre_X` local variable assigned
    before any DELETE / UPDATE / INSERT.
+
+## Track 0.5 Phase 1 — Stripe webhook dedup correctness
+
+Closed (pending deploy + smoke). Five commits.
+
+### Why
+
+The previous webhook dedup pattern inserted a row into
+`stripe_webhook_events` at handler entry, before dispatching the
+handler. If anything in the handler then threw — transient DB
+blip during `record_stripe_payment`, network glitch on a refund
+INSERT, anything — the row remained, and Stripe's automatic retry
+hit the 23505 short-circuit and ack'd `duplicate=true` without
+re-running the handler. Real-money risk: a transient error during
+`payment_intent.succeeded` could leave the customer charged with
+no `payments` row.
+
+`send-payment-receipt` had zero internal idempotency, so the
+moment handlers actually re-ran on retry under any new dedup
+scheme, the receipt would be double-sent.
+
+### Code commits (4) + docs (1)
+
+#### C1 — feat(webhook): two-phase dedup schema for stripe_webhook_events (T05-P1-C1) — `6c09148`
+
+`supabase/migrations/20260502100000_webhook_dedup_two_phase.sql`.
+Drops `NOT NULL` and `DEFAULT now()` from
+`stripe_webhook_events.processed_at` so the column can carry
+`NULL` to mean "in flight, handler not complete". Adds a
+`created_at` column for stale-row scans (the original schema
+overloaded `processed_at` for both received and completed
+times). Adds a partial index `(event_id, created_at) WHERE
+processed_at IS NULL` so the stale-row check is O(log n) rather
+than a sequential scan on every webhook arrival. All operations
+use `IF NOT EXISTS` / `DROP IF EXISTS` for Lovable's UUID-mirrored
+re-run.
+
+#### C2 — feat(webhook): two-phase dedup with stale-row recovery (T05-P1-C2) — `22edf5d`
+
+`supabase/functions/stripe-webhook/index.ts`. Replaces the
+insert-first dedup block with a claim-then-dispatch flow:
+
+- **Claim:** INSERT with `processed_at = NULL` and `.select()`.
+  If 23505, re-read the row to inspect state.
+- **Already-processed (`processed_at` non-NULL):** return
+  `200 duplicate=true`.
+- **In-flight (`processed_at` NULL, age < 90s):** return
+  `409 in_flight=true` so Stripe retries later.
+- **Stale (`processed_at` NULL, age ≥ 90s):** the previous
+  attempt crashed before its catch could DELETE. Log a
+  structured `webhook_stale_recovery` line, DELETE the orphan,
+  re-claim, fall through.
+- **Dispatch:** existing `switch` wrapped in a try/catch.
+- **Success:** UPDATE `processed_at = now()` predicated on
+  `is null` so a racing release cannot turn a completed row
+  into the wrong state.
+- **Failure:** DELETE the in-flight row predicated on `is null`
+  so Stripe's retry can re-INSERT and re-run the handler.
+
+90s stale threshold leaves 60s headroom over the 150s edge fn
+timeout. No handler bodies modified.
+
+#### C3 — fix(webhook): preserve past_due_since across retries (T05-P1-C3) — `7d73101`
+
+`handleSubscriptionPaymentFailed`. Previously wrote
+`past_due_since = now()` unconditionally; under the new dedup
+pattern a Stripe retry of `invoice.payment_failed` actually
+re-runs the handler and would overwrite the original past-due
+timestamp with the retry time, silently shortening the 7-day
+grace window in feature gating. Read `past_due_since` on lookup
+and only set it when currently NULL. Status flag still flips to
+`past_due` every time so a manual clearance gets corrected on
+the next event.
+
+#### C4 — fix(receipt): idempotency via message_log.payment_id (T05-P1-C4) — `fe20535`
+
+`supabase/migrations/20260502110000_message_log_payment_id.sql`
+adds a `payment_id uuid REFERENCES payments(id) ON DELETE SET
+NULL` column to `message_log`, plus a partial UNIQUE on
+`(payment_id) WHERE message_type='payment_receipt' AND
+payment_id IS NOT NULL`. Other message_types unaffected.
+
+`supabase/functions/send-payment-receipt/index.ts`: pre-checks
+for an existing receipt row by `(message_type, payment_id)` and
+short-circuits with `duplicate=true` if found; the insert path
+catches 23505 to handle the concurrent-invocation race; the
+post-Resend status update keys on `payment_id` (now uniquely
+addressable) instead of the prior order-by-created_at-limit-1
+hack on `related_id`.
+
+#### C5 — docs (T05-P1-C5)
+
+New `docs/WEBHOOK_DEDUP.md`. Updates `LESSONLOOP_PRODUCTION_ROADMAP.md`
+Track 0.5 entry to closed (Phase 1). Appends this section to
+POLISH_NOTES.
+
+#### C6 — feat(audit): platform_audit_log + wire stale recovery (T05-P1-C6)
+
+`supabase/migrations/20260502120000_platform_audit_log.sql` adds the
+new platform-scoped audit table (action / source / severity / details
+/ created_at). Service-role only, no RLS policies for users. Indexed
+on `(action, created_at DESC)`, `(created_at DESC)`, and a partial
+`(severity, created_at DESC) WHERE severity IN ('warning','error',
+'critical')` for fast operator scans.
+
+`stripe-webhook` stale-recovery emit site rewritten: now inserts a
+`platform_audit_log` row with `action=webhook_stale_recovery`,
+`severity=warning`. The previous `console.error` line is preserved as
+a fallback only if the insert itself fails — the signal is never
+lost.
+
+`docs/PLATFORM_AUDIT_LOG.md` (new) documents the table contract,
+severity ladder, current and planned emitters, RLS posture, append-only
+convention, and the operator queries by action/severity/recency.
+
+`docs/WEBHOOK_DEDUP.md` updated: stale-recovery operator query now
+reads `platform_audit_log` instead of grepping function logs; the
+narrative section points at the new table and the `console.error`
+fallback is documented as such.
+
+Closes T05-F9.
+
+### Findings addressed
+
+- **T05-F1** — insert-first dedup loses retries on transient handler
+  failure. Closed by C1 + C2.
+- **T05-F2** — `past_due_since` overwritten on retry. Closed by C3.
+- **T05-F4** — `send-payment-receipt` not idempotent. Closed by C4.
+- **T05-F7** — schema overloads `processed_at`; need separate
+  received vs completed timestamps. Closed by C1 (`created_at`).
+- **T05-F8** — no recovery path for crashed in-flight rows. Closed
+  by C2 (90s stale threshold + delete + re-claim).
+
+### Findings closed in C6
+
+- **T05-F9** — `audit_log.org_id` is NOT NULL, so platform-level
+  events (such as the webhook stale-recovery audit row C2 was
+  asked to write) cannot be persisted to `audit_log`. **Resolved**
+  by adding a separate `platform_audit_log` table
+  (`supabase/migrations/20260502120000_platform_audit_log.sql`)
+  with `action / source / severity / details / created_at` columns,
+  service-role-only, indexed for action+recency and severity+recency
+  lookups. Stale recoveries now write
+  `(action=webhook_stale_recovery, severity=warning, details=…)`
+  rows; the `console.error` fallback fires only if the insert
+  itself fails. Reference: `docs/PLATFORM_AUDIT_LOG.md`.
+
+### Deviations from brief
+
+- Brief asked C2 to insert `audit_log` rows with `org_id: null` for
+  webhook stale recovery. Walk on the actual schema confirmed
+  `audit_log.org_id` is `NOT NULL` — that insert would have failed
+  silently and the recovery path would still execute, but the
+  observability trail would be missing. Substituted a structured
+  `console.error("[stripe-webhook] webhook_stale_recovery", ...)`
+  emission. Logged as T05-F9 above.
+- Brief said the original webhook events table column was
+  `processed_at TIMESTAMPTZ NOT NULL DEFAULT now()`. Confirmed
+  exactly that on read (`20260222220737_*.sql:8`).
+
+### Deploy + smoke (placeholders)
+
+- Deploy date: <YYYY-MM-DD>
+- Smoke test result: <pending>
+  - Manually re-deliver a `payment_intent.succeeded` event from
+    Stripe Dashboard. Confirm first delivery 200, second 200
+    `duplicate=true`.
+  - Manually trigger a payment with a forced DB error in
+    `record_stripe_payment` (e.g. revoke perms briefly): confirm
+    500, in-flight row DELETEd, then restore perms and replay:
+    confirm 200 with the payment row landing.
+  - Force a stale row by inserting `(event_id, event_type,
+    processed_at=NULL, created_at=now() - interval '120 seconds')`
+    then sending an event with the same id; confirm
+    `webhook_stale_recovery` log line and successful processing.
+  - Re-deliver a `payment_intent.succeeded` and confirm the
+    parent receives exactly one receipt email (UNIQUE on
+    `message_log.payment_id`).

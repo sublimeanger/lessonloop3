@@ -140,6 +140,27 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Scope:** Inventory every notification trigger point. Map channels (email, push, in-app). Identify gaps (invoice sent ≠ push notification today). Normalise recipient-preference checks.
 
+### Track 0.5 — Stripe webhook dedup correctness 🟢 CLOSED (Phase 1)
+
+**Status:** Phase 1 (two-phase dedup + receipt idempotency) closed.
+
+**Problem:** The previous webhook dedup pattern inserted a row into `stripe_webhook_events` at handler entry. If the handler then threw — DB blip during `record_stripe_payment`, network glitch on a refund insert, anything transient — the row remained and Stripe's automatic retry hit the 23505 short-circuit and ack'd `duplicate=true` without ever re-running the handler. Real-money risk: a transient failure on `payment_intent.succeeded` could leave the customer charged with no `payments` row. Compounding the problem, `send-payment-receipt` had zero internal idempotency, so once handlers actually re-ran on retry the receipt would be double-sent.
+
+**Phase 1 — two-phase dedup + receipt idempotency (closed):** Five commits.
+
+- `supabase/migrations/20260502100000_webhook_dedup_two_phase.sql` redefines `stripe_webhook_events.processed_at` as nullable: `NULL` = in flight, non-NULL = completed. Adds `created_at` and a partial index on in-flight rows for stale-row scans.
+- `supabase/functions/stripe-webhook/index.ts` claims an in-flight row on receive, dispatches the handler inside a try/catch, marks `processed_at = now()` on success or DELETEs the in-flight row on failure (predicated on `is null` so a racing release cannot clobber state). Stale rows older than 90s (vs the 150s edge fn timeout) are recoverable via delete + re-claim, with structured `webhook_stale_recovery` console logging for operator visibility.
+- `handleSubscriptionPaymentFailed` now preserves `past_due_since` on retry — only sets it when currently NULL — so retries cannot silently shorten the 7-day grace window.
+- `supabase/migrations/20260502110000_message_log_payment_id.sql` + `send-payment-receipt/index.ts` add `message_log.payment_id` with a partial UNIQUE on `(payment_id) WHERE message_type='payment_receipt'`. The function pre-checks for an existing row and short-circuits with `duplicate=true`; the insert path catches 23505 to handle the concurrent-invocation race.
+
+Findings addressed: T05-F1, T05-F2, T05-F4, T05-F7, T05-F8.
+
+Findings closed in C6: **T05-F9 — `audit_log.org_id` is NOT NULL** so platform-level events (webhook stale recovery) can't be persisted to `audit_log`. Resolved by adding a separate `platform_audit_log` table (`supabase/migrations/20260502120000_platform_audit_log.sql`) for events with no org attribution. Stale recoveries now write `action=webhook_stale_recovery, severity=warning` rows there, with a `console.error` fallback only if the insert itself fails. Reference: [`docs/PLATFORM_AUDIT_LOG.md`](docs/PLATFORM_AUDIT_LOG.md).
+
+**PR:** <PR_URL>
+
+**Reference:** [`docs/WEBHOOK_DEDUP.md`](docs/WEBHOOK_DEDUP.md)
+
 ### Track 0.6 — Cron schedule reconciliation (known BILLING_FORENSICS territory) 🟠
 
 **Problem:** Audit on 24 April 2026 found 7 of 8 documented reminder / expiry / auto-pay crons deviate from `docs/CRON_JOBS.md` expected schedule:

@@ -61,21 +61,124 @@ serve(async (req) => {
 
     log(`Processing event: ${event.type}`);
 
-    // Deduplication: Stripe can retry webhooks up to ~100 times over 3 days.
-    // Record the event ID to ensure exactly-once processing.
-    const { error: dedupError } = await supabase
-      .from("stripe_webhook_events")
-      .insert({ event_id: event.id, event_type: event.type });
+    // Two-phase dedup. See supabase/migrations/20260502100000_webhook_dedup_two_phase.sql
+    // for the rationale and semantics. Phase 1: claim an in-flight row
+    // (processed_at NULL). Phase 2: dispatch the handler. Phase 3 / on-failure:
+    // mark processed_at = now() on success, or DELETE the in-flight row on
+    // failure so Stripe's retry can re-run the handler.
+    const STALE_THRESHOLD_SECONDS = 90;
 
-    if (dedupError?.code === "23505") {
-      log(`Duplicate event ${truncate(event.id)}, skipping`);
-      return new Response(JSON.stringify({ received: true, duplicate: true }), {
-        headers: { "Content-Type": "application/json" },
-        status: 200,
-      });
+    const { data: claimed, error: claimError } = await supabase
+      .from("stripe_webhook_events")
+      .insert({
+        event_id: event.id,
+        event_type: event.type,
+        processed_at: null,
+      })
+      .select("event_id")
+      .maybeSingle();
+
+    if (claimError && claimError.code !== "23505") {
+      console.error("[stripe-webhook] claim failed:", claimError);
+      return new Response(
+        JSON.stringify({ error: "Claim failed" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    switch (event.type) {
+    if (claimError?.code === "23505" || !claimed) {
+      const { data: existing } = await supabase
+        .from("stripe_webhook_events")
+        .select("event_id, processed_at, created_at")
+        .eq("event_id", event.id)
+        .maybeSingle();
+
+      if (!existing) {
+        // Race: row was deleted between conflict and re-read. Force Stripe
+        // to retry so the next attempt can take a fresh claim.
+        return new Response(
+          JSON.stringify({ error: "Race during claim, retry" }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (existing.processed_at) {
+        log(`Duplicate event ${truncate(event.id)} (already processed)`);
+        return new Response(JSON.stringify({ received: true, duplicate: true }), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      const ageSeconds = (Date.now() - new Date(existing.created_at).getTime()) / 1000;
+
+      if (ageSeconds < STALE_THRESHOLD_SECONDS) {
+        log(`Event ${truncate(event.id)} is in flight (age ${Math.round(ageSeconds)}s)`);
+        return new Response(JSON.stringify({ in_flight: true }), {
+          headers: { "Content-Type": "application/json" },
+          status: 409,
+        });
+      }
+
+      // Stale: previous attempt crashed before its catch could DELETE.
+      // Recover by deleting the orphan and re-claiming. T05-F9: emit to
+      // platform_audit_log so operators can audit stale recoveries
+      // historically. Console fallback if the insert itself fails — we
+      // never want to lose this signal.
+      const stalePayload = {
+        event_id: event.id,
+        event_type: event.type,
+        original_received_at: existing.created_at,
+        age_seconds: Math.round(ageSeconds),
+        threshold_seconds: STALE_THRESHOLD_SECONDS,
+      };
+
+      const { error: auditErr } = await supabase
+        .from("platform_audit_log")
+        .insert({
+          action: "webhook_stale_recovery",
+          source: "stripe-webhook",
+          severity: "warning",
+          details: stalePayload,
+        });
+
+      if (auditErr) {
+        console.error("[stripe-webhook] platform_audit_log insert failed:", auditErr);
+        console.error("[stripe-webhook] webhook_stale_recovery", stalePayload);
+      }
+
+      const { error: deleteErr } = await supabase
+        .from("stripe_webhook_events")
+        .delete()
+        .eq("event_id", event.id)
+        .is("processed_at", null);
+
+      if (deleteErr) {
+        console.error("[stripe-webhook] stale delete failed:", deleteErr);
+        return new Response(
+          JSON.stringify({ error: "Stale recovery failed" }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const { error: reclaimErr } = await supabase
+        .from("stripe_webhook_events")
+        .insert({ event_id: event.id, event_type: event.type, processed_at: null });
+
+      if (reclaimErr) {
+        // Another instance won the race after our delete. They'll handle it.
+        console.error("[stripe-webhook] reclaim failed (race):", reclaimErr);
+        return new Response(
+          JSON.stringify({ error: "Reclaim race" }),
+          { status: 409, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Phase 2: dispatch. Handler throws → release the in-flight row + 500.
+    // Handler succeeds → mark processed_at = now() + 200.
+    try {
+      switch (event.type) {
       // Invoice payment events (for one-off invoice payments)
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -185,15 +288,55 @@ serve(async (req) => {
 
       default:
         log(`Unhandled event type: ${event.type}`);
-    }
+      }
 
-    return new Response(
-      JSON.stringify({ received: true }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
+      // Phase 3: mark complete. Predicated on processed_at IS NULL so a
+      // racing release-on-failure from a different attempt cannot turn
+      // the row into the wrong state.
+      const { error: markError } = await supabase
+        .from("stripe_webhook_events")
+        .update({ processed_at: new Date().toISOString() })
+        .eq("event_id", event.id)
+        .is("processed_at", null);
+
+      if (markError) {
+        // We did the work but couldn't mark complete. Don't roll back —
+        // re-running the handler would be worse than a stuck in-flight
+        // row, which the stale-recovery path will clean up on retry.
+        console.error("[stripe-webhook] mark-complete failed (handler succeeded):", markError);
+      }
+
+      return new Response(
+        JSON.stringify({ received: true }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    } catch (handlerError: unknown) {
+      // Handler failed. Release the in-flight claim so Stripe's retry
+      // re-runs the handler.
+      const message = handlerError instanceof Error ? handlerError.message : "Unknown error";
+      console.error("[stripe-webhook] handler failed:", message);
+
+      const { error: releaseErr } = await supabase
+        .from("stripe_webhook_events")
+        .delete()
+        .eq("event_id", event.id)
+        .is("processed_at", null);
+
+      if (releaseErr) {
+        // Logging is the best we can do — the stale-recovery path will heal.
+        console.error("[stripe-webhook] release-on-failure failed:", releaseErr);
+      }
+
+      return new Response(
+        JSON.stringify({ error: "Webhook processing failed" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
   } catch (error: unknown) {
-    // Returning 500 causes Stripe to retry the webhook (up to ~16 times over 3 days).
-    // Critical DB failures in handlers re-throw here to trigger retries.
+    // Outer catch: signature verification, missing env, or other failures
+    // before the claim was taken. Stripe retries on 500 so transient
+    // failures self-heal; the claim row only exists if the inner try
+    // entered, and the inner catch is responsible for releasing it.
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("[stripe-webhook]", message);
     return new Response(
@@ -855,10 +998,10 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
 
 async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.Invoice) {
   const subscriptionId = invoice.subscription as string;
-  
+
   const { data: org } = await supabase
     .from("organisations")
-    .select("id")
+    .select("id, past_due_since")
     .eq("stripe_subscription_id", subscriptionId)
     .single();
 
@@ -867,19 +1010,25 @@ async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.In
     return;
   }
 
+  // T05-F2: preserve the original past_due_since on retries. Without this,
+  // a Stripe retry of the same invoice.payment_failed event under the new
+  // two-phase dedup pattern would overwrite the original past-due timestamp
+  // with the retry time, breaking downstream grace-period calculations.
+  const updateData: Record<string, unknown> = { subscription_status: "past_due" };
+  if (org.past_due_since === null) {
+    updateData.past_due_since = new Date().toISOString();
+  }
+
   const { error } = await supabase
     .from("organisations")
-    .update({
-      subscription_status: "past_due",
-      past_due_since: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("id", org.id);
 
   if (error) {
     console.error("Failed to update org on payment failure:", error);
     throw new Error(`DB update failed for payment failure: ${error.message}`);
   }
-  log(`Org ${truncate(org.id)} marked past_due`);
+  log(`Org ${truncate(org.id)} marked past_due (past_due_since ${org.past_due_since ? 'preserved' : 'set'})`);
 }
 
 // Handle Connect account deauthorization (teacher disconnects from Stripe Dashboard)
