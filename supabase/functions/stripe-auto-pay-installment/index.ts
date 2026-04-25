@@ -141,6 +141,51 @@ serve(async (req) => {
     let failed = 0;
     const results: Array<{ installmentId: string; status: string; error?: string }> = [];
 
+    // Per-org alert payload accumulators. We group failures + counts by
+    // org so the tail-end hook can fire one operator alert per affected
+    // org (mirrors send-recurring-billing-alert's per-template pattern).
+    interface PerOrg {
+      total_attempts: number;
+      succeeded: number;
+      failed: number;
+      requires_action: number;
+      paused_today: Set<string>;
+      failure_samples: Array<{
+        guardian_id: string;
+        guardian_name: string;
+        invoice_number: string;
+        amount_minor: number;
+        error_code: string | null;
+        error_message: string | null;
+        is_paused: boolean;
+      }>;
+    }
+    const perOrg = new Map<string, PerOrg>();
+    function bucket(orgId: string): PerOrg {
+      let b = perOrg.get(orgId);
+      if (!b) {
+        b = {
+          total_attempts: 0,
+          succeeded: 0,
+          failed: 0,
+          requires_action: 0,
+          paused_today: new Set<string>(),
+          failure_samples: [],
+        };
+        perOrg.set(orgId, b);
+      }
+      return b;
+    }
+
+    async function lookupGuardianName(guardianId: string): Promise<string> {
+      const { data: g } = await supabase
+        .from("guardians")
+        .select("full_name")
+        .eq("id", guardianId)
+        .maybeSingle();
+      return g?.full_name || "Unknown";
+    }
+
     for (const inst of installments) {
       const invoice = (inst as any).invoices;
       if (!invoice || !invoice.payer_guardian_id) continue;
@@ -262,7 +307,11 @@ serve(async (req) => {
           console.error("Failed to write auto_pay_initiated audit:", auditErr);
         }
 
+        const orgBucket = bucket(invoice.org_id);
+        orgBucket.total_attempts++;
+
         if (paymentIntent.status === "succeeded") {
+          orgBucket.succeeded++;
           // Log the successful attempt for observability + dedup history.
           await supabase.from("auto_pay_attempts").insert({
             org_id: invoice.org_id,
@@ -296,6 +345,9 @@ serve(async (req) => {
           results.push({ installmentId: inst.id, status: paymentIntent.status });
           if (paymentIntent.status === "requires_action") {
             console.log(`Installment ${inst.id} requires authentication, skipping auto-pay`);
+            orgBucket.requires_action++;
+          } else {
+            orgBucket.failed++;
           }
 
           const { data: attemptRow } = await supabase
@@ -319,6 +371,17 @@ serve(async (req) => {
             invoice.org_id,
             paymentIntent.status ?? "unknown",
           );
+          if (isPauseThreshold) orgBucket.paused_today.add(invoice.payer_guardian_id);
+
+          orgBucket.failure_samples.push({
+            guardian_id: invoice.payer_guardian_id,
+            guardian_name: await lookupGuardianName(invoice.payer_guardian_id),
+            invoice_number: invoice.invoice_number,
+            amount_minor: outstanding,
+            error_code: paymentIntent.status === "requires_action" ? "requires_action" : null,
+            error_message: null,
+            is_paused: isPauseThreshold,
+          });
 
           if (attemptRow?.id) {
             await invokeFailureNotification(supabase, {
@@ -343,6 +406,10 @@ serve(async (req) => {
         console.error(`Auto-pay failed for installment ${inst.id}:`, err.message);
         results.push({ installmentId: inst.id, status: "failed", error: err.message });
         failed++;
+
+        const orgBucket = bucket(invoice.org_id);
+        orgBucket.total_attempts++;
+        orgBucket.failed++;
 
         const { data: attemptRow } = await supabase
           .from("auto_pay_attempts")
@@ -391,6 +458,17 @@ serve(async (req) => {
           invoice.org_id,
           err.code ?? err.type ?? "unknown",
         );
+        if (isPauseThreshold) orgBucket.paused_today.add(invoice.payer_guardian_id);
+
+        orgBucket.failure_samples.push({
+          guardian_id: invoice.payer_guardian_id,
+          guardian_name: await lookupGuardianName(invoice.payer_guardian_id),
+          invoice_number: invoice.invoice_number,
+          amount_minor: outstanding,
+          error_code: err.code ?? null,
+          error_message: err.message ?? null,
+          is_paused: isPauseThreshold,
+        });
 
         if (attemptRow?.id) {
           await invokeFailureNotification(supabase, {
@@ -409,6 +487,38 @@ serve(async (req) => {
             consecutive_failure_count: newCount,
           });
         }
+      }
+    }
+
+    // Tail-end operator alerts: one per org with any failure / requires_action
+    // / paused-today. Fire-and-forget; runs are independent of installment
+    // processing and we don't roll back on alert failure.
+    const runDate = new Date().toISOString().slice(0, 10);
+    const supabaseFnUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseFnKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    for (const [orgId, b] of perOrg.entries()) {
+      const pausedCount = b.paused_today.size;
+      if (b.failed === 0 && b.requires_action === 0 && pausedCount === 0) continue;
+      try {
+        await fetch(`${supabaseFnUrl}/functions/v1/send-auto-pay-alert`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseFnKey}`,
+          },
+          body: JSON.stringify({
+            org_id: orgId,
+            run_date: runDate,
+            total_attempts: b.total_attempts,
+            succeeded: b.succeeded,
+            failed: b.failed,
+            requires_action: b.requires_action,
+            paused_today: pausedCount,
+            failure_samples: b.failure_samples,
+          }),
+        });
+      } catch (alertErr) {
+        console.error(`Failed to invoke send-auto-pay-alert for org ${orgId}:`, alertErr);
       }
     }
 
