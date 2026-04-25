@@ -2,6 +2,78 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
+const PAUSE_THRESHOLD = 3;
+
+async function incrementAndCheckPause(
+  supabase: any,
+  guardianId: string,
+  orgId: string,
+  reason: string,
+): Promise<{ newCount: number; isPauseThreshold: boolean }> {
+  const { data: prefs } = await supabase
+    .from("guardian_payment_preferences")
+    .select("consecutive_failure_count")
+    .eq("guardian_id", guardianId)
+    .eq("org_id", orgId)
+    .single();
+
+  const newCount = (prefs?.consecutive_failure_count ?? 0) + 1;
+  const isPauseThreshold = newCount >= PAUSE_THRESHOLD;
+
+  const update: Record<string, any> = { consecutive_failure_count: newCount };
+  if (isPauseThreshold) {
+    update.auto_pay_paused_at = new Date().toISOString();
+    update.auto_pay_paused_reason = `Auto-paused after ${PAUSE_THRESHOLD} consecutive failures (last reason: ${reason})`;
+  }
+
+  const { error: updateErr } = await supabase
+    .from("guardian_payment_preferences")
+    .update(update)
+    .eq("guardian_id", guardianId)
+    .eq("org_id", orgId);
+
+  if (updateErr) {
+    console.error("Failed to increment failure count:", updateErr);
+  }
+
+  if (isPauseThreshold) {
+    try {
+      await supabase.from("audit_log").insert({
+        org_id: orgId,
+        actor_user_id: null,
+        action: "auto_pay_paused",
+        entity_type: "guardian",
+        entity_id: guardianId,
+        after: { reason: update.auto_pay_paused_reason, threshold: PAUSE_THRESHOLD },
+      });
+    } catch (auditErr) {
+      console.error("Failed to write auto_pay_paused audit:", auditErr);
+    }
+  }
+
+  return { newCount, isPauseThreshold };
+}
+
+async function invokeFailureNotification(
+  supabase: any,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/send-auto-pay-failure-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.error("Failed to invoke send-auto-pay-failure-notification:", err);
+  }
+}
+
 /**
  * Auto-pay cron function.
  * Finds installments due today (or overdue) where the guardian has auto-pay enabled,
@@ -77,7 +149,9 @@ serve(async (req) => {
       // Check if guardian has auto-pay enabled
       const { data: prefs } = await supabase
         .from("guardian_payment_preferences")
-        .select("stripe_customer_id, default_payment_method_id, auto_pay_enabled")
+        .select(
+          "stripe_customer_id, default_payment_method_id, auto_pay_enabled, auto_pay_paused_at",
+        )
         .eq("guardian_id", invoice.payer_guardian_id)
         .eq("org_id", invoice.org_id)
         .maybeSingle();
@@ -109,6 +183,21 @@ serve(async (req) => {
       const outstanding = inst.amount_minor - priorApplied;
 
       if (outstanding <= 0) continue;
+
+      // Skip paused guardians. Log the skip so operators can see how many
+      // were suppressed today (visibility into the pause-state surface).
+      // Don't log skips for not-enabled / no-pm — those aren't failures.
+      if (prefs.auto_pay_paused_at) {
+        await supabase.from("auto_pay_attempts").insert({
+          org_id: invoice.org_id,
+          invoice_id: invoice.id,
+          installment_id: inst.id,
+          guardian_id: invoice.payer_guardian_id,
+          amount_minor: outstanding,
+          outcome: "skipped_paused",
+        }).then(() => {}, (err: any) => console.error("Skip-paused log failed:", err));
+        continue;
+      }
 
       // Get org details for Connect routing
       const { data: org } = await supabase
@@ -174,15 +263,79 @@ serve(async (req) => {
         }
 
         if (paymentIntent.status === "succeeded") {
-          // The webhook will handle recording the payment, so we just log success
+          // Log the successful attempt for observability + dedup history.
+          await supabase.from("auto_pay_attempts").insert({
+            org_id: invoice.org_id,
+            invoice_id: invoice.id,
+            installment_id: inst.id,
+            guardian_id: invoice.payer_guardian_id,
+            amount_minor: outstanding,
+            outcome: "succeeded",
+            stripe_payment_intent_id: paymentIntent.id,
+            stripe_status: paymentIntent.status,
+          }).then(() => {}, (e: any) => console.error("Success attempt log failed:", e));
+
+          // Reset the consecutive_failure_count on success. Use .gt to avoid
+          // an unnecessary write when count is already 0. Note: we deliberately
+          // do NOT clear auto_pay_paused_at here — pause survives a manual
+          // payment in the portal; the parent must explicitly re-enable.
+          await supabase
+            .from("guardian_payment_preferences")
+            .update({ consecutive_failure_count: 0 })
+            .eq("guardian_id", invoice.payer_guardian_id)
+            .eq("org_id", invoice.org_id)
+            .gt("consecutive_failure_count", 0)
+            .then(() => {}, (e: any) => console.error("Counter reset failed:", e));
+
+          // The webhook will record the payment row.
           results.push({ installmentId: inst.id, status: "succeeded" });
           processed++;
         } else {
+          // Treat any non-succeeded PI status (notably requires_action) as a
+          // failure: log the attempt, increment counter, invoke notification.
           results.push({ installmentId: inst.id, status: paymentIntent.status });
           if (paymentIntent.status === "requires_action") {
-            // Card requires authentication — can't be done off-session
-            // Notify the parent to pay manually
             console.log(`Installment ${inst.id} requires authentication, skipping auto-pay`);
+          }
+
+          const { data: attemptRow } = await supabase
+            .from("auto_pay_attempts")
+            .insert({
+              org_id: invoice.org_id,
+              invoice_id: invoice.id,
+              installment_id: inst.id,
+              guardian_id: invoice.payer_guardian_id,
+              amount_minor: outstanding,
+              outcome: paymentIntent.status === "requires_action" ? "requires_action" : "failed",
+              stripe_payment_intent_id: paymentIntent.id,
+              stripe_status: paymentIntent.status,
+            })
+            .select("id")
+            .single();
+
+          const { newCount, isPauseThreshold } = await incrementAndCheckPause(
+            supabase,
+            invoice.payer_guardian_id,
+            invoice.org_id,
+            paymentIntent.status ?? "unknown",
+          );
+
+          if (attemptRow?.id) {
+            await invokeFailureNotification(supabase, {
+              attempt_id: attemptRow.id,
+              org_id: invoice.org_id,
+              invoice_id: invoice.id,
+              installment_id: inst.id,
+              guardian_id: invoice.payer_guardian_id,
+              amount_minor: outstanding,
+              currency_code: invoice.currency_code,
+              error_code: null,
+              error_type: null,
+              stripe_status: paymentIntent.status,
+              invoice_number: invoice.invoice_number,
+              is_pause_threshold: isPauseThreshold,
+              consecutive_failure_count: newCount,
+            });
           }
           failed++;
         }
@@ -190,6 +343,24 @@ serve(async (req) => {
         console.error(`Auto-pay failed for installment ${inst.id}:`, err.message);
         results.push({ installmentId: inst.id, status: "failed", error: err.message });
         failed++;
+
+        const { data: attemptRow } = await supabase
+          .from("auto_pay_attempts")
+          .insert({
+            org_id: invoice.org_id,
+            invoice_id: invoice.id,
+            installment_id: inst.id,
+            guardian_id: invoice.payer_guardian_id,
+            amount_minor: outstanding,
+            outcome: "failed",
+            stripe_payment_intent_id: err.raw?.payment_intent?.id ?? null,
+            stripe_status: err.raw?.payment_intent?.status ?? null,
+            stripe_error_code: err.code ?? null,
+            stripe_error_type: err.type ?? null,
+            stripe_error_message: err.message ?? String(err),
+          })
+          .select("id")
+          .single();
 
         // J6-F15: Local audit trail for the failure path. Webhook never
         // fires on a failed create — this is the only signal operators
@@ -214,45 +385,29 @@ serve(async (req) => {
           console.error("Failed to write auto_pay_failed audit:", auditErr);
         }
 
-        // If card declined, notify the parent
-        if (err.code === "card_declined" || err.type === "StripeCardError") {
-          console.log(`Card declined for installment ${inst.id} — manual payment required`);
+        const { newCount, isPauseThreshold } = await incrementAndCheckPause(
+          supabase,
+          invoice.payer_guardian_id,
+          invoice.org_id,
+          err.code ?? err.type ?? "unknown",
+        );
 
-          // Notify parent their auto-pay failed
-          try {
-            const resendApiKey = Deno.env.get("RESEND_API_KEY");
-            if (resendApiKey) {
-              const { Resend } = await import("https://esm.sh/resend@2.0.0");
-              const resend = new Resend(resendApiKey);
-
-              // Get guardian email
-              const { data: guardian } = await supabase
-                .from("guardians")
-                .select("email, full_name")
-                .eq("id", invoice.payer_guardian_id)
-                .single();
-
-              const { data: orgData } = await supabase
-                .from("organisations")
-                .select("name")
-                .eq("id", invoice.org_id)
-                .single();
-
-              if (guardian?.email) {
-                await resend.emails.send({
-                  from: `${orgData?.name || 'LessonLoop'} <noreply@mail.lessonloop.net>`,
-                  to: guardian.email,
-                  subject: `Payment failed — ${invoice.invoice_number}`,
-                  html: `<p>Hi ${guardian.full_name},</p>
-                    <p>Your automatic payment of £${(outstanding / 100).toFixed(2)} for invoice ${invoice.invoice_number} could not be processed. Your card was declined.</p>
-                    <p>Please log in to the parent portal to update your payment method or pay manually.</p>
-                    <p>Thanks,<br>${orgData?.name || 'Your Academy'}</p>`,
-                });
-              }
-            }
-          } catch (notifyErr) {
-            console.error("Failed to send auto-pay failure notification:", notifyErr);
-          }
+        if (attemptRow?.id) {
+          await invokeFailureNotification(supabase, {
+            attempt_id: attemptRow.id,
+            org_id: invoice.org_id,
+            invoice_id: invoice.id,
+            installment_id: inst.id,
+            guardian_id: invoice.payer_guardian_id,
+            amount_minor: outstanding,
+            currency_code: invoice.currency_code,
+            error_code: err.code ?? null,
+            error_type: err.type ?? null,
+            stripe_status: err.raw?.payment_intent?.status ?? null,
+            invoice_number: invoice.invoice_number,
+            is_pause_threshold: isPauseThreshold,
+            consecutive_failure_count: newCount,
+          });
         }
       }
     }
