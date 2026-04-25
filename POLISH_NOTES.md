@@ -1783,6 +1783,39 @@ Phase 1 status and Phase 2 (T08-F5 watchdog) outline.
   migration body and the commit message. Operator must verify
   post-deploy.
 
+### Patch (C5) — fold 2 missed HTTP crons + drop calendar duplicate
+
+Operator ran `SELECT jobname FROM cron.job` against production
+during deploy verification and found the C1 migration's 12-cron
+table was incomplete. Production actually had 16 crons:
+
+- **12 covered by C1.**
+- **2 SQL-only** (no HTTP, no auth concern, deliberately untouched):
+  `complete-expired-assignments`, `reset-stale-practice-streaks`.
+- **2 HTTP, silently dead with Pattern A header mismatch**:
+  `send-lesson-reminders` (hourly, fn uses `validateCronAuth`),
+  `calendar-refresh-busy` (every 15 min, fn uses
+  `validateCronAuth`).
+- **1 HTTP duplicate of calendar-refresh-busy at half cadence**:
+  `refresh-calendar-busy-blocks` (Pattern E, `app.settings.cron_secret`
+  NULL — dead from day one). The 15-minute one is canonical;
+  operator chose to drop the 30-min duplicate.
+
+Note: this `refresh-calendar-busy-blocks` registration was the same
+one C1 attempted to standardise (sourced from migration
+`20260223100000_calsync_cron_guardian_health.sql`). The C5 patch
+unschedules it again rather than re-registering — operator
+preference for the 15-min cadence supersedes the original 30-min
+schedule.
+
+Single migration `20260501100100_cron_auth_standardisation_patch.sql`:
+unschedules `refresh-calendar-busy-blocks`, then re-registers
+`calendar-refresh-busy` (`*/15 * * * *`) and `send-lesson-reminders`
+(`0 * * * *`) with the canonical Pattern C template.
+
+Coverage: 14 of 14 HTTP crons now on Pattern C; 2 SQL-only crons
+correctly untouched.
+
 ## Process improvements
 
 Discovered during the polish pass — applied to all subsequent

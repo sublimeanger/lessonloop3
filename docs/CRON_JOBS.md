@@ -108,20 +108,31 @@ migration `20260501100000_cron_auth_standardisation.sql`. All use
 - **If missing:** No overdue reminder emails sent. Parents aren't chased
   on overdue invoices or overdue installments.
 
-### 12. refresh-calendar-busy-blocks
-- **Schedule:** `*/30 * * * *` (every 30 minutes)
+### 12. calendar-refresh-busy
+- **Schedule:** `*/15 * * * *` (every 15 minutes)
 - **Function:** calendar-refresh-busy
 - **Purpose:** Refreshes Google / Outlook busy-block caches for active
   calendar connections.
 - **If missing:** Stale busy blocks; double-booking risk against external
   calendars.
+- **Note:** The legacy `refresh-calendar-busy-blocks` cron at
+  `*/30 * * * *` was a duplicate targeting the same edge fn. Dropped
+  in `20260501100100_cron_auth_standardisation_patch.sql`.
+
+### 13. send-lesson-reminders
+- **Schedule:** `0 * * * *` (hourly on the hour)
+- **Function:** send-lesson-reminders
+- **Purpose:** Per-org reminder emails / push for lessons starting
+  within each org's configured `reminder_lesson_hours` window.
+- **If missing:** No lesson reminders fire. Parents miss lessons.
 
 ## Verification
 
 Check Supabase Dashboard → Edge Functions → Invocations to confirm each
-job runs on schedule. If any job hasn't run in 48+ hours (or 90 minutes
-for `refresh-calendar-busy-blocks`), inspect `cron.job_run_details` and
-`net._http_response` for the failed invocation.
+job runs on schedule. If any job hasn't run in 48+ hours (or 30 minutes
+for `calendar-refresh-busy`, 90 minutes for `send-lesson-reminders`),
+inspect `cron.job_run_details` and `net._http_response` for the failed
+invocation.
 
 A health-watchdog (T08-F5, filed for Track 0.8 Phase 2) will surface
 this in-app rather than requiring dashboard attention.
