@@ -91,13 +91,12 @@ DELETEs the orphan and re-claims; if another instance won the race after
 the DELETE, the re-claim returns 409 and Stripe retries.
 
 Because `audit_log.org_id` is `NOT NULL` and webhook events are
-platform-level (no associated org until handler dispatch), stale-recovery
-observability is emitted as a structured `console.error` with marker
-`webhook_stale_recovery` rather than an `audit_log` row. Operators grep
-the function logs.
+platform-level (no associated org until handler dispatch), stale recoveries
+write to `platform_audit_log` (action: `webhook_stale_recovery`, severity:
+`warning`). See [docs/PLATFORM_AUDIT_LOG.md](PLATFORM_AUDIT_LOG.md).
 
-This is filed as **T05-F9** for triage — relax `audit_log.org_id` or
-build a `platform_audit_log` table.
+A `console.error` fallback fires only if the `platform_audit_log` insert
+itself fails — operators never lose the signal.
 
 ## Receipt idempotency
 
@@ -143,20 +142,20 @@ path is broken, or no Stripe retry has arrived for that event yet.
 
 ### Stale recoveries in the last 24 hours
 
-Stripe stale-recovery isn't in `audit_log` (see T05-F9). Operator must
-grep the `stripe-webhook` function logs:
-
-```
-[stripe-webhook] webhook_stale_recovery {"event_id":"evt_…",
-                                          "event_type":"payment_intent.succeeded",
-                                          "original_received_at":"…",
-                                          "age_seconds":127,
-                                          "threshold_seconds":90}
+```sql
+SELECT created_at, details
+FROM platform_audit_log
+WHERE action = 'webhook_stale_recovery'
+  AND created_at > now() - interval '24 hours'
+ORDER BY created_at DESC;
 ```
 
-A spike in `webhook_stale_recovery` lines means handler crashes are
-cluster — investigate `record_stripe_payment` retries, refund insert
-errors, etc.
+A spike in `webhook_stale_recovery` rows means handler crashes are
+clustering — check the `details->>'event_type'` distribution to localise
+(e.g. all `payment_intent.succeeded` → look at `record_stripe_payment`
+retries, refund insert errors, etc.). See
+[docs/PLATFORM_AUDIT_LOG.md](PLATFORM_AUDIT_LOG.md) for the full audit
+surface.
 
 ### Webhook event volume by type, 24h
 
@@ -185,6 +184,7 @@ Per `supabase/migrations/20260331170000_webhook_events_ttl_guidance.sql`.
 
 - `supabase/migrations/20260502100000_webhook_dedup_two_phase.sql` — schema.
 - `supabase/migrations/20260502110000_message_log_payment_id.sql` — receipt UNIQUE.
+- `supabase/migrations/20260502120000_platform_audit_log.sql` — stale-recovery audit surface.
 
 ## Code
 

@@ -121,20 +121,31 @@ serve(async (req) => {
       }
 
       // Stale: previous attempt crashed before its catch could DELETE.
-      // Recover by deleting the orphan and re-claiming. audit_log can't
-      // be used here — its org_id column is NOT NULL and webhook events
-      // are platform-level. Emit a structured error log so operators can
-      // grep for `webhook_stale_recovery` in the function logs.
-      console.error(
-        "[stripe-webhook] webhook_stale_recovery",
-        JSON.stringify({
-          event_id: event.id,
-          event_type: event.type,
-          original_received_at: existing.created_at,
-          age_seconds: Math.round(ageSeconds),
-          threshold_seconds: STALE_THRESHOLD_SECONDS,
-        }),
-      );
+      // Recover by deleting the orphan and re-claiming. T05-F9: emit to
+      // platform_audit_log so operators can audit stale recoveries
+      // historically. Console fallback if the insert itself fails — we
+      // never want to lose this signal.
+      const stalePayload = {
+        event_id: event.id,
+        event_type: event.type,
+        original_received_at: existing.created_at,
+        age_seconds: Math.round(ageSeconds),
+        threshold_seconds: STALE_THRESHOLD_SECONDS,
+      };
+
+      const { error: auditErr } = await supabase
+        .from("platform_audit_log")
+        .insert({
+          action: "webhook_stale_recovery",
+          source: "stripe-webhook",
+          severity: "warning",
+          details: stalePayload,
+        });
+
+      if (auditErr) {
+        console.error("[stripe-webhook] platform_audit_log insert failed:", auditErr);
+        console.error("[stripe-webhook] webhook_stale_recovery", stalePayload);
+      }
 
       const { error: deleteErr } = await supabase
         .from("stripe_webhook_events")

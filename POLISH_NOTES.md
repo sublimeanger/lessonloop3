@@ -1928,6 +1928,32 @@ New `docs/WEBHOOK_DEDUP.md`. Updates `LESSONLOOP_PRODUCTION_ROADMAP.md`
 Track 0.5 entry to closed (Phase 1). Appends this section to
 POLISH_NOTES.
 
+#### C6 — feat(audit): platform_audit_log + wire stale recovery (T05-P1-C6)
+
+`supabase/migrations/20260502120000_platform_audit_log.sql` adds the
+new platform-scoped audit table (action / source / severity / details
+/ created_at). Service-role only, no RLS policies for users. Indexed
+on `(action, created_at DESC)`, `(created_at DESC)`, and a partial
+`(severity, created_at DESC) WHERE severity IN ('warning','error',
+'critical')` for fast operator scans.
+
+`stripe-webhook` stale-recovery emit site rewritten: now inserts a
+`platform_audit_log` row with `action=webhook_stale_recovery`,
+`severity=warning`. The previous `console.error` line is preserved as
+a fallback only if the insert itself fails — the signal is never
+lost.
+
+`docs/PLATFORM_AUDIT_LOG.md` (new) documents the table contract,
+severity ladder, current and planned emitters, RLS posture, append-only
+convention, and the operator queries by action/severity/recency.
+
+`docs/WEBHOOK_DEDUP.md` updated: stale-recovery operator query now
+reads `platform_audit_log` instead of grepping function logs; the
+narrative section points at the new table and the `console.error`
+fallback is documented as such.
+
+Closes T05-F9.
+
 ### Findings addressed
 
 - **T05-F1** — insert-first dedup loses retries on transient handler
@@ -1939,15 +1965,19 @@ POLISH_NOTES.
 - **T05-F8** — no recovery path for crashed in-flight rows. Closed
   by C2 (90s stale threshold + delete + re-claim).
 
-### Findings filed for chat-Claude triage
+### Findings closed in C6
 
 - **T05-F9** — `audit_log.org_id` is NOT NULL, so platform-level
   events (such as the webhook stale-recovery audit row C2 was
-  asked to write) cannot be persisted to `audit_log`. C2 substitutes
-  a structured `console.error` with marker `webhook_stale_recovery`
-  for operator grep. Triage decision: relax `audit_log.org_id` to
-  nullable for platform events, or build a separate
-  `platform_audit_log` table?
+  asked to write) cannot be persisted to `audit_log`. **Resolved**
+  by adding a separate `platform_audit_log` table
+  (`supabase/migrations/20260502120000_platform_audit_log.sql`)
+  with `action / source / severity / details / created_at` columns,
+  service-role-only, indexed for action+recency and severity+recency
+  lookups. Stale recoveries now write
+  `(action=webhook_stale_recovery, severity=warning, details=…)`
+  rows; the `console.error` fallback fires only if the insert
+  itself fails. Reference: `docs/PLATFORM_AUDIT_LOG.md`.
 
 ### Deviations from brief
 

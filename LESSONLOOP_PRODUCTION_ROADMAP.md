@@ -155,7 +155,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 Findings addressed: T05-F1, T05-F2, T05-F4, T05-F7, T05-F8.
 
-Findings filed: **T05-F9 — `audit_log.org_id` is NOT NULL** so platform-level events (webhook stale recovery) can't be persisted to `audit_log`. C2 substitutes a structured `console.error` with marker `webhook_stale_recovery`. Triage decision needed: relax `org_id` to nullable for platform events, or build a separate `platform_audit_log` table?
+Findings closed in C6: **T05-F9 — `audit_log.org_id` is NOT NULL** so platform-level events (webhook stale recovery) can't be persisted to `audit_log`. Resolved by adding a separate `platform_audit_log` table (`supabase/migrations/20260502120000_platform_audit_log.sql`) for events with no org attribution. Stale recoveries now write `action=webhook_stale_recovery, severity=warning` rows there, with a `console.error` fallback only if the insert itself fails. Reference: [`docs/PLATFORM_AUDIT_LOG.md`](docs/PLATFORM_AUDIT_LOG.md).
 
 **PR:** <PR_URL>
 
