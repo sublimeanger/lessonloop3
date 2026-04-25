@@ -1,52 +1,41 @@
-# Schedule `overdue-reminders` cron job
+# J9 Phase 4B — apply pending migration
 
-## Context
+## Status of what's already in the codebase  
+  
+make sure all added UX is polished for both mobile and desktop too.
 
-The `overdue-reminders` edge function (deployed in Journey 7) is currently unscheduled. Audit confirmed via `cron.job` query — no row matches `overdue-reminders`. This is the J7 production blocker: the dunning logic is live but never fires.
+Frontend is fully landed and wired — no code to write:
 
-## What will change
+- `src/pages/RecurringTemplateDetail.tsx`, `src/pages/RecurringRunDetail.tsx` — present
+- `src/hooks/useRecurringTemplateDetailPage.ts`, `src/hooks/useRecurringTemplateRuns.ts` (with `useRetryFailedRecipients`, `useCancelTemplateRun`) — present
+- `src/components/dashboard/RecurringRunsCard.tsx`, `src/components/settings/recurring-billing/RecurringFailuresBanner.tsx` — present
+- `src/config/routes.ts` — both new routes registered (`/settings/recurring-billing/:templateId`, `/settings/recurring-billing/runs/:runId`), gated to owner/admin/finance
+- Phase 4A edits to `RecipientsField`, `ItemsField`, `RecurringBillingTab`, `useRecurringInvoiceTemplates` already in place from prior phases
 
-A single `cron.schedule(...)` call inserted via the Supabase **insert** tool (not migration tool — per project convention, cron schedules contain project-specific URL/key and must not ship in migrations that could leak to remixed projects).
+The migration file `supabase/migrations/20260428100000_recurring_retry_failed_recipients.sql` is on disk, but **not yet applied to the database**:
 
-## Cron job spec
+- `recurring_template_runs.parent_run_id` column → does NOT exist
+- `retry_failed_recipients` RPC → does NOT exist (only `cancel_template_run` and `generate_invoices_from_template` are present)
+- `src/integrations/supabase/types.ts` → no `retry_failed_recipients` entry
 
-| Field | Value |
-|---|---|
-| Job name | `overdue-reminders-daily` |
-| Schedule | `0 9 * * *` (09:00 UTC daily) |
-| Function | `overdue-reminders` |
-| Auth | `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>` (per docs/CRON_JOBS.md entry 9a — function uses its own auth check, not `validateCronAuth`) |
-| Body | `{}` |
+The hooks (`useRetryFailedRecipients`, `useCancelTemplateRun`) already use `(supabase.rpc as any)` casts, so the UI will function the moment the RPC exists in the DB; types will regenerate automatically.
 
-## SQL to execute
+## What this plan does
 
-```sql
-select cron.schedule(
-  'overdue-reminders-daily',
-  '0 9 * * *',
-  $$
-  select net.http_post(
-    url := 'https://ximxgnkpcswbvfrkkmjq.supabase.co/functions/v1/overdue-reminders',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
-    ),
-    body := '{}'::jsonb
-  ) as request_id;
-  $$
-);
-```
-
-Note on auth header: existing reminder cron jobs in this project (verified via earlier `cron.job` audit) use the service-role key directly inlined in the command, since `current_setting('app.settings.service_role_key')` is not configured at the database level. Will match the existing pattern by inlining the actual service role key value when the SQL is executed via the insert tool — this matches how `installment-upcoming-reminder-daily` and the other deployed jobs are configured.
-
-## Verification after apply
-
-1. Re-query `cron.job` — confirm `overdue-reminders-daily` row exists with schedule `0 9 * * *` and `active = true`.
-2. Query `cron.job_run_details` after the next 09:00 UTC tick — confirm a run lands and returns HTTP 200.
-3. Spot-check `message_log` for `overdue_reminder_d{N}` / `installment_reminder_d{N}` rows on/after the first scheduled run.
+1. **Apply the pending migration** as a Lovable-mirrored migration containing the verbatim contents of `20260428100000_recurring_retry_failed_recipients.sql`:
+  - `ALTER TABLE recurring_template_runs ADD COLUMN IF NOT EXISTS parent_run_id uuid REFERENCES recurring_template_runs(id) ON DELETE SET NULL`
+  - Partial index `idx_recurring_template_runs_parent` on `parent_run_id WHERE NOT NULL`
+  - `CREATE OR REPLACE FUNCTION retry_failed_recipients(_run_id uuid) RETURNS jsonb` (SECURITY DEFINER) — full body per the file, including: parent run lock, `is_org_finance_team` auth gate, refusal of `cancelled`/`running` parents, `parent_run_id` linkage on the new run row with `triggered_by='retry'`, per-recipient savepoint loop, `already_invoiced` pre-check for upfront/hybrid, delivered-mode lesson dedup, rate-card chain, CIWI call with provenance UPDATE, and outcome rollup (`completed` / `partial` / `failed`)
+  - `GRANT EXECUTE … TO authenticated, service_role`
+  - `NOTIFY pgrst, 'reload schema'`
+2. **Verify** post-apply by querying:
+  - `information_schema.columns` for `parent_run_id` (expect 1 row, nullable, uuid)
+  - `pg_proc` for `retry_failed_recipients` (expect 1 row)
+3. **Report back** with the verification results, types.ts regen status (Lovable handles this automatically post-apply), and confirmation that the new routes resolve.
 
 ## Out of scope
 
-- The other 3 missing schedules (`auto-pay-upcoming-reminder`, `stripe-auto-pay-installment`, `credit-expiry`) and the 3 mismatched ones (`invoice-overdue-check`, `installment-overdue-check`, `credit-expiry-warning-daily`) — flagged earlier, awaiting your separate decision. Not touching them in this change.
-- No edge function code changes.
-- No migrations.
+- No edge function changes
+- No cron changes
+- No additional frontend code (everything is already on disk)
+- Manual smoke tests 4-8 require populated org data and operator-driven retry scenarios — I'll note them as "requires test data" in the report rather than attempting them here

@@ -4714,6 +4714,7 @@ export type Database = {
           invoices_generated: number
           org_id: string
           outcome: string | null
+          parent_run_id: string | null
           period_end: string
           period_start: string
           recipients_skipped: number
@@ -4732,6 +4733,7 @@ export type Database = {
           invoices_generated?: number
           org_id: string
           outcome?: string | null
+          parent_run_id?: string | null
           period_end: string
           period_start: string
           recipients_skipped?: number
@@ -4750,6 +4752,7 @@ export type Database = {
           invoices_generated?: number
           org_id?: string
           outcome?: string | null
+          parent_run_id?: string | null
           period_end?: string
           period_start?: string
           recipients_skipped?: number
@@ -4773,6 +4776,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_runs_parent_run_id_fkey"
+            columns: ["parent_run_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_template_runs"
             referencedColumns: ["id"]
           },
           {
@@ -7142,6 +7152,7 @@ export type Database = {
         Args: { _action: string; _waitlist_id: string }
         Returns: Json
       }
+      retry_failed_recipients: { Args: { _run_id: string }; Returns: Json }
       seed_make_up_policies: { Args: { _org_id: string }; Returns: undefined }
       set_primary_location: {
         Args: { p_location_id: string; p_org_id: string }
