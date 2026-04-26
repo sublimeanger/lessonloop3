@@ -114,13 +114,26 @@ This is substantially larger than typical SaaS polish scope. The roadmap below i
 
 These are system-wide concerns that touch multiple areas. They run in parallel with the per-area work and have their own closure criteria.
 
-### Track 0.1 — Audit log completeness 🟠 PRODUCTION BLOCKER
+### Track 0.1 — Audit log completeness 🟡 IN PROGRESS — P1 closed
 
 **Problem (discovered 21 April 2026):** 14 of 19 business-critical tables have NO audit trigger. Money-adjacent surfaces (`refunds`, `make_up_credits`, `term_adjustments`, `invoice_installments`, `invoice_items`, `billing_runs`, `rate_cards`, `teacher_profiles`, `profiles`, `guardians`, `lesson_participants`, `student_guardians`, `terms`) leave no trail for out-of-band edits. RPCs manually insert `audit_log` rows but any service-role or RLS-bypass modification goes unrecorded.
 
 **Scope:** Add audit triggers for all remaining business-critical tables. Normalise `audit_log.entity_type` casing (currently mixed singular/plural — C50 flagged in POLISH_NOTES but deferred). Add column-level before/after snapshots for the most sensitive columns (money fields, role fields).
 
 **Why a track, not a journey:** touches every area. Must close before any area can be marked "audit-complete."
+
+**P1 closed (2026-04-26):**
+- 16 new audit triggers added across 16 org-scoped tables (12 roadmap-named + 4 walk-surfaced HIGH-tier).
+- New canonical helper `log_audit_event_singular` writes singular `entity_type` from start.
+- Existing 9 plural-writing triggers preserved; T01-P3 normalises.
+- Migrations: `20260505100000_audit_triggers_t01_p1_parent_tables.sql`,
+  `20260505100100_audit_triggers_t01_p1_walk_surfaced.sql`.
+- Walk doc: `docs/AUDIT_LOG_AUDIT_2026-04-26.md`.
+- PR: `<PR_URL — backfill manually post-merge>`
+
+**P2 pending (per-user tables — `profiles`, `user_roles`):** custom triggers writing to `platform_audit_log`. Brief after P1 deploy verified.
+
+**P3 pending (C50 entity_type plural→singular normalisation):** rewrite existing 9 triggers + UPDATE backfill on historical `audit_log` rows + fix ~10 plural call sites in code. Brief after P2.
 
 ### Track 0.2 — RLS uniformity walk ⚪
 

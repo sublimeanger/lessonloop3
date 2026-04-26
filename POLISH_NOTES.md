@@ -2929,7 +2929,7 @@ closes the roadmap.
 
 ### T06-P1 — Roadmap closure (2026-04-26)
 
-- `<self>` chore(docs): Track 0.6 closure (T06-P1)
+- `6b8c7ed` chore(docs): Track 0.6 closure — no backfill needed (T06-P1)
 - Backfill data captured:
   - Q1 auto-pay arrears: 0 missed_charges
   - Q2 spendable-but-expired credits: 0
@@ -2943,3 +2943,101 @@ closes the roadmap.
 - T06-F2 closed by data — no work required.
 - T06-F3 no-op — T08-P1 schedules ratified; no follow-up.
 - T06-F4 = T08-F5; tracked under Track 0.8 Phase 2.
+
+## Track 0.1 Phase 1 — Audit triggers for org-scoped business-critical tables
+
+### What was looked at
+
+T01-P0 walk (chore-forensics merge `9380b4c`,
+`docs/AUDIT_LOG_AUDIT_2026-04-26.md`) verified 13 roadmap-named
+business-critical tables have zero audit triggers today, plus 4
+walk-surfaced HIGH-tier tables of equivalent concern, plus 2 per-user
+tables (`profiles`, `user_roles`) that need a different design because
+they have no `org_id`. Phase 1 covers the 16 org-scoped tables; P2
+will cover the 2 per-user tables; P3 will normalise `entity_type`
+plural → singular across the 9 pre-existing triggers and the
+historical `audit_log` rows they wrote.
+
+### What was found and fixed
+
+- 16 of 16 org-scoped tables in scope verified to have `org_id`
+  directly on the row — including the recurring-template child
+  tables that the walk doc flagged as possibly needing JOIN-resolve
+  (verified: both denormalise `org_id` on the child row, so the
+  canonical helper applies cleanly with no custom function).
+- New canonical helper `public.log_audit_event_singular()` mirrors
+  the `audit_attendance_changes` shape exactly: singular
+  `entity_type` via `TG_ARGV[0]`, `COALESCE(NEW.org_id, OLD.org_id)`
+  for DELETE-safety, `LOWER(TG_OP)` for action, full `to_jsonb`
+  snapshots in `before` / `after`. Pinned `search_path TO 'public'`,
+  `REVOKE ALL FROM PUBLIC`, `GRANT EXECUTE TO service_role`.
+- 16 trigger registrations using
+  `DROP TRIGGER IF EXISTS` / `CREATE TRIGGER` for re-application
+  idempotency. Each passes its singular `entity_type` as the
+  trigger argument so the helper stays generic (no
+  depluralisation rule needed; irregulars and edge cases like
+  `'invoice_items'` → `'invoice_item'` are explicit).
+- 9 pre-existing audit triggers (using the older `log_audit_event`
+  helper that writes plural `TG_TABLE_NAME`) intentionally NOT
+  touched — the brief identified them as T01-P3 scope alongside the
+  C50 backfill so we don't churn them twice.
+
+### Commits
+
+- `b9ce4de` feat(audit): canonical singular audit trigger + 12 parent-table triggers (T01-F1 | T01-P1-C1)
+- `32c6a9e` feat(audit): walk-surfaced HIGH-tier audit triggers (T01-F1 | T01-P1-C2)
+- `<self>` chore(docs): T01-P1 close + audit-trigger conventions (T01-P1-C3)
+
+### Files touched
+
+- New: `supabase/migrations/20260505100000_audit_triggers_t01_p1_parent_tables.sql`
+- New: `supabase/migrations/20260505100100_audit_triggers_t01_p1_walk_surfaced.sql`
+- Modified: `docs/MIGRATION_CONVENTIONS.md` — new "Audit triggers"
+  section codifying the three patterns (org-scoped /
+  per-user-no-org_id / child-via-parent), the singular convention,
+  DELETE-safety, action verb, and idempotency rules.
+- Modified: `LESSONLOOP_PRODUCTION_ROADMAP.md` — Track 0.1 status
+  flipped from `🟠 PRODUCTION BLOCKER` to `🟡 IN PROGRESS — P1 closed`
+  with explicit P2 + P3 bullets.
+- Modified: `POLISH_NOTES.md` — this section, plus T06-P1 `<self>`
+  placeholder backfilled to `6b8c7ed` (OQ4 fold).
+
+### Findings closed
+
+- **T01-F1 (partial)** — 13 + 4 = 17 untriggered org-scoped tables.
+  16 closed by P1 (skipping `profiles`, no `org_id`, T01-P2). The
+  remaining 1 (`profiles`) is in T01-P2 scope.
+
+### Findings deferred
+
+- **T01-F1 (`profiles`, `user_roles`)** — per-user tables, T01-P2.
+- **T01-F3 (C50 entity_type plural → singular)** — T01-P3.
+- **T01-F4 (sensitive-column highlighting)** — out of P1 scope; file
+  for after Track 0.1 closes if Jamie wants the query ergonomics.
+
+### Deviations from brief
+
+- C2 brief carried a custom JOIN-resolve helper
+  `log_audit_event_recurring_template_child` for the case where a
+  child table inherits `org_id` only via its parent. Schema
+  verification at write time confirmed all four walk-surfaced tables
+  (including `recurring_template_items` and
+  `recurring_template_recipients`) carry `org_id` directly, so the
+  custom helper was dropped per the brief's adaptation note. C2
+  ended up using the canonical helper from C1 for all four
+  registrations.
+
+### Deploy + smoke
+
+- Deploy date: <pending>
+- Smoke test result: <pending>
+  - After Lovable apply, verify all 16 triggers exist via
+    `SELECT trigger_name, event_object_table FROM
+     information_schema.triggers WHERE trigger_name LIKE 'audit_%'`.
+  - Insert/update/delete one row in each table as service-role and
+    confirm a corresponding `audit_log` row appears with singular
+    `entity_type`, `LOWER(TG_OP)` action, and non-null
+    `org_id`/`entity_id` (DELETE writes `OLD.id`).
+  - Spot-check a recurring-template child write to confirm `org_id`
+    on the child resolves to the same `org_id` the parent template
+    carries.
