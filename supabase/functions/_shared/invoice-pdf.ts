@@ -1,13 +1,16 @@
 // Journey 11 Phase 1 — Shared invoice PDF renderer (Deno).
 //
 // Mirror of src/lib/invoice-pdf-renderer.ts — keep in sync.
-// The contract types (InvoicePdfInput) are duplicated, not shared,
-// because Deno can't import from src/ — this is a structural limit
-// of the project layout (Supabase functions vs Vite app).
+// The contract types and renderer body are duplicated, not shared,
+// because the runtimes can't share imports across deno/node boundaries.
 //
-// The function body below is byte-identical to the browser mirror
-// EXCEPT:
-//   1. The jsPDF import (esm.sh here, npm `jspdf` in the mirror).
+// Only ONE line should differ between the two files:
+//   1. The jsPDF import:
+//      Deno (this file):   import { jsPDF } from "npm:jspdf@4.1.0";
+//      Browser (mirror):   import { jsPDF } from "jspdf";
+//
+// Pin the npm version here to match package.json (^4.1.0). When package.json
+// is bumped, update this import at the same time.
 //
 // Logo handling: the renderer never touches `Image` or `fetch` — it
 // only ever sees a pre-loaded data URL string (or null). Callers that
@@ -19,7 +22,11 @@
 // byte-identical output between server-rendered and client-rendered
 // PDFs (no TZ drift).
 
-import { jsPDF } from "https://esm.sh/jspdf@4";
+// Pinned to match package.json (^4.1.0). Deno's native npm: specifier
+// pulls from the npm registry directly — no esm.sh fragility, no CDN
+// dependency. Verified to render valid PDFs with branded shapes
+// (roundedRect, setFillColor, addImage) in Deno 2.7+.
+import { jsPDF } from "npm:jspdf@4.1.0";
 
 // ─── Contract ──────────────────────────────────────────────────────
 
