@@ -113,6 +113,34 @@ serve(async (req) => {
           const draftIds = (draftInvoices || []).map((i: any) => i.id);
 
           for (const invoiceId of draftIds) {
+            // Pre-warm the PDF cache so the email-attach step inside
+            // send-invoice-email-internal hits a warm cache instead of
+            // regenerating. Best-effort: failure here is logged but
+            // doesn't block the email send (the email-side fallback
+            // emits its own platform_audit_log row if PDF gen fails).
+            try {
+              const warmResp = await fetch(
+                `${supabaseUrl}/functions/v1/generate-invoice-pdf`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${supabaseServiceKey}`,
+                  },
+                  body: JSON.stringify({ invoice_id: invoiceId }),
+                },
+              );
+              if (!warmResp.ok) {
+                console.warn(
+                  `[recurring-billing-scheduler] PDF cache warm failed for invoice ${invoiceId}: ${warmResp.status}`,
+                );
+              }
+            } catch (warmErr) {
+              console.warn(
+                `[recurring-billing-scheduler] PDF cache warm threw for invoice ${invoiceId}: ${warmErr}`,
+              );
+            }
+
             try {
               const sendRes = await fetch(
                 `${supabaseUrl}/functions/v1/send-invoice-email-internal`,
