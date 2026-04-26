@@ -2152,3 +2152,406 @@ Closes T05-F11 + T05-F12.
     public.cleanup_webhook_retention() FROM service_role` briefly)
     and confirm a `webhook_retention_sweep_failed` row lands with
     severity `error`.
+
+## Journey 11 Phase 1 — Server-side invoice PDF foundation
+
+### Why
+
+Before J11, jsPDF rendered invoices in the browser only. Email
+functions (`send-invoice-email`, `send-payment-receipt`) shipped HTML
+with no PDF attachment because there was no path to a PDF outside an
+authenticated browser tab. The parent portal had no shareable
+download URL. Any background flow that needed an invoice PDF was
+blocked.
+
+J11 P1 ships the foundation: a shared renderer (Deno + browser
+mirrors), a service-role edge fn that produces and caches the PDF in
+storage, and the audit + cache-invalidation plumbing. **No consumer
+wiring lands in P1.** P2 wires the invoice email attachment and
+refactors `useInvoicePdf` to consume the shared renderer; P3 wires
+the receipt attachment.
+
+### Code commits (4) + docs (1)
+
+#### C1 — feat(pdf): invoice-pdfs storage bucket + pdf_rev cache invalidation (J11-P1-C1) — `4a7d881`
+
+`supabase/migrations/20260504100000_invoice_pdfs_storage.sql`:
+
+- New `invoice-pdfs` storage bucket: private, 10MB cap (real invoices
+  are <500KB; cap is defensive), `application/pdf` only,
+  service-role-only RLS. Idempotent insert (`ON CONFLICT (id) DO
+  NOTHING`) and drop-then-create policy following the existing
+  `teaching-resources` and `org-logos` patterns.
+- New `invoices.pdf_rev` integer column (NOT NULL DEFAULT 0) with a
+  `COMMENT ON COLUMN` documenting its purpose.
+- Four sister triggers keep `pdf_rev` in sync with anything that
+  affects rendered PDF output:
+  1. `invoices` BEFORE UPDATE — bumps when `status`, `total_minor`,
+     `subtotal_minor`, `tax_minor`, `vat_rate`, `paid_minor`,
+     `credit_applied_minor`, `due_date`, `issue_date`,
+     `invoice_number`, `notes`, `payment_plan_enabled`,
+     `installment_count`, or payer FKs change. Excludes `updated_at`
+     and other columns the PDF doesn't render.
+  2. `invoice_items` AFTER INSERT/UPDATE/DELETE — line items table.
+  3. `invoice_installments` AFTER INSERT/UPDATE/DELETE — payment
+     schedule block.
+  4. `payments` AFTER INSERT/UPDATE/DELETE — Paid / Amount Due
+     summary block (`useInvoicePdf.ts:471-488` sums the payments
+     table). The brief asked to verify whether this fourth trigger
+     was needed; the walk confirmed yes.
+
+  All four trigger functions are SECURITY DEFINER + pinned
+  search_path + REVOKE ALL FROM PUBLIC.
+
+#### C2 — feat(pdf): lift renderInvoicePdf to shared modules (deno + browser) (J11-P1-C2) — `0eea199`
+
+Two new mirror files containing a single shared `renderInvoicePdf`
+function:
+
+- `supabase/functions/_shared/invoice-pdf.ts` (Deno; jsPDF via
+  `https://esm.sh/jspdf@4`).
+- `src/lib/invoice-pdf-renderer.ts` (browser; jsPDF from the
+  `jspdf` npm package).
+
+Bodies are byte-identical except for the import line. Header
+comments document the sync-by-hand discipline. The contract type
+`InvoicePdfInput` is duplicated, not shared, because Deno cannot
+import from `src/`.
+
+The body is the lifted `generatePdf` function from
+`useInvoicePdf.ts:222-665` with three changes:
+
+- `logoImg: HTMLImageElement | null` → `logoDataUrl: string | null`.
+  The renderer now calls `doc.addImage(dataUrl, ...)`. Image
+  fetching is the caller's responsibility.
+- Every `parseISO(x)` replaced with `new Date(x)` (4 sites).
+- `formatDateUK` reimplemented inline using UTC components, replacing
+  the date-fns + `@/lib/utils` import. Guarantees byte-equivalent
+  output between server and browser regardless of system timezone.
+
+Returns `Uint8Array` via `doc.output('arraybuffer')` instead of
+`doc.save(filename)` (which was browser-only).
+
+#### C3 — feat(pdf): generate-invoice-pdf edge function with caching (J11-P1-C3) — `1d465e6`
+
+`supabase/functions/generate-invoice-pdf/index.ts`. Service-role
+only (the same `Authorization: Bearer ${service_key}` gate used by
+`send-invoice-email-internal`). End-user flows route through email
+functions which already gate on the user JWT.
+
+Request: `{ invoice_id, force_regenerate?, return_bytes? }`.
+Response: `{ success, cached, filename, signed_url? | pdf_base64? }`.
+
+Flow:
+
+1. Fetch invoice + payer joins, compute cache path
+   `{org_id}/{invoice_id}_{pdf_rev}.pdf`.
+2. Cache hit (unless `force_regenerate`): return signed URL or base64.
+3. Cache miss: parallel fetch `invoice_items`, `payments`,
+   `invoice_installments` (only when `payment_plan_enabled`),
+   `organisations`. Pre-load `org.logo_url` via native `fetch` →
+   `arrayBuffer` → base64 → `data:` URL (renderer never touches
+   `Image`). Render via shared module. Upload to bucket
+   (`upsert: true`). Audit. Return signed URL or base64.
+
+Implementation notes:
+
+- Cache upload failure is non-fatal: the PDF is still returned to the
+  caller, just not cached.
+- Logo fetch failure is non-fatal: the renderer simply skips the
+  logo block.
+- Base64 encoding uses 32KB chunks via
+  `String.fromCharCode.apply(null, subarray)` — naive
+  `String.fromCharCode(...bytes)` stack-overflows on PDFs over ~100KB
+  due to argument-list limits. Used in both the cache-hit and
+  cache-miss base64 paths.
+- Audit row: `action='pdf_generated_server'` (vs `pdf_generated`
+  used by client `useInvoicePdf` — chose distinct so operators can
+  tell teacher downloads apart from email-driven renders).
+  `actor_user_id` is `NULL` (no user JWT in this fn).
+- Signed URL TTL: 7 days.
+
+#### C4 — fix(branding): rename brand_primary_color → brand_color in edge fns (J11-F1 | J11-P1-C4) — `a3ed0e6`
+
+The `organisations` column was renamed `brand_primary_color` →
+`brand_color` in the database (the client side already uses
+`brand_color` everywhere), but three edge functions still selected
+and read the old name. Postgres returned `null` for that field on
+every read, so the branded headers in invoice / overdue / lesson-
+reminder emails silently fell back to `#2563eb` (the LessonLoop
+default) regardless of the org's configured brand.
+
+Renamed in:
+
+- `supabase/functions/_shared/send-invoice-email-core.ts` (3 sites)
+- `supabase/functions/overdue-reminders/index.ts` (6 sites — 2
+  selects, 2 type annotations, 2 reads)
+- `supabase/functions/send-lesson-reminders/index.ts` (3 sites)
+
+`grep -rn "brand_primary_color" .` is now empty across the repo.
+
+Closes J11-F1.
+
+#### C5 — chore(docs): J11 P1 architecture + INVOICE_PDF.md (J11-P1-C5)
+
+- New `docs/INVOICE_PDF.md`: architecture (mirror-by-hand
+  discipline), cache + invalidation (bucket layout, four triggers),
+  edge fn contract (request / response / TTL), caller patterns
+  (email attachment, parent portal download), audit shape
+  (`pdf_generated_server` vs `pdf_generated`), operator queries
+  (cache size, recent renders, force-clear).
+- `LESSONLOOP_PRODUCTION_ROADMAP.md`: Journey 11 entry now reads
+  "🟡 P1 closed (foundation); P2 + P3 pending (consumer wiring)"
+  with the 5-commit summary, the planned P2/P3 scope, and J11-F2
+  filed (bucket retention sweep).
+- `POLISH_NOTES.md`: this section.
+
+### Findings closed
+
+- **J11-F1** — `brand_primary_color` references in 3 edge functions
+  silently nulled out branded email headers, falling back to default
+  blue. **Resolved** in C4 (rename to `brand_color`; zero references
+  remain).
+
+### Findings filed
+
+- **J11-F2** — superseded cache objects accumulate in `invoice-pdfs`.
+  Today, when `invoices.pdf_rev` increments, the prior
+  `{org_id}/{invoice_id}_<old_rev>.pdf` object is left behind. A
+  cron sweep mirrored on `cleanup-webhook-retention` would purge
+  every object whose embedded `<rev>` is below the current invoice
+  rev. Low priority — bucket size will grow slowly relative to the
+  10MB-per-PDF cap.
+
+### Deviations from brief
+
+- Brief instructed `deno check` on each new edge fn / shared module
+  before commit. Deno is not available in this environment.
+  Hand-validated against `_shared/send-invoice-email-core.ts` and
+  `cleanup-webhook-retention/index.ts` for shape (imports, CORS,
+  service-role auth, error handling, response JSON). The browser
+  mirror typechecks cleanly via `npx tsc --noEmit` against the
+  project's `tsconfig.json`. Lovable's deploy pipeline will exercise
+  the Deno type-check and the `https://esm.sh/jspdf@4` import on
+  apply — flagged in the verification block below.
+- Brief asked whether the renderer body had hidden browser
+  dependencies beyond `loadImage`. Walk on
+  `useInvoicePdf.ts:222-665` confirmed the only browser-specific
+  signature was `logoImg: HTMLImageElement | null` (the `loadImage`
+  helper itself stays browser-side outside the lifted body).
+  `document` and `window` are not touched. `doc.save(filename)` at
+  the end (browser-only) is replaced by
+  `return new Uint8Array(doc.output('arraybuffer'))`.
+- `useInvoicePdf.ts` is intentionally **not** modified in P1 (per
+  brief). The browser mirror is created but not yet consumed; P2
+  refactors `useInvoicePdf` to import from
+  `src/lib/invoice-pdf-renderer.ts`.
+
+### Verification
+
+- **(a) `https://esm.sh/jspdf@4` import**. Deno is not installed in
+  the local environment, so the import was not exercised end-to-end.
+  Hand-validated by inspecting the existing `esm.sh` imports under
+  `supabase/functions/` (e.g. `@supabase/supabase-js@2`) and
+  confirming `jspdf` `^4.1.0` is the production version in
+  `package.json`. **Lovable apply must verify** that
+  `import { jsPDF } from "https://esm.sh/jspdf@4";` resolves and
+  that the construction `new jsPDF({ unit: 'mm', format: 'a4' })`
+  works under Deno. If it fails, fall back to an alternative jsPDF
+  CDN mirror (e.g. `https://cdn.skypack.dev/jspdf@4`) before
+  considering a different PDF library.
+- **(b) Payments mutations and `pdf_rev`.** Yes — the rendered PDF
+  includes a Paid / Amount Due block (`useInvoicePdf.ts:471-488`)
+  that sums `inv.payments`. C1 includes the fourth sister trigger
+  on `payments` (AFTER INSERT/UPDATE/DELETE → `UPDATE invoices SET
+  pdf_rev = pdf_rev + 1 WHERE id = invoice_id`). Without it, the
+  cache would persist a stale "Amount Due" until some other column
+  on `invoices` mutated — which is not guaranteed for a manual
+  payment recorded against a draft / sent invoice.
+
+### Walk observations not in brief (filed for triage)
+
+- **J11-F1** (closed in C4 — see above). Filed because the brief
+  named it but tied it to C4; documenting here so it appears in the
+  ledger.
+- **J11-F2** (filed — see above).
+
+### Deploy + smoke
+
+- Deploy date: <pending>
+- Smoke test result: <pending>
+  - After Lovable apply, confirm `pdf_rev` column is present on
+    `public.invoices` with default 0, and that `\d+ invoices` shows
+    `trg_bump_invoice_pdf_rev` on the table.
+  - Confirm bucket `invoice-pdfs` exists in
+    `storage.buckets` with `public=false`, 10MB cap, and the
+    service-role policy.
+  - Service-role-invoke `generate-invoice-pdf` against a real
+    invoice (cache miss), then call again with the same payload
+    (cache hit). Verify both succeed and `cached` flips false → true.
+  - Verify `audit_log` shows two rows with
+    `action='pdf_generated_server'` (or one with cached=true having
+    no audit if the cache hit path is intentionally silent — current
+    impl writes audit only on cache miss).
+  - Mutate the invoice (e.g. add a payment), call
+    `generate-invoice-pdf` again, verify the response shows
+    `cached: false` (because `pdf_rev` incremented and the new path
+    misses).
+  - Sanity-check the rendered PDF visually against the existing
+    teacher-side download for the same invoice — they must look
+    byte-equivalent (UTC date format, identical layout, same
+    branding).
+
+### Pre-merge patch — C6 + C7 (revised total: 7 commits, not 5)
+
+The original P1 review surfaced two issues that needed to land before
+merge: a CDN failure (esm.sh 503) blocking the Deno-side renderer
+build, and the J11-F2 orphan-accumulation finding that was filed but
+left for "later". Both are addressed below; P1 closes at 7 commits.
+
+#### C6 — fix(pdf): switch jsPDF import to npm: specifier (J11-P1-C6) — `3b43246`
+
+`supabase/functions/_shared/invoice-pdf.ts`. Single-line import
+change plus preamble update:
+
+- Old: `import { jsPDF } from "https://esm.sh/jspdf@4";`
+- New: `import { jsPDF } from "npm:jspdf@4.1.0";`
+
+esm.sh started returning 503 for the jspdf URL. Deno 2 has native
+npm: specifier support that pulls directly from the npm registry —
+no CDN fragility, no node_modules required. Pinned to `4.1.0` to
+match `package.json`'s `^4.1.0`. chat-Claude verified end-to-end in
+Deno 2.7.13 before the switch: the import resolves cleanly, a
+trivial `new jsPDF().output('arraybuffer')` produces ~4KB output
+with valid `%PDF` magic bytes, and branded shapes (`roundedRect`,
+`setFillColor`, `addImage`) render correctly.
+
+The browser mirror (`src/lib/invoice-pdf-renderer.ts`) is unchanged
+and continues to import from the `jspdf` npm package via Vite. The
+preamble in the Deno file now makes the one allowed difference
+explicit: `Deno: npm:jspdf@4.1.0; Browser: jspdf`.
+
+#### C7 — feat(retention): cleanup-invoice-pdf-orphans daily cron (J11-F2 | J11-P1-C7)
+
+Closes the J11-F2 finding filed in C5 ("superseded cache objects
+accumulate forever"). Two files:
+
+- `supabase/functions/cleanup-invoice-pdf-orphans/index.ts` — Pattern
+  C cron edge fn. Lists every object in the `invoice-pdfs` bucket,
+  parses the `{org_id}/{invoice_id}_{rev}.pdf` path scheme, batches
+  a lookup of `invoices.pdf_rev` for the union of invoice ids, and
+  deletes any cached object whose embedded rev is below the current
+  `pdf_rev` (or every cached object for an invoice whose row no
+  longer exists). Deletes are chunked at 100 per Storage `remove()`
+  call. Self-audits each sweep into `platform_audit_log` with
+  `action='invoice_pdf_orphan_sweep'` (severity `info` — counts in
+  `details` for ops visibility) or
+  `'invoice_pdf_orphan_sweep_failed'` (severity `error`) on the
+  failure path. Mirrors the `cleanup-webhook-retention` shape from
+  T05-P2-C2.
+- `supabase/migrations/20260504100100_invoice_pdf_orphan_cron.sql` —
+  defines the `public.list_invoice_pdf_objects()` RPC (SECURITY
+  DEFINER, search_path pinned to `public, storage`, REVOKE ALL +
+  GRANT EXECUTE TO service_role) and registers
+  `invoice-pdf-orphan-sweep-daily` at `45 3 * * *` UTC via the
+  canonical Pattern C `DO $$ unschedule ... END $$;` then
+  `cron.schedule(...)` template.
+
+Storage enumeration strategy: PostgREST does not expose the
+`storage` schema by default, so a direct
+`supabase.from('storage.objects').select(...)` call fails fast.
+The edge fn tries it anyway as the primary path and falls through
+to the RPC on the expected error. Both paths converge into the
+same in-memory list. The 20000-object cap on the RPC matches the
+edge fn's batch ceiling.
+
+Slot reasoning: 03:45 UTC sits between the existing 03:30
+`webhook-retention-daily` and 04:00 `recurring-billing-scheduler-
+daily`, sharing no minute slot with another cron. Verified in
+`docs/CRON_JOBS.md` before registration.
+
+Doc updates included in the same commit:
+
+- `docs/CRON_JOBS.md` — new entry #4 for `invoice-pdf-orphan-sweep-
+  daily`; entries 5-15 renumbered. Preamble now references the new
+  migration alongside the standardisation + webhook-retention
+  registrations.
+- `docs/INVOICE_PDF.md` — new "Cache hygiene" section describing
+  the sweep (what it deletes, what it always preserves, the
+  self-audit shape, the operator query, and the RPC strategy). The
+  former "Future" follow-up bullet pointing at this work is
+  removed since the work is now done.
+- `LESSONLOOP_PRODUCTION_ROADMAP.md` — Journey 11 entry updated to
+  "Seven commits" with C6 + C7 summaries appended; `Findings closed
+  in P1` line replaces the old `Filed for later` line.
+- `POLISH_NOTES.md` — this section.
+
+### Findings closed (patch)
+
+- **J11-F2** — superseded objects in the `invoice-pdfs` bucket
+  accumulate when `pdf_rev` increments. **Resolved** by C7 (daily
+  03:45 UTC sweep; the live current-rev object for every invoice is
+  always preserved).
+
+### Findings filed (patch)
+
+None.
+
+### Deviations from brief (patch)
+
+- Brief showed `await validateCronAuth(req)` in the edge fn skeleton.
+  Walk on `_shared/cron-auth.ts` confirmed the actual signature is
+  synchronous: `(req: Request) => Response | null`. Used the
+  canonical sync usage from `cleanup-webhook-retention/index.ts`
+  (`const cronAuthError = validateCronAuth(req); if (cronAuthError)
+  return cronAuthError;`). Behaviour is unchanged.
+- Brief's edge fn skeleton included a leading `for` loop that called
+  the storage `list("")` API and then `break`-ed unconditionally,
+  with a comment explaining the per-folder list strategy was
+  inefficient. That loop was effectively dead code (never reaches
+  the second iteration; the result is discarded). Removed the loop;
+  the direct `from('storage.objects')` query + RPC fallback are
+  the only two paths, which is what the brief actually intended.
+  The two-path safety net (direct query → RPC) is preserved.
+- Brief had `severity: deleted > 0 ? "info" : "info"` (both branches
+  yield "info" — appears to be a placeholder for future tuning).
+  Simplified to `severity: "info"` with no ternary.
+- Deno still not installed in this environment, so neither C6's
+  import switch nor C7's edge fn was exercised end-to-end.
+  Hand-validated structure against `cleanup-webhook-retention/
+  index.ts`. The Lovable apply pipeline + the smoke test in the
+  deploy block below will catch any runtime issues.
+
+### Walk observations not in brief (patch)
+
+None.
+
+### Deploy + smoke (patch — superseding the C5 placeholders)
+
+- Deploy date: <pending>
+- Smoke test result: <pending>
+  - **C6 / C3 verification:** after Lovable apply, service-role-
+    invoke `generate-invoice-pdf` against any non-void invoice and
+    confirm a 200 with `cached: false` (cache miss path), a row in
+    `audit_log` with `action='pdf_generated_server'`, and a fresh
+    object in `storage.objects` with `bucket_id='invoice-pdfs'` and
+    a non-zero size. The successful render proves the
+    `npm:jspdf@4.1.0` import resolved.
+  - **C7 cron registration:** `SELECT jobname, schedule FROM
+    cron.job WHERE jobname = 'invoice-pdf-orphan-sweep-daily';` —
+    expect one row with schedule `45 3 * * *`.
+  - **C7 RPC + sweep:** manually `SELECT * FROM public.list_invoice_
+    pdf_objects() LIMIT 5;` as service-role to confirm the RPC
+    works and returns rows. Then manually invoke the edge fn (with
+    `x-cron-secret` header populated from
+    `vault.decrypted_secrets`) and confirm a 200 plus a row in
+    `platform_audit_log` with `action='invoice_pdf_orphan_sweep'`,
+    `severity='info'`, and counts in `details`. On a fresh
+    deployment with no orphans yet, expect
+    `orphans_identified: 0`.
+  - **C7 orphan delete (after at least one invoice mutation):**
+    bump `pdf_rev` on a real invoice (e.g. add a line item),
+    re-render via `generate-invoice-pdf` to write the new-rev
+    object, then manually invoke the orphan sweep and confirm
+    `orphans_deleted >= 1`. The `_<old_rev>.pdf` object should be
+    gone from storage; the `_<new_rev>.pdf` object should remain.

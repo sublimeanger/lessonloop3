@@ -31,7 +31,7 @@ serve(async (req) => {
       .from("invoices")
       .select(`
         id, invoice_number, total_minor, paid_minor, currency_code, due_date, org_id, payment_plan_enabled,
-        organisation:organisations!inner(name, overdue_reminder_days, logo_url, brand_primary_color),
+        organisation:organisations!inner(name, overdue_reminder_days, logo_url, brand_color),
         payer_guardian:guardians(id, full_name, email, user_id),
         payer_student:students(id, first_name, last_name, email)
       `)
@@ -95,7 +95,7 @@ serve(async (req) => {
         invoice:invoices!inner (
           id, invoice_number, total_minor, currency_code, org_id, status,
           paid_minor, installment_count,
-          organisation:organisations!inner(name, overdue_reminder_days, logo_url, brand_primary_color),
+          organisation:organisations!inner(name, overdue_reminder_days, logo_url, brand_color),
           payer_guardian:guardians(id, full_name, email, user_id),
           payer_student:students(id, first_name, last_name, email)
         )
@@ -410,7 +410,7 @@ interface OverdueInvoice {
   due_date: string;
   org_id: string;
   payment_plan_enabled: boolean | null;
-  organisation: { name: string; overdue_reminder_days: number[] | null; logo_url: string | null; brand_primary_color: string | null } | null;
+  organisation: { name: string; overdue_reminder_days: number[] | null; logo_url: string | null; brand_color: string | null } | null;
   payer_guardian: { id: string; full_name: string; email: string; user_id: string | null } | null;
   payer_student: { id: string; first_name: string; last_name: string; email: string } | null;
 }
@@ -435,7 +435,7 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
   if (firingTier === null) return "skip";
 
   const orgName = org?.name || "LessonLoop";
-  const brandColor = org?.brand_primary_color || "#2563eb";
+  const brandColor = org?.brand_color || "#2563eb";
   const logoUrl = org?.logo_url || null;
   const remainingMinor = invoice.total_minor - (invoice.paid_minor || 0);
   const amount = formatCurrency(remainingMinor, invoice.currency_code);
@@ -511,7 +511,7 @@ interface OverdueInstallment {
     status: string;
     paid_minor: number | null;
     installment_count: number | null;
-    organisation: { name: string; overdue_reminder_days: number[] | null; logo_url: string | null; brand_primary_color: string | null } | null;
+    organisation: { name: string; overdue_reminder_days: number[] | null; logo_url: string | null; brand_color: string | null } | null;
     payer_guardian: { id: string; full_name: string; email: string; user_id: string | null } | null;
     payer_student: { id: string; first_name: string; last_name: string; email: string } | null;
   };
@@ -536,7 +536,7 @@ async function processInstallmentReminder(supabase: any, installment: OverdueIns
   if (firingTier === null) return "skip";
 
   const orgName = org?.name || "LessonLoop";
-  const brandColor = org?.brand_primary_color || "#2563eb";
+  const brandColor = org?.brand_color || "#2563eb";
   const logoUrl = org?.logo_url || null;
 
   // Outstanding on this installment = amount_minor minus net prior payments

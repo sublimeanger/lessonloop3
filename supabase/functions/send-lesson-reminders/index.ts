@@ -27,7 +27,7 @@ serve(async (req) => {
     // 1. Query orgs with lesson reminders enabled
     const { data: orgs, error: orgsError } = await supabase
       .from("organisations")
-      .select("id, name, timezone, logo_url, brand_primary_color, reminder_lesson_hours")
+      .select("id, name, timezone, logo_url, brand_color, reminder_lesson_hours")
       .eq("reminder_lesson_enabled", true)
       .limit(MAX_ORGS_PER_RUN);
 
@@ -83,7 +83,7 @@ interface Org {
   name: string;
   timezone: string | null;
   logo_url: string | null;
-  brand_primary_color: string | null;
+  brand_color: string | null;
   reminder_lesson_hours: number | null;
 }
 
@@ -278,7 +278,7 @@ function buildEmail(
   tz: string
 ): { subject: string; html: string } {
   const { date, time } = formatDateTime(lesson.start_at, tz);
-  const brandColor = org.brand_primary_color || "#2563eb";
+  const brandColor = org.brand_color || "#2563eb";
 
   const subject = `Lesson reminder \u2014 ${lesson.title} tomorrow at ${time}`;
 
