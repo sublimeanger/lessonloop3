@@ -2555,3 +2555,203 @@ None.
     object, then manually invoke the orphan sweep and confirm
     `orphans_deleted >= 1`. The `_<old_rev>.pdf` object should be
     gone from storage; the `_<new_rev>.pdf` object should remain.
+
+## Journey 11 Phase 2 — Consumer wiring (invoice email PDF + renderer consolidation)
+
+### Why
+
+P1 shipped the foundation (shared renderer mirrored across Deno +
+browser, `generate-invoice-pdf` edge fn with caching, daily orphan
+sweep) but deliberately wired no consumers. P2 closes that gap on the
+invoice-email path:
+
+- Eliminate the third copy of the renderer that was still living
+  inside `src/hooks/useInvoicePdf.ts:222-665` after P1 lifted the
+  shared modules.
+- Attach the rendered PDF to invoice + reminder emails so recipients
+  no longer have to log in to the portal to download a copy.
+- Pre-warm the cache from the recurring scheduler so newly-generated
+  invoices send with a warm cache (and so PDF generation errors
+  surface in scheduler logs, not as silent HTML-only fallback rows).
+
+P3 (receipt attachment in `send-payment-receipt`) is **out of scope
+for this patch** and remains the only remaining consumer wiring.
+
+### Code commits (3) + docs (1)
+
+#### C1 — refactor(pdf): useInvoicePdf consumes shared renderer (J11-P2-C1)
+
+`src/hooks/useInvoicePdf.ts` shrinks from 666 lines to 170. The hook
+now does only:
+
+1. Fetch the invoice + relations (parallelised with
+   `Promise.all` for items / payments / org).
+2. Conditionally fetch installments (only when
+   `payment_plan_enabled`).
+3. Pre-load the org logo as a `data:` URL via `fetch` +
+   `FileReader.readAsDataURL` (replaces the legacy `new Image()` +
+   `crossOrigin` path — required because the shared renderer's
+   contract takes a string, not an `HTMLImageElement`, since Deno
+   has no `Image`).
+4. Build the `InvoicePdfInput` contract.
+5. Call `renderInvoicePdf` from `src/lib/invoice-pdf-renderer.ts`.
+6. Wrap the `Uint8Array` in a `Blob`, download via the existing
+   `<a download>` pattern.
+7. Fire-and-forget audit insert.
+
+Behaviour-preserving notes:
+
+- Download filename remains `${invoiceNumber}.pdf` (unchanged from
+  the legacy `doc.save(filename)` call). Real users have downloaded
+  files matching this convention since J3.
+- Audit action remains `'pdf_generated'` (the server-side path uses
+  `'pdf_generated_server'` — both rows distinguishable in
+  `audit_log`).
+- Logo CORS fallback: legacy code silently swallowed image-load
+  failure and rendered without logo; new code does the same in the
+  `try/catch` around `fetchLogoAsDataUrl` plus the renderer's
+  internal `if (logoDataUrl)` branch.
+- All three call sites (`InvoiceDetail.tsx`, `PortalInvoices.tsx`,
+  `PaymentPlanInvoiceCard.tsx`) destructure `{ downloadPdf,
+  isLoading }`; this shape is unchanged so no call-site edits.
+- `flat<T>()` generic with `as unknown` cast handles the
+  guardian/student select shape, which Supabase returns as either
+  a single object or a single-element array depending on the
+  relation's cardinality. Matches the legacy `firstOrSingle`.
+
+#### C2 — feat(email): attach PDF to invoice + reminder emails (J11-P2-C2)
+
+`supabase/functions/_shared/send-invoice-email-core.ts`:
+
+- `sendWithRetry`'s payload type widened to accept an optional
+  `attachments?: Array<{ filename: string; content: string }>` field.
+  Body is unchanged — `JSON.stringify(payload)` already serialises
+  the new field, and Resend natively supports it (auto-detects the
+  content-type from the `.pdf` filename extension).
+- New non-exported `fetchInvoicePdfAttachment` helper invokes
+  `${SUPABASE_URL}/functions/v1/generate-invoice-pdf` with
+  `Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}` and
+  `{ invoice_id, return_bytes: true }`. Returns
+  `{ filename: 'Invoice-{number}.pdf', content: pdf_base64 }` on
+  success or `null` on any error (HTTP non-2xx, missing
+  `pdf_base64`, network throw).
+- Wired between the existing `RESEND_API_KEY` guard (line ~538) and
+  the `sendWithRetry` call (line ~542). On `null` return: write a
+  `'invoice_email_pdf_fallback'` row to `platform_audit_log`
+  (severity `warning`, with `invoice_id`, `invoice_number`,
+  `org_id`, and `is_reminder` in `details`) and pass
+  `attachments: undefined` (not `[]` — Resend treats those
+  differently) to `sendWithRetry`.
+
+The 5-minute idempotency debounce earlier in `sendInvoiceEmailCore`
+short-circuits with 409 **before** we reach the PDF-fetch step, so
+re-sends inside the debounce window don't waste cache writes.
+
+Cache behaviour: first call for a given `(invoice_id, pdf_rev)` pair
+populates `invoice-pdfs` storage; subsequent calls (manual resend,
+reminder, scheduler send) hit the cache and are sub-100ms.
+
+Verified env var names against existing edge-fn usage
+(`generate-invoice-pdf/index.ts:67-68`,
+`recurring-billing-scheduler/index.ts:45-46`,
+`_shared/rate-limit.ts:96-97`): `SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY` are canonical.
+
+Verified `platform_audit_log` schema (`action`, `source`, `severity`,
+`details`) against the row written by `cleanup-invoice-pdf-orphans`
+(C7 of P1) — unchanged.
+
+#### C3 — feat(scheduler): pre-warm PDF cache before recurring email send (J11-P2-C3)
+
+`supabase/functions/recurring-billing-scheduler/index.ts` adds a
+best-effort `generate-invoice-pdf` invocation immediately before each
+`send-invoice-email-internal` call inside the per-draft `for` loop
+(around line 115). Failure logs `console.warn` and proceeds — the
+email-side fallback in C2 will still emit a `platform_audit_log`
+row if the PDF gen later fails (which it shouldn't, because the warm
+step would have caught it first).
+
+Net latency analysis: the cold render still happens once per invoice
+either way. Without C3, it happens inside the email-attach step (and
+falls back to HTML on failure). With C3, it happens in a dedicated
+step (and is logged to scheduler logs on failure). The subsequent
+`send-invoice-email-internal` then hits a warm cache and the
+attach step is sub-100ms. Total time-per-invoice unchanged.
+
+Scheduler shape verified safe for serial cache-warm: the loop
+iterates serially per template and per draft invoice; existing
+processing already calls service-role HTTP fetches per invoice, so
+adding one more (≤500ms cold per invoice) does not change the
+scheduler's order-of-magnitude runtime. Edge function timeout is
+150s; even at 100 invoices in one run, total added budget is
+≤50s and (because the warm step replaces the cold path inside the
+email send) is mostly absorbed.
+
+`supabaseUrl` and `supabaseServiceKey` already in scope at the
+insertion point (declared at lines 45-46).
+
+#### C4 — chore(docs): J11 P2 docs close (J11-P2-C4)
+
+- `docs/INVOICE_PDF.md` — new "Email attachment flow" section
+  documents the order of operations
+  (auth → status guard → debounce → render → message_log →
+  Resend-key guard → PDF fetch → fallback audit → Resend send →
+  log update → status transition), the fallback behaviour, the
+  cache-warming strategy, and operator queries for monitoring
+  fallback rates. "Caller patterns" updated: invoice + reminder
+  marked wired (P2), receipt still pending (P3), parent portal
+  download deferred. "Known follow-ups" trimmed.
+- `LESSONLOOP_PRODUCTION_ROADMAP.md` — Journey 11 status flipped
+  from "🟡 P1 closed" to "🟡 P1 + P2 closed; P3 pending". Phase 2
+  expanded from one-line "(planned)" stub to a four-bullet
+  closure summary.
+- `POLISH_NOTES.md` — this section.
+
+### Findings closed (patch)
+
+None. P2 is pure consumer wiring of P1 foundations.
+
+### Findings filed (patch)
+
+None.
+
+### Deviations from brief (patch)
+
+None.
+
+### Verification (post-deploy)
+
+- **C1 client render:** open an invoice in the staff app, click
+  Download PDF. Confirm:
+  - Filename is `{invoice_number}.pdf` (unchanged from before).
+  - PDF byte-content matches a P1 server-rendered PDF for the
+    same invoice (open both side-by-side; the renderer is shared
+    so they should be visually identical modulo the audit string
+    in the row written).
+  - `audit_log` row written with `action='pdf_generated'` (NOT
+    `'_server'`), `actor_user_id` populated.
+- **C2 cache hit on resend:** send an invoice email
+  (manually-triggered via the staff Send action). Wait 6 minutes
+  (past the debounce). Re-send. Confirm:
+  - Email arrives with `Invoice-{number}.pdf` attached.
+  - Second send is sub-second and the
+    `generate-invoice-pdf` log shows `cached: true` for the
+    second call.
+- **C2 fallback path:** temporarily break PDF generation (e.g.
+  rename `_shared/invoice-pdf.ts` then redeploy
+  `generate-invoice-pdf`). Send an invoice email. Confirm:
+  - Email arrives HTML-only (no attachment).
+  - `platform_audit_log` has a row with
+    `action='invoice_email_pdf_fallback'`, `severity='warning'`,
+    and `details->>'invoice_id'` matching.
+  - Restore the file.
+- **C3 scheduler warm:** trigger the recurring scheduler
+  manually with at least one due template that auto-sends.
+  Confirm:
+  - Scheduler logs show the warm fetch happening before the
+    send-invoice-email-internal fetch for each draft.
+  - No `'invoice_email_pdf_fallback'` rows written for that
+    run (warm should have populated the cache).
+  - The cached object exists at
+    `{org_id}/{invoice_id}_{pdf_rev}.pdf` in the
+    `invoice-pdfs` bucket.
