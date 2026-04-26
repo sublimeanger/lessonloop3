@@ -76,7 +76,7 @@ This is substantially larger than typical SaaS polish scope. The roadmap below i
 | # | Area | Status | Journeys closed | Commits |
 |---|---|---|---|---|
 | 0 | Cross-cutting invariants | ⚪ | 0 of 4 tracks | 0 |
-| 1 | Billing & invoicing | 🟡 | 8 of 11 | 51 |
+| 1 | Billing & invoicing | 🟢 | 11 of 11 | 54 |
 | 2 | Parent portal | ⚪ | 0 of 8 | 0 |
 | 3 | Students & guardians | ⚪ | 0 of 6 | 0 |
 | 4 | Calendar | ⚪ | 0 of 9 | 0 |
@@ -212,9 +212,20 @@ Findings filed for Phase 2: **T08-F5 — cron-health watchdog**. Today there is 
 
 ---
 
-## Area 1 — Billing & invoicing 🟡
+## Area 1 — Billing & invoicing 🟢 CLOSED
 
-**Status:** In progress. Journey 9 Phase 4A complete (recurring billing fully usable end-to-end via UI; landed 25 April 2026). Phase 4B operator UX polish optional next step.
+**Status:** All billing journeys and tracks closed.
+
+- J1–J10: foundation through Stripe auto-pay (closed in prior sessions; see per-journey entries below).
+- Track 0.5 P1 + P2: Stripe webhook dedup correctness — closed 2026-04-25 (see Area 0 — Track 0.5).
+- J11 P1 + P2 + P3: server-side PDF generation foundation, invoice-email attachment, payment-receipt attachment — closed `<backfill-on-deploy>` (J11-P3 deploy date).
+
+Open infrastructure items that do **not** gate Area 1 closure:
+
+- T08-P1 24h verification window (~22:00 UTC 2026-04-26).
+- T08-P2 cron-health watchdog (scope after T08-P1 verifies).
+
+Next area: TBD per area roadmap.
 
 **Files in scope:** `src/pages/Invoices.tsx`, `src/pages/InvoiceDetail.tsx`, `src/components/invoices/*` (16 files), `src/hooks/useInvoices.ts`, `src/hooks/useBillingRuns.ts`, billing-related edge functions (16), related migrations.
 
@@ -304,7 +315,7 @@ J9 now fully closed: schema, generator, scheduler, alerts, manual run, retry, vo
 
 **Filed for later phases:** F2 (shared brand dictionary), F4 (backfill observability), F10 (async webhook failure path), F13 (retry classification).
 
-### Journey 11 — Server-side PDF generation 🟡 P1 + P2 closed; P3 pending (receipt attachment)
+### Journey 11 — Server-side PDF generation 🟢 CLOSED — P1 + P2 + P3 complete
 
 **Scope:** Replace client-side jsPDF in `useInvoicePdf.ts` with a shared renderer + edge function. Branding-aware (org logo, brand/accent colors). Shared template between portal download, staff download, and invoice-email attachment (closes J3-F5). Low coupling to other Journey 4 work — extracted during J4 walk because it's architectural, not polish.
 
@@ -327,11 +338,17 @@ J9 now fully closed: schema, generator, scheduler, alerts, manual run, retry, vo
 - C3: `recurring-billing-scheduler` pre-warms the PDF cache before each `send-invoice-email-internal` call. Net latency unchanged (the cold render still happens once per invoice) but generation errors now surface in scheduler logs instead of as silent HTML-only fallback rows.
 - C4: docs (`INVOICE_PDF.md` "Email attachment flow" + operator queries, this entry, POLISH_NOTES J11-P2 ledger).
 
-**Phase 3 (planned).** Wire `send-payment-receipt` to attach the same PDF.
+**Phase 3 — Receipt attachment (closed).** Three commits.
+
+- C1: `supabase/functions/_shared/invoice-pdf-attachment.ts` lifts the inline `fetchInvoicePdfAttachment` helper out of `_shared/send-invoice-email-core.ts` so both the email-attachment path (P2) and the receipt-attachment path (P3) share a single canonical caller of `generate-invoice-pdf`. Behaviour-preserving refactor: same signature, same cache semantics, same return shape.
+- C2: `supabase/functions/send-payment-receipt/index.ts` calls `fetchInvoicePdfAttachment` after the T05-F4 idempotency pre-check, the 23505 race-loser early-return, the message_log insert, and the no-`RESEND_API_KEY` early-return. The latest canonical invoice PDF is attached to the receipt email — for the payment that cleared the balance the renderer paints the PAID watermark automatically (`invoice.status === 'paid'`); for partial payments the totals block shows the running paid/remaining figures. Best-effort: PDF-fetch failure logs an `'payment_receipt_pdf_fallback'` row to `platform_audit_log` (severity `warning`) and the receipt still goes out HTML-only. Same `attachments`-or-omit pattern as P2-C2 so Resend treats fallback identically to pre-J11.
+- C3: docs (`INVOICE_PDF.md` "Receipt attachment flow" + operator queries, this entry, POLISH_NOTES J11-P3 ledger, Area 1 Billing closure marker at the top of the section).
 
 **Findings closed in P1:** J11-F1 (brand_primary_color rename, C4), J11-F2 (orphan cache sweep, C7).
 
 **Findings closed in P2:** none filed; no surprises during the consumer wiring.
+
+**Findings closed in P3:** none filed; consumer wiring of P1 foundations.
 
 ### Filed for Area 1
 

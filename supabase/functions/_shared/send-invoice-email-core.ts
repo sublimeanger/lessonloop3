@@ -10,6 +10,7 @@
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml, sanitiseFromName } from "./escape-html.ts";
+import { fetchInvoicePdfAttachment } from "./invoice-pdf-attachment.ts";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -154,57 +155,6 @@ export async function sendWithRetry(
 function firstOrSingle<T>(value: T | T[] | null): T | null {
   if (value == null) return null;
   return Array.isArray(value) ? (value[0] ?? null) : value;
-}
-
-// ─── PDF attachment helper ──────────────────────────────────────────
-
-/**
- * Invoke generate-invoice-pdf and return the base64 PDF bytes ready
- * for attaching to a Resend email. Returns null on any error — caller
- * decides whether to fail the email or send HTML-only fallback.
- *
- * Cache behaviour: first call for a given (invoice_id, pdf_rev) pair
- * populates the cache; subsequent calls hit the cache and are sub-100ms.
- */
-async function fetchInvoicePdfAttachment(
-  supabaseUrl: string,
-  serviceKey: string,
-  invoiceId: string,
-  invoiceNumber: string,
-): Promise<{ filename: string; content: string } | null> {
-  try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/generate-invoice-pdf`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${serviceKey}`,
-      },
-      body: JSON.stringify({ invoice_id: invoiceId, return_bytes: true }),
-    });
-
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => "<unreadable>");
-      console.warn(
-        `[send-invoice-email-core] generate-invoice-pdf returned ${response.status}: ${errBody}`,
-      );
-      return null;
-    }
-
-    const data = await response.json();
-    if (!data.success || !data.pdf_base64) {
-      console.warn(`[send-invoice-email-core] generate-invoice-pdf returned no bytes:`, data);
-      return null;
-    }
-
-    return {
-      filename: `Invoice-${invoiceNumber}.pdf`,
-      content: data.pdf_base64,
-    };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.warn(`[send-invoice-email-core] PDF attachment fetch failed: ${message}`);
-    return null;
-  }
 }
 
 // ─── Template render ───────────────────────────────────────────────

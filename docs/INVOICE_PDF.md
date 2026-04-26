@@ -19,8 +19,8 @@ consequences:
 
 J11 ships the foundation: a shared renderer plus a service-role edge
 function that produces and caches PDFs. P2 wires the invoice-email
-attachment; P3 wires the receipt attachment. P1 deliberately makes no
-consumer changes.
+attachment; P3 wires the receipt attachment (closed). P1 deliberately
+makes no consumer changes.
 
 ## Architecture
 
@@ -116,16 +116,21 @@ Signed URLs have a 7-day TTL.
 **Email attachment (invoice + reminder — P2 wired)**
 
 `supabase/functions/_shared/send-invoice-email-core.ts` invokes
-`generate-invoice-pdf` with `return_bytes: true` via the non-exported
-`fetchInvoicePdfAttachment` helper, then threads the result through
+`generate-invoice-pdf` with `return_bytes: true` via the shared
+`fetchInvoicePdfAttachment` helper in `_shared/invoice-pdf-attachment.ts`
+(lifted from inline in P3-C1), then threads the result through
 `sendWithRetry` as Resend's `attachments` field. `sendWithRetry`'s
-payload type now accepts an optional `attachments?:
+payload type accepts an optional `attachments?:
 Array<{ filename, content }>` field; the body is a transparent
 JSON.stringify so Resend sees the field natively.
 
-**Receipt attachment (P3, not yet wired)**
+**Receipt attachment (P3 wired)**
 
-Will follow the same pattern from `send-payment-receipt`.
+`supabase/functions/send-payment-receipt/index.ts` invokes the same
+`fetchInvoicePdfAttachment` helper after the T05-F4 idempotency
+pre-check passes, the `message_log` row has been inserted, and the
+`RESEND_API_KEY` early-return has been cleared. See "Receipt
+attachment flow" below.
 
 **Parent portal download (deferred follow-up)**
 
@@ -197,6 +202,79 @@ ORDER BY fallbacks DESC;
 Cross-references: idempotency debounce semantics overlap with
 `docs/WEBHOOK_DEDUP.md` (different table, same shape); audit row
 shape matches `docs/PLATFORM_AUDIT_LOG.md`.
+
+## Receipt attachment flow
+
+**Trigger.** `stripe-webhook` invokes `send-payment-receipt` after a
+successful payment lands (one invocation per payment, both at the
+checkout-completed and payment-intent-succeeded sites).
+
+**Receipt content.** HTML email with the PAID acknowledgement block +
+the canonical invoice PDF attached as `Invoice-{invoice_number}.pdf`
+— the same filename used by the invoice email. The two PDFs may have
+different bytes if `pdf_rev` has incremented since the invoice
+email was sent (a payment landing always bumps `pdf_rev` via the
+`payments` trigger). World-class billing means **one canonical
+document**, not parallel "invoice" and "receipt" artifacts; parents
+file by invoice number and the email client keeps the latest copy.
+
+**Watermark behaviour.** The renderer paints the **PAID** watermark
+automatically when `invoice.status === 'paid'` (i.e. the payment that
+cleared the balance). For partial payments the invoice is still in
+`'sent'` status — no watermark — but the totals block shows
+`Paid: £X / Remaining: £Y` so the parent sees their running balance
+on the receipt PDF.
+
+**Cache behaviour.** Payment landing fires the `pdf_rev` triggers
+(`status` and/or `paid_minor` changed), invalidating the
+`{invoice_id}_{old_rev}.pdf` cache. The receipt's attachment fetch is
+therefore a cache miss and renders fresh — exactly what we want, the
+new bytes show the new state. Subsequent receipts (e.g. a refund
+processed later, generating an updated receipt) cache miss again on
+the next `pdf_rev` bump.
+
+**Idempotency.** T05-F4's pre-check on `message_log.payment_id UNIQUE`
+prevents double-receipts on Stripe webhook retry. PDF generation only
+fires when the pre-check passes, so retry storms do **not** create a
+cache-miss thundering herd. The 23505 race-loser path also returns
+before the attachment fetch.
+
+**Best-effort fallback.** If `generate-invoice-pdf` returns no bytes,
+the receipt email still goes out HTML-only and the gap is logged to
+`platform_audit_log` with `action='payment_receipt_pdf_fallback'`,
+`severity='warning'`, and `details` containing `payment_id`,
+`invoice_id`, `invoice_number`, `org_id`. Same shape as the P2
+invoice-email fallback; only the action string differs.
+
+**Cross-references.** See `docs/WEBHOOK_DEDUP.md` for the receipt's
+role in the two-phase webhook chain (Stripe-side acknowledgement vs
+local replay handling).
+
+### Operator queries
+
+Receipt PDF fallbacks last 24h:
+
+```sql
+SELECT created_at, details
+FROM platform_audit_log
+WHERE action = 'payment_receipt_pdf_fallback'
+  AND created_at > now() - interval '24 hours'
+ORDER BY created_at DESC;
+```
+
+Combined invoice + receipt fallback rate per org last 7d:
+
+```sql
+SELECT
+  details->>'org_id' AS org_id,
+  action,
+  count(*) AS fallbacks
+FROM platform_audit_log
+WHERE action IN ('invoice_email_pdf_fallback', 'payment_receipt_pdf_fallback')
+  AND created_at > now() - interval '7 days'
+GROUP BY details->>'org_id', action
+ORDER BY fallbacks DESC;
+```
 
 ## Audit
 
@@ -304,9 +382,8 @@ fallback runs.
 
 ## Known follow-ups
 
-- **P3** — wire `send-payment-receipt` to attach the same PDF (P2
-  closed the invoice-email and reminder paths; receipts still ship
-  HTML-only).
 - **Parent portal download** — replace the client-side
   `useInvoicePdf` call on `/portal/invoices` with a redirect to the
-  signed URL returned by `generate-invoice-pdf`.
+  signed URL returned by `generate-invoice-pdf`. (P3 closes all
+  email-attachment paths; the portal-download deferred follow-up is
+  the only remaining J11 wiring gap.)
