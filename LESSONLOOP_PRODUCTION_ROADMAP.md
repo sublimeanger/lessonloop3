@@ -226,9 +226,9 @@ The pre-T08-P1 gap window had no production user impact because auto-pay and cre
 
 **Scope:** small admin-only surface (settings tab or audit page) listing every cron edge function with a "Run now" button, rate-limited per-function, writes to `audit_log` with actor. Companion feature for Track 0.6 ongoing health monitoring. Low priority individually but compounds with every future cron gap.
 
-### Track 0.8 — Cron auth standardisation 🟡 IN PROGRESS
+### Track 0.8 — Cron auth standardisation 🟢 CLOSED
 
-**Status:** Phase 1 (auth standardisation) complete, Phase 2 (watchdog observability) pending.
+**Status:** Phase 1 (auth standardisation) complete, Phase 2 (watchdog observability) complete.
 
 **Problem:** Audit on 25 April 2026 found 10 of 12 production crons silently 401-failing daily because four different auth patterns drifted into the codebase over time:
 - Pattern A (inline `Authorization: Bearer service_role_key`) — works but inconsistent.
@@ -242,7 +242,9 @@ Two crons (`overdue-reminders-daily`, `recurring-billing-scheduler-daily`) sent 
 
 Findings addressed: T08-F1 (vault not populated; operator-fixed), T08-F2 (4 patterns in tree), T08-F3 (cleanup-orphaned-resources hardcoded JWT + inline auth), T08-F4 (3 fns using inline Pattern A).
 
-Findings filed for Phase 2: **T08-F5 — cron-health watchdog**. Today there is no in-app signal when a cron silently 401-fails for days. Phase 2 adds a `cron.job_run_details` + `net._http_response` poller that surfaces failures on the admin dashboard within one cycle.
+**Phase 2 — cron-health watchdog (closed by T08-P2):** Two migrations and one edge fn deliver active observability. `20260508100000_cron_request_id_capture.sql` re-registers all 15 HTTP crons with a `WITH req AS (...) SELECT request_id::text FROM req;` wrapper so pg_cron writes the `net.http_post()` request_id into `cron.job_run_details.return_message`, enabling join to `net._http_response.id`. `20260508100100_cron_health_watchdog.sql` adds `public.check_cron_health()` (SECURITY DEFINER RPC) returning per-cron failure_class (A_stopped_firing | B_http_failing | NULL) and severity (info/warning/critical), and registers `cron-health-watchdog-daily` at 09:30 UTC. New edge fn `cron-health-watchdog` calls the RPC, formats failures as HTML, sends to `OPERATOR_ALERT_EMAIL` via Resend (critical = daily; warning = Monday digest), and self-audits to `platform_audit_log` (`cron_health_check_run`).
+
+**T08-F5 — cron-health watchdog: ✅ closed by T08-P2.** See `docs/CRON_HEALTH.md` for severity policy and verification queries.
 
 ---
 
@@ -256,8 +258,7 @@ Findings filed for Phase 2: **T08-F5 — cron-health watchdog**. Today there is 
 
 Open infrastructure items that do **not** gate Area 1 closure:
 
-- T08-P1 24h verification window (~22:00 UTC 2026-04-26).
-- T08-P2 cron-health watchdog (scope after T08-P1 verifies).
+- _(none — Track 0.8 P1+P2 closed by T08-P2 on 2026-04-26)_
 
 Next area: TBD per area roadmap.
 

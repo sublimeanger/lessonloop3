@@ -3231,3 +3231,44 @@ Corrective changes (single commit, T01-P2-fix1):
   created a duplicate H2 — surfaced and adjusted.)
 - PR: <PR_URL>
 - Self: claude/t01-p3-entity-type-normalisation
+
+### T08-P2-C1 (commit 7b3b86d) — request_id capture
+- Migration: 20260508100000_cron_request_id_capture.sql
+- Re-registers 15 HTTP crons with WITH req AS (...) SELECT request_id::text
+  FROM req; wrapper. Pattern C auth, schedules, URLs, and bodies unchanged.
+- Surfaces request_id to cron.job_run_details.return_message for watchdog
+  correlation against net._http_response.id.
+- Two SQL-only crons (complete-expired-assignments, reset-stale-practice-streaks)
+  intentionally untouched — no HTTP layer to capture.
+- Lovable apply: <DATETIME> UTC.
+- PR: <PR_URL>
+
+### T08-P2-C2 (commit 9aefa0e) — watchdog RPC + edge fn + cron
+- Migration: 20260508100100_cron_health_watchdog.sql
+- New SECURITY DEFINER RPC check_cron_health() returning per-cron health
+  with severity (info/warning/critical) and failure_class (A/B/null).
+- New edge fn cron-health-watchdog: calls RPC, formats failures as HTML
+  email, sends via Resend to OPERATOR_ALERT_EMAIL, audits to
+  platform_audit_log. Day-of-week gating: critical = daily; warning = Monday
+  only.
+- New cron registration cron-health-watchdog-daily at 09:30 UTC (Pattern C
+  auth, T08-P2-C1 capture wrapper).
+- New env var required: OPERATOR_ALERT_EMAIL.
+- Adapted from brief: validateCronAuth signature is (req) → Response | null
+  (not { ok, error }); platform_audit_log uses details (jsonb) + source
+  (not metadata + dedup_key). Both adapted to canonical project patterns.
+- No supabase/functions/<fn>/deno.json file created — zero such files exist
+  in this project; per-fn deno config is not the convention here. Brief's
+  `cp` instruction was inapplicable.
+- Lovable apply + redeploy: <DATETIME> UTC.
+- PR: <PR_URL>
+
+### T08-P2-C3 (commit <SHA>) — docs close + Track 0.8 closure
+- docs/CRON_HEALTH_WATCHDOG_T08_P2_WALK_2026-04-26.md created from
+  chat-Claude's walk doc.
+- docs/CRON_JOBS.md: cron #16 added; verification section rewritten.
+- docs/CRON_HEALTH.md: new doc explaining watchdog architecture, severity
+  policy, evidence fields, verification queries.
+- LESSONLOOP_PRODUCTION_ROADMAP.md: Track 0.8 closed (P1+P2 both ✅);
+  T08-F5 closed.
+- PR: <PR_URL>
