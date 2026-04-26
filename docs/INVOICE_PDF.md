@@ -113,24 +113,90 @@ Signed URLs have a 7-day TTL.
 
 ## Caller patterns
 
-**Email attachment (P2/P3, not yet wired)**
+**Email attachment (invoice + reminder — P2 wired)**
 
-Service-call with `return_bytes: true`, then attach to Resend:
+`supabase/functions/_shared/send-invoice-email-core.ts` invokes
+`generate-invoice-pdf` with `return_bytes: true` via the non-exported
+`fetchInvoicePdfAttachment` helper, then threads the result through
+`sendWithRetry` as Resend's `attachments` field. `sendWithRetry`'s
+payload type now accepts an optional `attachments?:
+Array<{ filename, content }>` field; the body is a transparent
+JSON.stringify so Resend sees the field natively.
 
-```ts
-const { pdf_base64, filename } = await fetchPdf({
-  invoice_id, return_bytes: true,
-});
-await sendWithRetry(resendApiKey, {
-  ...payload,
-  attachments: [{ filename, content: pdf_base64 }],
-});
-```
+**Receipt attachment (P3, not yet wired)**
 
-**Parent portal download (P2, not yet wired)**
+Will follow the same pattern from `send-payment-receipt`.
+
+**Parent portal download (deferred follow-up)**
 
 Service-call with `return_bytes: false`, redirect the browser to the
-returned `signed_url`.
+returned `signed_url`. Not yet wired — current portal still uses
+client-side `useInvoicePdf`.
+
+## Email attachment flow
+
+Order of operations inside `sendInvoiceEmailCore` (post-J11-P2):
+
+1. Wrapper-supplied auth gate (caller-supplied `authorize` callback
+   on the invoice row).
+2. Status guard — paid / void invoices reject with 400.
+3. 5-minute idempotency debounce check on `message_log`. Re-sends
+   inside the window short-circuit with 409 **before** any PDF or
+   Resend work, so we never waste a render on a debounced send.
+4. HTML render via `buildInvoiceEmailHtml`.
+5. `message_log` row insert (`status: 'pending'`).
+6. `RESEND_API_KEY` guard — if missing, mark log row `'logged'` and
+   return success.
+7. **PDF attachment fetch** (best-effort) via the internal
+   `fetchInvoicePdfAttachment` → invokes `generate-invoice-pdf` with
+   `return_bytes: true`. Cache hit returns sub-100ms; cache miss
+   renders + caches before returning.
+8. If the PDF fetch returned `null`, write an
+   `'invoice_email_pdf_fallback'` row to `platform_audit_log`
+   (severity `warning`).
+9. Resend send via `sendWithRetry` with `attachments` field
+   (or `undefined` on fallback — never `[]`, since Resend treats an
+   empty array differently from a missing field).
+10. `message_log` status update (`'sent'` / `'failed'`).
+11. Invoice status transition `draft` → `sent` (skipped if already
+    sent or paid).
+
+### Cache warming
+
+`recurring-billing-scheduler` pre-warms the cache by invoking
+`generate-invoice-pdf` (no `return_bytes`) immediately before each
+`send-invoice-email-internal` call inside its per-draft loop. Net
+latency unchanged: the cold render still happens once per invoice
+either way — this just shifts it from inside the email-attach step
+(which falls back to HTML on failure) to a dedicated step (which
+logs + proceeds). The subsequent send hits a warm cache.
+
+### Operator queries
+
+PDF fallbacks last 24h:
+
+```sql
+SELECT created_at, details
+FROM platform_audit_log
+WHERE action = 'invoice_email_pdf_fallback'
+  AND created_at > now() - interval '24 hours'
+ORDER BY created_at DESC;
+```
+
+Fallback rate per org last 7d:
+
+```sql
+SELECT details->>'org_id' AS org_id, count(*) AS fallbacks
+FROM platform_audit_log
+WHERE action = 'invoice_email_pdf_fallback'
+  AND created_at > now() - interval '7 days'
+GROUP BY details->>'org_id'
+ORDER BY fallbacks DESC;
+```
+
+Cross-references: idempotency debounce semantics overlap with
+`docs/WEBHOOK_DEDUP.md` (different table, same shape); audit row
+shape matches `docs/PLATFORM_AUDIT_LOG.md`.
 
 ## Audit
 
@@ -238,7 +304,9 @@ fallback runs.
 
 ## Known follow-ups
 
-- **P2** — refactor `useInvoicePdf.ts` to consume
-  `src/lib/invoice-pdf-renderer.ts` (eliminate the third copy of the
-  layout). Wire `send-invoice-email-core` to attach the PDF.
-- **P3** — wire `send-payment-receipt` to attach the same.
+- **P3** — wire `send-payment-receipt` to attach the same PDF (P2
+  closed the invoice-email and reminder paths; receipts still ship
+  HTML-only).
+- **Parent portal download** — replace the client-side
+  `useInvoicePdf` call on `/portal/invoices` with a redirect to the
+  signed URL returned by `generate-invoice-pdf`.

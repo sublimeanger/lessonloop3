@@ -304,7 +304,7 @@ J9 now fully closed: schema, generator, scheduler, alerts, manual run, retry, vo
 
 **Filed for later phases:** F2 (shared brand dictionary), F4 (backfill observability), F10 (async webhook failure path), F13 (retry classification).
 
-### Journey 11 — Server-side PDF generation 🟡 P1 closed (foundation); P2 + P3 pending (consumer wiring)
+### Journey 11 — Server-side PDF generation 🟡 P1 + P2 closed; P3 pending (receipt attachment)
 
 **Scope:** Replace client-side jsPDF in `useInvoicePdf.ts` with a shared renderer + edge function. Branding-aware (org logo, brand/accent colors). Shared template between portal download, staff download, and invoice-email attachment (closes J3-F5). Low coupling to other Journey 4 work — extracted during J4 walk because it's architectural, not polish.
 
@@ -320,11 +320,18 @@ J9 now fully closed: schema, generator, scheduler, alerts, manual run, retry, vo
 - C6: switched the Deno-side jsPDF import from `https://esm.sh/jspdf@4` (which started returning 503s) to Deno's native `npm:jspdf@4.1.0` specifier. Pulls directly from the npm registry; matches the `^4.1.0` already pinned in `package.json`. chat-Claude verified the import + render in Deno 2.7.13 before the switch.
 - C7: `supabase/functions/cleanup-invoice-pdf-orphans/index.ts` + `supabase/migrations/20260504100100_invoice_pdf_orphan_cron.sql` register the daily orphan sweep at 03:45 UTC. Deletes any cached PDF whose embedded `rev` is below the parent invoice's current `pdf_rev`, plus every cached PDF for invoices that have been deleted entirely. Self-audits each sweep into `platform_audit_log`. Closes J11-F2.
 
-**Phase 2 (planned).** Refactor `useInvoicePdf.ts` to consume `src/lib/invoice-pdf-renderer.ts` (eliminate the third copy of the layout). Wire `send-invoice-email-core.ts` to fetch via `generate-invoice-pdf` with `return_bytes: true` and attach to Resend. Optionally add a parent-portal download surface that redirects to the signed URL.
+**Phase 2 — Consumer wiring (closed).** Four commits.
+
+- C1: `src/hooks/useInvoicePdf.ts` refactored from 666 lines to 170. The hook now fetches data, pre-loads the org logo as a data URL via `fetch` + `FileReader.readAsDataURL`, and delegates the entire jsPDF render to `src/lib/invoice-pdf-renderer.ts`. API surface unchanged (`{ downloadPdf, isLoading }`); download filename (`${invoiceNumber}.pdf`) and audit action (`pdf_generated`) preserved so existing call sites and operator queries are untouched.
+- C2: `supabase/functions/_shared/send-invoice-email-core.ts` — `sendWithRetry`'s payload type widened to accept an optional `attachments` array, and a new non-exported `fetchInvoicePdfAttachment` helper invokes `generate-invoice-pdf` with `return_bytes: true` then threads the result into the Resend send. Best-effort: PDF-fetch failure logs an `'invoice_email_pdf_fallback'` row to `platform_audit_log` (severity `warning`) and the email still goes out HTML-only. `attachments: undefined` (not `[]`) on fallback so Resend's behaviour matches the pre-J11 path exactly.
+- C3: `recurring-billing-scheduler` pre-warms the PDF cache before each `send-invoice-email-internal` call. Net latency unchanged (the cold render still happens once per invoice) but generation errors now surface in scheduler logs instead of as silent HTML-only fallback rows.
+- C4: docs (`INVOICE_PDF.md` "Email attachment flow" + operator queries, this entry, POLISH_NOTES J11-P2 ledger).
 
 **Phase 3 (planned).** Wire `send-payment-receipt` to attach the same PDF.
 
 **Findings closed in P1:** J11-F1 (brand_primary_color rename, C4), J11-F2 (orphan cache sweep, C7).
+
+**Findings closed in P2:** none filed; no surprises during the consumer wiring.
 
 ### Filed for Area 1
 
