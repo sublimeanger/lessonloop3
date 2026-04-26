@@ -2755,3 +2755,162 @@ None.
   - The cached object exists at
     `{org_id}/{invoice_id}_{pdf_rev}.pdf` in the
     `invoice-pdfs` bucket.
+
+---
+
+## Journey 11 Phase 3 — Receipt PDF attachment
+
+**Status:** Closed `<backfill-on-deploy>`.
+**Branch:** `claude/verify-main-typecheck-QoT06`.
+**Commits:** 3 (J11-P3-C1, J11-P3-C2, J11-P3-C3).
+**Hashes:** see `git log --oneline` post-merge.
+
+### Brief
+
+P2 closed the invoice-email and reminder PDF-attachment paths but
+left `send-payment-receipt` shipping HTML-only. P3 wires the same
+PDF attachment into the receipt path, sharing the helper code with
+P2 so there's a single canonical caller of `generate-invoice-pdf`.
+
+Design decisions baked in from the brief:
+
+- **Receipt = invoice PDF stamped paid**, not a separate "payment
+  received" 1-pager. The renderer already paints the PAID watermark
+  when `invoice.status === 'paid'`. World-class billing means one
+  canonical document evolving through its lifecycle, not parallel
+  artifacts.
+- **One receipt PDF per payment.** Each Stripe payment fires
+  `send-payment-receipt` with that payment's `paymentId`; each
+  invocation attaches the **current** canonical invoice PDF (latest
+  `pdf_rev`). For partial payments the PDF shows running totals; for
+  the payment that cleared the balance it shows the PAID watermark.
+- **Same filename as the invoice email** (`Invoice-{number}.pdf`).
+  Parents file by invoice number; multiple PDFs with the same name
+  is fine (their email client keeps the most recent or both).
+
+### Commits
+
+#### C1 — refactor(pdf): lift fetchInvoicePdfAttachment to shared module (J11-P3-C1)
+
+- New: `supabase/functions/_shared/invoice-pdf-attachment.ts`
+  exports `fetchInvoicePdfAttachment` with the same signature
+  `(supabaseUrl, serviceKey, invoiceId, invoiceNumber) =>
+  Promise<{ filename, content } | null>` that P2-C2 used inline.
+- Modified: `supabase/functions/_shared/send-invoice-email-core.ts`
+  imports the helper from the new module; the inline function body
+  is gone. Call site at the (existing) `await
+  fetchInvoicePdfAttachment(...)` is unchanged.
+- Behaviour-preserving. Same cache semantics, same fallback logging,
+  same return shape.
+
+#### C2 — feat(receipt): attach PDF to payment receipt emails (J11-P3-C2)
+
+- Modified: `supabase/functions/send-payment-receipt/index.ts`.
+- New import: `fetchInvoicePdfAttachment` from
+  `_shared/invoice-pdf-attachment.ts`.
+- Insertion point: after the T05-F4 idempotency pre-check, after
+  the `message_log` INSERT (and its 23505 race-loser early-return),
+  after the no-`RESEND_API_KEY` early-return, and before the Resend
+  POST. This means duplicate-detection paths and the dev-mode
+  no-Resend path **never** trigger PDF generation, so Stripe webhook
+  retry storms don't create a cache-miss thundering herd.
+- Best-effort: if `generate-invoice-pdf` returns no bytes, the
+  receipt email goes out HTML-only and a row is inserted into
+  `platform_audit_log` with `action='payment_receipt_pdf_fallback'`,
+  `severity='warning'`, `source='send-payment-receipt'`, and
+  `details` containing `payment_id`, `invoice_id`, `invoice_number`,
+  `org_id`. Same shape as P2's `invoice_email_pdf_fallback`; only
+  the action string differs.
+- Resend payload built as `Record<string, unknown>` so `attachments`
+  is conditionally added (omitted on fallback) — Resend treats
+  omitted-vs-`[]` differently, so this matches the P2 pattern
+  exactly.
+
+#### C3 — chore(docs): J11 P3 + Area 1 Billing closure (J11-P3-C3)
+
+- `docs/INVOICE_PDF.md`:
+  - "Caller patterns" updated: receipt path marked wired; helper
+    location updated to `_shared/invoice-pdf-attachment.ts`.
+  - New "Receipt attachment flow" section documents the trigger,
+    receipt content (one canonical PDF stamped paid), watermark
+    behaviour for full-pay vs partial-pay, cache invalidation via
+    `pdf_rev` triggers on the `payments` table, T05-F4 idempotency
+    semantics, best-effort fallback shape, and operator queries.
+  - "Known follow-ups" trimmed: P3 entry removed; only the parent
+    portal download deferred follow-up remains.
+- `LESSONLOOP_PRODUCTION_ROADMAP.md`:
+  - Area 1 Billing flipped from 🟡 to 🟢 CLOSED with closure block
+    at top of section listing J1–J10 + Track 0.5 P1+P2 + J11
+    P1+P2+P3, plus a note that T08-P1 verification and T08-P2
+    watchdog do not gate Area 1 closure.
+  - Overall progress table row updated: `8 of 11 → 11 of 11`,
+    `51 commits → 54`, status ⚪→🟢.
+  - Journey 11 status flipped from "🟡 P1 + P2 closed; P3 pending"
+    to "🟢 CLOSED — P1 + P2 + P3 complete". Phase 3 expanded from
+    one-line "(planned)" stub into a three-bullet closure summary.
+- `POLISH_NOTES.md` — this section.
+
+### Findings closed (patch)
+
+None. P3 is pure consumer wiring of P1 foundations + a behaviour-
+preserving refactor.
+
+### Findings filed (patch)
+
+None.
+
+### Deviations from brief (patch)
+
+- **Insertion point placement.** The brief specified "AFTER the
+  message_log INSERT" and "BEFORE the Resend call" with the
+  reasoning "we want the message_log row to exist regardless of
+  attachment outcome". Both constraints satisfied. The fetch is
+  also placed AFTER the no-`RESEND_API_KEY` early-return so dev
+  invocations without Resend configured don't waste a PDF-gen
+  cycle. The brief did not explicitly call this out, but it's
+  consistent with the brief's general "save wasted PDF generation
+  on early-exit paths" rationale.
+- **Deno typecheck.** `deno` is not available in this environment.
+  Per the brief's contract block ("If Deno unavailable in your
+  env, hand-validate against P2-C2 patterns and note in report"),
+  changes were hand-validated:
+  - `invoice-pdf-attachment.ts` is a verbatim lift of the P2-C2
+    body (only the log-prefix string changed
+    from `[send-invoice-email-core]` to `[invoice-pdf-attachment]`).
+  - `send-payment-receipt/index.ts` mirrors the P2-C2 attach +
+    fallback + Resend payload shape.
+
+### Verification (post-deploy)
+
+- **C2 happy path:** trigger a real Stripe test payment that
+  pays an invoice in full. Confirm:
+  - The receipt email arrives with `Invoice-{number}.pdf`
+    attached.
+  - Opening the PDF shows the **PAID** watermark (renderer
+    paints when `invoice.status === 'paid'`).
+  - `message_log` has one `payment_receipt` row for that
+    `payment_id` with `status='sent'`.
+  - `platform_audit_log` has **no** `payment_receipt_pdf_fallback`
+    row for the receipt.
+- **C2 partial payment:** pay an installment that does not
+  clear the invoice balance. Confirm:
+  - Receipt arrives with PDF attached.
+  - PDF shows `Paid: £X / Remaining: £Y` in the totals block,
+    and **no** PAID watermark (`invoice.status` is still
+    `'sent'`).
+- **C2 idempotency:** replay the same Stripe webhook event
+  (Stripe CLI: `stripe events resend evt_...`). Confirm:
+  - No second receipt email arrives.
+  - `send-payment-receipt` logs the duplicate-receipt early
+    return.
+  - **No** second call to `generate-invoice-pdf` is logged
+    (the attachment fetch sits after the dedup pre-check).
+- **C2 fallback path:** temporarily break `generate-invoice-pdf`
+  (rename `_shared/invoice-pdf.ts` then redeploy
+  `generate-invoice-pdf`). Trigger a Stripe payment. Confirm:
+  - Receipt arrives HTML-only (no attachment).
+  - `platform_audit_log` has a row with
+    `action='payment_receipt_pdf_fallback'`,
+    `severity='warning'`, `source='send-payment-receipt'`,
+    and `details->>'payment_id'` matching.
+  - Restore the file.
