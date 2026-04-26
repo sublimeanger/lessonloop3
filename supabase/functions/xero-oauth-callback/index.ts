@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
         org_id: stateData.org_id,
         actor_user_id: stateData.user_id,
         action: 'connect',
-        entity_type: 'xero_connections',
+        entity_type: 'xero_connection',
         entity_id: null,
         after: { tenant_name: tenantName, tenant_id: tenantId },
       });

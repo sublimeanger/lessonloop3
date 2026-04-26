@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
         org_id: connection.org_id,
         actor_user_id: user.id,
         action: 'disconnect',
-        entity_type: 'calendar_connections',
+        entity_type: 'calendar_connection',
         entity_id: connection_id,
         before: { provider: connection.provider, calendar_name: connection.calendar_name },
       });
