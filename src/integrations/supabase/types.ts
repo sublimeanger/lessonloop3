@@ -2023,6 +2023,7 @@ export type Database = {
           payer_guardian_id: string | null
           payer_student_id: string | null
           payment_plan_enabled: boolean | null
+          pdf_rev: number
           related_invoice_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor: number
@@ -2053,6 +2054,7 @@ export type Database = {
           payer_guardian_id?: string | null
           payer_student_id?: string | null
           payment_plan_enabled?: boolean | null
+          pdf_rev?: number
           related_invoice_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor?: number
@@ -2083,6 +2085,7 @@ export type Database = {
           payer_guardian_id?: string | null
           payer_student_id?: string | null
           payment_plan_enabled?: boolean | null
+          pdf_rev?: number
           related_invoice_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor?: number
@@ -7203,6 +7206,13 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      list_invoice_pdf_objects: {
+        Args: never
+        Returns: {
+          created_at: string
+          name: string
+        }[]
       }
       materialise_continuation_lessons: {
         Args: {
