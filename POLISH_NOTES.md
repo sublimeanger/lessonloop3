@@ -3041,3 +3041,111 @@ historical `audit_log` rows they wrote.
   - Spot-check a recurring-template child write to confirm `org_id`
     on the child resolves to the same `org_id` the parent template
     carries.
+
+## Track 0.1 Phase 2 — Audit triggers for per-user tables (`profiles`, `user_roles`)
+
+### What was looked at
+
+T01-P0 walk's T01-F2 finding: `profiles` and `user_roles` carry no
+`org_id` (auth-mirror tables — a single user spans multiple orgs) so
+the canonical `log_audit_event_singular` helper from T01-P1 cannot
+apply (audit_log.org_id is NOT NULL). The walk's recommended option
+(a) was custom triggers writing to `platform_audit_log` — same surface
+T05-P1-C6 introduced for events with no tenant attribution. P2 ships
+that pair plus the docs reconciliation that the T01-P1-C3 brief left
+as a placeholder.
+
+### What was found and fixed
+
+- Schemas re-verified before write: `profiles (id UUID PK REFERENCES
+  auth.users(id) ...)` and `user_roles (id, user_id, role app_role,
+  UNIQUE (user_id, role))`. Neither has `org_id`. `app_role` enum
+  exists with values `(owner, admin, teacher, finance, parent)`.
+- `platform_audit_log.severity` CHECK accepts `'info'` and `'warning'`
+  (verified at T05-P1-C6); `action` is free-form text (no CHECK), so
+  no schema change required.
+- No prior trigger on either table — `grep -rn "CREATE TRIGGER.*ON
+  public\.profiles" supabase/migrations/` and the matching `user_roles`
+  variant returned zero hits.
+- New `log_profile_change()` trigger function: writes
+  `action='profile_change'`, `severity='info'` (routine personal-data
+  movement — name/phone/onboarding flag flip).
+- New `log_user_role_change()` trigger function: writes
+  `user_role_grant` (INSERT) / `user_role_revoke` (DELETE) /
+  `user_role_change` (UPDATE) all at `severity='warning'` so privilege
+  movement is filterable via `idx_platform_audit_log_severity_created`.
+  UPDATEs are rare in practice (the `(user_id, role)` UNIQUE means roles
+  get added/removed, not edited) but the path is covered defensively.
+- Both functions are `SECURITY DEFINER`, `search_path TO 'public'`,
+  `REVOKE ALL FROM PUBLIC`, `GRANT EXECUTE TO service_role`. Trigger
+  registrations use `DROP TRIGGER IF EXISTS` / `CREATE TRIGGER` for
+  re-application idempotency. `details` JSONB:
+  `{tg_op, actor_user_id, subject_user_id, before, after}` plus
+  top-level `role` on user_roles for cheap filtering. `subject_user_id`
+  resolves via `COALESCE(NEW.id, OLD.id)` for profiles and
+  `COALESCE(NEW.user_id, OLD.user_id)` for user_roles (DELETE-safe).
+
+### Commits
+
+- `<self>` feat(audit): per-user audit triggers via platform_audit_log (T01-F2 | T01-P2-C1)
+- `<self>` chore(docs): T01-P2 close + per-user audit pattern (T01-P2-C2)
+
+### Files touched
+
+- New: `supabase/migrations/20260506100000_audit_triggers_t01_p2_per_user.sql`
+- Modified: `docs/MIGRATION_CONVENTIONS.md` — per-user-table pattern
+  section now references the canonical function pair
+  (`log_profile_change`, `log_user_role_change`) and the migration
+  file name; the "T01-P2 ships..." placeholder is replaced.
+- Modified: `docs/PLATFORM_AUDIT_LOG.md` — three new emitter rows
+  (`profiles_trigger`, `user_roles_trigger × 3`); new "Recent role
+  changes" operator query.
+- Modified: `LESSONLOOP_PRODUCTION_ROADMAP.md` — Track 0.1 header
+  flipped from `🟡 IN PROGRESS — P1 closed` to `🟡 IN PROGRESS —
+  P1+P2 closed, P3 pending`; explicit P2 closure block added.
+- Modified: `POLISH_NOTES.md` — this section.
+
+### Findings closed
+
+- **T01-F2** — `profiles` and `user_roles` had no audit trail and no
+  obvious destination (audit_log.org_id is NOT NULL). Closed by routing
+  both triggers to `platform_audit_log` per the walk's recommended
+  option (a).
+
+### Findings deferred
+
+- **T01-F3 (C50 entity_type plural → singular)** — T01-P3.
+- **T01-F4 (sensitive-column highlighting)** — out of P2 scope; same
+  disposition as P1 (file for after Track 0.1 closes if Jamie wants the
+  query ergonomics).
+
+### Deviations from brief
+
+- None. Schema/enum/severity-CHECK sanity checks all aligned with the
+  brief's "state you can take on faith" block; no adaptation required.
+
+### Deploy + smoke
+
+- Deploy date: <pending>
+- Smoke test result: <pending>
+  - After Lovable apply, verify both triggers exist via
+    `SELECT trigger_name, event_object_table FROM
+     information_schema.triggers WHERE trigger_name IN
+     ('audit_profile_changes', 'audit_user_role_changes')`.
+  - As service-role: insert a profile (e.g. via signup flow), update
+    `full_name`, then delete (cascade from `auth.users` deletion is
+    fine). Confirm three rows in `platform_audit_log` with
+    `action='profile_change'`, `severity='info'`,
+    `source='profiles_trigger'`, and `details->>'subject_user_id'`
+    matching the user id; `tg_op` reflects each operation.
+  - As service-role: grant a role
+    (`INSERT INTO user_roles (user_id, role) VALUES (...)`), then
+    revoke (`DELETE FROM user_roles WHERE ...`). Confirm two rows in
+    `platform_audit_log` with `action` in
+    (`user_role_grant`, `user_role_revoke`), `severity='warning'`,
+    `source='user_roles_trigger'`, `details->>'role'` populated, and
+    `idx_platform_audit_log_severity_created` covering the query
+    (use `EXPLAIN` on the warning-filter query above).
+  - Spot-check that `details->>'actor_user_id'` is non-null when the
+    operation runs through an authenticated request path (e.g. UI
+    profile-edit) and NULL on direct service-role inserts.

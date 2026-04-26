@@ -143,9 +143,20 @@ Three patterns cover every shape that has come up:
 - **Per-user tables with no `org_id`** (`profiles`, `user_roles`, and
   any future auth-mirror table). Write to `platform_audit_log`, not
   `audit_log` — the cross-org reality matches the platform-event
-  shape T05-P1-C6 introduced. T01-P2 ships the canonical pair of
-  triggers; until then, see `docs/PLATFORM_AUDIT_LOG.md` for the
-  destination schema.
+  shape T05-P1-C6 introduced. The canonical pair of triggers ships in
+  `20260506100000_audit_triggers_t01_p2_per_user.sql` (T01-P2):
+  `public.log_profile_change()` writes
+  `action='profile_change', severity='info'` (routine personal-data
+  movement); `public.log_user_role_change()` writes
+  `action='user_role_grant'|'user_role_revoke'|'user_role_change',
+   severity='warning'` (privilege movement deserves operator
+  visibility). Use these as references when adding a new per-user
+  audit trigger. The `details` JSONB shape is
+  `{tg_op, actor_user_id, subject_user_id, before, after}` plus any
+  table-specific fields (e.g. `role` on `user_roles`); follow that
+  shape so cross-table queries by `subject_user_id` stay clean. See
+  `docs/PLATFORM_AUDIT_LOG.md` for the destination schema and
+  severity ladder.
 - **Child tables whose `org_id` lives only via a parent foreign
   key.** Write a custom trigger function that resolves `org_id` via
   a JOIN against the parent. None of the 16 T01-P1 tables actually
