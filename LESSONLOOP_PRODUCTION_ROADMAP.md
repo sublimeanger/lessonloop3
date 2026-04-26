@@ -114,7 +114,7 @@ This is substantially larger than typical SaaS polish scope. The roadmap below i
 
 These are system-wide concerns that touch multiple areas. They run in parallel with the per-area work and have their own closure criteria.
 
-### Track 0.1 — Audit log completeness 🟡 IN PROGRESS — P1+P2 closed, P3 pending
+### Track 0.1 — Audit log completeness 🟢 CLOSED (2026-04-26) — P1 + P2 + P3 complete
 
 **Problem (discovered 21 April 2026):** 14 of 19 business-critical tables have NO audit trigger. Money-adjacent surfaces (`refunds`, `make_up_credits`, `term_adjustments`, `invoice_installments`, `invoice_items`, `billing_runs`, `rate_cards`, `teacher_profiles`, `profiles`, `guardians`, `lesson_participants`, `student_guardians`, `terms`) leave no trail for out-of-band edits. RPCs manually insert `audit_log` rows but any service-role or RLS-bypass modification goes unrecorded.
 
@@ -122,7 +122,7 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 
 **Why a track, not a journey:** touches every area. Must close before any area can be marked "audit-complete."
 
-**P1 closed (2026-04-26):**
+**P1 closed (2026-04-26 17:50 UTC) ✅:**
 - 16 new audit triggers added across 16 org-scoped tables (12 roadmap-named + 4 walk-surfaced HIGH-tier).
 - New canonical helper `log_audit_event_singular` writes singular `entity_type` from start.
 - Existing 9 plural-writing triggers preserved; T01-P3 normalises.
@@ -131,14 +131,25 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 - Walk doc: `docs/AUDIT_LOG_AUDIT_2026-04-26.md`.
 - PR: `<PR_URL — backfill manually post-merge>`
 
-**P2 closed (2026-04-26):**
+**P2 closed (2026-04-26 ~19:15 UTC) ✅:**
 - `profiles` audit trigger added (user_roles finding from T01-P0 was stale — table dropped 2026-03-15 in `20260315220009_fix_roles_audit_findings.sql:98`; role surface covered by existing `audit_org_memberships` from 2026-01-20, one of the 9 grandfathered triggers T01-P1 preserved). Writes to `platform_audit_log` (no `org_id` available).
 - Action: `profile_change` (info).
 - Migration: `20260506100000_audit_triggers_t01_p2_per_user.sql` (corrected by T01-P2-fix1 before Lovable apply).
 - `docs/MIGRATION_CONVENTIONS.md` per-user-table pattern updated with the canonical function reference; `docs/PLATFORM_AUDIT_LOG.md` emitters table extended.
 - PR: `<PR_URL — backfill manually post-merge>`
 
-**P3 pending (C50 entity_type plural→singular normalisation):** rewrite existing 9 triggers + UPDATE backfill on historical `audit_log` rows + fix ~10 plural call sites in code.
+**P3 closed (Lovable apply: `<DEPLOY_DATE>` UTC) ✅ — entity_type plural→singular normalisation:**
+- 8 grandfathered triggers rewritten to `log_audit_event_singular(<singular>)` (`audit_students`, `audit_lessons`, `audit_invoices`, `audit_payments`, `audit_org_memberships`, `audit_ai_action_proposals`, `audit_teachers_changes`, `audit_internal_messages`).
+- `_notify_streak_milestone` RPC rewritten to write `entity_type = 'practice_streak'`.
+- Historical-row backfill: `action 'create' → 'insert'` (filtered on plural `entity_type` to isolate trigger rows from domain-verb `logAudit('create', ...)` writes), then plural → singular for 11 entity types.
+- 5 edge functions updated (`calendar-disconnect`, `calendar-oauth-callback`, `zoom-oauth-callback`, `xero-disconnect`, `xero-oauth-callback`) to write singular `entity_type`.
+- `src/hooks/useAuditLog.ts` display layer: action label map now accepts both `'insert'` (CRUD trigger) and `'create'` (domain verb) → "Created"; entity label map flipped plural → singular and expanded to ~30 keys covering T01-P1 + T01-P2 + T01-P3 entities.
+- `log_audit_event()` dropped (zero callers post-rewrite). No CHECK constraint added on `audit_log.entity_type` — schema stays open for future entity types (documented decision).
+- Walk doc: `docs/AUDIT_LOG_T01_P3_WALK_2026-04-26.md`.
+- Migration: `20260507100000_audit_t01_p3_entity_type_normalisation.sql`.
+- PR: `<PR_URL — backfill manually post-merge>`
+
+**Track 0.1 closure summary:** All audit-log completeness work landed across three phases — coverage (P1: 16 triggers + canonical singular helper), per-user pattern (P2: `profiles` via `platform_audit_log`), normalisation (P3: 8 grandfathered triggers, RPC, historical backfill, edge fns, frontend display). Money/identity/policy-adjacent surfaces all carry triggers; entity_type and action verb conventions are uniform; conventions documented in `docs/MIGRATION_CONVENTIONS.md`.
 
 ### Track 0.2 — RLS uniformity walk ⚪
 

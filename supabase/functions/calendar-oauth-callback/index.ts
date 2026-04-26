@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
         org_id: stateData.org_id,
         actor_user_id: stateData.user_id,
         action: 'connect',
-        entity_type: 'calendar_connections',
+        entity_type: 'calendar_connection',
         entity_id: null,
         after: { provider: 'google', calendar_name: calendarName },
       });

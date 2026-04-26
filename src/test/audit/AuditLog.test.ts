@@ -17,7 +17,7 @@ function createEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
     actor_user_id: 'user-1',
     actor_name: 'John Smith',
     action: 'create',
-    entity_type: 'students',
+    entity_type: 'student',
     entity_id: 'entity-1',
     before: null,
     after: null,
@@ -72,24 +72,24 @@ describe('LL-AUD-P0-01: Audit Log', () => {
   });
 
   describe('getEntityLabel', () => {
-    it('maps students to Student', () => {
-      expect(getEntityLabel('students')).toBe('Student');
+    it('maps student to Student', () => {
+      expect(getEntityLabel('student')).toBe('Student');
     });
 
-    it('maps lessons to Lesson', () => {
-      expect(getEntityLabel('lessons')).toBe('Lesson');
+    it('maps lesson to Lesson', () => {
+      expect(getEntityLabel('lesson')).toBe('Lesson');
     });
 
-    it('maps invoices to Invoice', () => {
-      expect(getEntityLabel('invoices')).toBe('Invoice');
+    it('maps invoice to Invoice', () => {
+      expect(getEntityLabel('invoice')).toBe('Invoice');
     });
 
-    it('maps payments to Payment', () => {
-      expect(getEntityLabel('payments')).toBe('Payment');
+    it('maps payment to Payment', () => {
+      expect(getEntityLabel('payment')).toBe('Payment');
     });
 
-    it('maps org_memberships to Membership', () => {
-      expect(getEntityLabel('org_memberships')).toBe('Membership');
+    it('maps org_membership to Membership', () => {
+      expect(getEntityLabel('org_membership')).toBe('Membership');
     });
 
     it('returns raw entity type for unknown types', () => {
@@ -101,16 +101,25 @@ describe('LL-AUD-P0-01: Audit Log', () => {
     it('describes student creation with name', () => {
       const entry = createEntry({
         action: 'create',
-        entity_type: 'students',
+        entity_type: 'student',
         after: { first_name: 'Alice', last_name: 'Smith' },
       });
       expect(getChangeDescription(entry)).toBe('Student "Alice Smith" was created');
     });
 
+    it('renders insert action equivalently to create (T01-P3 normalisation)', () => {
+      const insertEntry = createEntry({
+        action: 'insert',
+        entity_type: 'student',
+        after: { first_name: 'Jane', last_name: 'Doe' },
+      });
+      expect(getChangeDescription(insertEntry)).toContain('Student "Jane Doe" was created');
+    });
+
     it('describes lesson creation with title', () => {
       const entry = createEntry({
         action: 'create',
-        entity_type: 'lessons',
+        entity_type: 'lesson',
         after: { title: 'Piano 30min' },
       });
       expect(getChangeDescription(entry)).toBe('Lesson "Piano 30min" was scheduled');
@@ -119,7 +128,7 @@ describe('LL-AUD-P0-01: Audit Log', () => {
     it('describes invoice creation with number', () => {
       const entry = createEntry({
         action: 'create',
-        entity_type: 'invoices',
+        entity_type: 'invoice',
         after: { invoice_number: 'INV-2025-001' },
       });
       expect(getChangeDescription(entry)).toBe('Invoice INV-2025-001 was created');
@@ -128,7 +137,7 @@ describe('LL-AUD-P0-01: Audit Log', () => {
     it('describes payment with formatted amount', () => {
       const entry = createEntry({
         action: 'create',
-        entity_type: 'payments',
+        entity_type: 'payment',
         after: { amount_minor: 5000 },
       });
       expect(getChangeDescription(entry)).toBe('Payment of £50.00 was recorded');
@@ -137,7 +146,7 @@ describe('LL-AUD-P0-01: Audit Log', () => {
     it('describes membership creation with role', () => {
       const entry = createEntry({
         action: 'create',
-        entity_type: 'org_memberships',
+        entity_type: 'org_membership',
         after: { role: 'teacher' },
       });
       expect(getChangeDescription(entry)).toBe('Member was added with role "teacher"');
@@ -146,7 +155,7 @@ describe('LL-AUD-P0-01: Audit Log', () => {
     it('describes invoice status change', () => {
       const entry = createEntry({
         action: 'update',
-        entity_type: 'invoices',
+        entity_type: 'invoice',
         before: { status: 'draft', invoice_number: 'INV-001' },
         after: { status: 'sent', invoice_number: 'INV-001' },
       });
@@ -156,7 +165,7 @@ describe('LL-AUD-P0-01: Audit Log', () => {
     it('describes lesson status change', () => {
       const entry = createEntry({
         action: 'update',
-        entity_type: 'lessons',
+        entity_type: 'lesson',
         before: { status: 'scheduled', title: 'Piano' },
         after: { status: 'completed', title: 'Piano' },
       });
@@ -166,7 +175,7 @@ describe('LL-AUD-P0-01: Audit Log', () => {
     it('describes role change in membership', () => {
       const entry = createEntry({
         action: 'update',
-        entity_type: 'org_memberships',
+        entity_type: 'org_membership',
         before: { role: 'teacher' },
         after: { role: 'admin' },
       });
@@ -176,7 +185,7 @@ describe('LL-AUD-P0-01: Audit Log', () => {
     it('describes student deletion with name', () => {
       const entry = createEntry({
         action: 'delete',
-        entity_type: 'students',
+        entity_type: 'student',
         before: { first_name: 'Bob', last_name: 'Jones' },
       });
       expect(getChangeDescription(entry)).toBe('Student "Bob Jones" was deleted');

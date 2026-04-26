@@ -100,20 +100,58 @@ export function useAuditLog(options: UseAuditLogOptions = {}) {
 
 export function getActionLabel(action: string): string {
   const labels: Record<string, string> = {
-    create: 'Created',
+    // Trigger-emitted CRUD verbs (post-T01-P3 standard, LOWER(TG_OP))
+    insert: 'Created',
     update: 'Updated',
     delete: 'Deleted',
+    // Domain verbs from logAudit() callers — kept distinct from CRUD
+    create: 'Created',
+    cancel: 'Cancelled',
+    reschedule: 'Rescheduled',
+    bulk_cancel: 'Bulk cancelled',
+    bulk_update: 'Bulk updated',
+    warning: 'Warning',
+    invoice_edited: 'Invoice edited',
+    payment_recorded: 'Payment recorded',
   };
   return labels[action] || action;
 }
 
 export function getEntityLabel(entityType: string): string {
   const labels: Record<string, string> = {
-    students: 'Student',
-    lessons: 'Lesson',
-    invoices: 'Invoice',
-    payments: 'Payment',
-    org_memberships: 'Membership',
+    // T01-P3 normalised — all singular
+    student: 'Student',
+    lesson: 'Lesson',
+    invoice: 'Invoice',
+    payment: 'Payment',
+    org_membership: 'Membership',
+    teacher: 'Teacher',
+    internal_message: 'Message',
+    ai_action_proposal: 'AI proposal',
+    attendance_record: 'Attendance',
+    practice_streak: 'Practice streak',
+    calendar_connection: 'Calendar connection',
+    xero_connection: 'Xero connection',
+    // T01-P1 walk-surfaced + parent-tables singular labels
+    refund: 'Refund',
+    make_up_credit: 'Make-up credit',
+    term_adjustment: 'Term adjustment',
+    invoice_installment: 'Invoice installment',
+    invoice_item: 'Invoice item',
+    billing_run: 'Billing run',
+    rate_card: 'Rate card',
+    teacher_profile: 'Teacher profile',
+    guardian: 'Guardian',
+    lesson_participant: 'Lesson participant',
+    student_guardian: 'Student-guardian link',
+    term: 'Term',
+    recurring_invoice_template: 'Recurring template',
+    recurring_template_item: 'Recurring template item',
+    recurring_template_recipient: 'Recurring template recipient',
+    guardian_payment_preference: 'Guardian payment preference',
+    profile: 'Profile',
+    make_up_waitlist: 'Make-up waitlist',
+    continuation_response: 'Continuation response',
   };
   return labels[entityType] || entityType;
 }
@@ -121,39 +159,42 @@ export function getEntityLabel(entityType: string): string {
 export function getChangeDescription(entry: AuditLogEntry): string {
   const entityLabel = getEntityLabel(entry.entity_type);
   const actionLabel = getActionLabel(entry.action).toLowerCase();
-  
-  if (entry.action === 'create' && entry.after) {
-    if (entry.entity_type === 'students') {
+
+  // INSERT path — trigger-emitted CRUD insert. 'create' is also accepted as
+  // a logAudit() domain-verb fallback, since some callers in src/ deliberately
+  // write 'create' to express "user created this" rather than CRUD insert.
+  if ((entry.action === 'insert' || entry.action === 'create') && entry.after) {
+    if (entry.entity_type === 'student') {
       const name = `${entry.after.first_name || ''} ${entry.after.last_name || ''}`.trim();
       return `${entityLabel} "${name}" was created`;
     }
-    if (entry.entity_type === 'lessons') {
+    if (entry.entity_type === 'lesson') {
       return `Lesson "${entry.after.title || 'Untitled'}" was scheduled`;
     }
-    if (entry.entity_type === 'invoices') {
+    if (entry.entity_type === 'invoice') {
       return `Invoice ${entry.after.invoice_number || ''} was created`;
     }
-    if (entry.entity_type === 'payments') {
+    if (entry.entity_type === 'payment') {
       const amount = ((entry.after.amount_minor as number) || 0) / 100;
       return `Payment of £${amount.toFixed(2)} was recorded`;
     }
-    if (entry.entity_type === 'org_memberships') {
+    if (entry.entity_type === 'org_membership') {
       return `Member was added with role "${entry.after.role}"`;
     }
   }
 
   if (entry.action === 'update') {
-    if (entry.entity_type === 'invoices' && entry.before && entry.after) {
+    if (entry.entity_type === 'invoice' && entry.before && entry.after) {
       if (entry.before.status !== entry.after.status) {
         return `Invoice ${entry.after.invoice_number || ''} status changed from "${entry.before.status}" to "${entry.after.status}"`;
       }
     }
-    if (entry.entity_type === 'lessons' && entry.before && entry.after) {
+    if (entry.entity_type === 'lesson' && entry.before && entry.after) {
       if (entry.before.status !== entry.after.status) {
         return `Lesson "${entry.after.title || 'Untitled'}" was ${entry.after.status}`;
       }
     }
-    if (entry.entity_type === 'org_memberships' && entry.before && entry.after) {
+    if (entry.entity_type === 'org_membership' && entry.before && entry.after) {
       if (entry.before.role !== entry.after.role) {
         return `Member role changed from "${entry.before.role}" to "${entry.after.role}"`;
       }
@@ -161,7 +202,7 @@ export function getChangeDescription(entry: AuditLogEntry): string {
   }
 
   if (entry.action === 'delete') {
-    if (entry.entity_type === 'students' && entry.before) {
+    if (entry.entity_type === 'student' && entry.before) {
       const name = `${entry.before.first_name || ''} ${entry.before.last_name || ''}`.trim();
       return `${entityLabel} "${name}" was deleted`;
     }

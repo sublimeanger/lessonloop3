@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
         org_id,
         actor_user_id: user.id,
         action: 'disconnect',
-        entity_type: 'xero_connections',
+        entity_type: 'xero_connection',
         entity_id: null,
         after: null,
       });
