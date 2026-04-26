@@ -140,23 +140,25 @@ Three patterns cover every shape that has come up:
   `20260505100000_audit_triggers_t01_p1_parent_tables.sql`. Pass the
   singular entity type as `TG_ARGV[0]`. This is the default; 16 of
   the 16 T01-P1 tables use it.
-- **Per-user tables with no `org_id`** (`profiles`, `user_roles`, and
-  any future auth-mirror table). Write to `platform_audit_log`, not
-  `audit_log` — the cross-org reality matches the platform-event
-  shape T05-P1-C6 introduced. The canonical pair of triggers ships in
+- **Per-user tables with no `org_id`** (`profiles`, and any future
+  auth-mirror table). Write to `platform_audit_log`, not `audit_log` —
+  the cross-org reality matches the platform-event shape T05-P1-C6
+  introduced. The canonical trigger ships in
   `20260506100000_audit_triggers_t01_p2_per_user.sql` (T01-P2):
   `public.log_profile_change()` writes
   `action='profile_change', severity='info'` (routine personal-data
-  movement); `public.log_user_role_change()` writes
-  `action='user_role_grant'|'user_role_revoke'|'user_role_change',
-   severity='warning'` (privilege movement deserves operator
-  visibility). Use these as references when adding a new per-user
-  audit trigger. The `details` JSONB shape is
+  movement). Use it as the reference when adding a new per-user audit
+  trigger. The `details` JSONB shape is
   `{tg_op, actor_user_id, subject_user_id, before, after}` plus any
-  table-specific fields (e.g. `role` on `user_roles`); follow that
-  shape so cross-table queries by `subject_user_id` stay clean. See
-  `docs/PLATFORM_AUDIT_LOG.md` for the destination schema and
-  severity ladder.
+  table-specific fields; follow that shape so cross-table queries by
+  `subject_user_id` stay clean. See `docs/PLATFORM_AUDIT_LOG.md` for
+  the destination schema and severity ladder. Note: future per-user
+  tables that genuinely lack `org_id` would follow this pattern; today
+  `profiles` is the only such table. The legacy `user_roles` table was
+  dropped on 15 March 2026 (`20260315220009_fix_roles_audit_findings.sql:98`)
+  and the role surface now lives on `org_memberships`, which is
+  audit-covered by the existing `audit_org_memberships` trigger (org-scoped,
+  not per-user).
 - **Child tables whose `org_id` lives only via a parent foreign
   key.** Write a custom trigger function that resolves `org_id` via
   a JOIN against the parent. None of the 16 T01-P1 tables actually
