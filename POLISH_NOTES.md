@@ -2914,3 +2914,32 @@ None.
     `severity='warning'`, `source='send-payment-receipt'`,
     and `details->>'payment_id'` matching.
   - Restore the file.
+
+## Track 0.6 — Cron schedule reconciliation — 🟢 CLOSED 2026-04-26
+
+Single-phase closure on doc-hygiene grounds. T08-P1 already fixed every
+deviation Track 0.6 flagged on 24 April; T06-P0 walk verified, T06-P1
+closes the roadmap.
+
+### T06-P0 — Audit walk (2026-04-26)
+
+- `664f28e3` chore(forensics): Track 0.6 cron audit walk (T06-P0)
+- Walk doc: `docs/CRON_AUDIT_2026-04-26.md` (498 lines)
+- Findings filed: T06-F1, T06-F2, T06-F3, T06-F4
+
+### T06-P1 — Roadmap closure (2026-04-26)
+
+- `<self>` chore(docs): Track 0.6 closure (T06-P1)
+- Backfill data captured:
+  - Q1 auto-pay arrears: 0 missed_charges
+  - Q2 spendable-but-expired credits: 0
+  - Q2b redeemed-after-expiry: 0
+- Production cron state verified: 17 crons (15 documented HTTP +
+  2 SQL-only), all schedules match `docs/CRON_JOBS.md`.
+
+### Findings ledger
+
+- T06-F1 closed (T06-P1).
+- T06-F2 closed by data — no work required.
+- T06-F3 no-op — T08-P1 schedules ratified; no follow-up.
+- T06-F4 = T08-F5; tracked under Track 0.8 Phase 2.
