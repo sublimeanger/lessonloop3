@@ -78,7 +78,7 @@ interface OrgRow {
   bank_account_number: string | null;
   bank_reference_prefix: string | null;
   logo_url: string | null;
-  brand_primary_color: string | null;
+  brand_color: string | null;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────
@@ -196,14 +196,14 @@ export async function buildInvoiceEmailHtml(args: {
 
   const { data: orgData } = await supabaseService
     .from("organisations")
-    .select("name, online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix, logo_url, brand_primary_color")
+    .select("name, online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix, logo_url, brand_color")
     .eq("id", invoice.org_id)
     .single();
   const org = orgData as OrgRow | null;
 
   const orgName = org?.name || "Your Academy";
   const onlinePaymentsEnabled = org?.online_payments_enabled !== false;
-  const brandColor = org?.brand_primary_color || "#2563eb";
+  const brandColor = org?.brand_color || "#2563eb";
   const logoUrl = org?.logo_url || null;
   const hasBankDetails = !!(org?.bank_account_name && org?.bank_sort_code && org?.bank_account_number);
   const bankRef = org?.bank_reference_prefix
