@@ -59,9 +59,12 @@ notice if it happens often.
 |---------------------|---------------------------|-----------|------------------------------------------------------------------|
 | `stripe-webhook`    | `webhook_stale_recovery`  | `warning` | Stripe webhook event row in flight > 90s; orphan deleted + re-claimed. See [docs/WEBHOOK_DEDUP.md](WEBHOOK_DEDUP.md). |
 | `profiles_trigger`  | `profile_change`          | `info`    | Per-row INSERT/UPDATE/DELETE on `public.profiles`. T01-P2 — see [docs/MIGRATION_CONVENTIONS.md](MIGRATION_CONVENTIONS.md). |
-| `user_roles_trigger`| `user_role_grant`         | `warning` | INSERT on `public.user_roles` — privilege grant. T01-P2.         |
-| `user_roles_trigger`| `user_role_revoke`        | `warning` | DELETE on `public.user_roles` — privilege revoke. T01-P2.        |
-| `user_roles_trigger`| `user_role_change`        | `warning` | UPDATE on `public.user_roles` — defensive; `(user_id, role)` is `UNIQUE` so updates are rare. T01-P2. |
+
+Role-change auditing lives on the org-scoped `audit_log` surface via
+the `audit_org_memberships` trigger (created 2026-01-20, one of the 9
+grandfathered triggers preserved by T01-P1; T01-P3 normalises it to the
+singular pattern). The legacy `user_roles` table was dropped on
+15 March 2026; the role surface is now `org_memberships`.
 
 ## Future emitters (planned)
 
@@ -111,19 +114,24 @@ Backed by the partial index — fast even as the table grows.
 
 ### Recent role changes (privilege-movement filter)
 
+Role grants/revokes/changes are audited on the org-scoped `audit_log`
+table via `audit_org_memberships` (the role surface is `org_memberships`,
+not `platform_audit_log`). Query against `audit_log` instead:
+
 ```sql
 SELECT created_at,
        action,
-       details->>'subject_user_id' AS user_id,
-       details->>'role'            AS role,
-       details->>'actor_user_id'   AS actor
-FROM platform_audit_log
-WHERE action IN ('user_role_grant', 'user_role_revoke', 'user_role_change')
+       entity_id,
+       new_data->>'role' AS role,
+       actor_user_id
+FROM audit_log
+WHERE entity_type IN ('org_memberships', 'org_membership')
 ORDER BY created_at DESC
 LIMIT 50;
 ```
 
-Backed by `idx_platform_audit_log_severity_created` (severity = `warning`).
+The `entity_type IN (..., 'org_membership')` covers the post-T01-P3
+singular form alongside the current plural form.
 
 ### Volume by action, last 30 days
 

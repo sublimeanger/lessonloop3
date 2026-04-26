@@ -28,6 +28,35 @@ The work to close Track 0.1 is concrete:
 This is one to two phases of work. Sized after operator answers two
 design questions below.
 
+## Correction (2026-04-26, post-T01-P1 deploy)
+
+The walk's identification of `user_roles` as a critical-class missing
+audit table was **stale**. The `user_roles` table was dropped on
+15 March 2026 in `supabase/migrations/20260315220009_fix_roles_audit_findings.sql:98`
+as part of the role-surface consolidation onto `org_memberships`.
+
+The role surface is fully audit-covered: `audit_org_memberships`
+(from `supabase/migrations/20260120002039_5a489cca`) captures all role
+grants/revokes/changes via the older `log_audit_event` helper.
+T01-P3 will migrate this trigger to the singular-entity_type pattern
+alongside the other 8 plural-writing triggers.
+
+**T01-P2 scope therefore covers only `profiles`** — the only per-user
+table that exists today and has no audit trigger. The user_roles-related
+findings (T01-F2 second-half) and OQ design questions in this doc are
+moot.
+
+**On Lovable's secondary concern that `org_memberships` was missed by T01-P1:**
+not a gap. `audit_org_memberships` (created 2026-01-20 in
+`20260120002039_5a489cca`, never dropped) is one of the 9 grandfathered
+audit triggers T01-P1 deliberately preserved. Per T01-P1's contract
+("DO NOT modify the existing 9 audit triggers... T01-P3 normalises them"),
+it stays as-is until T01-P3 migrates all 9 to the singular pattern in
+lockstep with the audit_log historical UPDATE.
+
+The remainder of the walk doc is preserved unchanged for historical
+reference.
+
 ## Current audit-trigger coverage
 
 ### Tables WITH audit triggers (verified in main, 9 total)

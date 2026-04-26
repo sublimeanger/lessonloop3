@@ -3149,3 +3149,49 @@ as a placeholder.
   - Spot-check that `details->>'actor_user_id'` is non-null when the
     operation runs through an authenticated request path (e.g. UI
     profile-edit) and NULL on direct service-role inserts.
+
+### Correction (2026-04-26, T01-P2-fix1)
+
+Lovable paused before applying the T01-P2 migration and flagged that
+`user_roles` does not exist. Verified: the table was dropped on
+15 March 2026 in
+`supabase/migrations/20260315220009_fix_roles_audit_findings.sql:98`
+as part of the role-surface consolidation onto `org_memberships`. The
+T01-P0 walk's `user_roles` finding (T01-F2 second-half) was stale — it
+predated the consolidation. Role-change audit coverage is unchanged
+because `audit_org_memberships` (created 2026-01-20 in
+`20260120002039_5a489cca`, never dropped) already captures all role
+mutations on the canonical role surface; it is one of the 9
+grandfathered triggers T01-P1 deliberately preserved per its contract,
+and T01-P3 migrates it to the singular pattern alongside the others.
+
+Lovable also asked whether `org_memberships` was missed by T01-P1.
+Verified not a gap, for the same reason: `audit_org_memberships` is
+one of the 9 grandfathered triggers explicitly excluded from T01-P1
+("DO NOT modify the existing 9 audit triggers... T01-P3 normalises them").
+
+Corrective changes (single commit, T01-P2-fix1):
+
+- `supabase/migrations/20260506100000_audit_triggers_t01_p2_per_user.sql`:
+  removed the `log_user_role_change` function and the
+  `audit_user_role_changes` trigger; preamble rewritten to document the
+  staleness explicitly. Migration now covers `profiles` only (~50 lines,
+  down from ~110). The merged migration had not yet been applied to the
+  live DB — Lovable paused before apply — so the corrected file is what
+  actually lands.
+- `docs/AUDIT_LOG_AUDIT_2026-04-26.md`: correction notice added at the
+  top covering both the user_roles staleness and the org_memberships
+  not-a-gap clarification. Body of the walk preserved for historical
+  reference.
+- `LESSONLOOP_PRODUCTION_ROADMAP.md`: Track 0.1 P2 closure block
+  rewritten — only `profiles` is in scope; user_roles findings called
+  out as stale.
+- `docs/MIGRATION_CONVENTIONS.md`: per-user-pattern section drops
+  user_roles examples; profiles is the canonical example with a note
+  that future per-user tables would follow the same pattern.
+- `docs/PLATFORM_AUDIT_LOG.md`: emitter table drops the three
+  `user_roles_trigger` rows; "Recent role changes" operator query
+  repointed at `audit_log` for the `org_membership` entity_type (the
+  canonical surface).
+- `POLISH_NOTES.md`: this Correction subsection appended; original
+  ledger above preserved unchanged.

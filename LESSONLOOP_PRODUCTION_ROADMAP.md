@@ -132,10 +132,10 @@ These are system-wide concerns that touch multiple areas. They run in parallel w
 - PR: `<PR_URL — backfill manually post-merge>`
 
 **P2 closed (2026-04-26):**
-- `profiles` + `user_roles` audit triggers added; both write to `platform_audit_log` (no `org_id` available).
-- Actions: `profile_change` (info), `user_role_grant` / `user_role_revoke` / `user_role_change` (warning).
-- Migration: `20260506100000_audit_triggers_t01_p2_per_user.sql`.
-- `docs/MIGRATION_CONVENTIONS.md` per-user-table pattern updated with the canonical function references; `docs/PLATFORM_AUDIT_LOG.md` emitters table extended.
+- `profiles` audit trigger added (user_roles finding from T01-P0 was stale — table dropped 2026-03-15 in `20260315220009_fix_roles_audit_findings.sql:98`; role surface covered by existing `audit_org_memberships` from 2026-01-20, one of the 9 grandfathered triggers T01-P1 preserved). Writes to `platform_audit_log` (no `org_id` available).
+- Action: `profile_change` (info).
+- Migration: `20260506100000_audit_triggers_t01_p2_per_user.sql` (corrected by T01-P2-fix1 before Lovable apply).
+- `docs/MIGRATION_CONVENTIONS.md` per-user-table pattern updated with the canonical function reference; `docs/PLATFORM_AUDIT_LOG.md` emitters table extended.
 - PR: `<PR_URL — backfill manually post-merge>`
 
 **P3 pending (C50 entity_type plural→singular normalisation):** rewrite existing 9 triggers + UPDATE backfill on historical `audit_log` rows + fix ~10 plural call sites in code.
