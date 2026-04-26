@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
+import { fetchInvoicePdfAttachment } from "../_shared/invoice-pdf-attachment.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
@@ -282,18 +283,50 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // ── PDF attachment (best-effort) ─────────────────────────────────
+    // Attach the latest canonical invoice PDF. The renderer paints the
+    // PAID watermark automatically when invoice.status === 'paid'; for
+    // partial payments it shows the running paid/remaining totals. If
+    // PDF generation fails, fall back to HTML-only and log to
+    // platform_audit_log for operator follow-up.
+    const attachment = await fetchInvoicePdfAttachment(
+      supabaseUrl,
+      supabaseServiceKey,
+      invoiceId,
+      invoice.invoice_number,
+    );
+
+    if (!attachment) {
+      await supabase.from("platform_audit_log").insert({
+        action: "payment_receipt_pdf_fallback",
+        source: "send-payment-receipt",
+        severity: "warning",
+        details: {
+          payment_id: paymentId,
+          invoice_id: invoiceId,
+          invoice_number: invoice.invoice_number,
+          org_id: orgId,
+        },
+      });
+    }
+
+    const resendPayload: Record<string, unknown> = {
+      from: `${sanitiseFromName(org.name)} <billing@lessonloop.net>`,
+      to: [recipientEmail],
+      subject,
+      html: htmlContent,
+    };
+    if (attachment) {
+      resendPayload.attachments = [attachment];
+    }
+
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${resendApiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from: `${sanitiseFromName(org.name)} <billing@lessonloop.net>`,
-        to: [recipientEmail],
-        subject,
-        html: htmlContent,
-      }),
+      body: JSON.stringify(resendPayload),
     });
 
     const result = await response.json();
