@@ -168,13 +168,29 @@ Three patterns cover every shape that has come up:
 
 ### `entity_type` is singular
 
-New triggers MUST write singular (`'invoice'`, not `'invoices'`).
-The canonical helper takes the type via `TG_ARGV[0]` so the singular
-form is explicit at trigger creation rather than derived from
-`TG_TABLE_NAME` (which is plural). The 9 existing triggers using the
-older `log_audit_event` helper write plural; T01-P3 normalises them
-alongside a backfill UPDATE on historical `audit_log` rows. New code
-in the meantime stays singular.
+New triggers MUST write singular (`'invoice'`, not `'invoices'`),
+`snake_case` (`'org_membership'`, not `'orgMembership'`), and matching
+the table's logical entity name rather than the table name (`teachers`
+table → entity_type `'teacher'`; `org_memberships` table → entity_type
+`'org_membership'`). The canonical helper takes the type via
+`TG_ARGV[0]` so the singular form is explicit at trigger creation
+rather than derived from `TG_TABLE_NAME` (which is plural).
+
+T01-P3 (May 2026) normalised the 8 grandfathered triggers that wrote
+plural via the older `log_audit_event` helper to use
+`log_audit_event_singular(<singular>)`, and ran a backfill UPDATE on
+historical `audit_log` rows (plural → singular for 11 entity types,
+`action 'create' → 'insert'` filtered on the pre-backfill plural
+entity_type). The older `log_audit_event` helper was dropped at the
+same time (zero callers post-rewrite).
+
+`audit_attendance_changes()` is a third custom helper preserved for
+historical reasons — it uses singular `entity_type = 'attendance_record'`
+already, so it was not in scope for T01-P3 normalisation. New tables
+should not use it; use `log_audit_event_singular` for org-scoped tables.
+
+No CHECK constraint exists on `audit_log.entity_type`. Schema stays
+open for future entity types — documented decision per T01-P3.
 
 ### DELETE-safety and action verb
 
@@ -183,9 +199,24 @@ Always:
 - `COALESCE(NEW.org_id, OLD.org_id)` for `org_id`.
 - `COALESCE(NEW.id, OLD.id)` for `entity_id`.
 - `LOWER(TG_OP)` for `action` — yields `'insert'` / `'update'` /
-  `'delete'`. Do NOT write `'create'`; the older `log_audit_event`
-  emits `'create'` on insert and that's another T01-P3 normalisation.
+  `'delete'`.
 - Return `OLD` on `TG_OP = 'DELETE'`, `NEW` otherwise.
+
+Two action-verb namespaces coexist intentionally:
+
+- **CRUD-trigger writes** use `LOWER(TG_OP)`: `'insert'` / `'update'` /
+  `'delete'`. This is what `log_audit_event_singular` and `log_profile_change`
+  emit.
+- **Domain-event writes** from `logAudit()` callers in `src/` and from
+  SECURITY DEFINER RPCs in migrations use rich domain verbs (e.g.
+  `'cancel'`, `'reschedule'`, `'streak_milestone'`, `'invoice_edited'`,
+  `'payment_recorded'`). Several `logAudit` callers deliberately write
+  `'create'` as a domain verb meaning "user created this", distinct
+  from CRUD `'insert'`. Both are valid and should not be conflated.
+
+The frontend display layer (`src/hooks/useAuditLog.ts`) maps both
+`'insert'` and `'create'` to the "Created" label so domain-verb writes
+render consistently next to trigger-emitted CRUD events.
 
 ### Idempotency
 

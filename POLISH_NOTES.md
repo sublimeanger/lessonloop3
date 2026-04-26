@@ -3195,3 +3195,39 @@ Corrective changes (single commit, T01-P2-fix1):
   canonical surface).
 - `POLISH_NOTES.md`: this Correction subsection appended; original
   ledger above preserved unchanged.
+
+### T01-P3-C1 (commit cb55101) — schema migration
+- Migration: 20260507100000_audit_t01_p3_entity_type_normalisation.sql
+- 8 trigger DROPs + CREATEs to log_audit_event_singular(<singular>).
+- 1 RPC rewrite: _notify_streak_milestone with entity_type 'practice_streak'.
+- 2 backfill statement blocks (action 'create' → 'insert' filtered on plural
+  entity_type; then plural → singular for 11 entity types).
+- DROP FUNCTION public.log_audit_event() — zero callers post-rewrite.
+- Lovable apply: <DATETIME> UTC.
+- PR: <PR_URL>
+- Self: claude/t01-p3-entity-type-normalisation
+
+### T01-P3-C2 (commit d0ea74b) — edge fns + frontend display
+- 5 edge fns: calendar-disconnect, calendar-oauth-callback, zoom-oauth-callback,
+  xero-disconnect, xero-oauth-callback. Single literal swap each.
+- src/hooks/useAuditLog.ts: action label map adds 'insert' alongside 'create'
+  (both render "Created"); entity label map flipped plural → singular and
+  expanded to cover all T01-P1 + T01-P2 + T01-P3 entities (~30 keys).
+- getChangeDescription accepts both 'insert' and 'create' for the create path.
+- Test fixtures updated: 15 plural references → singular; 1 new test for 'insert'
+  action equivalence. 26/26 tests pass; npm run typecheck clean.
+- Lovable redeploys edge fns: <DATETIME> UTC.
+- PR: <PR_URL>
+- Self: claude/t01-p3-entity-type-normalisation
+
+### T01-P3-C3 (commit <SHA>) — docs close + Track 0.1 closure
+- docs/AUDIT_LOG_T01_P3_WALK_2026-04-26.md created from chat-Claude's walk doc.
+- LESSONLOOP_PRODUCTION_ROADMAP.md: Track 0.1 closed (P1+P2+P3 all ✅).
+- docs/MIGRATION_CONVENTIONS.md: existing "Audit triggers" section updated
+  in place to reflect post-T01-P3 state — added action-verb dual-namespace
+  explanation (CRUD insert vs domain-verb create), audit_attendance_changes
+  noted as third historical helper, T01-P3 references moved to past tense.
+  (Brief specified appending a new section; appended in place would have
+  created a duplicate H2 — surfaced and adjusted.)
+- PR: <PR_URL>
+- Self: claude/t01-p3-entity-type-normalisation
