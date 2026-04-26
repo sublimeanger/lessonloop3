@@ -310,19 +310,21 @@ J9 now fully closed: schema, generator, scheduler, alerts, manual run, retry, vo
 
 **Why extracted:** J3-F5 filed this as "PDF attachment on invoice emails". J4 walk confirmed the PDF itself is client-only, which means (a) no email attachment possible today, (b) any improvement has to move the renderer server-side first. One journey, not a patch.
 
-**Phase 1 — Foundation (closed).** Five commits. No consumer wiring.
+**Phase 1 — Foundation (closed).** Seven commits. No consumer wiring.
 
 - `supabase/migrations/20260504100000_invoice_pdfs_storage.sql` adds the `invoice-pdfs` storage bucket (private, 10MB cap, service-role-only RLS), an `invoices.pdf_rev` counter, and four triggers that increment it on PDF-affecting mutations: direct `invoices` columns, `invoice_items`, `invoice_installments`, and `payments` (the last because the rendered PDF includes a Paid / Amount Due block summing the payments table — `useInvoicePdf.ts:471-488`).
 - `supabase/functions/_shared/invoice-pdf.ts` + `src/lib/invoice-pdf-renderer.ts` lift the pure renderer from `useInvoicePdf.ts:222-665` into two mirrored files (Deno + browser). Bodies are byte-identical except for the jsPDF import. Browser-only deps removed: `HTMLImageElement` → `logoDataUrl: string | null`; `parseISO` → `new Date()`; `formatDateUK` inlined using UTC components for cross-runtime byte-equivalence.
 - `supabase/functions/generate-invoice-pdf/index.ts` is a service-role edge fn that fetches the invoice + relations, renders via the shared module, caches to `{org_id}/{invoice_id}_{pdf_rev}.pdf`, audits, and returns either a 7-day signed URL or inline base64. 32KB chunked base64 encoding to avoid `apply()` stack overflow on PDFs >100KB.
 - Drive-by: three edge functions (`_shared/send-invoice-email-core.ts`, `overdue-reminders/index.ts`, `send-lesson-reminders/index.ts`) selected and read `organisations.brand_primary_color`, but the column was renamed to `brand_color` in the database. Branded headers were silently falling back to the LessonLoop default `#2563eb`. Renamed all references (J11-F1 closed in C4).
 - `docs/INVOICE_PDF.md` documents the architecture, cache invalidation, edge fn contract, caller patterns (P2 invoice attachment + P2 portal download + P3 receipt attachment), audit shape, and operator queries.
+- C6: switched the Deno-side jsPDF import from `https://esm.sh/jspdf@4` (which started returning 503s) to Deno's native `npm:jspdf@4.1.0` specifier. Pulls directly from the npm registry; matches the `^4.1.0` already pinned in `package.json`. chat-Claude verified the import + render in Deno 2.7.13 before the switch.
+- C7: `supabase/functions/cleanup-invoice-pdf-orphans/index.ts` + `supabase/migrations/20260504100100_invoice_pdf_orphan_cron.sql` register the daily orphan sweep at 03:45 UTC. Deletes any cached PDF whose embedded `rev` is below the parent invoice's current `pdf_rev`, plus every cached PDF for invoices that have been deleted entirely. Self-audits each sweep into `platform_audit_log`. Closes J11-F2.
 
 **Phase 2 (planned).** Refactor `useInvoicePdf.ts` to consume `src/lib/invoice-pdf-renderer.ts` (eliminate the third copy of the layout). Wire `send-invoice-email-core.ts` to fetch via `generate-invoice-pdf` with `return_bytes: true` and attach to Resend. Optionally add a parent-portal download surface that redirects to the signed URL.
 
 **Phase 3 (planned).** Wire `send-payment-receipt` to attach the same PDF.
 
-**Filed for later:** **J11-F2 — bucket retention.** `{org_id}/{invoice_id}_<old_rev>.pdf` objects accumulate when `pdf_rev` increments. A cron sweep mirrored on `cleanup-webhook-retention` would purge superseded objects.
+**Findings closed in P1:** J11-F1 (brand_primary_color rename, C4), J11-F2 (orphan cache sweep, C7).
 
 ### Filed for Area 1
 

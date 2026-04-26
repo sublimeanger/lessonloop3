@@ -2401,3 +2401,157 @@ Closes J11-F1.
     teacher-side download for the same invoice — they must look
     byte-equivalent (UTC date format, identical layout, same
     branding).
+
+### Pre-merge patch — C6 + C7 (revised total: 7 commits, not 5)
+
+The original P1 review surfaced two issues that needed to land before
+merge: a CDN failure (esm.sh 503) blocking the Deno-side renderer
+build, and the J11-F2 orphan-accumulation finding that was filed but
+left for "later". Both are addressed below; P1 closes at 7 commits.
+
+#### C6 — fix(pdf): switch jsPDF import to npm: specifier (J11-P1-C6) — `3b43246`
+
+`supabase/functions/_shared/invoice-pdf.ts`. Single-line import
+change plus preamble update:
+
+- Old: `import { jsPDF } from "https://esm.sh/jspdf@4";`
+- New: `import { jsPDF } from "npm:jspdf@4.1.0";`
+
+esm.sh started returning 503 for the jspdf URL. Deno 2 has native
+npm: specifier support that pulls directly from the npm registry —
+no CDN fragility, no node_modules required. Pinned to `4.1.0` to
+match `package.json`'s `^4.1.0`. chat-Claude verified end-to-end in
+Deno 2.7.13 before the switch: the import resolves cleanly, a
+trivial `new jsPDF().output('arraybuffer')` produces ~4KB output
+with valid `%PDF` magic bytes, and branded shapes (`roundedRect`,
+`setFillColor`, `addImage`) render correctly.
+
+The browser mirror (`src/lib/invoice-pdf-renderer.ts`) is unchanged
+and continues to import from the `jspdf` npm package via Vite. The
+preamble in the Deno file now makes the one allowed difference
+explicit: `Deno: npm:jspdf@4.1.0; Browser: jspdf`.
+
+#### C7 — feat(retention): cleanup-invoice-pdf-orphans daily cron (J11-F2 | J11-P1-C7)
+
+Closes the J11-F2 finding filed in C5 ("superseded cache objects
+accumulate forever"). Two files:
+
+- `supabase/functions/cleanup-invoice-pdf-orphans/index.ts` — Pattern
+  C cron edge fn. Lists every object in the `invoice-pdfs` bucket,
+  parses the `{org_id}/{invoice_id}_{rev}.pdf` path scheme, batches
+  a lookup of `invoices.pdf_rev` for the union of invoice ids, and
+  deletes any cached object whose embedded rev is below the current
+  `pdf_rev` (or every cached object for an invoice whose row no
+  longer exists). Deletes are chunked at 100 per Storage `remove()`
+  call. Self-audits each sweep into `platform_audit_log` with
+  `action='invoice_pdf_orphan_sweep'` (severity `info` — counts in
+  `details` for ops visibility) or
+  `'invoice_pdf_orphan_sweep_failed'` (severity `error`) on the
+  failure path. Mirrors the `cleanup-webhook-retention` shape from
+  T05-P2-C2.
+- `supabase/migrations/20260504100100_invoice_pdf_orphan_cron.sql` —
+  defines the `public.list_invoice_pdf_objects()` RPC (SECURITY
+  DEFINER, search_path pinned to `public, storage`, REVOKE ALL +
+  GRANT EXECUTE TO service_role) and registers
+  `invoice-pdf-orphan-sweep-daily` at `45 3 * * *` UTC via the
+  canonical Pattern C `DO $$ unschedule ... END $$;` then
+  `cron.schedule(...)` template.
+
+Storage enumeration strategy: PostgREST does not expose the
+`storage` schema by default, so a direct
+`supabase.from('storage.objects').select(...)` call fails fast.
+The edge fn tries it anyway as the primary path and falls through
+to the RPC on the expected error. Both paths converge into the
+same in-memory list. The 20000-object cap on the RPC matches the
+edge fn's batch ceiling.
+
+Slot reasoning: 03:45 UTC sits between the existing 03:30
+`webhook-retention-daily` and 04:00 `recurring-billing-scheduler-
+daily`, sharing no minute slot with another cron. Verified in
+`docs/CRON_JOBS.md` before registration.
+
+Doc updates included in the same commit:
+
+- `docs/CRON_JOBS.md` — new entry #4 for `invoice-pdf-orphan-sweep-
+  daily`; entries 5-15 renumbered. Preamble now references the new
+  migration alongside the standardisation + webhook-retention
+  registrations.
+- `docs/INVOICE_PDF.md` — new "Cache hygiene" section describing
+  the sweep (what it deletes, what it always preserves, the
+  self-audit shape, the operator query, and the RPC strategy). The
+  former "Future" follow-up bullet pointing at this work is
+  removed since the work is now done.
+- `LESSONLOOP_PRODUCTION_ROADMAP.md` — Journey 11 entry updated to
+  "Seven commits" with C6 + C7 summaries appended; `Findings closed
+  in P1` line replaces the old `Filed for later` line.
+- `POLISH_NOTES.md` — this section.
+
+### Findings closed (patch)
+
+- **J11-F2** — superseded objects in the `invoice-pdfs` bucket
+  accumulate when `pdf_rev` increments. **Resolved** by C7 (daily
+  03:45 UTC sweep; the live current-rev object for every invoice is
+  always preserved).
+
+### Findings filed (patch)
+
+None.
+
+### Deviations from brief (patch)
+
+- Brief showed `await validateCronAuth(req)` in the edge fn skeleton.
+  Walk on `_shared/cron-auth.ts` confirmed the actual signature is
+  synchronous: `(req: Request) => Response | null`. Used the
+  canonical sync usage from `cleanup-webhook-retention/index.ts`
+  (`const cronAuthError = validateCronAuth(req); if (cronAuthError)
+  return cronAuthError;`). Behaviour is unchanged.
+- Brief's edge fn skeleton included a leading `for` loop that called
+  the storage `list("")` API and then `break`-ed unconditionally,
+  with a comment explaining the per-folder list strategy was
+  inefficient. That loop was effectively dead code (never reaches
+  the second iteration; the result is discarded). Removed the loop;
+  the direct `from('storage.objects')` query + RPC fallback are
+  the only two paths, which is what the brief actually intended.
+  The two-path safety net (direct query → RPC) is preserved.
+- Brief had `severity: deleted > 0 ? "info" : "info"` (both branches
+  yield "info" — appears to be a placeholder for future tuning).
+  Simplified to `severity: "info"` with no ternary.
+- Deno still not installed in this environment, so neither C6's
+  import switch nor C7's edge fn was exercised end-to-end.
+  Hand-validated structure against `cleanup-webhook-retention/
+  index.ts`. The Lovable apply pipeline + the smoke test in the
+  deploy block below will catch any runtime issues.
+
+### Walk observations not in brief (patch)
+
+None.
+
+### Deploy + smoke (patch — superseding the C5 placeholders)
+
+- Deploy date: <pending>
+- Smoke test result: <pending>
+  - **C6 / C3 verification:** after Lovable apply, service-role-
+    invoke `generate-invoice-pdf` against any non-void invoice and
+    confirm a 200 with `cached: false` (cache miss path), a row in
+    `audit_log` with `action='pdf_generated_server'`, and a fresh
+    object in `storage.objects` with `bucket_id='invoice-pdfs'` and
+    a non-zero size. The successful render proves the
+    `npm:jspdf@4.1.0` import resolved.
+  - **C7 cron registration:** `SELECT jobname, schedule FROM
+    cron.job WHERE jobname = 'invoice-pdf-orphan-sweep-daily';` —
+    expect one row with schedule `45 3 * * *`.
+  - **C7 RPC + sweep:** manually `SELECT * FROM public.list_invoice_
+    pdf_objects() LIMIT 5;` as service-role to confirm the RPC
+    works and returns rows. Then manually invoke the edge fn (with
+    `x-cron-secret` header populated from
+    `vault.decrypted_secrets`) and confirm a 200 plus a row in
+    `platform_audit_log` with `action='invoice_pdf_orphan_sweep'`,
+    `severity='info'`, and counts in `details`. On a fresh
+    deployment with no orphans yet, expect
+    `orphans_identified: 0`.
+  - **C7 orphan delete (after at least one invoice mutation):**
+    bump `pdf_rev` on a real invoice (e.g. add a line item),
+    re-render via `generate-invoice-pdf` to write the new-rev
+    object, then manually invoke the orphan sweep and confirm
+    `orphans_deleted >= 1`. The `_<old_rev>.pdf` object should be
+    gone from storage; the `_<new_rev>.pdf` object should remain.

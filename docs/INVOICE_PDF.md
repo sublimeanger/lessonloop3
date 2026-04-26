@@ -189,13 +189,56 @@ UPDATE invoices SET pdf_rev = pdf_rev + 1 WHERE id = '<uuid>';
 The next call to `generate-invoice-pdf` will miss the cache and
 re-render.
 
+## Cache hygiene
+
+Every time `pdf_rev` increments, the next render writes a new object
+at `{org_id}/{invoice_id}_{new_rev}.pdf`. The previous object at
+`_{old_rev}.pdf` is never overwritten (different key), so without a
+sweep it would persist forever.
+
+`cleanup-invoice-pdf-orphans` is the daily sweep that handles this.
+Schedule: `45 3 * * *` (3:45 AM UTC) — registered in
+`supabase/migrations/20260504100100_invoice_pdf_orphan_cron.sql`.
+
+What it deletes:
+
+- Any cached object whose embedded `rev` is **below** the parent
+  invoice's current `pdf_rev`.
+- Every cached object for an invoice that has been deleted
+  entirely (no row in `invoices` for that `invoice_id`).
+
+What it always preserves:
+
+- The **current-rev** object for every live invoice
+  (`{org_id}/{invoice_id}_{invoices.pdf_rev}.pdf`). The next
+  `generate-invoice-pdf` call still hits the cache.
+
+The sweep self-audits each run into `platform_audit_log`
+(`action='invoice_pdf_orphan_sweep'`, `severity='info'`, with
+`{ objects_inspected, orphans_identified, orphans_deleted, ran_at }`
+in `details`).
+
+Operator query — recent sweeps:
+
+```sql
+SELECT created_at, severity, details
+FROM platform_audit_log
+WHERE action = 'invoice_pdf_orphan_sweep'
+ORDER BY created_at DESC
+LIMIT 10;
+```
+
+The edge function reads `storage.objects` via
+`public.list_invoice_pdf_objects()` (a `SECURITY DEFINER` RPC
+defined in the same migration) because PostgREST does not expose
+the storage schema by default. The function also tries a direct
+`supabase-js .from('storage.objects')` query first; in normal
+deployments this fails fast with "schema not exposed" and the RPC
+fallback runs.
+
 ## Known follow-ups
 
 - **P2** — refactor `useInvoicePdf.ts` to consume
   `src/lib/invoice-pdf-renderer.ts` (eliminate the third copy of the
   layout). Wire `send-invoice-email-core` to attach the PDF.
 - **P3** — wire `send-payment-receipt` to attach the same.
-- **Future** — purge the bucket of stale `{org_id}/{invoice_id}_*.pdf`
-  objects whose `pdf_rev` is below the current invoice rev. Today
-  superseded objects sit in the bucket forever; a cron sweep mirrored
-  on `cleanup-webhook-retention` would clean them up.
