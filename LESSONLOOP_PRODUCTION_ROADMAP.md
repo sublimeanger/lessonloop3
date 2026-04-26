@@ -169,22 +169,27 @@ Findings closed in P2: **T05-F10 — TTL retention undefined for `stripe_webhook
 
 **Reference:** [`docs/WEBHOOK_DEDUP.md`](docs/WEBHOOK_DEDUP.md), [`docs/PLATFORM_AUDIT_LOG.md`](docs/PLATFORM_AUDIT_LOG.md), [`docs/MIGRATION_CONVENTIONS.md`](docs/MIGRATION_CONVENTIONS.md)
 
-### Track 0.6 — Cron schedule reconciliation (known BILLING_FORENSICS territory) 🟠
+### Track 0.6 — Cron schedule reconciliation 🟢 CLOSED (2026-04-26)
 
-**Problem:** Audit on 24 April 2026 found 7 of 8 documented reminder / expiry / auto-pay crons deviate from `docs/CRON_JOBS.md` expected schedule:
+**Closure summary:** the 24 April audit identified 8 cron deviations (3 missing crons, 5 wrong-schedule cases). T08-P1 (`20260501100000_cron_auth_standardisation.sql` + patch `20260501100100_cron_auth_standardisation_patch.sql`, deployed 2026-04-25) registered all 12 documented crons under canonical Pattern C and ratified the schedules now in `docs/CRON_JOBS.md`. T06-P0 walk (`docs/CRON_AUDIT_2026-04-26.md`) verified zero divergence between main and production for all 15 cron jobs.
 
-- `overdue-reminders` — MISSING until 24 April 2026 (fixed, scheduled `0 9 * * *` UTC, jobid 16). J7 was not production-live for the 6-hour window between J7 close and this fix.
-- `auto-pay-upcoming-reminder` — MISSING. Expected `0 8 * * *`. Guardians do not receive the 3-day pre-due auto-pay notice email.
-- `stripe-auto-pay-installment` — MISSING. Expected `0 9 * * *`. **High impact — silent feature loss:** no auto-pay ever fires. Guardians who enabled auto-pay in-app never get charged; installments fall overdue despite stored default payment method.
-- `credit-expiry` — MISSING. Expected `0 2 * * *`. **Structural break:** warnings fire but credits never actually expire. Parents receive "expires in 3 days" emails about credits that silently stay usable past their `expires_at` date.
-- `credit-expiry-warning-daily` — wrong schedule: `0 8 * * *` (expected `55 1 * * *`). Moot until `credit-expiry` is scheduled; then needs re-ordering to run first.
-- `invoice-overdue-check` — wrong schedule: `30 5 * * *` (expected `0 2 * * *`). May be intentional.
-- `installment-overdue-check` — wrong schedule: `0 6 * * *` (expected `0 2 * * *`). May be intentional.
-- `installment-upcoming-reminder` — MATCH at `0 8 * * *`.
+**Backfill (T06-F2): no work needed.** Operator queries on 2026-04-26 returned zero affected installments and zero affected credits:
 
-**Scope:** full audit walk — for each missing/wrong schedule, determine (a) when the gap opened via commit history, (b) impact on users / features shipped, (c) whether time mismatches are intentional or drift, (d) the reconciliation plan. Mirror BILLING_FORENSICS methodology: walk → report → triage → batch-fix.
+- Q1 auto-pay arrears: 0 missed_charges across 0 affected_orgs.
+- Q2 spendable-but-expired credits: 0.
+- Q2b credits redeemed past expiry: 0.
 
-**Priority:** high. Three shipped features (auto-pay charges, credit expiry cascade, overdue dunning until 24 April) confirmed silently non-functional in production.
+The pre-T08-P1 gap window had no production user impact because auto-pay and credit-expiry features had no live usage requiring retroactive reconciliation.
+
+**Findings:**
+
+- T06-F1 (stale roadmap doc, low) — closed by this entry.
+- T06-F2 (backfill scoping, HIGH) — closed by data; no backfill needed.
+- T06-F3 (T08-P1 schedule canonicalisation, info) — no action; schedules are intentional per `docs/CRON_JOBS.md`.
+- T06-F4 (cron-failure watchdog, medium) — duplicate of T08-F5; tracked by Track 0.8 Phase 2.
+
+**Walk doc:** [`docs/CRON_AUDIT_2026-04-26.md`](docs/CRON_AUDIT_2026-04-26.md)
+**Closure PR:** `<PR_URL — backfill manually post-merge>`
 
 ### Track 0.7 — Operator manual-trigger UI for cron functions ⚪
 
