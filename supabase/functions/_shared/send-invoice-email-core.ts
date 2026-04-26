@@ -104,7 +104,13 @@ export function formatDateUK(dateStr: string): string {
 /** Send email via Resend with 3x retry and exponential backoff. */
 export async function sendWithRetry(
   resendApiKey: string,
-  payload: { from: string; to: string[]; subject: string; html: string },
+  payload: {
+    from: string;
+    to: string[];
+    subject: string;
+    html: string;
+    attachments?: Array<{ filename: string; content: string /* base64 */ }>;
+  },
 ): Promise<{ ok: boolean; result: unknown }> {
   const maxAttempts = 3;
   const baseDelayMs = 1000;
@@ -148,6 +154,57 @@ export async function sendWithRetry(
 function firstOrSingle<T>(value: T | T[] | null): T | null {
   if (value == null) return null;
   return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+// ─── PDF attachment helper ──────────────────────────────────────────
+
+/**
+ * Invoke generate-invoice-pdf and return the base64 PDF bytes ready
+ * for attaching to a Resend email. Returns null on any error — caller
+ * decides whether to fail the email or send HTML-only fallback.
+ *
+ * Cache behaviour: first call for a given (invoice_id, pdf_rev) pair
+ * populates the cache; subsequent calls hit the cache and are sub-100ms.
+ */
+async function fetchInvoicePdfAttachment(
+  supabaseUrl: string,
+  serviceKey: string,
+  invoiceId: string,
+  invoiceNumber: string,
+): Promise<{ filename: string; content: string } | null> {
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/generate-invoice-pdf`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ invoice_id: invoiceId, return_bytes: true }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => "<unreadable>");
+      console.warn(
+        `[send-invoice-email-core] generate-invoice-pdf returned ${response.status}: ${errBody}`,
+      );
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data.success || !data.pdf_base64) {
+      console.warn(`[send-invoice-email-core] generate-invoice-pdf returned no bytes:`, data);
+      return null;
+    }
+
+    return {
+      filename: `Invoice-${invoiceNumber}.pdf`,
+      content: data.pdf_base64,
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.warn(`[send-invoice-email-core] PDF attachment fetch failed: ${message}`);
+    return null;
+  }
 }
 
 // ─── Template render ───────────────────────────────────────────────
@@ -539,12 +596,45 @@ export async function sendInvoiceEmailCore(
     };
   }
 
+  // ── PDF attachment (best-effort) ─────────────────────────────────
+  // Always attach for invoices and reminders. If PDF generation fails,
+  // fall back to HTML-only email — the email is still useful and the
+  // failure is logged for operator follow-up.
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  const attachment = await fetchInvoicePdfAttachment(
+    supabaseUrl,
+    serviceKey,
+    invoice.id,
+    invoice.invoice_number,
+  );
+
+  const attachments = attachment ? [attachment] : undefined;
+
+  if (!attachment) {
+    // Log the gap to platform_audit_log so operators can see when
+    // PDF attachments fall back to HTML-only.
+    await supabaseService.from("platform_audit_log").insert({
+      action: "invoice_email_pdf_fallback",
+      source: "send-invoice-email-core",
+      severity: "warning",
+      details: {
+        invoice_id: invoice.id,
+        invoice_number: invoice.invoice_number,
+        org_id: invoice.org_id,
+        is_reminder: isReminder,
+      },
+    });
+  }
+
   // ── Resend send with retry ───────────────────────────────────────
   const { ok: emailSent, result } = await sendWithRetry(resendApiKey, {
     from: `${sanitiseFromName(orgName)} <billing@lessonloop.net>`,
     to: [recipientEmail],
     subject,
     html: htmlContent,
+    attachments,
   });
 
   if (logEntryId) {
