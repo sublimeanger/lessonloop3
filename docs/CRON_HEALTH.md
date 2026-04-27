@@ -8,16 +8,19 @@ cron is detected as unhealthy.
 
 ### Class A — stopped firing
 
-`cron.job.active = true` AND `cron.job_run_details.last_run` is older than
-`1.5×` the cron's expected interval, AND the cron is older than `2×` interval
-(filters out registration-timing windows where a freshly-registered cron
-hasn't hit its first scheduled slot yet).
+`cron.job.active = true` AND `cron.job_run_details.last_run_at IS NOT NULL`
+AND `last_run_at` is older than `1.5×` the cron's expected interval.
+
+The `last_run_at IS NOT NULL` requirement is intentional — pg_cron does not
+expose a reliable registration timestamp, so freshly-registered crons (where
+`last_run_at IS NULL`) cannot be distinguished from pathological silence.
+T08-P2-C4 suppresses Class A in that case to avoid false positives during
+re-registration deploys. A cron that registers but never fires will not
+raise Class A; this trade-off is acceptable because the original Track 0.8
+problem space is Class B (cron fires but HTTP fails), and pg_cron-level
+breakage manifests in many other ways.
 
 Severity: **CRITICAL**. Emailed daily until resolved.
-
-This is the original Track 0.8 problem — the auth-mismatch silent-401 cases
-that motivated the standardisation work. The watchdog surfaces these within
-24 hours of breakage.
 
 ### Class B — HTTP failing
 
@@ -60,7 +63,7 @@ which the watchdog SQL casts to `bigint` and joins to `net._http_response.id`.
 | Class | Condition | Severity | Email cadence |
 |---|---|---|---|
 | A | last_run > 1.5× interval AND created > 2× interval | CRITICAL | Daily |
-| A | last_run NULL AND created < 2× interval | INFO | Suppressed (registration window) |
+| A | last_run_at IS NULL (never fired) | suppressed | None |
 | B | ≥5 failures/24h OR >50% rate over 12+ firings | CRITICAL | Daily |
 | B | 1-4 transient failures in 24h | WARNING | Weekly (Monday) |
 | Healthy | No failures | INFO | Silent (no email) |
