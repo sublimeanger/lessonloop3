@@ -142,16 +142,33 @@ migration `20260501100000_cron_auth_standardisation.sql`, the
   within each org's configured `reminder_lesson_hours` window.
 - **If missing:** No lesson reminders fire. Parents miss lessons.
 
+### 16. cron-health-watchdog-daily
+- **Schedule:** `30 9 * * *` (9:30 AM UTC)
+- **Function:** cron-health-watchdog
+- **Purpose:** Surveys cron.job_run_details + net._http_response, detects failure classes A (stopped firing) and B (HTTP failing), emails operator if any detected. Self-audits to platform_audit_log.
+- **If missing:** No active surface for silent cron failures. Original Track 0.8 problem returns.
+
 ## Verification
 
-Check Supabase Dashboard → Edge Functions → Invocations to confirm each
-job runs on schedule. If any job hasn't run in 48+ hours (or 30 minutes
-for `calendar-refresh-busy`, 90 minutes for `send-lesson-reminders`),
-inspect `cron.job_run_details` and `net._http_response` for the failed
-invocation.
+The `cron-health-watchdog-daily` cron (#16) automatically surveys all crons
+daily and emails `OPERATOR_ALERT_EMAIL` when any cron is unhealthy. Each
+watchdog run is self-audited to `platform_audit_log` (action
+`cron_health_check_run`).
 
-A health-watchdog (T08-F5, filed for Track 0.8 Phase 2) will surface
-this in-app rather than requiring dashboard attention.
+Manual verification (any time):
+```sql
+SELECT * FROM check_cron_health()
+WHERE failure_class IS NOT NULL
+ORDER BY severity DESC, jobname;
+```
+Returns rows for any cron currently flagged. Empty result = all healthy.
+
+Manual inspection:
+- `cron.job_run_details` shows per-firing outcome at the SQL layer.
+- `net._http_response` shows per-firing HTTP outcome (correlated via the
+  request_id surfaced into `job_run_details.return_message` since T08-P2-C1).
+- `platform_audit_log` filtered on `action = 'cron_health_check_run'` shows
+  the daily watchdog history.
 
 ## Auth
 
