@@ -1,5 +1,5 @@
 # LessonLoop — Claude Code Context
-Last updated: 4 April 2026
+Last updated: 27 April 2026
 
 ## Project Overview
 LessonLoop is a music academy management SaaS. React 18 / TypeScript / Vite frontend, Supabase backend (PostgreSQL, Auth, Edge Functions, Storage, Realtime), Stripe Connect for payments, Anthropic Claude for the LoopAssist AI copilot.
@@ -115,7 +115,7 @@ AI copilot using Anthropic Claude API with streaming.
 - **Tool usage guidance** and **CSV import + rate snapshot explanation** included in KB.
 - **query_org_data tool** — queries live organisation data for analytics (student counts, lesson stats, revenue, attendance rates).
 
-## Edge Functions (87+)
+## Edge Functions (91+)
 ### Critical Edge Functions
 | Function | Purpose | Auth | Notes |
 |----------|---------|------|-------|
@@ -156,11 +156,9 @@ openid profile email offline_access accounting.contacts accounting.invoices
 - Xero Client ID: `383EE6AE69FF4B86A4DBBA68F0DFAB47`
 - Redirect URI: `https://ximxgnkpcswbvfrkkmjq.supabase.co/functions/v1/xero-oauth-callback`
 
-### Cron Jobs
-| Job | Function | Schedule | Auth |
-|-----|----------|----------|------|
-| 14 | send-lesson-reminders | Hourly | service_role_key |
-| 15 | calendar-refresh-busy | Every 15 minutes | service_role_key |
+### Cron Jobs (16 active HTTP crons + 2 SQL-only)
+
+All HTTP crons use Pattern C auth (vault `INTERNAL_CRON_SECRET` → `x-cron-secret` header → `validateCronAuth`) and explicit `timeout_milliseconds := 60000`. See `docs/CRON_AUTH.md` and `docs/CRON_JOBS.md` for the canonical list and verification queries. Cron-health watchdog runs daily at 09:30 UTC (T08-P2). Closed tracks: T08-P1 (auth standardisation), T08-P2 (watchdog), T08-F6 (lesson-reminder fan-out), T08-F9 (timeouts + outer-org parallelism).
 
 ### Edge Function Conventions
 1. **Auth:** verify JWT, check org membership, check role
@@ -267,6 +265,17 @@ Benchmarked against My Music Staff, Opus1, Teachworks, Jackrabbit Music, Fons, D
 - **Connect:** destination charges. Refunds through platform account.
 - **Payment reminders:** correctly calculate remaining balance (`total_minor - paid_minor`)
 - **Invoice emails:** custom branding + payment plan installment schedules
+
+## Recent additions (April 2026 polish phase)
+
+### T01 — Audit log completeness (closed 2026-04-26)
+16 new audit triggers + entity_type singular/plural normalisation. See `docs/AUDIT_LOG_AUDIT_2026-04-26.md`.
+
+### T05 — Webhook retention & platform audit log (closed 2026-04-25)
+`platform_audit_log` table for non-org-scoped events. TTL sweep at 03:30 UTC.
+
+### T08 — Cron auth + observability (closed 2026-04-27)
+Pattern C auth across 16 HTTP crons, request_id capture, daily watchdog with HTML email digest, 60s pg_net timeout, parallelised lesson-reminder fan-out at both org and guardian levels.
 
 ## Remaining Items
 - [ ] **Apply April 4 SQL migrations** — xero tables, dunning config, external_busy_blocks, percentage pay, hint_completions. Apply via Supabase SQL Editor + `NOTIFY pgrst, 'reload schema'`
