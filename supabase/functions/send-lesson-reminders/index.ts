@@ -6,6 +6,7 @@ import { validateCronAuth } from "../_shared/cron-auth.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 const MAX_ORGS_PER_RUN = 50;
 const GUARDIAN_CONCURRENCY = 5;
+const ORG_CONCURRENCY = 5;
 
 async function runChunked<T, R>(
   items: T[],
@@ -56,16 +57,18 @@ serve(async (req) => {
 
     console.log(`Processing ${orgs.length} organisation(s)...`);
 
-    for (const org of orgs) {
+    const orgResults = await runChunked(orgs as Org[], ORG_CONCURRENCY, async (org) => {
       try {
-        const result = await processOrg(supabase, org, now, resendApiKey);
-        remindersSent += result.sent;
-        pushSent += result.push;
-        if (result.errors.length) errors.push(...result.errors);
+        return await processOrg(supabase, org, now, resendApiKey);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`Org ${org.id}: ${msg}`);
+        return { sent: 0, push: 0, errors: [`Org ${org.id}: ${msg}`] };
       }
+    });
+    for (const r of orgResults) {
+      remindersSent += r.sent;
+      pushSent += r.push;
+      if (r.errors.length) errors.push(...r.errors);
     }
 
     console.log(`Lesson reminder job complete. Emails sent: ${remindersSent}, Push sent: ${pushSent}, Errors: ${errors.length}`);
