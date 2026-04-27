@@ -1,11 +1,25 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
-import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 const MAX_ORGS_PER_RUN = 50;
+const GUARDIAN_CONCURRENCY = 5;
+
+async function runChunked<T, R>(
+  items: T[],
+  chunkSize: number,
+  iteratee: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    const chunkResults = await Promise.all(chunk.map(iteratee));
+    results.push(...chunkResults);
+  }
+  return results;
+}
 
 serve(async (req) => {
   const cronAuthError = validateCronAuth(req);
@@ -122,6 +136,39 @@ async function processOrg(supabase: any, org: Org, now: Date, resendApiKey: stri
     throw new Error(`Failed to fetch lessons for org ${org.id}: ${lessonsError.message}`);
   }
 
+  // 2.5. Pre-batch notification preferences for all relevant guardians.
+  // Cache as Map<user_id, enabled>. Avoids N per-guardian round-trips.
+  const allUserIds = new Set<string>();
+  for (const lesson of lessons || []) {
+    for (const participant of lesson.lesson_participants || []) {
+      const student = participant.student;
+      if (!student || student.deleted_at) continue;
+      for (const sg of student.student_guardians || []) {
+        if (sg.guardian?.user_id && !sg.guardian.deleted_at) {
+          allUserIds.add(sg.guardian.user_id);
+        }
+      }
+    }
+  }
+
+  const notifPrefMap = new Map<string, boolean>();
+  if (allUserIds.size > 0) {
+    const { data: prefs } = await supabase
+      .from("notification_preferences")
+      .select("user_id, email_lesson_reminders")
+      .eq("org_id", org.id)
+      .in("user_id", Array.from(allUserIds));
+
+    // Default for transactional emails when no row exists: true (matches
+    // the per-guardian helper behaviour in _shared/check-notification-pref.ts)
+    for (const userId of allUserIds) {
+      notifPrefMap.set(userId, true);
+    }
+    for (const row of prefs || []) {
+      notifPrefMap.set(row.user_id as string, !!row.email_lesson_reminders);
+    }
+  }
+
   let sent = 0;
   let push = 0;
   const errors: string[] = [];
@@ -160,53 +207,70 @@ async function processOrg(supabase: any, org: Org, now: Date, resendApiKey: stri
         }
       }
 
-      // 5. Send one email per guardian per lesson
-      for (const [, { guardian, students }] of guardianMap) {
-        try {
-          // Check notification preference
-          if (guardian.user_id) {
-            const enabled = await isNotificationEnabled(supabase, org.id, guardian.user_id, "email_lesson_reminders");
-            if (!enabled) {
-              console.log(`Guardian ${guardian.id} has lesson reminders disabled, skipping`);
-              continue;
+      // 5. Send one email per guardian per lesson — bounded-concurrency parallel.
+      const guardianEntries = Array.from(guardianMap.values());
+      const guardianResults = await runChunked(
+        guardianEntries,
+        GUARDIAN_CONCURRENCY,
+        async ({ guardian, students }) => {
+          try {
+            if (guardian.user_id) {
+              const enabled = notifPrefMap.get(guardian.user_id) ?? true;
+              if (!enabled) {
+                console.log(`Guardian ${guardian.id} has lesson reminders disabled, skipping`);
+                return { sent: 0, push: 0, error: null as string | null };
+              }
             }
-          }
 
-          const { subject, html } = buildEmail(org, lesson, guardian, students, tz);
+            const { subject, html } = buildEmail(org, lesson, guardian, students, tz);
 
-          const emailSent = await logAndSend(supabase, resendApiKey, {
-            orgId: org.id,
-            orgName: org.name,
-            subject,
-            html,
-            recipientEmail: guardian.email,
-            recipientName: guardian.full_name,
-            guardianId: guardian.id,
-            relatedId: lesson.id,
-            messageType: "lesson_reminder",
-          });
+            const emailSent = await logAndSend(supabase, resendApiKey, {
+              orgId: org.id,
+              orgName: org.name,
+              subject,
+              html,
+              recipientEmail: guardian.email,
+              recipientName: guardian.full_name,
+              guardianId: guardian.id,
+              relatedId: lesson.id,
+              messageType: "lesson_reminder",
+            });
 
-          if (emailSent) sent++;
-
-          // 7. Send push notification if guardian has portal access
-          if (guardian.user_id) {
-            try {
-              const pushResult = await sendPush(supabase, {
+            // Fire-and-forget push. Push failure must not block email delivery
+            // and must not delay subsequent guardian work.
+            let pushFired = 0;
+            if (guardian.user_id) {
+              pushFired = 1;
+              sendPush(supabase, {
                 userId: guardian.user_id,
                 title: `Lesson reminder`,
                 body: `${students[0]} has ${escapeHtml(lesson.title)} ${formatRelativeTime(lesson.start_at, tz)}`,
                 data: { type: "lesson_reminder", lessonId: lesson.id },
+              }).catch((pushErr) => {
+                console.error(`Push notification failed for guardian ${guardian.id}:`, pushErr);
               });
-              if (pushResult) push++;
-            } catch (pushErr) {
-              // Push failure should not block email delivery
-              console.error(`Push notification failed for guardian ${guardian.id}:`, pushErr);
             }
+
+            return {
+              sent: emailSent ? 1 : 0,
+              push: pushFired,
+              error: null as string | null,
+            };
+          } catch (guardianErr: unknown) {
+            const msg = guardianErr instanceof Error ? guardianErr.message : String(guardianErr);
+            return {
+              sent: 0,
+              push: 0,
+              error: `Lesson ${lesson.id}, guardian ${guardian.id}: ${msg}`,
+            };
           }
-        } catch (guardianErr: unknown) {
-          const msg = guardianErr instanceof Error ? guardianErr.message : String(guardianErr);
-          errors.push(`Lesson ${lesson.id}, guardian ${guardian.id}: ${msg}`);
-        }
+        },
+      );
+
+      for (const r of guardianResults) {
+        sent += r.sent;
+        push += r.push;
+        if (r.error) errors.push(r.error);
       }
     } catch (lessonErr: unknown) {
       const msg = lessonErr instanceof Error ? lessonErr.message : String(lessonErr);
