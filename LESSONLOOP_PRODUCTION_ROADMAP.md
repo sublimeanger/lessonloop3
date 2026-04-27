@@ -38,11 +38,11 @@ If you are a Claude session inheriting this work, or Jamie is picking up after a
 6. Deploy via Lovable (edge functions / migrations) where relevant
 7. Update POLISH_NOTES.md (Fixed / Filed) + this file (mark journey closed)
 
-**Workflow stack:**
+**Workflow stack (verified canonical source: `LOVABLE_CLAUDE_DIVISION.md`):**
 - **Claude (this assistant)** — planning, finding analysis, edit specifications, decision framing
-- **Claude Code web** — repo file edits, typecheck, commits, pushes
-- **Lovable** — Supabase migrations apply, edge function deploys, live RPC verification
-- **GitHub web** — tag creation, branch protection workarounds
+- **Claude Code** — repo file edits, edge function source edits, **migrations applied via `./scripts/apply-pending-migrations.sh` or `supabase db push`**, edge function deploys via `supabase functions deploy`, typecheck, commits, pushes
+- **Lovable** — frontend code (React, hooks, components, pages), auto-deploys edge function source on GitHub sync. **Lovable does NOT reliably apply Claude Code migrations** — every migration must be run by Claude Code.
+- **GitHub web** — tag creation, branch protection workarounds, PR merge
 
 ---
 
@@ -243,6 +243,8 @@ Two crons (`overdue-reminders-daily`, `recurring-billing-scheduler-daily`) sent 
 Findings addressed: T08-F1 (vault not populated; operator-fixed), T08-F2 (4 patterns in tree), T08-F3 (cleanup-orphaned-resources hardcoded JWT + inline auth), T08-F4 (3 fns using inline Pattern A).
 
 **Phase 2 — cron-health watchdog (closed by T08-P2):** Two migrations and one edge fn deliver active observability. `20260508100000_cron_request_id_capture.sql` re-registers all 15 HTTP crons with a `WITH req AS (...) SELECT request_id::text FROM req;` wrapper so pg_cron writes the `net.http_post()` request_id into `cron.job_run_details.return_message`, enabling join to `net._http_response.id`. `20260508100100_cron_health_watchdog.sql` adds `public.check_cron_health()` (SECURITY DEFINER RPC) returning per-cron failure_class (A_stopped_firing | B_http_failing | NULL) and severity (info/warning/critical), and registers `cron-health-watchdog-daily` at 09:30 UTC. New edge fn `cron-health-watchdog` calls the RPC, formats failures as HTML, sends to `OPERATOR_ALERT_EMAIL` via Resend (critical = daily; warning = Monday digest), and self-audits to `platform_audit_log` (`cron_health_check_run`).
+
+**Phase 3 — performance + observability hardening (closed by T08-F6 + T08-F9 on 2026-04-27).** Two commits to send-lesson-reminders close the timeout class of issues that surfaced during T08-P2-C1 verification. T08-F6 (`8e7eb255`, PR #359) added bounded-concurrency parallelism to the per-guardian email/push fan-out within an org and pre-batched `notification_preferences` per org to avoid N round-trips. T08-F9 (`9ffeb416` + `c8613f18`, PR #360, migration `20260427180000`) added explicit `timeout_milliseconds := 60000` to all 16 HTTP cron wrappers (pg_net 0.19.5 defaults to 5000ms, which produced spurious timeout rows in `net._http_response` for any edge function taking ≥5s) and parallelised the outer per-org loop in `send-lesson-reminders` at concurrency 5. Production-verified post-merge: `_http_response` rows now record real status_code instead of timeout. Out of scope and filed: T08-F8 (pg_cron 1.6.4 writes the command-tag string `"1 row"` into `cron.job_run_details.return_message` instead of the SELECT result, breaking the watchdog's request_id correlation join — needs a request log table; deferred until customer load makes it necessary).
 
 **T08-F5 — cron-health watchdog: ✅ closed by T08-P2.** See `docs/CRON_HEALTH.md` for severity policy and verification queries.
 
