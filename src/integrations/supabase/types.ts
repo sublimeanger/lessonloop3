@@ -6775,6 +6775,23 @@ export type Database = {
         Returns: undefined
       }
       cancel_template_run: { Args: { _run_id: string }; Returns: Json }
+      check_cron_health: {
+        Args: never
+        Returns: {
+          active: boolean
+          age_since_last_run_seconds: number
+          evidence: Json
+          expected_interval_seconds: number
+          failure_class: string
+          http_failure_rate: number
+          http_failures_24h: number
+          http_total_24h: number
+          jobname: string
+          last_run_at: string
+          schedule: string
+          severity: string
+        }[]
+      }
       check_rate_limit: {
         Args: {
           _action_type: string
