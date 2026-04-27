@@ -23,17 +23,34 @@ SELECT cron.schedule(
   '<JOBNAME>',
   '<SCHEDULE>',
   $cron$
-  SELECT net.http_post(
-    url := 'https://ximxgnkpcswbvfrkkmjq.supabase.co/functions/v1/<EDGE_FN>',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'x-cron-secret', (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'INTERNAL_CRON_SECRET' LIMIT 1)
-    ),
-    body := '{}'::jsonb
-  ) AS request_id;
+  WITH req AS (
+    SELECT net.http_post(
+      url := 'https://ximxgnkpcswbvfrkkmjq.supabase.co/functions/v1/<EDGE_FN>',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'x-cron-secret', (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'INTERNAL_CRON_SECRET' LIMIT 1)
+      ),
+      body := '{}'::jsonb,
+      timeout_milliseconds := 60000
+    ) AS request_id
+  )
+  SELECT request_id::text FROM req;
   $cron$
 );
 ```
+
+`timeout_milliseconds := 60000` matches Supabase's edge function wall
+clock budget. T08-F9 (2026-04-27) added this after observing that
+pg_net 0.19.5's per-call default of 5000ms was producing NULL
+`_http_response` rows for any edge function taking ≥5s.
+
+The `WITH req AS (...) SELECT request_id::text FROM req;` shape was
+added in T08-P2-C1 to surface the pg_net request_id to
+`cron.job_run_details.return_message`. Note: pg_cron 1.6.4 actually
+writes the command tag (e.g. `"1 row"`) instead of the SELECT result;
+the request_id correlation join is therefore broken until T08-F8
+introduces a request log table. The wrapper pattern is retained
+unchanged so the eventual T08-F8 fix has the same shape to work with.
 
 The edge function consumes this header via the shared helper:
 

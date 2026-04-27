@@ -62,7 +62,7 @@ which the watchdog SQL casts to `bigint` and joins to `net._http_response.id`.
 
 | Class | Condition | Severity | Email cadence |
 |---|---|---|---|
-| A | last_run > 1.5× interval AND created > 2× interval | CRITICAL | Daily |
+| A | last_run > 1.5× interval AND last_run_at IS NOT NULL | CRITICAL | Daily |
 | A | last_run_at IS NULL (never fired) | suppressed | None |
 | B | ≥5 failures/24h OR >50% rate over 12+ firings | CRITICAL | Daily |
 | B | 1-4 transient failures in 24h | WARNING | Weekly (Monday) |
