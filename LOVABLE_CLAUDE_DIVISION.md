@@ -23,7 +23,7 @@
 | Tailwind config, design tokens, `index.css` | **Lovable** | |
 | Routing (`src/config/routes.ts`) | **Lovable** | See critical rule in §8 |
 | Edge functions (`supabase/functions/**`) | **Claude Code** | Lovable can write them but should not |
-| SQL migrations (`supabase/migrations/**`) | **Claude Code** | Lovable can create them via tool; prefer Claude for batches |
+| SQL migrations (`supabase/migrations/**`) | **Claude Code writes; Lovable applies** | Claude Code writes the .sql file. Lovable applies it via its native Supabase integration (Lovable IS the SQL editor / Supabase dashboard). Claude Code never executes migrations. |
 | RLS policies, RPCs, triggers | **Claude Code** | |
 | Playwright E2E tests | **Claude Code** | |
 | `supabase/functions/_shared/**` | **Claude Code** | |
@@ -82,28 +82,36 @@ supabase functions deploy --project-ref ximxgnkpcswbvfrkkmjq
 
 ## 6. Database migrations
 
-### From Lovable
-1. Lovable writes SQL via the migration tool.
-2. User approves the diff.
+**Claude Code writes migration files. Lovable applies them.** No exceptions.
+Lovable IS the SQL editor / Supabase dashboard. There is no other canonical
+path — `supabase db push` and `./scripts/apply-pending-migrations.sh` were
+emergency one-offs and are not part of normal workflow.
+
+### Standard flow (Claude Code authors the migration)
+1. Claude Code writes `supabase/migrations/<YYYYMMDDHHMMSS>_<name>.sql`.
+2. Commit and push to `main` (or open a PR if larger work).
+3. Lovable syncs the file from GitHub automatically.
+4. Jamie approves and applies the migration in Lovable's Supabase panel.
+5. `types.ts` regenerates automatically (~30s lag possible).
+6. Lovable picks up the regenerated `types.ts` on next sync.
+
+### Lovable-authored migrations
+1. Lovable writes SQL via its migration tool.
+2. Jamie approves the diff.
 3. Migration runs against the live DB.
-4. `types.ts` regenerates automatically (~30s lag possible).
+4. `types.ts` regenerates automatically.
 5. The `.sql` file appears in `supabase/migrations/` and syncs to GitHub.
 
-### From Claude Code
-1. Write `supabase/migrations/<timestamp>_<name>.sql`.
-2. Push to GitHub (or commit locally).
-3. **Run `supabase db push --project-ref ximxgnkpcswbvfrkkmjq`** — Lovable will sync the file but will **not** execute it.
-4. Reload PostgREST cache: `NOTIFY pgrst, 'reload schema';`
-5. Lovable will pick up the regenerated `types.ts` on next sync.
-
-The repo has `scripts/apply-pending-migrations.sh` which handles steps 3–4 plus deploys all edge functions in one shot. Use it for batch deploys.
-
-### Migration rules
-- Use `IF NOT EXISTS` / `IF EXISTS` for idempotency.
-- Never include `ALTER DATABASE postgres` statements.
-- Never modify `auth`, `storage`, `realtime`, `supabase_functions`, `vault` schemas.
-- Use validation triggers, not CHECK constraints, for time-based validations (CHECK must be immutable).
-- Use SECURITY DEFINER functions for cross-table role checks to avoid RLS recursion.
+### Idempotency contract
+Every migration must be safely re-runnable:
+- `CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION`,
+  `DROP POLICY IF EXISTS` before `CREATE POLICY`.
+- Wrap `ADD CONSTRAINT` in `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$;`.
+- `CHECK` constraints on existing tables: `NOT VALID`.
+- Cron registrations: `unschedule-then-schedule` pattern (see `docs/CRON_AUTH.md`).
+- `NOTIFY pgrst, 'reload schema';` at bottom for any PostgREST-exposed change.
+- Lovable mirrors applied migrations under UUID-suffixed filenames; both
+  source and apply artefacts coexist. Idempotent patterns handle this.
 
 ---
 
@@ -114,7 +122,7 @@ The repo has `scripts/apply-pending-migrations.sh` which handles steps 3–4 plu
 | Frontend production deploy | You | Lovable → **Publish → Update** |
 | Marketing site deploy | You | `node scripts/prerender.mjs` → Cloudflare Pages |
 | iOS build refresh | You | `npx cap copy ios` (**not `sync`** — hangs) |
-| Apply Claude-authored migrations | Claude / you | `./scripts/apply-pending-migrations.sh` or `supabase db push` |
+| Apply Claude-authored migrations | Lovable | Jamie approves and applies in Lovable's Supabase panel after GitHub sync (see §6) |
 | Deploy Claude-authored edge functions | Claude / you | `supabase functions deploy --project-ref ximxgnkpcswbvfrkkmjq` |
 | Stripe webhook secret rotation | You | Stripe dashboard → update secret in Lovable Cloud |
 | Workspace build secrets (private npm tokens) | You | Workspace Settings → Build Secrets (Lovable cannot set these) |
@@ -163,7 +171,7 @@ When you start a session:
 1. Read this file and `README.md`.
 2. Check `supabase/migrations/` for any locally-authored migrations not yet applied (compare with `supabase migration list --project-ref ximxgnkpcswbvfrkkmjq`).
 3. Stay in your lane: edge functions, migrations, RLS, RPCs, tests. Do not modify `src/components/**`, `src/pages/**`, `src/hooks/**`, or styling.
-4. After backend changes: run `./scripts/apply-pending-migrations.sh` (covers migrations + function deploys + cache reload + verification).
+4. After backend changes: commit + push migrations to GitHub (Lovable will sync the file; Jamie applies in Lovable's Supabase panel — see §6). Deploy edge functions with `supabase functions deploy --project-ref ximxgnkpcswbvfrkkmjq`.
 5. If you must touch UI for an end-to-end feature, leave a clear commit message so Lovable doesn't unknowingly overwrite it.
 
 ---
