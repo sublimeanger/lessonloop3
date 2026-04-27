@@ -3272,3 +3272,32 @@ Corrective changes (single commit, T01-P2-fix1):
 - LESSONLOOP_PRODUCTION_ROADMAP.md: Track 0.8 closed (P1+P2 both ✅);
   T08-F5 closed.
 - PR: <PR_URL>
+
+---
+
+## Track 0.8 Phase 3 — Lesson reminder performance + cron timeout headroom (closed 2026-04-27)
+
+Two follow-up commits to Track 0.8 close the timeout symptom that surfaced during T08-P2-C1 verification.
+
+### What was looked at
+
+- `send-lesson-reminders` edge function — outer per-org loop and inner per-guardian fan-out
+- All 16 HTTP cron wrappers in `20260508100000_cron_request_id_capture.sql` and `20260508100100_cron_health_watchdog.sql`
+- pg_net 0.19.5 default `timeout_milliseconds` (5000ms — verified via `pg_get_function_arguments`)
+- `net._http_response` row pattern across 6 hourly fires of `send-lesson-reminders` (12:00–17:00 UTC on 2026-04-27)
+
+### What was found and fixed
+
+- **T08-F6** (`8e7eb255`, PR #359, merged `f4ad6734`) — Inner per-guardian loop was sequential. Added `runChunked` helper at chunk size 5; pre-batched `notification_preferences` per org with single IN() query so guardian-pref lookups don't round-trip individually; fired-and-forgot push notifications via `.catch()` so push delays don't block subsequent email sends. Behavioural improvement only when an org has many guardians per lesson; does not on its own resolve the steady-state cron timeout.
+
+- **T08-F9** (`9ffeb416` + `c8613f18`, PR #360, migration `20260427180000_cron_explicit_timeouts_t08_f9.sql`) — Two parts.
+  1. New migration re-registers all 16 HTTP cron wrappers with explicit `timeout_milliseconds := 60000`. pg_net's per-call default is 5000ms; the edge function takes ~5s end-to-end on 49 orgs even with F6 because the outer org loop was still serial. pg_net was abandoning every fire at 5s and writing a "Timeout of 5000 ms reached" row to `net._http_response`. The edge function itself was completing on Supabase's separate 60s wall clock (the work was getting done), but observability was structurally broken.
+  2. Outer per-org loop in `send-lesson-reminders` now uses `runChunked` at concurrency 5. Per-org error isolation preserved.
+
+### Filed for later
+
+- **T08-F8** — pg_cron 1.6.4 writes the command-tag string `"1 row"` into `cron.job_run_details.return_message` instead of the SELECT result. The watchdog's request_id-based correlation join (`return_message::bigint = net._http_response.id`) is therefore non-functional. Class B (HTTP failing) detection has been silently dead since T08-P2-C1 deploy. F9 restores real `status_code` rows in `net._http_response`, which is necessary but not sufficient for Class B — still need a request log table the cron writes into and the watchdog joins against. Deferred until customer load makes it necessary; with zero active customers and a working Class A detector, this is monitor-the-monitor work that can wait.
+
+### Notable
+
+The T08-F6 PR was opened on a misdiagnosis — Jamie and the assisting Claude session believed pg_net was timing out the request. The actual cause was the 5000ms ceiling combined with the serial 49-org outer loop. F6 still ships a real improvement (bounded-concurrency inner fan-out) but does not on its own fix the symptom. F9 is the genuine fix.
