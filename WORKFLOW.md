@@ -28,6 +28,32 @@ A "walk" is a structured audit of one product area (e.g. parent portal, billing,
 
 Walk PRs are docs-only. They never include code changes.
 
+### Required pre-flight check before authoring any RLS-lockdown migration
+
+When a finding is "drop a permissive RLS policy", DO NOT rely on reading the migration the audit doc references. Migrations on the same table can stack across days/months and the audit-doc author may only have read one of them.
+
+Before authoring the lockdown migration:
+
+1. Run a SQL query against production via Lovable's SQL panel that returns ALL current policies on the target table:
+
+   ```sql
+   SELECT
+     pol.polname AS policy_name,
+     CASE pol.polcmd WHEN 'r' THEN 'SELECT' WHEN 'a' THEN 'INSERT' WHEN 'w' THEN 'UPDATE' WHEN 'd' THEN 'DELETE' WHEN '*' THEN 'ALL' END AS command,
+     pg_get_expr(pol.polqual, pol.polrelid) AS using_expr,
+     pg_get_expr(pol.polwithcheck, pol.polrelid) AS with_check_expr
+   FROM pg_policy pol
+   JOIN pg_class c ON c.oid = pol.polrelid
+   WHERE c.relname = '<target_table>'
+   ORDER BY command, policy_name;
+   ```
+
+2. Compare the result to what the audit doc describes. If there are extra policies the audit didn't mention, they may be benign duplicates OR a structural bypass of the fix you're about to ship. Read every extra policy's definition. Decide whether to drop it as part of the same lockdown or treat it as out-of-scope (with a written reason in the migration's "Why" block).
+
+3. The lockdown migration's "Why" block must state that this pre-flight check was done and what was found, even if the answer was "no surprises".
+
+This rule was added in PR #<N> (2026-04-29) after the J8-F9 follow-up closure — PR #367 dropped one of two parent-write policies on `guardian_payment_preferences` because the audit walker had only seen the second-set migration; the first-set FOR ALL policy from four hours earlier kept the J8-F9 attack live until post-deploy verification caught it. Pre-flight `pg_policy` check would have surfaced it before authoring.
+
 ---
 
 ## How to ship a fix batch
