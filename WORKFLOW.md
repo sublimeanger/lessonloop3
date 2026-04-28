@@ -71,6 +71,33 @@ This is the loop, end to end:
 6. **At the end of a fix batch, the PR is merged, Lovable applies migrations / deploys edge functions, the walk doc and STATUS.md are auto-updated by the same PR.**
 7. **No QA per-fix or per-area.** QA happens once at the end of all areas, with Jamie's tester, against the entire app.
 
+### Variant: Lovable-owned fixes (frontend / `src/**/*.tsx`)
+
+When a fix touches only files in Lovable's lane (React components, pages, hooks, contexts, styling — see "Roles, restated"), the loop has a different shape because Lovable commits directly to `main` as `gpt-engineer-app[bot]`. There is no PR to review or merge. The fix arrives in two coordinated commits:
+
+**Commit 1 — Lovable push (the code change):**
+
+1. Chat-Claude writes a single Lovable prompt envelope (`WHERE: Lovable — chat panel`) describing the exact change, every callsite, and the canonical replacement pattern. The prompt must be specific to the byte — no "sweep all hardcoded values" hand-waves; list every file and every line.
+2. Jamie pastes the prompt into Lovable. Lovable applies the change and pushes to `main`.
+3. Jamie confirms the commit landed (one-line confirmation: commit SHA + "Lovable pushed").
+4. Chat-Claude pulls and verifies the diff matches what was specified. If anything is wrong (extra files touched, callsites missed, drift from spec), chat-Claude writes a corrective Lovable prompt; do not chain forward.
+
+**Commit 2 — Claude Code follow-up (the docs):**
+
+1. Once Lovable's commit is verified clean, chat-Claude writes a Claude Code prompt envelope that:
+   - Strikes through closed audit findings in the relevant walk doc, appending the SHA of Lovable's commit and the date as the closure note (`[shipped {DATE}, Lovable commit {SHA}]` — no PR number because there isn't one).
+   - Appends one POLISH_NOTES section in the canonical shape, naming the Lovable commit SHA in place of a PR number.
+   - Updates STATUS.md (`Last updated`, `Fixes shipped`).
+   - Updates the roadmap status table if the area's HIGH count materially advances.
+   - Commits the docs in a single commit on a `docs/{closure-slug}` branch, pushes, opens a PR, and prints the PR URL.
+2. Jamie reviews and merges the docs PR.
+
+**Why two commits, not one:** Lovable does not edit `docs/audits/`, `POLISH_NOTES.md`, `STATUS.md`, or `LESSONLOOP_PRODUCTION_ROADMAP.md`. Asking it to would muddy its lane and risk it touching files outside its remit. Claude Code does the docs work, full stop.
+
+**Verification:** Lovable-owned fixes that need server-side proof (e.g. did this currency change actually surface in production builds?) get the same SQL/console verification step that PR-shaped fixes get — added as a final envelope in chat-Claude's response.
+
+**When in doubt:** if a fix touches BOTH `src/**/*.tsx` AND `supabase/migrations/**` or `supabase/functions/**`, split it. Lovable does the frontend half; Claude Code does the backend half + the docs commit. Two coordinated commits is fine; one PR straddling both surfaces is not.
+
 ---
 
 ## The prompt envelope
@@ -118,7 +145,7 @@ Use the exact `WHERE:` strings below in every envelope.
 | Jamie | Decisions, pastes, merges | Code, doc edits, local commands |
 | Chat-Claude | Walks, plans, prompts | Direct repo writes, deploys |
 | Claude Code | Migration source, edge fn source, doc updates inside fix commits | Deploys, migration apply, product decisions |
-| Lovable | UI/frontend, migration apply, edge fn deploy | Migration source files |
+| **Lovable** | Owns React/TS frontend. Applies migrations. Deploys edge functions. Runs SQL via its SQL panel. Commits direct to main as `gpt-engineer-app[bot]`. | Touches `supabase/migrations/*.sql` source files. Edits backend logic. Updates audit docs, POLISH_NOTES, STATUS.md, or the roadmap — those are always Claude Code's responsibility regardless of which surface authored the fix itself. |
 | QA tester | End-of-cycle whole-app testing | Per-area testing |
 
 ---
