@@ -1,9 +1,9 @@
 # Area 2 — Parent Portal audit, running fixes document
 
 **Started:** 2026-04-28
-**Status:** all 8 portal journeys + cross-cutting walk complete. Ready for fix-brief authoring in priority order.
-**Repo tip when last synced:** `9bb39c67` (after PR #364 merged)
-**Scope:** Working notes for the Area 2 walk. Not committed. Becomes the source for per-journey POLISH_NOTES entries + brief specs once we move into the fix phase.
+**Status:** all 8 portal journeys + cross-cutting walk complete. Active findings doc — rows get crossed off as fixes ship. Once fully closed out, this moves to `docs/archive/audit-2026-04/`.
+**Repo tip when audit captured:** `9bb39c67` (after PR #364 merged).
+**Scope:** Multi-journey audit of the Area 2 parent portal. Source of truth for fix-brief authoring; see the priority list at the bottom.
 
 ---
 
