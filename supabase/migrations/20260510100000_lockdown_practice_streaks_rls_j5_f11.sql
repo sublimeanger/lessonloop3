@@ -1,0 +1,37 @@
+-- Closes J5-F11 from docs/audits/2026-04-area-2-parent-portal.md
+-- (filed at root as AREA_2_PARENT_PORTAL_AUDIT_2026-04-28.md until the
+--  audit-doc relocation branch merges; same content, same finding ID).
+--
+-- Why
+-- ---
+-- 20260315100000_fix_practice_streaks_rls.sql replaced the original
+-- WITH CHECK(true) policies on public.practice_streaks with
+--   "Users can insert own streaks"  FOR INSERT WITH CHECK (is_org_member(...))
+--   "Users can update own streaks"  FOR UPDATE USING       (is_org_member(...))
+-- That tightening was insufficient: is_org_member is true for every
+-- authenticated parent in the org, so any parent can directly INSERT or
+-- UPDATE streak rows for *any* student in their org — including students
+-- they are not the parent of. There is no legitimate user-driven write
+-- path for this table; the only correct writer is the SECURITY DEFINER
+-- trigger update_practice_streak() (defined in
+-- 20260124130317 and progressively rewritten through
+-- 20260124130618 / 20260222225228 / 20260303180000 / 20260316310000),
+-- which fires on practice_logs INSERT and bypasses RLS. The two
+-- user-facing policies are therefore unnecessary attack surface and
+-- should be dropped outright.
+--
+-- What
+-- ----
+-- Drop both policies. Do not replace. RLS remains enabled on
+-- practice_streaks; the SECURITY DEFINER trigger continues to write as
+-- it always has; user-direct INSERT/UPDATE attempts will be denied (no
+-- matching policy = denied under enabled RLS). Existing parent SELECT
+-- (scoped via is_parent_of_student per J5-F10 verification) is untouched.
+--
+-- Idempotent — DROP POLICY IF EXISTS handles re-apply.
+-- No PostgREST schema change → no NOTIFY pgrst needed
+-- (per docs/MIGRATION_CONVENTIONS.md §"NOTIFY pgrst, 'reload schema'":
+-- RLS-only changes on existing tables do not require it).
+
+DROP POLICY IF EXISTS "Users can insert own streaks" ON public.practice_streaks;
+DROP POLICY IF EXISTS "Users can update own streaks" ON public.practice_streaks;
