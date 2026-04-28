@@ -3366,3 +3366,20 @@ Follow-up (PR #368, 2026-04-29): Post-deploy SQL verification on PR #367 surface
 
 ### PR
 <PR_URL>
+
+---
+
+## Process — Lovable-fix flow added to WORKFLOW.md (2026-04-29)
+
+WORKFLOW.md "How to ship a fix batch" originally only described the Claude Code branch+PR flow. When pre-flight planning for the CC-3 currency sweep surfaced that PR 1 of the sweep was Lovable-owned (touches only `src/**/*.tsx`), the workflow had no canonical shape for it. Lovable commits direct to main as `gpt-engineer-app[bot]`; there's no PR to review or merge; and Lovable doesn't update walk docs / POLISH_NOTES / STATUS / roadmap.
+
+### What was added
+- New subsection in WORKFLOW.md "How to ship a fix batch" called "Variant: Lovable-owned fixes (frontend / `src/**/*.tsx`)" describing the two-commit flow: Lovable pushes the code change, Claude Code follows up with a docs commit that closes audit findings.
+- "Roles, restated" Lovable row updated — added `gpt-engineer-app[bot]` direct-to-main as something Lovable does, and explicitly added "Updates audit docs, POLISH_NOTES, STATUS.md, or the roadmap" to the "Never does" column.
+
+### Why this matters
+Without this, the next four currency-sweep PRs would each have to invent their own shape. The whole point of WORKFLOW.md is consistency — every Lovable-owned fix from here on follows the same two-commit pattern with the same Claude Code docs commit.
+
+### Files touched
+- `WORKFLOW.md` (one str_replace adding the new subsection; one str_replace updating the Lovable row in the Roles table)
+- `POLISH_NOTES.md` (this entry)
