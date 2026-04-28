@@ -1,5 +1,35 @@
 # LessonLoop Production Roadmap
 
+> **Bootstrap protocol:** Read `START_HERE.md` first. This roadmap is one of the files it points at.
+
+## 📍 One-screen status (read first)
+
+| Area | Walk | HIGH shipped | Status |
+|---|---|---|---|
+| Area 0 — Cross-cutting invariants | — | — | ⚪ pending |
+| Area 1 — Billing & invoicing | done | all | 🟢 closed |
+| Area 2 — Parent portal | done | 0/14 | 🟡 fixes in progress |
+| Area 3 — Students & guardians | — | — | ⚪ pending |
+| Area 4 — Calendar | — | — | ⚪ pending |
+| Area 5 — Lessons & attendance | — | — | ⚪ pending |
+| Area 6 — Terms & closures | — | — | ⚪ pending |
+| Area 7 — Term continuation | — | — | ⚪ pending |
+| Area 8 — Teachers & payroll | — | — | ⚪ pending |
+| Area 9 — Make-up credits & waitlists | — | — | ⚪ pending |
+| Area 10 — Messaging | — | — | ⚪ pending |
+| Area 11 — Practice tracking | — | — | ⚪ pending |
+| Area 12 — Notes | — | — | ⚪ pending |
+| Area 13 — Resources | — | — | ⚪ pending |
+| Area 14 — Leads, CRM & booking page | — | — | ⚪ pending |
+| Area 15 — LoopAssist (AI assistant) | — | — | ⚪ pending |
+| Area 16 — Reports & analytics | — | — | ⚪ pending |
+
+**Active:** Area 2. **Next:** Area 3.
+
+For day-to-day status (active PR, awaiting decisions, etc.) see `STATUS.md`.
+
+---
+
 **Goal:** Take LessonLoop from current state to genuinely production-ready across every feature surface. No compromises, no lighter-touch options. Every flow walked end-to-end, every bug fixed, every cohesion gap closed, every invariant verified.
 
 **Started:** 21 April 2026  
