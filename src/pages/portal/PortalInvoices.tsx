@@ -459,7 +459,7 @@ export default function PortalInvoices() {
         invoiceId={paymentDrawerInvoice?.id || null}
         invoiceNumber={paymentDrawerInvoice?.invoiceNumber}
         amount={paymentDrawerInvoice?.amount}
-        currencyCode={paymentDrawerInvoice?.currencyCode}
+        currencyCode={paymentDrawerInvoice?.currencyCode ?? ''}
         dueDate={paymentDrawerInvoice?.dueDate}
         installmentId={paymentDrawerInvoice?.installmentId}
         payRemaining={paymentDrawerInvoice?.payRemaining}
