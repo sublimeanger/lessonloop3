@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-04-29 (PR: fix/area-2-J8-F9-followup-drop-redundant-policy)
+**Last updated:** 2026-04-29 (commit 37163c52 + this docs PR)
 
 ---
 
@@ -10,8 +10,8 @@
 
 - Walk: complete (`docs/audits/2026-04-area-2-parent-portal.md`)
 - Findings: 17 HIGH (across 14 fix briefs), 25 MED, ~110 LOW
-- Fixes shipped: 3 of 14 HIGH (J5-F11 already-closed; J6-F4 + J6-F5 RLS lockdown — PR #367; J8-F9 + J8-F8 RLS lockdown + edge fn validation — PR #367 + follow-up PR #368)
-- Status: 11 of 14 HIGH remaining. Next: CC-3 currency sweep.
+- Fixes shipped: 4 of 14 HIGH (J5-F11 already-closed; J6-F4 + J6-F5 RLS lockdown — PR #367; J8-F9 + J8-F8 RLS lockdown + edge fn validation — PR #367 + follow-up PR #368; J1-F15 portal currency — Lovable 37163c52 + this docs PR). Plus 3 LOW closed alongside (J3-F2, J3-F10, J3-F15-currency).
+- Status: 10 of 14 HIGH remaining. In progress: cross-cutting currency sweep (PR 3 admin sites, PR 4 edge functions, PR 5 foundation review).
 
 ## In flight
 
