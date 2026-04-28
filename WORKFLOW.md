@@ -81,6 +81,7 @@ When a fix touches only files in Lovable's lane (React components, pages, hooks,
 2. Jamie pastes the prompt into Lovable. Lovable applies the change and pushes to `main`.
 3. Jamie confirms the commit landed (one-line confirmation: commit SHA + "Lovable pushed").
 4. Chat-Claude pulls and verifies the diff matches what was specified. If anything is wrong (extra files touched, callsites missed, drift from spec), chat-Claude writes a corrective Lovable prompt; do not chain forward.
+5. **Commit message note:** Lovable rewrites commit messages — it will paraphrase whatever you ask for into a short summary. Do not waste tokens specifying verbose conventional-commit messages in Lovable prompts. The commit SHA is the unambiguous reference; POLISH_NOTES carries the conventional-commit-style context.
 
 **Commit 2 — Claude Code follow-up (the docs):**
 

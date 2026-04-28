@@ -3359,13 +3359,13 @@ First fix batch against the Area 2 walk. Three findings closed in one PR. The pa
 - J8-F8 (MED, validation gap, folded into J8-F9 brief): the edge function accepted `defaultPaymentMethodId` and persisted it without verifying the PM belongs to the guardian's Stripe customer. Stripe would refuse cross-customer charges in practice, but the DB ended up referencing strangers' PM IDs.
 - Migration drops the parent UPDATE policy. Edge function now retrieves the PM from Stripe and asserts `pm.customer === prefs.stripe_customer_id` before persisting (mirroring `stripe-detach-payment-method:60`). If no `stripe_customer_id` exists yet, the function rejects with a clear error — this should never happen in production since PMs are only surfaced after a successful checkout that creates the customer record.
 - All parent writes to `guardian_payment_preferences` now go through this edge fn or `stripe-detach-payment-method`. Both authenticate.
-- Lovable apply / deploy: <DATETIME> UTC.
+- Lovable apply / deploy: 2026-04-28 21:40 UTC.
 - Verification: SQL run via Lovable SQL panel confirms the four dropped policies are gone; live test pending Lovable apply.
 
 Follow-up (PR #368, 2026-04-29): Post-deploy SQL verification on PR #367 surfaced a structural miss. An earlier migration `20260224110000_stripe_embedded_payments.sql` (four hours before `20260224152820` the same day) had created an overlapping set of three policies on the same table that were never dropped. One of them — "Guardians can manage own payment prefs" — was FOR ALL with WITH CHECK (`guardian_id IN (SELECT id FROM guardians WHERE user_id = auth.uid())`), which let parents UPDATE any column on their own row including `stripe_customer_id`. The audit-described J8-F9 attack was therefore still live in production after PR #367 merged. The SQL verification step in WORKFLOW.md caught it within minutes of apply. Migration `20260512100000_drop_redundant_guardian_payment_prefs_policies.sql` drops all three earlier-set policies (one security-critical, two duplicate SELECTs cleaned for hygiene), leaving a final set of four policies on the table. The audit-walk procedure in WORKFLOW.md now requires a `pg_policy` check on the target table before authoring any RLS-lockdown migration, to prevent this class of miss structurally.
 
 ### PR
-<PR_URL>
+https://github.com/sublimeanger/lessonloop3/pull/367
 
 ---
 
@@ -3383,3 +3383,20 @@ Without this, the next four currency-sweep PRs would each have to invent their o
 ### Files touched
 - `WORKFLOW.md` (one str_replace adding the new subsection; one str_replace updating the Lovable row in the Roles table)
 - `POLISH_NOTES.md` (this entry)
+
+---
+
+## Area 2 — Parent portal — CC-3 currency sweep (portal) (closed 2026-04-29)
+
+PR 2 of 5 in the cross-cutting currency sweep. Closes the audit's literal CC-3 entry. The pre-flight grep for this sweep surfaced 44+ hardcoded-GBP sites across the broader codebase; that broader scope is being shipped in PRs 3 (admin), 4 (edge fns), and 5 (foundation review) under the no-compromises rule.
+
+### J1-F15 + J3-F2 + J3-F10 + J3-F15-currency (Lovable commit `37163c52`) — drop hardcoded GBP fallbacks
+
+- 13 sites changed across 4 files: `src/pages/portal/PortalHome.tsx` (2), `src/pages/portal/PortalInvoices.tsx` (9, including one extra callsite at line 462 surfaced when PaymentDrawer prop became required), `src/pages/portal/PortalContinuation.tsx` (1), `src/components/portal/PaymentDrawer.tsx` (1 prop type change + 1 default-param removal).
+- Canonical replacement pattern: `currentOrg?.currency_code ?? ''`. The Organisation type already has `currency_code: string` (non-optional) per `src/contexts/OrgContext.tsx:20`; the `|| 'GBP'` fallbacks scattered across consumers contradicted the type and silently defaulted non-UK orgs to GBP. The `??` empty-string guard handles the brief window during initial render before currentOrg loads.
+- One specific bug fix at `PortalHome.tsx:784`: `formatCurrencyMinor(entry.offered_rate_minor, 'GBP')` was passing the literal string instead of the variable already declared at line 245. Now passes `currencyCode`.
+- `PaymentDrawer` prop `currencyCode` made required (was `currencyCode?: string` with default `'GBP'`). Type system now enforces every caller passes a real value.
+- Out-of-scope intentionally NOT touched in this PR: `OrgContext.tsx:299` (the DB-read fallback — handled in PR 5 foundation review), `lib/utils.ts` (formatCurrencyMinor's own default param — handled in PR 5), every admin/dashboard/report site (PR 3), every edge function (PR 4).
+- Workflow note: this is the first fix shipped under the new "Variant: Lovable-owned fixes" flow added in PR #369. Lovable pushed commit 37163c52 directly to main; this docs PR is the Claude Code follow-up that closes the audit findings and updates POLISH_NOTES / STATUS / roadmap. The two-commit pattern worked cleanly on first use.
+- Workflow lesson recorded: Lovable rewrites commit messages (asked for `fix(portal): drop hardcoded GBP fallbacks; trust currency_code type (CC-3, J1-F15, J3-F2, J3-F10, J3-F15)`, got `Removed hardcoded GBP fallbacks`). Future Lovable prompts should not specify verbose conventional-commit messages — Lovable will paraphrase. Folded into [WORKFLOW.md](http://WORKFLOW.md) in this same PR.
+- Verification: `grep -rn "'GBP'" src/pages/portal/ src/components/portal/` returns zero matches; TypeScript check clean per Lovable.
