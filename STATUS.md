@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-04-28 (PR: fix/area-2-rls-lockdowns-batch-1)
+**Last updated:** 2026-04-29 (PR: fix/area-2-J8-F9-followup-drop-redundant-policy)
 
 ---
 
@@ -10,7 +10,7 @@
 
 - Walk: complete (`docs/audits/2026-04-area-2-parent-portal.md`)
 - Findings: 17 HIGH (across 14 fix briefs), 25 MED, ~110 LOW
-- Fixes shipped: 3 of 14 HIGH (J5-F11 already-closed, J6-F4 + J6-F5 RLS lockdown, J8-F9 + J8-F8 RLS lockdown + edge fn validation — PR #367)
+- Fixes shipped: 3 of 14 HIGH (J5-F11 already-closed; J6-F4 + J6-F5 RLS lockdown — PR #367; J8-F9 + J8-F8 RLS lockdown + edge fn validation — PR #367 + follow-up PR #368)
 - Status: 11 of 14 HIGH remaining. Next: CC-3 currency sweep.
 
 ## In flight

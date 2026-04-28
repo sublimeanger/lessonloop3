@@ -3362,5 +3362,7 @@ First fix batch against the Area 2 walk. Three findings closed in one PR. The pa
 - Lovable apply / deploy: <DATETIME> UTC.
 - Verification: SQL run via Lovable SQL panel confirms the four dropped policies are gone; live test pending Lovable apply.
 
+Follow-up (PR #368, 2026-04-29): Post-deploy SQL verification on PR #367 surfaced a structural miss. An earlier migration `20260224110000_stripe_embedded_payments.sql` (four hours before `20260224152820` the same day) had created an overlapping set of three policies on the same table that were never dropped. One of them — "Guardians can manage own payment prefs" — was FOR ALL with WITH CHECK (`guardian_id IN (SELECT id FROM guardians WHERE user_id = auth.uid())`), which let parents UPDATE any column on their own row including `stripe_customer_id`. The audit-described J8-F9 attack was therefore still live in production after PR #367 merged. The SQL verification step in WORKFLOW.md caught it within minutes of apply. Migration `20260512100000_drop_redundant_guardian_payment_prefs_policies.sql` drops all three earlier-set policies (one security-critical, two duplicate SELECTs cleaned for hygiene), leaving a final set of four policies on the table. The audit-walk procedure in WORKFLOW.md now requires a `pg_policy` check on the target table before authoring any RLS-lockdown migration, to prevent this class of miss structurally.
+
 ### PR
 <PR_URL>
