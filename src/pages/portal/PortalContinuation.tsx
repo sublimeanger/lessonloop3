@@ -258,7 +258,7 @@ function PortalContinuationList() {
   const [withdrawalReason, setWithdrawalReason] = useState('');
   const [withdrawalNotes, setWithdrawalNotes] = useState('');
 
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
 
   if (isLoading) {
     return (

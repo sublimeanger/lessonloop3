@@ -242,7 +242,7 @@ export default function PortalHome() {
   };
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
-  const currencyCode = currentOrg?.currency_code || 'GBP';
+  const currencyCode = currentOrg?.currency_code ?? '';
   const tz = currentOrg?.timezone || 'Europe/London';
 
   const isLoading = summaryLoading || childrenLoading || guardianLoading;
@@ -781,7 +781,7 @@ export default function PortalHome() {
                               )}
                               {entry.offered_rate_minor != null && (
                                 <p className="text-muted-foreground text-xs">
-                                  Rate: {formatCurrencyMinor(entry.offered_rate_minor, 'GBP')} per lesson
+                                  Rate: {formatCurrencyMinor(entry.offered_rate_minor, currencyCode)} per lesson
                                 </p>
                               )}
                             </div>

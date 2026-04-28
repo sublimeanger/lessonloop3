@@ -212,7 +212,7 @@ export default function PortalInvoices() {
       id: invoiceId,
       invoiceNumber: inv?.invoice_number,
       amount: inv ? inv.total_minor - (inv.paid_minor || 0) : undefined,
-      currencyCode: currentOrg?.currency_code || 'GBP',
+      currencyCode: currentOrg?.currency_code ?? '',
       dueDate: inv ? format(parseISO(inv.due_date), 'd MMM yyyy') : undefined,
     });
     setPaymentDrawerOpen(true);
@@ -223,7 +223,7 @@ export default function PortalInvoices() {
     setPaymentDrawerInvoice({
       id: invoiceId,
       invoiceNumber: inv?.invoice_number,
-      currencyCode: currentOrg?.currency_code || 'GBP',
+      currencyCode: currentOrg?.currency_code ?? '',
       dueDate: inv ? format(parseISO(inv.due_date), 'd MMM yyyy') : undefined,
       installmentId,
     });
@@ -236,7 +236,7 @@ export default function PortalInvoices() {
       id: invoiceId,
       invoiceNumber: inv?.invoice_number,
       amount: inv ? inv.total_minor - (inv.paid_minor || 0) : undefined,
-      currencyCode: currentOrg?.currency_code || 'GBP',
+      currencyCode: currentOrg?.currency_code ?? '',
       dueDate: inv ? format(parseISO(inv.due_date), 'd MMM yyyy') : undefined,
       payRemaining: true,
       installmentLabel: `${inv?.invoice_number} — Remaining balance`,
@@ -301,7 +301,7 @@ export default function PortalInvoices() {
                 <div>
                   <p className="font-medium text-sm">Outstanding Balance</p>
                   <p className="text-2xl sm:text-3xl font-semibold text-warning tabular-nums">
-                    {formatCurrencyMinor(totalOutstanding, currentOrg?.currency_code || 'GBP')}
+                    {formatCurrencyMinor(totalOutstanding, currentOrg?.currency_code ?? '')}
                   </p>
                 </div>
               </div>
@@ -377,7 +377,7 @@ export default function PortalInvoices() {
                       <PaymentPlanInvoiceCard
                         key={invoice.id}
                         invoice={invoice}
-                        currencyCode={currentOrg?.currency_code || 'GBP'}
+                        currencyCode={currentOrg?.currency_code ?? ''}
                         onPayInstallment={handlePayInstallment}
                         onPayRemaining={handlePayRemaining}
                         isPaying={payingInvoiceId === invoice.id && isPaymentLoading}
@@ -390,7 +390,7 @@ export default function PortalInvoices() {
                       <InvoiceCard
                         key={invoice.id}
                         invoice={invoice}
-                        currencyCode={currentOrg?.currency_code || 'GBP'}
+                        currencyCode={currentOrg?.currency_code ?? ''}
                         getStatusBadge={getStatusBadge}
                         onPay={handlePayInvoice}
                         isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
@@ -417,7 +417,7 @@ export default function PortalInvoices() {
                     <PaymentPlanInvoiceCard
                       key={invoice.id}
                       invoice={invoice}
-                      currencyCode={currentOrg?.currency_code || 'GBP'}
+                      currencyCode={currentOrg?.currency_code ?? ''}
                       onPayInstallment={handlePayInstallment}
                       onPayRemaining={handlePayRemaining}
                       isPaying={payingInvoiceId === invoice.id && isPaymentLoading}
@@ -429,7 +429,7 @@ export default function PortalInvoices() {
                     <InvoiceCard
                       key={invoice.id}
                       invoice={invoice}
-                      currencyCode={currentOrg?.currency_code || 'GBP'}
+                      currencyCode={currentOrg?.currency_code ?? ''}
                       getStatusBadge={getStatusBadge}
                       onPay={handlePayInvoice}
                       isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
