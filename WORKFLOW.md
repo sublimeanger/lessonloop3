@@ -52,7 +52,7 @@ Before authoring the lockdown migration:
 
 3. The lockdown migration's "Why" block must state that this pre-flight check was done and what was found, even if the answer was "no surprises".
 
-This rule was added in PR #<N> (2026-04-29) after the J8-F9 follow-up closure — PR #367 dropped one of two parent-write policies on `guardian_payment_preferences` because the audit walker had only seen the second-set migration; the first-set FOR ALL policy from four hours earlier kept the J8-F9 attack live until post-deploy verification caught it. Pre-flight `pg_policy` check would have surfaced it before authoring.
+This rule was added in PR #368 (2026-04-29) after the J8-F9 follow-up closure — PR #367 dropped one of two parent-write policies on `guardian_payment_preferences` because the audit walker had only seen the second-set migration; the first-set FOR ALL policy from four hours earlier kept the J8-F9 attack live until post-deploy verification caught it. Pre-flight `pg_policy` check would have surfaced it before authoring.
 
 ---
 
