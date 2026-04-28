@@ -3336,13 +3336,13 @@ Area 2 fix work resumes against the new workflow. First batch: three RLS lockdow
 
 First fix batch against the Area 2 walk. Three findings closed in one PR. The pattern shared by all three: parent-facing tables had over-permissive RLS that allowed parents to bypass server-side validation by writing directly via the supabase-js client. Fix is to drop the direct write paths and force all parent writes through the already-authenticated edge functions.
 
-### J5-F11 (PR #<N>) — practice_streaks RLS lockdown — already shipped, formally closed
+### J5-F11 (PR #367) — practice_streaks RLS lockdown — already shipped, formally closed
 
 - No code change in this PR. The fix shipped 2026-03-16 in `20260316310000_fix_practice_tracking_audit.sql §F3` ("Lock down practice_streaks INSERT/UPDATE to service-role / trigger only").
 - The Area 2 walker (28 April) found the policies in the source migration `20260315100000_fix_practice_streaks_rls.sql` but did not search forward for later migrations on the same table; F3 of the March practice-tracking audit had already dropped both policies one month earlier.
 - Walk doc updated with `[already shipped 2026-03-16 ... walker missed]` annotation. Process gap noted: future audit walks should grep all migrations touching the target table, not just the policy's source.
 
-### J6-F4 + J6-F5 (PR #<N>) — term_continuation RLS lockdown
+### J6-F4 + J6-F5 (PR #367) — term_continuation RLS lockdown
 
 - Migration: `20260511100000_lockdown_parent_rls_j6_j8.sql`
 - J6-F4 (HIGH, RLS leak): "Org members can view continuation runs/responses" granted every authenticated parent SELECT on every other family's continuation rows, leaking `withdrawal_reason`, `withdrawal_notes`, `lesson_summary`, `next_term_fee_minor`, and crucially `response_token` (which doubles as a bearer credential for email-link impersonation).
@@ -3351,7 +3351,7 @@ First fix batch against the Area 2 walk. Three findings closed in one PR. The pa
 - "Parents see own responses" (from `20260315200500`) and "Org admins can manage continuation responses" preserved — both load-bearing.
 - All parent writes now route through `continuation-respond` (no policy change there — already correct).
 
-### J8-F9 + J8-F8 (PR #<N>) — guardian_payment_preferences RLS lockdown + Stripe PM validation
+### J8-F9 + J8-F8 (PR #367) — guardian_payment_preferences RLS lockdown + Stripe PM validation
 
 - Migration: `20260511100000_lockdown_parent_rls_j6_j8.sql` (same migration as J6).
 - Edge fn: `supabase/functions/stripe-update-payment-preferences/index.ts` rewritten.
