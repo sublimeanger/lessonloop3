@@ -3203,8 +3203,8 @@ Corrective changes (single commit, T01-P2-fix1):
 - 2 backfill statement blocks (action 'create' → 'insert' filtered on plural
   entity_type; then plural → singular for 11 entity types).
 - DROP FUNCTION public.log_audit_event() — zero callers post-rewrite.
-- Lovable apply: <DATETIME> UTC.
-- PR: <PR_URL>
+- Lovable apply: 2026-04-26 22:22 UTC.
+- PR: https://github.com/sublimeanger/lessonloop3/pull/356
 - Self: claude/t01-p3-entity-type-normalisation
 
 ### T01-P3-C2 (commit d0ea74b) — edge fns + frontend display
@@ -3216,11 +3216,11 @@ Corrective changes (single commit, T01-P2-fix1):
 - getChangeDescription accepts both 'insert' and 'create' for the create path.
 - Test fixtures updated: 15 plural references → singular; 1 new test for 'insert'
   action equivalence. 26/26 tests pass; npm run typecheck clean.
-- Lovable redeploys edge fns: <DATETIME> UTC.
-- PR: <PR_URL>
+- Lovable redeploys edge fns: 2026-04-26 22:22 UTC (bundled with T01-P3-C1 apply).
+- PR: https://github.com/sublimeanger/lessonloop3/pull/356
 - Self: claude/t01-p3-entity-type-normalisation
 
-### T01-P3-C3 (commit <SHA>) — docs close + Track 0.1 closure
+### T01-P3-C3 (commit fc68a90a) — docs close + Track 0.1 closure
 - docs/AUDIT_LOG_T01_P3_WALK_2026-04-26.md created from chat-Claude's walk doc.
 - LESSONLOOP_PRODUCTION_ROADMAP.md: Track 0.1 closed (P1+P2+P3 all ✅).
 - docs/MIGRATION_CONVENTIONS.md: existing "Audit triggers" section updated
@@ -3229,7 +3229,7 @@ Corrective changes (single commit, T01-P2-fix1):
   noted as third historical helper, T01-P3 references moved to past tense.
   (Brief specified appending a new section; appended in place would have
   created a duplicate H2 — surfaced and adjusted.)
-- PR: <PR_URL>
+- PR: https://github.com/sublimeanger/lessonloop3/pull/356
 - Self: claude/t01-p3-entity-type-normalisation
 
 ### T08-P2-C1 (commit 7b3b86d) — request_id capture
@@ -3240,8 +3240,8 @@ Corrective changes (single commit, T01-P2-fix1):
   correlation against net._http_response.id.
 - Two SQL-only crons (complete-expired-assignments, reset-stale-practice-streaks)
   intentionally untouched — no HTTP layer to capture.
-- Lovable apply: <DATETIME> UTC.
-- PR: <PR_URL>
+- Lovable apply: 2026-04-27 07:35 UTC.
+- PR: https://github.com/sublimeanger/lessonloop3/pull/357
 
 ### T08-P2-C2 (commit 9aefa0e) — watchdog RPC + edge fn + cron
 - Migration: 20260508100100_cron_health_watchdog.sql
@@ -3260,10 +3260,10 @@ Corrective changes (single commit, T01-P2-fix1):
 - No supabase/functions/<fn>/deno.json file created — zero such files exist
   in this project; per-fn deno config is not the convention here. Brief's
   `cp` instruction was inapplicable.
-- Lovable apply + redeploy: <DATETIME> UTC.
-- PR: <PR_URL>
+- Lovable apply + redeploy: 2026-04-27 07:35 UTC (bundled with T08-P2-C1 apply).
+- PR: https://github.com/sublimeanger/lessonloop3/pull/357
 
-### T08-P2-C3 (commit <SHA>) — docs close + Track 0.8 closure
+### T08-P2-C3 (commit 2e8be79b) — docs close + Track 0.8 closure
 - docs/CRON_HEALTH_WATCHDOG_T08_P2_WALK_2026-04-26.md created from
   chat-Claude's walk doc.
 - docs/CRON_JOBS.md: cron #16 added; verification section rewritten.
@@ -3271,7 +3271,7 @@ Corrective changes (single commit, T01-P2-fix1):
   policy, evidence fields, verification queries.
 - LESSONLOOP_PRODUCTION_ROADMAP.md: Track 0.8 closed (P1+P2 both ✅);
   T08-F5 closed.
-- PR: <PR_URL>
+- PR: https://github.com/sublimeanger/lessonloop3/pull/357
 
 ---
 
@@ -3400,3 +3400,17 @@ PR 2 of 5 in the cross-cutting currency sweep. Closes the audit's literal CC-3 e
 - Workflow note: this is the first fix shipped under the new "Variant: Lovable-owned fixes" flow added in PR #369. Lovable pushed commit 37163c52 directly to main; this docs PR is the Claude Code follow-up that closes the audit findings and updates POLISH_NOTES / STATUS / roadmap. The two-commit pattern worked cleanly on first use.
 - Workflow lesson recorded: Lovable rewrites commit messages (asked for `fix(portal): drop hardcoded GBP fallbacks; trust currency_code type (CC-3, J1-F15, J3-F2, J3-F10, J3-F15)`, got `Removed hardcoded GBP fallbacks`). Future Lovable prompts should not specify verbose conventional-commit messages — Lovable will paraphrase. Folded into [WORKFLOW.md](http://WORKFLOW.md) in this same PR.
 - Verification: `grep -rn "'GBP'" src/pages/portal/ src/components/portal/` returns zero matches; TypeScript check clean per Lovable.
+
+---
+
+## Process — POLISH_NOTES stale placeholder cleanup (2026-04-29)
+
+Six [pre-WORKFLOW.md](http://pre-WORKFLOW.md) POLISH_NOTES sections (T01-P3-C1/C2/C3, T08-P2-C1/C2/C3) had `<DATETIME>`, `<PR_URL>`, and one `<SHA>` placeholder strings that were never filled in by the original sessions. Surfaced when verifying PR #370's docs-grep showed 10 stale placeholder hits across 3206-3274. All resolved against git log:
+- T01-P3 entries → PR #356 merged 2026-04-26, Lovable apply at 22:22 UTC.
+- T08-P2 entries → PR #357 merged 2026-04-27, Lovable apply at 07:35 UTC.
+- T08-P2-C3 SHA → commit `2e8be79b`.
+
+Going forward, every Claude Code prompt that creates POLISH_NOTES sections with placeholders MUST resolve those placeholders in the same PR before pushing (per [WORKFLOW.md](http://WORKFLOW.md) "Variant: Lovable-owned fixes" Commit 2 + the existing Claude Code "What Claude Code's commits always include" rule). The placeholder pattern was an artefact of the [pre-WORKFLOW.md](http://pre-WORKFLOW.md) two-step push (open PR → fill placeholders → push again); the rule now is no PR opens with unresolved placeholders.
+
+### Files touched
+- POLISH_[NOTES.md](http://NOTES.md) (six section repairs + this entry)
