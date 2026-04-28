@@ -3301,3 +3301,31 @@ Two follow-up commits to Track 0.8 close the timeout symptom that surfaced durin
 ### Notable
 
 The T08-F6 PR was opened on a misdiagnosis — Jamie and the assisting Claude session believed pg_net was timing out the request. The actual cause was the 5000ms ceiling combined with the serial 49-org outer loop. F6 still ships a real improvement (bounded-concurrency inner fan-out) but does not on its own fix the symptom. F9 is the genuine fix.
+
+---
+
+## Process — docs and workflow reset (2026-04-28)
+
+One-time reset to fix session continuity. Every future AI session on this repo starts identically by reading `START_HERE.md`, then `STATUS.md`, then `WORKFLOW.md`, then the active walk doc.
+
+### Files added
+- `START_HERE.md` — bootstrap protocol every AI session reads first
+- `STATUS.md` — short auto-updated "where am I right now" doc
+- `WORKFLOW.md` — canonical workflow including the prompt envelope shape every chat session uses
+
+### Files updated
+- `LESSONLOOP_PRODUCTION_ROADMAP.md` — added one-screen status table at the top
+- `claude.md` — workflow section replaced with a one-line pointer to `WORKFLOW.md`
+- `LOVABLE_CLAUDE_DIVISION.md` — replaced with a redirect to `WORKFLOW.md`
+- `docs/audits/2026-04-area-2-parent-portal.md` — recorded resolutions for CC-F3, J3-F11, J5-F4, J5-F5
+
+### Files removed
+- `AREA_2_PARENT_PORTAL_AUDIT_2026-04-28.md` — stale duplicate (canonical copy is at `docs/audits/2026-04-area-2-parent-portal.md`)
+
+### Decisions captured for Area 2
+- CC-F3 (parent LoopAssist): does NOT ship; remove dead code in future fix PR
+- J3-F11 (iOS payment): Option C — Safari direct-to-pay-page from email links and in-app unpaid-invoice card
+- J5-F4 / J5-F5 (multi-child weekly goal): Option A — require active child filter to render
+
+### Next
+Area 2 fix work resumes against the new workflow. First batch: three RLS lockdowns (J5-F11, J6-F4+F5, J8-F9).
