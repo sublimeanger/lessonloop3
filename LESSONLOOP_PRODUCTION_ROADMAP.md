@@ -40,8 +40,8 @@ If you are a Claude session inheriting this work, or Jamie is picking up after a
 
 **Workflow stack (verified canonical source: `LOVABLE_CLAUDE_DIVISION.md`):**
 - **Claude (this assistant)** — planning, finding analysis, edit specifications, decision framing
-- **Claude Code** — repo file edits, edge function source edits, **migrations applied via `./scripts/apply-pending-migrations.sh` or `supabase db push`**, edge function deploys via `supabase functions deploy`, typecheck, commits, pushes
-- **Lovable** — frontend code (React, hooks, components, pages), auto-deploys edge function source on GitHub sync. **Lovable does NOT reliably apply Claude Code migrations** — every migration must be run by Claude Code.
+- **Claude Code** — repo file edits, edge function source edits, migration `.sql` authoring, typecheck, commits, pushes. **Does NOT execute migrations or deploy edge functions.**
+- **Lovable** — frontend code (React, hooks, components, pages), **applies all SQL migrations via its native Supabase integration, AND deploys all edge functions**. New edge function pushed by Claude Code → Lovable needs to deploy it. New migration pushed by Claude Code → Lovable needs to apply it. Lovable IS the SQL editor / Supabase deploy surface.
 - **GitHub web** — tag creation, branch protection workarounds, PR merge
 
 ---
