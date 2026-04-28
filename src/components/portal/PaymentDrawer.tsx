@@ -32,7 +32,7 @@ interface PaymentDrawerProps {
   invoiceId: string | null;
   invoiceNumber?: string;
   amount?: number;
-  currencyCode?: string;
+  currencyCode: string;
   dueDate?: string;
   installmentId?: string;
   payRemaining?: boolean;
@@ -45,7 +45,7 @@ export function PaymentDrawer({
   invoiceId,
   invoiceNumber,
   amount,
-  currencyCode = 'GBP',
+  currencyCode,
   dueDate,
   installmentId,
   payRemaining,
