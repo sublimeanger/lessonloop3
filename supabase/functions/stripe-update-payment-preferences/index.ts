@@ -1,9 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 /**
  * Updates guardian payment preferences (auto-pay toggle, default payment method).
+ *
+ * J8-F8 / J8-F9 (Area 2 audit, closed 2026-04-28):
+ * Validates that defaultPaymentMethodId belongs to the guardian's Stripe
+ * customer before persisting, mirroring the pattern in
+ * stripe-detach-payment-method. Pairs with the migration that drops the
+ * direct UPDATE RLS policy on guardian_payment_preferences — this edge
+ * function is now the only path for parents to mutate their preferences
+ * (the other being stripe-detach-payment-method which already validates).
  */
 serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
@@ -40,6 +49,37 @@ serve(async (req) => {
 
     if (!guardian) throw new Error("Guardian not found");
 
+    // J8-F8: If a default payment method is being set, verify it belongs to
+    // this guardian's Stripe customer. PMs are platform-attached (see
+    // stripe-list-payment-methods rationale); retrieve on the platform
+    // account, not the connected account.
+    if (typeof defaultPaymentMethodId === "string") {
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
+
+      const { data: prefs } = await supabase
+        .from("guardian_payment_preferences")
+        .select("stripe_customer_id")
+        .eq("guardian_id", guardian.id)
+        .eq("org_id", orgId)
+        .maybeSingle();
+
+      if (!prefs?.stripe_customer_id) {
+        // No customer record yet — this should not happen in production because
+        // PMs are only surfaced to the parent after a successful checkout that
+        // creates both the customer record and the preferences row. If we hit
+        // this, it indicates the client sent a defaultPaymentMethodId without
+        // a prior charge, which is a bug.
+        throw new Error("No Stripe customer on file for this guardian; complete a payment first.");
+      }
+
+      const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+      const pm = await stripe.paymentMethods.retrieve(defaultPaymentMethodId);
+      if (pm.customer !== prefs.stripe_customer_id) {
+        throw new Error("Payment method does not belong to this customer");
+      }
+    }
+
     // Build update payload
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (typeof autoPayEnabled === "boolean") {
@@ -49,7 +89,8 @@ serve(async (req) => {
       updateData.default_payment_method_id = defaultPaymentMethodId;
     }
 
-    // Upsert preferences
+    // Upsert preferences. Note: stripe_customer_id is intentionally NOT writable
+    // through this function — it is managed by stripe-create-payment-intent.
     const { error: upsertError } = await supabase
       .from("guardian_payment_preferences")
       .upsert(
@@ -70,10 +111,20 @@ serve(async (req) => {
   } catch (error: any) {
     console.error("Error in stripe-update-payment-preferences:", error);
     const isUnauthorized = error.message === "Unauthorized";
+    const isClientError = error.message === "Payment method does not belong to this customer"
+      || error.message === "No Stripe customer on file for this guardian; complete a payment first."
+      || error.message === "orgId is required"
+      || error.message === "Guardian not found"
+      || error.message === "No authorization header";
+    const status = isUnauthorized ? 401 : (isClientError ? 400 : 500);
     return new Response(
-      JSON.stringify({ error: isUnauthorized ? "Unauthorized" : "An internal error occurred. Please try again." }),
+      JSON.stringify({
+        error: isUnauthorized
+          ? "Unauthorized"
+          : (isClientError ? error.message : "An internal error occurred. Please try again.")
+      }),
       {
-        status: isUnauthorized ? 401 : 500,
+        status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
