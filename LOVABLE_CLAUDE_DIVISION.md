@@ -59,24 +59,27 @@ Claude Code **can** edit `types.ts` and migration files locally, but should let 
 
 ## 5. Edge function deployment
 
-### From Lovable
-- Writing/editing `supabase/functions/<name>/index.ts` triggers an automatic deploy.
-- Lovable can also explicitly redeploy any function on demand.
+**Claude Code writes edge function source. Lovable deploys it.** Same model as migrations (§6).
 
-### From Claude Code (preferred for backend work)
-```bash
-# Single function
-supabase functions deploy <name> --project-ref ximxgnkpcswbvfrkkmjq
+### Standard flow (Claude Code authors / edits the function)
+1. Claude Code writes or edits `supabase/functions/<name>/index.ts` (and any `_shared/` modules it touches).
+2. Commit and push to `main` (or open a PR if larger work).
+3. Lovable syncs the file from GitHub automatically.
+4. Jamie prompts Lovable to deploy the function. Lovable IS the deploy surface for edge functions, the same way it IS the Supabase SQL editor for migrations.
 
-# All functions
-supabase functions deploy --project-ref ximxgnkpcswbvfrkkmjq
-```
+### Lovable-authored functions
+1. Lovable edits `supabase/functions/<name>/index.ts` directly via its UI.
+2. Lovable deploys on save.
+3. The change syncs to GitHub on the same write.
 
 ### Important
-- Both paths target the same live project.
+- Claude Code does NOT run `supabase functions deploy`. That command was used in past sessions as an emergency one-off and is not part of normal workflow — Lovable owns the deploy.
 - `supabase/config.toml` controls per-function settings (e.g. `verify_jwt`). Only function-specific blocks are safe to edit. **Never touch `project_id` or other project-level keys.**
 - After deploy, first invocation can have a 2-3s cold start.
-- If a deploy fails with 500/internal error, try removing `deno.lock` and retry — incompatible lockfiles are a common cause.
+- If Lovable's deploy fails with 500/internal error, removing `deno.lock` and asking Lovable to retry is the canonical recovery — incompatible lockfiles are a common cause.
+
+What Claude Code says when it ships a new or changed edge function:
+  "Edge function `<name>` written and pushed. Tell Lovable: 'deploy edge function `<name>`' (or 'deploy all pending edge functions' if multiple changed)."
 
 ---
 
@@ -123,7 +126,7 @@ Every migration must be safely re-runnable:
 | Marketing site deploy | You | `node scripts/prerender.mjs` → Cloudflare Pages |
 | iOS build refresh | You | `npx cap copy ios` (**not `sync`** — hangs) |
 | Apply Claude-authored migrations | Lovable | Jamie approves and applies in Lovable's Supabase panel after GitHub sync (see §6) |
-| Deploy Claude-authored edge functions | Claude / you | `supabase functions deploy --project-ref ximxgnkpcswbvfrkkmjq` |
+| Deploy Claude-authored edge functions | Lovable | Jamie prompts Lovable to deploy after GitHub sync (see §5) |
 | Stripe webhook secret rotation | You | Stripe dashboard → update secret in Lovable Cloud |
 | Workspace build secrets (private npm tokens) | You | Workspace Settings → Build Secrets (Lovable cannot set these) |
 | Custom domain DNS | You | DNS provider + Lovable project settings |
@@ -171,7 +174,7 @@ When you start a session:
 1. Read this file and `README.md`.
 2. Check `supabase/migrations/` for any locally-authored migrations not yet applied (compare with `supabase migration list --project-ref ximxgnkpcswbvfrkkmjq`).
 3. Stay in your lane: edge functions, migrations, RLS, RPCs, tests. Do not modify `src/components/**`, `src/pages/**`, `src/hooks/**`, or styling.
-4. After backend changes: commit + push migrations to GitHub (Lovable will sync the file; Jamie applies in Lovable's Supabase panel — see §6). Deploy edge functions with `supabase functions deploy --project-ref ximxgnkpcswbvfrkkmjq`.
+4. After backend changes: commit + push to GitHub. Lovable syncs and Jamie prompts Lovable to apply migrations (§6) and deploy edge functions (§5). Claude Code does NOT run `supabase db push` or `supabase functions deploy`.
 5. If you must touch UI for an end-to-end feature, leave a clear commit message so Lovable doesn't unknowingly overwrite it.
 
 ---
@@ -198,4 +201,4 @@ Lovable's migration tool does NOT write to supabase_migrations.schema_migrations
 
 ---
 
-_Last updated: 2026-04-18_
+_Last updated: 2026-04-27_

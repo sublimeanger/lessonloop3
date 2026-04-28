@@ -72,8 +72,8 @@ E2E tests run against the live site via container proxy. See claude.md for test 
 Deployment
 * App: Deployed via Lovable (auto-deploys on main)
 * Marketing site: node scripts/prerender.mjs → deploy to Cloudflare Pages
-* Edge functions: supabase functions deploy
-* Migrations: supabase db push
+* Edge functions: deployed by Lovable (Claude Code writes the source; Lovable deploys it)
+* Migrations: applied by Lovable via its native Supabase integration (Claude Code writes the .sql file; Lovable applies it)
 * iOS: npx cap copy ios (not sync — sync hangs)
 Project Structure
 src/ ├── components/          # React components by feature domain │   ├── calendar/        # Calendar views, lesson form, bulk edit │   ├── invoices/        # Invoice list, detail, billing run wizard │   ├── students/        # Student CRUD, guardian management │   ├── teachers/        # Teacher CRUD, availability │   ├── continuation/    # Term continuation admin │   ├── dashboard/       # Dashboard widgets, stats │   ├── makeup/          # Make-up credits and waitlist │   ├── portal/          # Parent portal components │   ├── messaging/       # Messages, notifications │   ├── loopassist/      # AI copilot chat interface │   └── ui/              # shadcn/ui base components ├── hooks/               # React hooks by feature domain ├── pages/               # Route-level page components ├── integrations/        # Supabase client, types ├── lib/                 # Utilities (currency, timezone, platform detection) └── contexts/            # React contexts (auth, org, role)  supabase/ ├── functions/           # 82 edge functions │   ├── _shared/         # Shared utilities (rate-limit, auth, email) │   ├── create-billing-run/ │   ├── stripe-webhook/ │   ├── send-invoice-email/ │   └── ... ├── migrations/          # SQL migrations (76+) └── config.toml          # Edge function config (verify_jwt settings)  scripts/ └── prerender.mjs        # Marketing site static generator
