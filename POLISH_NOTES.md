@@ -3428,3 +3428,89 @@ Originally drafted as one PR with V2 + sweep in two commits. Split into PR 0 (th
 ### Next
 
 Batch 2A — CC-3 broader hardcoded-currency sweep — runs only after this PR merges, against the V2 workflow it brings into existence.
+
+---
+
+## Area 2 — Parent portal — Batch 2A: CC-3 broader hardcoded-currency sweep (closed 2026-04-29)
+
+First fix-batch shipped under WORKFLOW V2. Closes CC-F8 mechanically and the LOW + cross-cutting portion of CC-3 across the entire non-portal codebase. Builds on PR #370 (portal-only sweep at Lovable 37163c52). Pre-flight baseline: 123 occurrences of literal `'GBP'` across 75 files. Post-sweep: 45 across 17 files — all of which are Bucket A KEEPS (canonical defaults, test fixtures, JSON-LD `priceCurrency` for SEO, currency-picker option labels with inline justification).
+
+### Fixed
+
+- **CC-F8** — `supabase/functions/parent-loopassist-chat/index.ts` no longer falls back silently to GBP for the AI's currency context; org currency is validated up-front and the function fails loudly with a 500 if missing. Currency-symbol mapping moved to a `Record<string, string>` lookup so the literal `"GBP"` is no longer in source as a switch case. Will be deleted entirely in a future Batch 2D (Area 2 LoopAssist removal — see CC-F3 decision 2026-04-28); mechanical fix shipped here under the no-compromises rule.
+- **J3-F2 / J3-F10 / J3-F15-currency** (already struck through by PR #370) — listed for completeness; broader sweep does not re-close.
+
+### Pattern applied
+
+- **Bucket B-1 (39 files: components/dashboard, components/calendar, components/continuation, components/invoices, components/settings, components/students, hooks, pages, pages/reports)** — display-only React/hooks. Replacement: `currentOrg?.currency_code || 'GBP'` → `currentOrg?.currency_code ?? ''`. Matches the pattern PR #370 established for the parent portal. Helper-safety analysis (Task 2) confirmed all sites are upstream-gated by `!!currentOrg` data-loading, so the empty-string sentinel never reaches `Intl.NumberFormat` in normal flow. Default-param helpers (`exportRevenueToCSV`, `exportAgeingToCSV`, `exportPayrollToCSV`, `exportTeacherPerformanceToCSV`, `processRefund`, `processManualRefund`, `RecurringRunDetail.fmtAmount`) had their `= 'GBP'` defaults removed and the parameter made required — TypeScript now enforces every caller passes a real currency.
+- **Bucket B-2 (20 edge functions: stripe-create-payment-intent, stripe-create-checkout, stripe-process-refund, stripe-webhook, generate-invoice-pdf, send-payment-receipt, send-invoice-email-core, auto-pay-reminder-core, send-auto-pay-failure-notification, send-dispute-notification, send-enrolment-offer, installment-upcoming-reminder, overdue-reminders, credit-expiry-warning, csv-import-execute, create-continuation-run, process-term-adjustment, looopassist-chat, looopassist-execute, parent-loopassist-chat)** — financial / outbound. Replacement: validate the org's `currency_code` is a 3-character string; fail loudly with `error: "Organisation currency not configured"` and HTTP 500 if missing. No more silent fallbacks into Stripe API calls. `_shared/send-invoice-email-core.ts` `formatMinorAmount` symbol-lookup refactored to a `Record<string, string>` so the literal `"GBP"` is no longer a switch-case key. Same for `process-term-adjustment`, `credit-expiry-warning`, `parent-loopassist-chat`, `send-enrolment-offer`.
+
+### Bucket A (kept — explicitly out of scope)
+
+These files have legitimate hardcoded `'GBP'` and were not touched:
+
+- `src/lib/utils.ts` — `formatCurrency` / `formatCurrencyMinor` / `currencySymbol` default params + JSDoc example. Canonical fallback that all of Bucket B-1 implicitly relies on. Touching this would change downstream behaviour out of batch scope.
+- `src/contexts/OrgContext.tsx:299` — `createOrganisation` initial-org default. Canonical "new org defaults to GBP" rule.
+- `supabase/functions/onboarding-setup/index.ts` — initial-org default in the edge fn that pairs with `OrgContext`. Same canonical rule.
+- `src/test/helpers/mockOrg.ts`, `src/test/reports/InvoiceStats.test.ts` — test fixtures. Tests must be deterministic; no parameterisation.
+- `supabase/functions/seed-demo-{agency,data,solo}/index.ts` and `supabase/functions/seed-e2e-data/index.ts` — demo / e2e seeders. Functionally equivalent to test fixtures + onboarding-setup combined. Extension of Bucket A by direct analogy: they create deterministic GBP demo orgs and seed matching invoices. Parameterising them would be incoherent.
+- 7 marketing JSON-LD schema files (`HomepageSchema`, `CompareSchema`, `FeaturePageSchema`, `FeaturesSchema`, `PricingSchema`, `UKSchema`, `UseCaseSchema`) — JSON-LD `priceCurrency` properties served on public, unauthenticated UK-targeted marketing pages. SEO requires literal currency strings; no org context available.
+- `src/components/settings/OrganisationTab.tsx` — currency picker UI: `{ code: 'GBP', label: 'GBP (£) — British Pound' }` is an option value (one of six in the `CURRENCIES` array), and `useState('GBP')` is the picker's initial state before `orgData` loads. Both kept with inline-comment justifications. The defensive `|| 'GBP'` fallback at line 123 was dropped (`orgData.currency_code` is non-null typed; the fallback was unreachable).
+
+### Migrations
+
+(none) — sweep is purely application code and edge functions.
+
+### Verification
+
+- `npm run typecheck` — pass.
+- `npm run build` — pass.
+- `npm run lint` — pass against the diff. The 7 errors that ESLint reports (`prefer-const` × 3 in unrelated hooks, `no-control-regex`, `no-useless-escape` × 2, parsing error in test file) are all pre-existing on `main` and out of batch scope; verified by `git stash && npm run lint` showing the same 7 errors on the `main` baseline.
+- Post-sweep grep `grep -RnE "['\"]GBP['\"]" src/ supabase/functions/` returns 45 occurrences across 17 files — all Bucket A keeps + 3 inline-justified Keeps in OrganisationTab. Delta from baseline: 78 occurrences and 58 files cleaned.
+
+### Helper safety check (Task 2)
+
+Before extending the PR #370 `?? ''` pattern repo-wide, the helpers were tested empirically:
+
+- `Intl.NumberFormat('en-GB', { style: 'currency', currency: '' }).format(12.34)` → throws `RangeError: Invalid currency code :`. Confirmed in Deno + Node.
+- TypeScript's default-parameter semantics fire only on `undefined`, not `''`; passing `''` to `formatCurrency` / `formatCurrencyMinor` / `currencySymbol` therefore bypasses the canonical default and crashes.
+- `Organisation.currency_code` is non-null typed (`src/contexts/OrgContext.tsx:20`); `currentOrg?.currency_code` is only `undefined` when `currentOrg` itself is null (loading state).
+- All B-1 call sites in this batch are upstream-gated by data hooks that themselves require `!!currentOrg` (mirroring the four PR #370 portal sites: `useParentInvoices` enables only when `!!currentOrg`; event handlers fire after data has loaded). The `''` sentinel therefore never reaches the helper in the live flow — same operational invariant as PR #370.
+- For B-2 (edge functions, no React tree, no loading state), validate-and-fail-loudly replaces the `?? ''` pattern entirely. The hazard does not apply.
+
+Conclusion: pattern is safe to extend repo-wide on a per-site basis. Documented in PR body under "Repo-level verification → Helper safety check".
+
+### Lovable after-merge
+
+- Edge functions that need to be deployed by Lovable after merge (~20 files):
+  - `supabase/functions/_shared/auto-pay-reminder-core.ts` (used by `auto-pay-reminder-3day` + `auto-pay-reminder-1day`)
+  - `supabase/functions/_shared/send-invoice-email-core.ts` (used by `send-invoice-email` + `send-invoice-email-internal`)
+  - `supabase/functions/create-continuation-run`
+  - `supabase/functions/credit-expiry-warning`
+  - `supabase/functions/csv-import-execute`
+  - `supabase/functions/generate-invoice-pdf`
+  - `supabase/functions/installment-upcoming-reminder`
+  - `supabase/functions/looopassist-chat`
+  - `supabase/functions/looopassist-execute`
+  - `supabase/functions/overdue-reminders`
+  - `supabase/functions/parent-loopassist-chat` (will be deleted in Batch 2D — re-deploying the mechanical fix here is fine; the deletion supersedes)
+  - `supabase/functions/process-term-adjustment`
+  - `supabase/functions/send-auto-pay-failure-notification`
+  - `supabase/functions/send-dispute-notification`
+  - `supabase/functions/send-enrolment-offer`
+  - `supabase/functions/send-payment-receipt`
+  - `supabase/functions/stripe-create-checkout`
+  - `supabase/functions/stripe-create-payment-intent`
+  - `supabase/functions/stripe-process-refund`
+  - `supabase/functions/stripe-webhook`
+- No migrations to apply.
+- Behaviour spot-check by Jamie: open Parent Portal Invoices (UK org) → currency renders £; trigger Stripe payment intent → server logs show no "missing currency" 500. Optional EUR/USD spot-check if a non-GBP test org is available.
+
+### Why this batch is LOW + cross-cutting only
+
+- The HIGH-severity portion of CC-3 (J1-F15) was closed by PR #370 (Lovable 37163c52); the parent portal HIGH count moved 3/14 → 4/14 then. This PR does NOT advance the HIGH count — broader sweep is LOW + cross-cutting only.
+- Roadmap row for Area 2 stays at `4/14 HIGH`.
+
+### Workflow note
+
+First fix-batch shipped under WORKFLOW V2 (`WORKFLOW_V2_FAST_HARDENING.md`). One paste-ready prompt, agent owns the entire batch end-to-end at the repo level (typecheck + build + lint + grep verification + walk doc strikethroughs + POLISH_NOTES + STATUS handoff + roadmap impact + PR open), no per-fix Jamie clipboard work. Total cycle from prompt to PR-open in one session.

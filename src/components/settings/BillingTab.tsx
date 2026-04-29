@@ -618,7 +618,7 @@ export function BillingTab() {
                 billingInterval={billingInterval}
                 onSelect={() => handlePlanSelect(key)}
                 isLoading={isLoading}
-                currencyCode={currentOrg?.currency_code || 'GBP'}
+                currencyCode={currentOrg?.currency_code ?? ''}
               />
             ))}
           </div>

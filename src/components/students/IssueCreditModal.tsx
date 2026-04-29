@@ -35,7 +35,7 @@ export function IssueCreditModal({
   const [expiryOption, setExpiryOption] = useState<string>('3months');
   const [notes, setNotes] = useState('');
 
-  const symbol = getCurrencySymbol(currentOrg?.currency_code || 'GBP');
+  const symbol = getCurrencySymbol(currentOrg?.currency_code ?? '');
 
   // J8-F10: expiry stored at end-of-local-day rather than the UTC
   // midnight that toISOString() on a bare addMonths() produces.

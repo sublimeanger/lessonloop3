@@ -135,6 +135,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // 5. Calculate term fee (rate × remaining weeks)
     let termFeeDisplay = "";
+    const currencySymbolMap: Record<string, string> = { GBP: "£", USD: "$", EUR: "€" };
     if (entry.offered_rate_minor) {
       // Try to find current term
       const today = new Date().toISOString().split("T")[0];
@@ -157,12 +158,12 @@ const handler = async (req: Request): Promise<Response> => {
           Math.ceil((termEnd.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000))
         );
         const totalFeePence = entry.offered_rate_minor * weeksRemaining;
-        const cc = org?.currency_code || "GBP";
-        const sym = cc === "GBP" ? "£" : cc === "USD" ? "$" : cc === "EUR" ? "€" : `${cc} `;
+        const cc = org?.currency_code ?? "";
+        const sym = currencySymbolMap[cc] ?? `${cc} `;
         termFeeDisplay = `Estimated term fee: ${sym}${(totalFeePence / 100).toFixed(2)} (${weeksRemaining} weeks × ${sym}${(entry.offered_rate_minor / 100).toFixed(2)})`;
       } else {
-        const cc = org?.currency_code || "GBP";
-        const sym = cc === "GBP" ? "£" : cc === "USD" ? "$" : cc === "EUR" ? "€" : `${cc} `;
+        const cc = org?.currency_code ?? "";
+        const sym = currencySymbolMap[cc] ?? `${cc} `;
         termFeeDisplay = `Lesson rate: ${sym}${(entry.offered_rate_minor / 100).toFixed(2)} per lesson`;
       }
     }

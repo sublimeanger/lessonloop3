@@ -56,7 +56,7 @@ function addInterval(date: Date, frequency: Frequency, intervals: number): Date 
 }
 
 export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSetupProps) {
-  const currency = invoice.currency_code || 'GBP';
+  const currency = invoice.currency_code ?? '';
   const remaining = invoice.total_minor - (invoice.paid_minor || 0);
   const today = startOfToday();
 

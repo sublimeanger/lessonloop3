@@ -209,7 +209,11 @@ function calcDaysOverdue(dueDateStr: string, today: Date): number {
 }
 
 function formatCurrency(minor: number, code: string): string {
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency: code || "GBP" }).format(minor / 100);
+  if (!code || typeof code !== "string" || code.length !== 3) {
+    console.error("[overdue-reminders] formatCurrency called with invalid currency code:", code);
+    throw new Error("Invoice currency not configured");
+  }
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: code }).format(minor / 100);
 }
 
 function formatDateGB(dateStr: string): string {

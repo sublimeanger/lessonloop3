@@ -267,7 +267,7 @@ export function useTeacherPerformanceReport(startDate: string, endDate: string) 
 export function exportTeacherPerformanceToCSV(
   data: TeacherPerformanceData,
   orgName: string,
-  currencyCode = 'GBP',
+  currencyCode: string,
 ): void {
   const sym = currencySymbol(currencyCode);
   const rows = [`Teacher,Lessons,Hours,Cancellation Rate,Students,Retention Rate,Revenue (${sym}),Revenue/hr (${sym})`];

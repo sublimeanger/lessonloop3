@@ -69,7 +69,7 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
   const removeMutation = useRemovePaymentPlan();
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
 
-  const currency = invoice.currency_code || 'GBP';
+  const currency = invoice.currency_code ?? '';
   const totalPaid = invoice.paid_minor || 0;
   const progressPercent = invoice.total_minor > 0 ? Math.round((totalPaid / invoice.total_minor) * 100) : 0;
 

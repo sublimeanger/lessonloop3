@@ -38,7 +38,7 @@ export function ActiveDisputesCard() {
             >
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium truncate">
-                  {formatCurrencyMinor(d.amount_minor, d.currency_code?.toUpperCase() || "GBP")}
+                  {formatCurrencyMinor(d.amount_minor, d.currency_code?.toUpperCase() ?? '')}
                   <span className="ml-2 text-xs text-muted-foreground font-normal">
                     {d.reason.replace(/_/g, " ")}
                   </span>

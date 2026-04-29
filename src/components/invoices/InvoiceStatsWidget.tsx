@@ -22,7 +22,7 @@ export function InvoiceStatsWidget({ onFilterStatus }: InvoiceStatsWidgetProps =
     );
   }
 
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
   const isClickable = !!onFilterStatus;
 
   const statItems = [

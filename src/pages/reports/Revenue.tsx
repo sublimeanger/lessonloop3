@@ -46,7 +46,7 @@ export default function RevenueReport() {
     }
   };
 
-  const fmtCurrency = (amount: number) => formatCurrency(amount, currentOrg?.currency_code || 'GBP');
+  const fmtCurrency = (amount: number) => formatCurrency(amount, currentOrg?.currency_code ?? '');
 
   return (
     <AppLayout>
@@ -164,7 +164,7 @@ export default function RevenueReport() {
                         <XAxis dataKey="monthLabel" className="text-xs" />
                         <YAxis 
                           tickFormatter={(value) => {
-                            const sym = currencySymbol(currentOrg?.currency_code || 'GBP');
+                            const sym = currencySymbol(currentOrg?.currency_code ?? '');
                             if (value >= 1_000_000) return `${sym}${(value / 1_000_000).toFixed(1)}M`;
                             if (value >= 1_000) return `${sym}${(value / 1_000).toFixed(1)}k`;
                             return `${sym}${value}`;

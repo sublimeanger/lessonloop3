@@ -125,7 +125,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
   const totalInvoices = payerGroups.size;
   const totalAmount = Array.from(payerGroups.values()).reduce((sum, p) => sum + p.totalMinor, 0);
   const isDateRangeValid = config.startDate && config.endDate && config.endDate >= config.startDate;
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
 
   const handleRunTypeChange = (type: BillingRunType) => {
     setConfig((c) => {

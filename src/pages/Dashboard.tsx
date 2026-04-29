@@ -132,7 +132,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
       style: 'currency',
-      currency: currentOrg?.currency_code || 'GBP',
+      currency: currentOrg?.currency_code ?? '',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -253,7 +253,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
       style: 'currency',
-      currency: currentOrg?.currency_code || 'GBP',
+      currency: currentOrg?.currency_code ?? '',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);

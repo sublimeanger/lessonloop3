@@ -21,7 +21,7 @@ export function useRealtimeInvoices() {
   const { currentOrg, currentRole } = useOrg();
   const { toast } = useToast();
   const orgId = currentOrg?.id;
-  const currencyCode = currentOrg?.currency_code || 'GBP';
+  const currencyCode = currentOrg?.currency_code ?? '';
 
   // Determine if payment toasts should be shown:
   // - Always for owners/admins/finance

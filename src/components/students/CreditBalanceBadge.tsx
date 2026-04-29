@@ -18,7 +18,7 @@ export function CreditBalanceBadge({ studentId, showIcon = true }: CreditBalance
 
   const formatted = new Intl.NumberFormat('en-GB', {
     style: 'currency',
-    currency: currentOrg?.currency_code || 'GBP',
+    currency: currentOrg?.currency_code ?? '',
   }).format(totalAvailableValue / 100);
 
   return (

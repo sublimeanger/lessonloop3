@@ -235,7 +235,7 @@ export function DashboardHero({
   needsAttendance = 0,
   outstandingAmount = 0,
   unreadMessages = 0,
-  currencyCode = 'GBP',
+  currencyCode = '',
   hasStudents = false,
   hasLessons = false,
   timezone = 'Europe/London',

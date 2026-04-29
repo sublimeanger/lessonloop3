@@ -29,10 +29,13 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 function formatAmount(minorUnits: number, currencyCode: string): string {
-  const code = (currencyCode || "GBP").toUpperCase();
+  const code = (currencyCode || "").toUpperCase();
+  if (!code || code.length !== 3) {
+    console.error("[send-auto-pay-failure-notification] Missing or invalid currency_code:", currencyCode);
+  }
   const symbol = CURRENCY_SYMBOLS[code];
   const value = (minorUnits / 100).toFixed(2);
-  return symbol ? `${symbol}${value}` : `${code} ${value}`;
+  return symbol ? `${symbol}${value}` : `${code || "??"} ${value}`;
 }
 
 interface ErrorCopy {

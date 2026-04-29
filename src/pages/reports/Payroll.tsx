@@ -57,7 +57,7 @@ export default function PayrollReport() {
     }
   };
 
-  const fmtCurrency = (amount: number) => formatCurrency(amount, currentOrg?.currency_code || 'GBP');
+  const fmtCurrency = (amount: number) => formatCurrency(amount, currentOrg?.currency_code ?? '');
 
   const getPayRateLabel = (type: string | null, value: number) => {
     switch (type) {

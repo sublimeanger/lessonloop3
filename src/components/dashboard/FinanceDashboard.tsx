@@ -30,7 +30,7 @@ export function FinanceDashboard({ firstName }: FinanceDashboardProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
       style: 'currency',
-      currency: currentOrg?.currency_code || 'GBP',
+      currency: currentOrg?.currency_code ?? '',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);

@@ -103,6 +103,11 @@ serve(async (req) => {
 
     if (!org) throw new Error("Organisation not found");
 
+    if (!org.currency_code || typeof org.currency_code !== "string" || org.currency_code.length !== 3) {
+      console.error("[stripe-process-refund] Missing or invalid currency_code on org:", payment.org_id);
+      throw new Error("Organisation currency not configured");
+    }
+
     const isAdminRole = ["owner", "admin"].includes(membership.role);
     const isSoloTeacher = org.org_type === "solo_teacher";
 
@@ -268,7 +273,7 @@ serve(async (req) => {
           invoiceId: payment.invoice_id,
           orgId: payment.org_id,
           amountMinor: refundAmount,
-          currencyCode: org.currency_code || "GBP",
+          currencyCode: org.currency_code,
         }),
       });
     } catch (err) {

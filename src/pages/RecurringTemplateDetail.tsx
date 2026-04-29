@@ -368,7 +368,7 @@ export default function RecurringTemplateDetail() {
             <ItemsField
               value={currentItemsDraft}
               onChange={setItemsDraft}
-              currencyCode={currentOrg?.currency_code || 'GBP'}
+              currencyCode={currentOrg?.currency_code ?? ''}
             />
             {canEdit && (
               <div className="flex justify-end">

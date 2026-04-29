@@ -259,7 +259,7 @@ function calculatePayroll(
   };
 }
 
-export function exportPayrollToCSV(data: PayrollData, orgName: string, currencyCode = 'GBP'): void {
+export function exportPayrollToCSV(data: PayrollData, orgName: string, currencyCode: string): void {
   const rows: string[] = [];
   const sym = currencySymbol(currencyCode);
   

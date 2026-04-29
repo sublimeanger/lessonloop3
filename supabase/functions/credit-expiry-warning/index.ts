@@ -157,8 +157,13 @@ Deno.serve(async (req) => {
         .single();
 
       const orgName = org?.name || "LessonLoop";
-      const cc = org?.currency_code || "GBP";
-      const currencySymbol = cc === "GBP" ? "£" : cc === "USD" ? "$" : cc === "EUR" ? "€" : `${cc} `;
+      if (!org?.currency_code || typeof org.currency_code !== "string" || org.currency_code.length !== 3) {
+        console.error("[credit-expiry-warning] Missing or invalid currency_code on org:", credit.org_id);
+        continue;
+      }
+      const cc = org.currency_code;
+      const currencySymbolMap: Record<string, string> = { GBP: "£", USD: "$", EUR: "€" };
+      const currencySymbol = currencySymbolMap[cc] ?? `${cc} `;
       const creditValue = (credit.credit_value_minor / 100).toFixed(2);
       const expiryDate = new Date(credit.expires_at!).toLocaleDateString("en-GB", {
         weekday: "long",

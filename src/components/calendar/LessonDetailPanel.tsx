@@ -892,7 +892,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
                 <p className="text-lg font-semibold text-primary">
                   {new Intl.NumberFormat('en-GB', {
                     style: 'currency',
-                    currency: currentOrg?.currency_code || 'GBP',
+                    currency: currentOrg?.currency_code ?? '',
                   }).format(pendingCreditInfo.creditValue / 100)}
                 </p>
                 <p className="text-xs text-muted-foreground">Credit expires in 3 months</p>

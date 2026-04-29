@@ -54,7 +54,7 @@ export default function OutstandingReport() {
     }
   };
 
-  const fmtCurrency = (amount: number) => formatCurrency(amount, currentOrg?.currency_code || 'GBP');
+  const fmtCurrency = (amount: number) => formatCurrency(amount, currentOrg?.currency_code ?? '');
 
   const getBucketIcon = (label: string) => {
     if (label.includes('0-7')) return <CheckCircle className="h-5 w-5 text-primary" />;

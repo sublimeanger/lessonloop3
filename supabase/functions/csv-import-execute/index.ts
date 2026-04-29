@@ -620,7 +620,15 @@ serve(async (req) => {
     
     const maxStudents = org?.max_students || 50;
     const remainingCapacity = maxStudents - (currentStudentCount || 0);
-    
+
+    if (!org?.currency_code || typeof org.currency_code !== "string" || org.currency_code.length !== 3) {
+      console.error("[csv-import-execute] Missing or invalid currency_code on org:", orgId);
+      return new Response(JSON.stringify({ error: "Organisation currency not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (rowIndicesToImport.size > remainingCapacity) {
       return new Response(JSON.stringify({ 
         error: `Import would exceed student limit. You have capacity for ${remainingCapacity} more student${remainingCapacity !== 1 ? 's' : ''}, but trying to import ${rowIndicesToImport.size} rows. Upgrade your plan to add more students.`
@@ -829,7 +837,7 @@ serve(async (req) => {
             name: `${durationMinutes} minute lesson`,
             duration_minutes: durationMinutes,
             amount_per_lesson_minor: priceMinor,
-            currency_code: org?.currency_code || "GBP",
+            currency_code: org.currency_code,
             is_default: false,
           })
           .select("id")

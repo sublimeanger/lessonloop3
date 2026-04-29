@@ -65,7 +65,7 @@ export function RecordPaymentModal({
 }: RecordPaymentModalProps) {
   const { currentOrg } = useOrg();
   const recordPayment = useRecordPayment();
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
 
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>(defaultMethod ?? 'bank_transfer');

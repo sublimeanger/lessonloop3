@@ -84,14 +84,17 @@ interface OrgRow {
 
 // ─── Helpers ───────────────────────────────────────────────────────
 
+/** Symbol lookup keyed on ISO 4217 codes; falls back to "<CODE> " for unmapped codes. */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  GBP: "£",
+  USD: "$",
+  EUR: "€",
+};
+
 /** Format minor units (pence) to major units with 2 decimal places. */
 export function formatMinorAmount(amountMinor: number, currencyCode: string): string {
   const major = amountMinor / 100;
-  const symbol =
-    currencyCode === "GBP" ? "£" :
-    currencyCode === "USD" ? "$" :
-    currencyCode === "EUR" ? "€" :
-    `${currencyCode} `;
+  const symbol = CURRENCY_SYMBOLS[currencyCode] ?? `${currencyCode} `;
   return `${symbol}${major.toFixed(2)}`;
 }
 

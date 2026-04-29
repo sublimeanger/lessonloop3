@@ -311,7 +311,7 @@ export function InvoiceList({
 }: InvoiceListProps) {
   const navigate = useNavigate();
   const { currentOrg } = useOrg();
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
   const { data: disputedInvoiceIds } = useInvoiceIdsWithActiveDispute();
 
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);

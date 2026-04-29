@@ -102,7 +102,7 @@ export function useInvoicePdf() {
           installments,
         },
         org: org ?? null,
-        currency: currentOrg?.currency_code || 'GBP',
+        currency: currentOrg?.currency_code ?? '',
         logoDataUrl,
       };
 

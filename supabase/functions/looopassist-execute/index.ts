@@ -262,8 +262,14 @@ serve(async (req) => {
 
           case "send_bulk_reminders": {
             const { data: _reminderOrg } = await supabase.from("organisations").select("currency_code").eq("id", orgId).single();
+            if (!_reminderOrg?.currency_code || typeof _reminderOrg.currency_code !== "string" || _reminderOrg.currency_code.length !== 3) {
+              console.error("[looopassist-execute] Missing or invalid currency_code on org for send_bulk_reminders:", orgId);
+              result = { error: "Organisation currency not configured" };
+              break;
+            }
+            const reminderCurrency = _reminderOrg.currency_code;
             const fmtCurrency = (minor: number) =>
-              new Intl.NumberFormat("en-GB", { style: "currency", currency: _reminderOrg?.currency_code || "GBP" }).format(minor / 100);
+              new Intl.NumberFormat("en-GB", { style: "currency", currency: reminderCurrency }).format(minor / 100);
             const { data: overdueInvoices } = await supabase
               .from("invoices")
               .select(`
@@ -687,8 +693,12 @@ async function executeSendInvoiceReminders(
     .select("currency_code")
     .eq("id", orgId)
     .single();
+  if (!org?.currency_code || typeof org.currency_code !== "string" || org.currency_code.length !== 3) {
+    console.error("[looopassist-execute] Missing or invalid currency_code on org:", orgId);
+    throw new Error("Organisation currency not configured");
+  }
   const fmtCurrency = (minor: number) =>
-    new Intl.NumberFormat('en-GB', { style: 'currency', currency: org?.currency_code || 'GBP' }).format(minor / 100);
+    new Intl.NumberFormat('en-GB', { style: 'currency', currency: org.currency_code }).format(minor / 100);
 
   let remindersSent = 0;
   const results: string[] = [];

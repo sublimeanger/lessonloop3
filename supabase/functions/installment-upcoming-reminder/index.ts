@@ -113,7 +113,11 @@ serve(async (req) => {
         // (status lag from a payment that just landed).
         if (outstanding < 100) continue;
 
-        const formatter = new Intl.NumberFormat("en-GB", { style: "currency", currency: invoice.currency_code || "GBP" });
+        if (!invoice.currency_code || typeof invoice.currency_code !== "string" || invoice.currency_code.length !== 3) {
+          console.error("[installment-upcoming-reminder] Missing or invalid currency_code on invoice:", invoice.id);
+          continue;
+        }
+        const formatter = new Intl.NumberFormat("en-GB", { style: "currency", currency: invoice.currency_code });
         const installmentAmount = formatter.format(outstanding / 100);
         const remainingAfter = formatter.format((invoice.total_minor - (invoice.paid_minor || 0) - outstanding) / 100);
         const orgName = org?.name || "LessonLoop";
