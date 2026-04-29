@@ -123,10 +123,24 @@ export default function PortalSchedule() {
   // Fetch structured lesson notes visible to parents
   const { data: parentNotes } = useParentLessonNotes(selectedChildId || undefined, currentOrg?.id);
 
-  // Reschedule policy
-  const reschedulePolicy = currentOrg?.parent_reschedule_policy || 'request_only';
-  const canReschedule = reschedulePolicy !== 'admin_locked';
-  const showSlotPicker = reschedulePolicy === 'self_service';
+  // Per-lesson policy resolver: location-level override beats org-level default.
+  // Falls back to 'request_only' if both are null/undefined, matching the
+  // org-level default in place since 2026-01-28.
+  const resolveReschedulePolicy = (lesson: Lesson): {
+    policy: string;
+    canReschedule: boolean;
+    showSlotPicker: boolean;
+  } => {
+    const policy =
+      lesson.location?.parent_reschedule_policy_override ??
+      currentOrg?.parent_reschedule_policy ??
+      'request_only';
+    return {
+      policy,
+      canReschedule: policy !== 'admin_locked',
+      showSlotPicker: policy === 'self_service',
+    };
+  };
 
   const handleRequestChange = (lesson: Lesson) => {
     setChangeSheetLesson({
@@ -286,6 +300,7 @@ export default function PortalSchedule() {
   const LessonCard = ({ lesson, isPast, isExpanded, onToggle }: { lesson: Lesson; isPast?: boolean; isExpanded?: boolean; onToggle?: () => void }) => {
     const isCancelled = lesson.status === 'cancelled';
     const hasExpandableContent = (isPast && lesson.students.some(s => s.attendance_status)) || lesson.notes_shared || (parentNotes || []).some(n => n.lesson_id === lesson.id && n.parent_visible) || lesson.recap_url;
+    const { canReschedule, showSlotPicker } = resolveReschedulePolicy(lesson);
 
     const accentColor = isCancelled ? 'bg-destructive' : isPast ? 'bg-muted-foreground/30' : 'bg-primary';
     
