@@ -8,7 +8,7 @@
 |---|---|---|---|
 | Area 0 — Cross-cutting invariants | — | — | ⚪ pending |
 | Area 1 — Billing & invoicing | done | all | 🟢 closed |
-| Area 2 — Parent portal | done | 9/15 | 🟡 fixes in progress |
+| Area 2 — Parent portal | done | 11/15 | 🟡 fixes in progress |
 | Area 3 — Students & guardians | — | — | ⚪ pending |
 | Area 4 — Calendar | — | — | ⚪ pending |
 | Area 5 — Lessons & attendance | — | — | ⚪ pending |

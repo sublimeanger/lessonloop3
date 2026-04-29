@@ -174,12 +174,18 @@ serve(async (req) => {
         .select("student_id, current_streak, longest_streak, total_minutes, last_practice_date")
         .in("student_id", studentIds)
         .eq("org_id", orgId),
-      // Invoices where parent is payer
+      // Invoices where parent is payer OR own children are billed directly.
+      // CC-2 fix: previous filter (payer_guardian_id only) silently dropped
+      // invoices billed to adult-learner students (payer_student_id set).
       supabaseUser
         .from("invoices")
         .select("id, invoice_number, status, total_minor, due_date, issue_date, paid_minor, currency_code")
         .eq("org_id", orgId)
-        .in("payer_guardian_id", guardianIds)
+        .or(
+          studentIds.length > 0
+            ? `payer_guardian_id.in.(${guardianIds.join(",")}),payer_student_id.in.(${studentIds.join(",")})`
+            : `payer_guardian_id.in.(${guardianIds.join(",")})`
+        )
         .order("issue_date", { ascending: false })
         .limit(20),
     ]);
