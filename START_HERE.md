@@ -3,11 +3,12 @@
 **If you are an AI assistant (Claude in chat, Claude Code, Codex, anything else) working on lessonloop3, you must read these files in this order, in full, before producing any response or running any command:**
 
 1. `START_HERE.md` (this file)
-2. `STATUS.md` — what's currently active, what's blocked, what's next
-3. `WORKFLOW.md` — how work gets done in this repo
-4. `LESSONLOOP_PRODUCTION_ROADMAP.md` — the one-screen status table at the top, then the active area's section
-5. The walk doc for the area named in `STATUS.md`, if one exists (path also in `STATUS.md`)
-6. `claude.md` — project-specific Claude Code context (Stripe, edge functions, etc.)
+2. `STATUS.md` — especially the "Next session handoff" block at the top of that file (canonical "where am I right now")
+3. `WORKFLOW_V2_FAST_HARDENING.md` — current operating model; supersedes V1 for fix-batch work
+4. `LESSONLOOP_PRODUCTION_ROADMAP.md` — canonical area plan; never invent area structure from chat history
+5. The active walk doc named in `STATUS.md`, if one exists
+6. `WORKFLOW.md` — V1, retained for history; consult only if V2 doesn't answer something
+7. `claude.md` — project-specific Claude Code context
 
 Do not skip. Do not summarise from training data. Do not guess at filenames or layouts. The repo state changes daily; your training data is months stale.
 
@@ -34,6 +35,8 @@ Every fix is shipped to a world-class standard. No "good enough", no "minor clea
 - Escalated to Jamie as a product decision and recorded in `STATUS.md` under "Awaiting Jamie decision"
 
 Nothing is skipped silently. Nothing is half-done. Nothing ships with a "we'll come back to this" comment.
+
+Roadmap scope is non-negotiable: every area in `LESSONLOOP_PRODUCTION_ROADMAP.md` must be walked, batched, fixed, and marked complete before launch. V2 changes execution speed, not what gets shipped.
 
 ---
 
