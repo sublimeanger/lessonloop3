@@ -3514,3 +3514,61 @@ Conclusion: pattern is safe to extend repo-wide on a per-site basis. Documented 
 ### Workflow note
 
 First fix-batch shipped under WORKFLOW V2 (`WORKFLOW_V2_FAST_HARDENING.md`). One paste-ready prompt, agent owns the entire batch end-to-end at the repo level (typecheck + build + lint + grep verification + walk doc strikethroughs + POLISH_NOTES + STATUS handoff + roadmap impact + PR open), no per-fix Jamie clipboard work. Total cycle from prompt to PR-open in one session.
+
+---
+
+## Area 2 — Parent portal — Batch 2B: make-up flow integrity (closed 2026-04-29)
+
+Closes three Area 2 HIGH findings on the parent make-up flow plus the make-up + term-continuation portion of the CC-1 audit-trigger gap. Area 2 HIGH count advances 4/14 → 7/14.
+
+### Fixed
+
+- **J1-F1** — silent audit lie on parent decline. The fire-and-forget client-side `supabase.from('audit_log').insert(...)` block in `PortalHome.executeDecline` was RLS-blocked by `20260401000000_auth_rls_hardening.sql:408` ("Block authenticated insert on audit_log") and silently swallowed the rejection. Closed by removing the dead client INSERT and writing the audit_log entry inside `respond_to_makeup_offer` instead (migration `20260513100000_makeup_flow_integrity_j1_f4_f29.sql`).
+- **J1-F4** — silent data integrity bug on parent cancel-booked-makeup. `executeCancelMakeup` did a raw UPDATE flipping `make_up_waitlist.status` from `booked → waiting`, which bypassed `trg_makeup_participant_removed` (a trigger on `lesson_participants` DELETE, not on `make_up_waitlist`). The trigger never fired, so: (a) the make-up credit stayed `redeemed_at`/`redeemed_lesson_id` against an orphaned lesson, (b) the `lesson_participants` row stayed on the teacher's calendar as a ghost lesson, (c) no audit_log entry was written. Closed by introducing a new SECURITY DEFINER RPC `cancel_booked_makeup(_waitlist_id)` that locks the waitlist row, validates guardian ownership and `status = 'booked'`, then DELETEs the matched `lesson_participants` row inside the same transaction. The existing `trg_makeup_participant_removed` does the rest (restores credit, resets waitlist to `'waiting'`, writes audit `'makeup_credit_restored'`); the new RPC also writes a parent-intent `'makeup_booking_cancelled'` audit entry. `PortalHome.executeCancelMakeup` now calls the RPC. Migration `20260513100000`.
+- **J1-F29** — `respond_to_makeup_offer` SECURITY DEFINER RPC wrote no audit_log at all. Combined with J1-F1, parent accept/decline of make-up offers had zero audit coverage since 2026-03-15. Closed by adding `INSERT INTO audit_log` in both the accept (`'makeup_offer_accepted'`) and decline (`'makeup_offer_declined'`) branches of the RPC. Migration `20260513100000`.
+- **CC-1 (partial)** — added canonical audit triggers `audit_make_up_waitlist` and `audit_term_continuation_responses` using the existing `log_audit_event_singular()` helper from T01-P1. Closes the gap that out-of-band UPDATE/INSERT/DELETE on either table writes nothing to `audit_log`. `entity_type` values are singular per T01-P3 normalisation: `'make_up_waitlist'` (already singular) and `'term_continuation_response'` (singular form of the plural table name). Migration `20260513100100_audit_triggers_cc1_makeup_continuation.sql`. Stripe edge fn audit gaps + `continuation-respond` audit (rest of CC-1) remain open.
+
+### Pattern applied
+
+- **Audit on parent-action SECURITY DEFINER RPCs.** Server-side is canonical. Client-side `supabase.from('audit_log').insert(...)` is RLS-blocked for authenticated users (per 2026-04-01 hardening) and any fire-and-forget INSERT silently lies. Both `respond_to_makeup_offer` and the new `cancel_booked_makeup` write audit_log directly inside the SECURITY DEFINER function, bypassing RLS legitimately.
+- **Trigger over duplication.** The J1-F4 fix routes through the existing `trg_makeup_participant_removed` deliberately, by DELETE-ing `lesson_participants` rather than UPDATE-ing `make_up_waitlist`. Duplicating credit-restore / waitlist-reset / audit-write logic in the new RPC would have created two divergent code paths for the same outcome — the staff-side participant removal already routes through the trigger.
+- **Audit-trigger naming convention.** Followed the documented pattern in `docs/MIGRATION_CONVENTIONS.md` lines 226–232 (and the 12 existing T01-P1 triggers): `audit_<table>` rather than `trg_audit_<table>`. The `trg_` prefix is reserved for behaviour/validation triggers (e.g. `trg_makeup_participant_removed`, `trg_validate_waitlist_credit`).
+- **Defensive RAISE EXCEPTION on data invariants.** `cancel_booked_makeup` raises if a `'booked'` waitlist row has no `booked_lesson_id`, or if the participant DELETE found 0 rows. These are data invariant violations — surfacing them loudly beats silently flipping the waitlist row to `'waiting'` and masking the real problem.
+
+### Filed
+
+(none — surfaces touched by this batch were all directly in scope.)
+
+### Migrations
+
+- `supabase/migrations/20260513100000_makeup_flow_integrity_j1_f4_f29.sql` — new `cancel_booked_makeup(_waitlist_id)` RPC + replaced `respond_to_makeup_offer` with audit_log writes in both branches. Idempotent (`CREATE OR REPLACE FUNCTION`), `NOTIFY pgrst, 'reload schema'` at the bottom for the new RPC.
+- `supabase/migrations/20260513100100_audit_triggers_cc1_makeup_continuation.sql` — `audit_make_up_waitlist` + `audit_term_continuation_responses` triggers via the canonical helper. Idempotent (`DROP TRIGGER IF EXISTS` then `CREATE TRIGGER`), no NOTIFY (triggers don't change PostgREST schema).
+
+### Verification
+
+- `npm run typecheck` — pass.
+- `npm run build` — pass.
+- `npm run lint` — pass against the diff. The 7 errors ESLint reports are all in pre-existing files unrelated to this PR (`src/contexts/AuthContext.tsx`, `src/lib/logger.ts`, `src/pages/Continuation.tsx`, `supabase/functions/_shared/escape-html.ts`, `supabase/functions/onboarding-setup/index.ts`, plus 12 `tests/e2e/workflows/...` files). PortalHome.tsx has only pre-existing warnings (`Badge` unused import, `(supabase.rpc as any)` patterns matching surrounding code). Confirmed by file-by-file grep against the lint output.
+- Migration syntax sanity: migration 1 has 2 `CREATE OR REPLACE FUNCTION` statements + 1 `NOTIFY pgrst, 'reload schema'`; migration 2 has 2 `CREATE TRIGGER` statements + 0 NOTIFY (correct — triggers only). Both migrations idempotent.
+- PortalHome.tsx grep: `from('make_up_waitlist')` → 0 (raw UPDATE removed); `from('audit_log').insert` → 0 (dead client INSERT removed); `cancel_booked_makeup` → 1 (the new RPC call at line 195).
+- No `lesson_participants` RLS changes — fix uses SECURITY DEFINER bypass; no `FOR DELETE` policy modifications.
+- Pre-existing trigger check on the two target tables: `make_up_waitlist` only had `set_make_up_waitlist_updated_at` (BEFORE UPDATE timestamp trigger); `term_continuation_responses` had no triggers. Confirmed neither table had any audit trigger before this batch.
+
+### Lovable after-merge
+
+- Migrations to apply (filename order):
+  - `20260513100000_makeup_flow_integrity_j1_f4_f29.sql`
+  - `20260513100100_audit_triggers_cc1_makeup_continuation.sql`
+- Edge functions: (none) — no edge fn changes in this batch.
+- Production SQL verification queries (A through E) listed in PR body §3.
+- Behaviour spot-check by Jamie: open Parent Portal on a UK org with a booked make-up → tap Cancel → confirm the lesson disappears from teacher's calendar and student's make-up credit count returns to pre-booking value; confirm `audit_log` rows for `'makeup_offer_accepted'` / `'makeup_offer_declined'` / `'makeup_booking_cancelled'`; trigger any UPDATE on `make_up_waitlist` from staff side → confirm `audit_log` row with `entity_type = 'make_up_waitlist'`; trigger any INSERT on `term_continuation_responses` → confirm `entity_type = 'term_continuation_response'`.
+
+### Cross-references
+
+- PR: see `STATUS.md` Next session handoff for current PR number.
+- Walk doc strikethroughs applied: J1-F1 (line ~54), J1-F4 (line ~57), J1-F29 (line ~82); CC-1 paragraph noted partial-close; HIGH-priority list bullets 8 + 9 annotated.
+- Roadmap impact: Area 2 row 4/14 → 7/14 HIGH.
+
+### Lovable Batch 2A status reconciliation
+
+Batch 2A (PR #373) Lovable status was confirmed complete on 2026-04-29 06:48 UTC. Reconciliation note: PR body listed 20 edge functions to deploy; Lovable deployed 22. The 2 extras are downstream importers of `_shared/auto-pay-reminder-core.ts` (`auto-pay-reminder-3day` + `auto-pay-reminder-1day`) and `_shared/send-invoice-email-core.ts` (`send-invoice-email` + `send-invoice-email-internal`) — Lovable correctly redeployed each consumer of the changed shared modules. The PR body's "20" count was an enumeration gap (it listed each shared module once but the actual deployment redeploys every importer); the deployment itself is correct.

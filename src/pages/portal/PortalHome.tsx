@@ -167,30 +167,11 @@ export default function PortalHome() {
     setDeclineConfirmId(null);
 
     try {
-      const entry = activeWaitlist.find((e) => e.id === id);
-      const studentName = entry?.student
-        ? `${entry.student.first_name} ${entry.student.last_name}`
-        : 'Student';
-
       const { error } = await (supabase.rpc as any)('respond_to_makeup_offer', {
         _waitlist_id: id,
         _action: 'decline',
       });
       if (error) throw error;
-
-      if (entry?.org_id) {
-        supabase
-          .from('audit_log')
-          .insert({
-            org_id: entry.org_id,
-            actor_user_id: (await supabase.auth.getUser()).data.user?.id || null,
-            action: 'makeup_offer_declined',
-            entity_type: 'make_up_waitlist',
-            entity_id: id,
-            after: { student_name: studentName, lesson_title: entry?.lesson_title } as any,
-          })
-          .then(() => {});
-      }
 
       toast({ title: "Slot declined. We'll keep looking for another available time." });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
@@ -211,25 +192,9 @@ export default function PortalHome() {
     setCancelConfirmId(null);
 
     try {
-      const guardianId = guardianInfo?.id;
-      if (!guardianId) {
-        toast({ title: 'Guardian record not found', variant: 'destructive' });
-        return;
-      }
-
-      const { error } = await supabase
-        .from('make_up_waitlist')
-        .update({
-          status: 'waiting',
-          matched_lesson_id: null,
-          matched_at: null,
-          offered_at: null,
-          responded_at: null,
-          booked_lesson_id: null,
-        } as any)
-        .eq('id', id)
-        .eq('guardian_id', guardianId)
-        .eq('status', 'booked');
+      const { error } = await (supabase.rpc as any)('cancel_booked_makeup', {
+        _waitlist_id: id,
+      });
 
       if (error) throw error;
 
