@@ -6,7 +6,7 @@
 
 - **Active area:** Area 2 — Parent Portal
 - **Current batch:** (none in flight) post-merge
-- **Last merged PR / branch:** this PR / `claude/fix-money-math-mismatch-WEYJL` (Batch 2E) — open at end of this session, awaiting merge. Batch 2D (PR #376) — confirmed complete 2026-04-29 UTC; 5/5 tests PASS against Crescendo Music Agency demo org (org policy `self_service`; locations Crescendo Central=NULL, Crescendo North=`admin_locked`, Online=`request_only`); DOM extraction across 32 lesson cards confirmed per-row resolver correctness; live override flip in Test 5 confirmed reactivity (`admin_locked → self_service` flipped lesson UI on hard refresh).
+- **Last merged PR / branch:** PR #377 / `claude/fix-money-math-mismatch-WEYJL` (Batch 2E) — open at end of this session, awaiting merge. Batch 2D (PR #376) — confirmed complete 2026-04-29 UTC; 5/5 tests PASS against Crescendo Music Agency demo org (org policy `self_service`; locations Crescendo Central=NULL, Crescendo North=`admin_locked`, Online=`request_only`); DOM extraction across 32 lesson cards confirmed per-row resolver correctness; live override flip in Test 5 confirmed reactivity (`admin_locked → self_service` flipped lesson UI on hard refresh).
 - **What shipped:** J1-F17 + J3-F7 + CC-F7 closed. `get_parent_dashboard_data` RPC replaced so all three guardian-level aggregates (outstanding/overdue_count/oldest_unpaid) OR both payer types scoped to the parent's children. `useParentInvoices` hook adds a student_guardians lookup before the invoices query and uses the same OR-filter. `parent-loopassist-chat` edge function uses the same OR-filter (studentIds was already in scope). Per-child aggregate inside the RPC intentionally untouched (student-only is correct semantically).
 - **Lovable after-merge actions:** Apply `supabase/migrations/20260515100000_cc2_money_math_mixed_payer.sql`. Deploy `supabase/functions/parent-loopassist-chat`.
 - **Lovable status:** pending until Jamie confirms
@@ -15,7 +15,7 @@
 - **Next batch in active area:** Batch 2F — J3-F19 refund netting in stripe-create-payment-intent.
 - **Next area after this one closes:** Area 3 — Students & guardians (per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
 - **Roadmap progress:** Area 1 closed; Area 2 in progress at **11/15 HIGH** (was 9/15; +J1-F17 +J3-F7); Areas 0, 3-16 pending (17 areas total per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
-- **Next session first instruction:** After this PR merges and Jamie confirms Lovable applied the migration + deployed the edge fn + verified mixed-payer behaviour, paste Batch 2F's prompt into a fresh Claude Code session.
+- **Next session first instruction:** After PR #377 merges and Jamie confirms Lovable applied the migration + deployed the edge fn + verified mixed-payer behaviour, paste Batch 2F's prompt into a fresh Claude Code session.
 
 ---
 
