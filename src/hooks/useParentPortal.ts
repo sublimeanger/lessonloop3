@@ -31,7 +31,7 @@ export interface ParentLesson {
   end_at: string;
   status: 'scheduled' | 'completed' | 'cancelled';
   location_id: string | null;
-  location?: { name: string } | null;
+  location?: { name: string; parent_reschedule_policy_override: string | null } | null;
   teacher_id: string | null;
   teacher_name?: string | null;
   notes_shared: string | null;
@@ -175,7 +175,7 @@ interface ParticipantLesson {
   recap_url: string | null;
   online_meeting_url: string | null;
   is_online: boolean;
-  location: { name: string } | null;
+  location: { name: string; parent_reschedule_policy_override: string | null } | null;
   teacher: { display_name: string } | null;
 }
 
@@ -274,7 +274,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
             recap_url,
             online_meeting_url,
             is_online,
-            location:locations(name),
+            location:locations(name, parent_reschedule_policy_override),
             teacher:teachers!lessons_teacher_id_fkey(display_name)
           )
         `)

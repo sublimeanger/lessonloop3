@@ -3625,3 +3625,51 @@ Closes the production-live blank-render incident in the parent portal (CC-F15), 
 ### Lovable Batch 2B status reconciliation
 
 Batch 2B (PR #374) Lovable status flipped from `pending until Jamie confirms` to `confirmed complete 2026-04-29 07:35 UTC`. All three behaviour spot-checks (cancel booked make-up; decline offered make-up; accept offered make-up) passed end-to-end. Verification method note: the parent portal preview was blanked by the very recursion this batch fixes, so Jamie exercised the RPCs at the SQL level via impersonated parent JWT (`set_config('request.jwt.claims', json_build_object('sub', ..., 'role', 'authenticated'))`). Same code path, same SECURITY DEFINER, same `trg_makeup_participant_removed` trigger. The `audit_make_up_waitlist` trigger fired correctly on every state change. PR #374 functional verification is unaffected by the portal blanking — the bug is on the read path; the write path was always green.
+
+---
+
+## Area 2 — Parent portal — Batch 2D: J2-F24 location reschedule policy override (closed 2026-04-29)
+
+Closes the location-level reschedule policy override drift. Schema introduced `locations.parent_reschedule_policy_override` on 2026-01-28 (migration `20260128111419`) but `PortalSchedule.tsx` resolved policy once at component top from `currentOrg.parent_reschedule_policy` only, ignoring the per-location override. Mixed-policy academies (e.g. studio self-service, school location admin-locked) saw the org-level default on every lesson regardless of its location, defeating the override. Frontend-only fix: extend the lessons query, extend the lesson types, replace page-level resolution with a per-lesson resolver. Also flips Lovable status for Batch 2C (PR #375) to confirmed complete with a verification-method note that codifies a workflow refinement on RLS-recursion-class proof.
+
+### Fixed
+
+- **J2-F24** — `useParentLessons` query at `src/hooks/useParentPortal.ts:277` extended from `location:locations(name)` to `location:locations(name, parent_reschedule_policy_override)`. `ParticipantLesson` (line 178) and `ParentLesson` (line 34) location field types extended from `{ name: string } | null` to `{ name: string; parent_reschedule_policy_override: string | null } | null`. The mapping at line 325 (`location: lesson.location`) flows through cleanly with no change. `PortalSchedule.tsx` page-level `reschedulePolicy` / `canReschedule` / `showSlotPicker` declarations at lines 127–129 removed. New `resolveReschedulePolicy(lesson)` arrow function added at the same site; returns `{ policy, canReschedule, showSlotPicker }` with `lesson.location?.parent_reschedule_policy_override ?? currentOrg?.parent_reschedule_policy ?? 'request_only'` precedence. `LessonCard` (line 286) destructures `{ canReschedule, showSlotPicker }` once at the top of its render, so both consumer JSX blocks (mobile dropdown ~466, desktop button ~499) read the per-lesson values without further refactor.
+
+### Pattern applied
+
+- **`??` instead of `||` for policy fallback chains.** The pre-fix code used `currentOrg?.parent_reschedule_policy || 'request_only'`. Empty-string would have fallen through to `'request_only'` even though empty-string is technically a string value — a latent bug shielded only by the CHECK constraint. The new resolver uses `??` (nullish coalescing) so any explicitly-set value (including the unlikely `''`) is preserved. Academic in this case but the correct semantic; cheap to apply.
+- **Per-lesson policy resolution at the JSX render site.** Page-level resolution is correct only when the policy doesn't depend on the row. As soon as a row carries an override, page-level becomes wrong. The fix shape is a small in-component pure resolver (no `useMemo`, no extracted hook, no separate file) called once per `LessonCard` render — same complexity as the original page-level expression, applied per-row.
+
+### Filed
+
+- **Workflow refinement: RLS-recursion-class proof distinguishes SQL impersonation from real-browser GETs.** During PR #375 verification (Batch 2C), Jamie initially proved the `term_continuation_runs/responses` recursion fix via SQL queries A–E in the Lovable SQL panel using the `read_query` role. That role bypasses RLS, so the queries verified the SQL state of the policies but did not exercise the actual PostgREST → policy chain that the parent portal hits. The canonical proof for an RLS-recursion-class fix is a real-browser GET on the affected REST endpoint under a parent JWT — which Jamie subsequently ran (`/rest/v1/term_continuation_responses` returned 200 for `demo-parent-1` from the previously-blank `/portal/home` route). Both proofs are useful; the browser-path GET is canonical for recursion fixes. Future V2 verification templates should require both for any RLS-recursion-class fix, with the browser-path GET marked canonical. Filed here for the next docs-hygiene batch to fold into `WORKFLOW_V2_FAST_HARDENING.md` directly. Do not edit the workflow doc as part of Batch 2D — out of scope.
+- **Post-login redirect lands parent on `/dashboard` blank instead of `/portal/home`.** Surfaced during PR #375 browser verification: a parent who logs in via the generic `/login` form (rather than the portal-specific entry point) lands on `/dashboard`, which is a staff-only route the parent has no permissions for. The parent sees a blank page with no error message and no escape. Expected behaviour: the post-login redirect should detect the user is a parent (no `org_membership` row) and route to `/portal/home`. MED severity — affects parents arriving via marketing-emailed login links. Not a J2-F24 concern; out of scope for Batch 2D. Filed here for a future batch (likely Area 0 cross-cutting auth or a dedicated parent-onboarding batch). The walk doc already has an auth section; this fits cleanly there if a new finding ID is assigned.
+
+### Verification
+
+- `npm run typecheck` — pass.
+- `npm run build` — pass (1.25 MB main bundle, no new size regressions).
+- `npm run lint` — clean against the diff. Pre-stash and post-stash counts identical at 1238 error/warning lines (verified by `git stash` round-trip). Pre-existing warnings on `src/pages/portal/PortalSchedule.tsx` (4: `useCallback` unused, `searchParams` unused, `setSearchParams` unused, `setSelectedLesson` unused) and zero on `src/hooks/useParentPortal.ts` were unchanged by this diff.
+- Sanity grep — query change: `location:locations(name, parent_reschedule_policy_override)` present in `useParentLessons` query (1 match, line 277) ✓.
+- Sanity grep — page-level vars removed: 0 matches for `^  const reschedulePolicy|^  const canReschedule\b|^  const showSlotPicker\b` in `PortalSchedule.tsx` ✓.
+- Sanity grep — resolver added: 2 matches for `resolveReschedulePolicy` in `PortalSchedule.tsx` (definition at line 129; call site at line 303 inside `LessonCard`) ✓.
+- Sanity grep — no zombie usages: every `canReschedule`/`showSlotPicker` match in `PortalSchedule.tsx` is either inside the resolver definition (lines 131–141) or inside `LessonCard` after the destructure at line 303. No matches at component top-level outside the resolver ✓.
+- Type propagation: the page-level `Lesson` type at line 44 is `NonNullable<ReturnType<typeof useParentLessons>['data']>[number]`, so the type extension on `ParentLesson` propagates automatically — no further type edits needed in `PortalSchedule.tsx`.
+
+### Lovable after-merge
+
+- Migrations to apply: (none) — this batch ships zero migrations.
+- Edge functions: (none) — this batch ships zero edge function changes.
+- Production SQL verification: (none) — no schema change to verify.
+- Behaviour spot-check by Jamie: on a UK org with at least two locations and at least one location with `parent_reschedule_policy_override` set differently from the org-level default, log in as a parent with lessons across both locations and confirm each lesson card's reschedule UI reflects the location-level policy (not the org default). Example: org `self_service`, one location override `admin_locked` — lessons at the override location should not show the "Reschedule" / "Request Change" action; lessons elsewhere should. If no test data exists, set an override via Settings → Locations → edit → Reschedule policy override and reload. No console errors. No regression on the org-default path (parents at orgs without any override should see unchanged UI).
+
+### Cross-references
+
+- PR: see `STATUS.md` Next session handoff for current PR number.
+- Walk doc: J2-F24 row in J2 table (line ~113) struck through with shipped marker; HIGH-priority list bullet 5 (line ~354) struck through with shipped marker.
+- Roadmap impact: Area 2 row `8/15 HIGH` → `9/15 HIGH` (J2-F24 closed; denominator unchanged).
+
+### Lovable Batch 2C status reconciliation
+
+Batch 2C (PR #375) Lovable status flipped from `pending until Jamie confirms` to `confirmed complete 2026-04-29 12:05 UTC`. Migration `20260514100000_continuation_rls_recursion_fix_and_j1_f31.sql` applied; queries A–E pass (both helpers exist with `prosecdef=true`; rewritten policies reference the helpers and not cross-table subqueries; `EXPLAIN SELECT 1 FROM term_continuation_runs/responses` no longer raises 42P17; both replaced RPCs include `g.org_id = _entry.org_id` and the defensive `IS DISTINCT FROM` check; pre-existing `audit_make_up_waitlist` and `audit_term_continuation_responses` triggers from PR #374 still installed). Recursion-proof: `/rest/v1/term_continuation_responses` returned 200 for `demo-parent-1` from the previously-blank `/portal/home` route under parent JWT — this is the canonical real-browser GET proof. The earlier `read_query`-role SQL impersonation pass was useful for SQL-state verification but bypasses RLS, so it was weaker than initially framed (see Filed entry above). `SectionErrorBoundary` visible at `PortalHome.tsx:322`. Linter findings unchanged at 258 (all pre-existing); all four functions touched by the migration carry `proconfig=[search_path=public]`.
