@@ -6770,6 +6770,7 @@ export type Database = {
         Args: { _lesson_id: string; _user_id: string }
         Returns: boolean
       }
+      cancel_booked_makeup: { Args: { _waitlist_id: string }; Returns: Json }
       cancel_payment_plan: {
         Args: { p_invoice_id: string }
         Returns: undefined
