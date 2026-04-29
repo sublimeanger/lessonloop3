@@ -34,8 +34,8 @@ export function useRefund() {
 
   const processRefund = useCallback(async (
     paymentId: string,
-    amount?: number,
-    reason?: string,
+    amount: number | undefined,
+    reason: string | undefined,
     currencyCode: string,
     invoiceId?: string,
   ): Promise<RefundResult> => {
@@ -102,8 +102,8 @@ export function useRefund() {
     paymentId: string,
     invoiceId: string,
     orgId: string,
-    amount?: number,
-    reason?: string,
+    amount: number | undefined,
+    reason: string | undefined,
     currencyCode: string,
   ): Promise<RefundResult> => {
     setIsProcessing(true);
