@@ -1,5 +1,7 @@
 # WORKFLOW — how work happens on lessonloop3
 
+> **As of 2026-04-29: superseded for fix-batch work by `WORKFLOW_V2_FAST_HARDENING.md`.** The "How to ship a fix batch" and "Variant: Lovable-owned fixes" sections below are retained for historical reference. New fix work follows V2. Walk PRs and tiny one-line fixes still use V1.
+
 This is the canonical workflow doc. Everything that contradicts this doc — in older docs, in past commit messages, in chat history — is wrong. This doc is the source of truth.
 
 ---

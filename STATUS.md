@@ -1,6 +1,21 @@
 # Project status
 
-**Last updated:** 2026-04-29 (commit 37163c52 + this docs PR)
+**Last updated:** 2026-04-29 (PR: chore/v2-workflow-bootstrap)
+
+## Next session handoff
+
+- **Active area:** Area 2 — Parent Portal
+- **Current batch:** PR 0 — V2 workflow bootstrap (docs only). Batch 2A (CC-3 broader currency sweep) is queued and will run only after this PR merges.
+- **Last merged PR / branch:** PR #370 — docs/area-2-CC-3-portal-currency-closure
+- **What shipped:** `WORKFLOW_V2_FAST_HARDENING.md` created at repo root; `START_HERE.md` bootstrap order updated; `WORKFLOW.md` superseded-by-V2 header; `STATUS.md` gets this canonical Next session handoff block.
+- **Lovable after-merge actions:** (none)
+- **Lovable status:** N/A
+- **Production SQL verification:** (none)
+- **App behaviour checks:** (none)
+- **Next batch in active area:** Batch 2A — CC-3 broader hardcoded-currency sweep across non-portal surfaces. Will be sent as a separate paste-ready prompt by chat-Claude after PR 0 merges.
+- **Next area after this one closes:** Area 3 — Students & guardians (per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
+- **Roadmap progress:** Area 1 closed; Area 2 in progress at 4/14 HIGH; Areas 0, 3-16 pending (17 areas total per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
+- **Next session first instruction:** After PR 0 merges, paste Batch 2A's prompt into a fresh Claude Code session. Do not run V1 micro-prompts. Do not touch the `chore/polish-notes-stale-placeholders` branch.
 
 ---
 

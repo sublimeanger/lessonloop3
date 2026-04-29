@@ -3400,3 +3400,31 @@ PR 2 of 5 in the cross-cutting currency sweep. Closes the audit's literal CC-3 e
 - Workflow note: this is the first fix shipped under the new "Variant: Lovable-owned fixes" flow added in PR #369. Lovable pushed commit 37163c52 directly to main; this docs PR is the Claude Code follow-up that closes the audit findings and updates POLISH_NOTES / STATUS / roadmap. The two-commit pattern worked cleanly on first use.
 - Workflow lesson recorded: Lovable rewrites commit messages (asked for `fix(portal): drop hardcoded GBP fallbacks; trust currency_code type (CC-3, J1-F15, J3-F2, J3-F10, J3-F15)`, got `Removed hardcoded GBP fallbacks`). Future Lovable prompts should not specify verbose conventional-commit messages — Lovable will paraphrase. Folded into [WORKFLOW.md](http://WORKFLOW.md) in this same PR.
 - Verification: `grep -rn "'GBP'" src/pages/portal/ src/components/portal/` returns zero matches; TypeScript check clean per Lovable.
+
+---
+
+## Process — V2 workflow bootstrap (2026-04-29)
+
+PR 0 of the new fast-hardening operating model. Pure docs. No app code, no migrations, no edge functions. Lands the V2 operating system in the repo so future agent sessions inherit a clean bootstrap regardless of chat history.
+
+### What shipped
+
+- `WORKFLOW_V2_FAST_HARDENING.md` created at repo root. Codifies: production-access boundary (Lovable owns prod; agents never deploy/apply); mandatory Next session handoff in `STATUS.md` (written for fresh AI sessions with no chat context); roadmap authority (`LESSONLOOP_PRODUCTION_ROADMAP.md` remains canonical scope); required PR body structure including Lovable after-merge actions, Next session handoff update, and Roadmap impact line.
+- `START_HERE.md` bootstrap order updated. New sessions read `STATUS.md` handoff block first, V2 second, roadmap third, walk doc fourth, V1 fifth (history only). Quality bar amended to state roadmap scope is non-negotiable; V2 changes execution speed, not what ships.
+- `WORKFLOW.md` gets superseded-by-V2 blockquote header at top. V1 content retained for history; walk PRs and tiny fixes still use V1.
+- `STATUS.md` gets the canonical Next session handoff block at the top.
+
+### What did NOT ship
+
+- No code changes.
+- No findings closed (this is workflow infrastructure, not a fix batch).
+- No Area 2 HIGH count change. `STATUS.md` and roadmap stay at 4/14 HIGH for Area 2.
+- The `chore/polish-notes-stale-placeholders` branch is untouched.
+
+### Why two PRs instead of one
+
+Originally drafted as one PR with V2 + sweep in two commits. Split into PR 0 (this) and Batch 2A (next) so the V2 operating system lands cleanly even if Batch 2A hits a HALT condition. The sweep depends on V2 being on disk; V2 must not depend on the sweep succeeding.
+
+### Next
+
+Batch 2A — CC-3 broader hardcoded-currency sweep — runs only after this PR merges, against the V2 workflow it brings into existence.
