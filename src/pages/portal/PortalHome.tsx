@@ -40,6 +40,7 @@ import { RequestModal } from '@/components/portal/RequestModal';
 import { ParentOnboardingChecklist } from '@/components/portal/ParentOnboardingChecklist';
 import { MakeUpStepper } from '@/components/portal/MakeUpStepper';
 import { PortalWelcomeDialog } from '@/components/portal/PortalWelcomeDialog';
+import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -318,28 +319,30 @@ export default function PortalHome() {
         <ParentOnboardingChecklist className="mb-2" />
 
         {/* Continuation alert banner */}
-        {pendingContinuation.length > 0 && (
-          <Link to={portalLink("/portal/continuation")} className="block">
-            <Card className="border-primary/30 bg-primary/5 rounded-2xl" data-interactive>
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                  <ArrowRight className="h-4 w-4 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">
-                    Term Continuation — action needed
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {pendingContinuation.length === 1
-                      ? 'Please confirm whether your child is continuing next term'
-                      : `Please confirm continuation for ${pendingContinuation.length} students`}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-              </CardContent>
-            </Card>
-          </Link>
-        )}
+        <SectionErrorBoundary name="continuation">
+          {pendingContinuation.length > 0 && (
+            <Link to={portalLink("/portal/continuation")} className="block">
+              <Card className="border-primary/30 bg-primary/5 rounded-2xl" data-interactive>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                    <ArrowRight className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">
+                      Term Continuation — action needed
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {pendingContinuation.length === 1
+                        ? 'Please confirm whether your child is continuing next term'
+                        : `Please confirm continuation for ${pendingContinuation.length} students`}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                </CardContent>
+              </Card>
+            </Link>
+          )}
+        </SectionErrorBoundary>
 
         {isLoading ? (
           <PortalHomeSkeleton />
