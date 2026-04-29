@@ -72,6 +72,7 @@ const COMMON_TIMEZONES = [
 ];
 
 const CURRENCIES = [
+  // 'GBP' here is an option value in the currency picker, not a fallback for an org's missing currency.
   { code: 'GBP', label: 'GBP (£) — British Pound' },
   { code: 'EUR', label: 'EUR (€) — Euro' },
   { code: 'USD', label: 'USD ($) — US Dollar' },
@@ -105,6 +106,7 @@ export function OrganisationTab() {
   const [nameTouched, setNameTouched] = useState(false);
   const [orgAddress, setOrgAddress] = useState('');
   const [timezone, setTimezone] = useState('Europe/London');
+  // Initial picker value before orgData loads; replaced via setCurrencyCode in the useEffect below.
   const [currencyCode, setCurrencyCode] = useState('GBP');
   const [showTimezoneWarning, setShowTimezoneWarning] = useState(false);
   const [pendingTimezone, setPendingTimezone] = useState<string | null>(null);
@@ -120,7 +122,7 @@ export function OrganisationTab() {
       setOrgName(orgData.name || '');
       setOrgAddress(orgData.address || '');
       setTimezone(orgData.timezone || 'Europe/London');
-      setCurrencyCode(orgData.currency_code || 'GBP');
+      setCurrencyCode(orgData.currency_code);
       setTeacherPaymentNotifications(orgData.teacher_payment_notifications_enabled !== false);
       setTeacherPaymentAnalytics(orgData.teacher_payment_analytics_enabled !== false);
     }

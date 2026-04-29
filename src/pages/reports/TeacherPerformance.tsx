@@ -58,7 +58,7 @@ export default function TeacherPerformanceReport() {
 
   const { data, isLoading, isFetching, error } = useTeacherPerformanceReport(startDate, endDate);
 
-  const currCode = currentOrg?.currency_code || 'GBP';
+  const currCode = currentOrg?.currency_code ?? '';
   const sym = currencySymbol(currCode);
 
   const handleExport = () => {

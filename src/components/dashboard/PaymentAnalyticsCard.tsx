@@ -18,7 +18,7 @@ const METHOD_COLORS: Record<string, string> = {
 export function PaymentAnalyticsCard() {
   const { data, isLoading } = usePaymentAnalytics();
   const { currentOrg } = useOrg();
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
   const sym = currencySymbol(currency);
 
   if (isLoading) {

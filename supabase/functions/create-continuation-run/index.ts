@@ -848,7 +848,11 @@ async function handleSend(
     .single();
 
   const orgName = org?.name || "Your Music Service";
-  const currencyCode = org?.currency_code || 'GBP';
+  if (!org?.currency_code || typeof org.currency_code !== "string" || org.currency_code.length !== 3) {
+    console.error("[create-continuation-run] Missing or invalid currency_code on org:", org_id);
+    return jsonResponse({ error: "Organisation currency not configured" }, cors, 500);
+  }
+  const currencyCode = org.currency_code;
   const currencySymbol = new Intl.NumberFormat('en', { style: 'currency', currency: currencyCode, maximumFractionDigits: 0 }).format(0).replace(/[\d.,\s]/g, '');
   const currencyHtmlEntity = currencySymbol;
 

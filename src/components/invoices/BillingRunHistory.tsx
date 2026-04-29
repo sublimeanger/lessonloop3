@@ -67,7 +67,7 @@ export function BillingRunHistory() {
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [deleteConfirmRun, setDeleteConfirmRun] = useState<BillingRunWithDetails | null>(null);
   const canDelete = currentRole === 'owner' || currentRole === 'admin';
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
 
   const selectedRun = runs.find((r) => r.id === selectedRunId) ?? null;
   const { data: runInvoices = [], isLoading: loadingInvoices } = useRunInvoices(selectedRunId, currentOrg?.id);

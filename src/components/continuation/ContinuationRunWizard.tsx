@@ -108,7 +108,7 @@ export function ContinuationRunWizard({
   const nextTermOptions = terms.filter(
     (t) => currentTermObj && t.start_date > currentTermObj.end_date
   );
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
 
   const handleCurrentTermChange = (termId: string) => {
     const term = terms.find((t) => t.id === termId);

@@ -659,7 +659,7 @@ export function useDashboardStats() {
 }
 
 // ==================== CSV EXPORT HELPERS ====================
-export function exportRevenueToCSV(data: RevenueData, orgName: string, currencyCode = 'GBP'): void {
+export function exportRevenueToCSV(data: RevenueData, orgName: string, currencyCode: string): void {
   const sym = currencySymbol(currencyCode);
   const rows = [`Month,Paid Amount (${sym}),Invoice Count`];
   for (const m of data.months) {
@@ -671,7 +671,7 @@ export function exportRevenueToCSV(data: RevenueData, orgName: string, currencyC
   downloadCSV(rows.join('\n'), `revenue_${orgName}_report.csv`);
 }
 
-export function exportAgeingToCSV(data: AgeingData, orgName: string, currencyCode = 'GBP'): void {
+export function exportAgeingToCSV(data: AgeingData, orgName: string, currencyCode: string): void {
   const sym = currencySymbol(currencyCode);
   const rows = [`Invoice Number,Payer,Due Date,Days Overdue,Amount (${sym}),Bucket`];
   for (const bucket of data.buckets) {

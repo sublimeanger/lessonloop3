@@ -125,7 +125,7 @@ export default function Continuation() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [runToDelete, setRunToDelete] = useState<ContinuationRun | null>(null);
 
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
   const run = runDetail || runToShow;
   const summary = run?.summary;
 

@@ -153,7 +153,7 @@ export default function InvoiceDetail() {
     }
   };
 
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
 
   if (isLoading) {
     return (

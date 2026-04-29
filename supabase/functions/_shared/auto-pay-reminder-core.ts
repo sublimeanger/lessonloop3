@@ -138,7 +138,11 @@ export async function sendAutoPayReminders(
 
     if (!org) continue;
 
-    const currency = invoice.currency_code || org.currency_code || "GBP";
+    const currency = invoice.currency_code || org.currency_code;
+    if (!currency || typeof currency !== "string" || currency.length !== 3) {
+      console.error("[auto-pay-reminder] Missing or invalid currency_code for invoice/org:", invoice.id, invoice.org_id);
+      continue;
+    }
     const formatAmount = (minor: number) =>
       new Intl.NumberFormat("en-GB", {
         style: "currency",

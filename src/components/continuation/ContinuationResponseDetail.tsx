@@ -47,7 +47,7 @@ export function ContinuationResponseDetail({
   response,
   open,
   onOpenChange,
-  currency = 'GBP',
+  currency = '',
 }: ContinuationResponseDetailProps) {
   const respondMutation = useRespondToContinuation();
   const [overrideResponse, setOverrideResponse] = useState<string>('');

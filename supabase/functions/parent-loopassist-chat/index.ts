@@ -111,6 +111,14 @@ serve(async (req) => {
       .eq("id", orgId)
       .single();
 
+    if (!orgData?.currency_code || typeof orgData.currency_code !== "string" || orgData.currency_code.length !== 3) {
+      console.error("[parent-loopassist-chat] Missing or invalid currency_code on org:", orgId);
+      return new Response(
+        JSON.stringify({ error: "Organisation currency not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Get linked student IDs
     const { data: studentLinks } = await supabaseUser
       .from("student_guardians")
@@ -244,8 +252,9 @@ serve(async (req) => {
       for (const inv of invoices) {
         const total = (inv.total_minor / 100).toFixed(2);
         const paid = ((inv.paid_minor || 0) / 100).toFixed(2);
-        const cc = orgData?.currency_code || "GBP";
-        const sym = cc === "GBP" ? "£" : cc === "USD" ? "$" : cc === "EUR" ? "€" : `${cc} `;
+        const cc = orgData.currency_code;
+        const currencySymbolMap: Record<string, string> = { GBP: "£", USD: "$", EUR: "€" };
+        const sym = currencySymbolMap[cc] ?? `${cc} `;
         dataContext += `- ${inv.invoice_number}: ${sym}${total} (${inv.status}) due ${inv.due_date}`;
         if (inv.status === "partially_paid") {
           dataContext += ` — ${sym}${paid} paid`;
@@ -256,7 +265,7 @@ serve(async (req) => {
 
     // Build full system prompt
     const orgContext = orgData
-      ? `\n\nACADEMY: ${orgData.name}\nCurrency: ${orgData.currency_code || "GBP"}`
+      ? `\n\nACADEMY: ${orgData.name}\nCurrency: ${orgData.currency_code}`
       : "";
 
     const parentContext = `\nParent: ${guardians[0].full_name}`;

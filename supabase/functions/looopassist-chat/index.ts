@@ -86,7 +86,7 @@ interface Payment {
  */
 // TODO (PERF-M4): Consider creating a single get_loopassist_context RPC that returns all 9 datasets
 // in one DB round-trip. Don't refactor this now — it works, it's just expensive at scale.
-async function buildLeanContext(supabase: SupabaseClient, orgId: string, currencyCode: string = 'GBP'): Promise<{
+async function buildLeanContext(supabase: SupabaseClient, orgId: string, currencyCode: string): Promise<{
   snapshot: string;
   sections: Record<string, string>;
 }> {
@@ -197,7 +197,7 @@ async function buildLeanContext(supabase: SupabaseClient, orgId: string, currenc
 }
 
 // Build deep student context when viewing a specific student
-async function buildStudentContext(supabase: SupabaseClient, orgId: string, studentId: string, userRole?: string, currencyCode: string = 'GBP'): Promise<string> {
+async function buildStudentContext(supabase: SupabaseClient, orgId: string, studentId: string, userRole: string | undefined, currencyCode: string): Promise<string> {
   const fmtCurrency = (minor: number) =>
     new Intl.NumberFormat('en-GB', { style: 'currency', currency: currencyCode }).format(minor / 100);
   // Fetch student with all related data
@@ -1283,7 +1283,14 @@ serve(async (req) => {
       .eq("id", orgId)
       .single();
 
-    const currencyCode = orgData?.currency_code || 'GBP';
+    if (!orgData?.currency_code || typeof orgData.currency_code !== "string" || orgData.currency_code.length !== 3) {
+      console.error("[looopassist-chat] Missing or invalid currency_code on org:", orgId);
+      return new Response(JSON.stringify({ error: "Organisation currency not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const currencyCode = orgData.currency_code;
     const fmtCurrency = (minor: number) =>
       new Intl.NumberFormat('en-GB', { style: 'currency', currency: currencyCode }).format(minor / 100);
 

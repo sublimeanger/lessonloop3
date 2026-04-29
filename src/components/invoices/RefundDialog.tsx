@@ -77,7 +77,7 @@ export function RefundDialog({
   method,
   paidAt,
   invoiceNumber,
-  currencyCode = 'GBP',
+  currencyCode = '',
   isManual = false,
   invoiceId,
   orgId,
@@ -230,7 +230,7 @@ export function RefundDialog({
                 </Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                    {currencySymbol(currencyCode || 'GBP')}
+                    {currencySymbol(currencyCode)}
                   </span>
                   <Input
                     id="refund-amount"

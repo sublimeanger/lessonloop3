@@ -36,7 +36,7 @@ export function useRefund() {
     paymentId: string,
     amount?: number,
     reason?: string,
-    currencyCode: string = 'GBP',
+    currencyCode: string,
     invoiceId?: string,
   ): Promise<RefundResult> => {
     setIsProcessing(true);
@@ -104,7 +104,7 @@ export function useRefund() {
     orgId: string,
     amount?: number,
     reason?: string,
-    currencyCode: string = 'GBP',
+    currencyCode: string,
   ): Promise<RefundResult> => {
     setIsProcessing(true);
     setError(null);

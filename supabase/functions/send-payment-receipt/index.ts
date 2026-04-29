@@ -163,7 +163,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Format currency
-    const currency = org.currency_code || "GBP";
+    if (!org.currency_code || typeof org.currency_code !== "string" || org.currency_code.length !== 3) {
+      console.error("[send-payment-receipt] Missing or invalid currency_code on org:", orgId);
+      return new Response(JSON.stringify({ error: "Organisation currency not configured" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const currency = org.currency_code;
     const formatAmount = (minor: number) => {
       return new Intl.NumberFormat("en-GB", {
         style: "currency",

@@ -63,7 +63,7 @@ function fmtDateTime(iso: string | null | undefined): string {
   return fmtDate(iso, 'd MMM yyyy HH:mm');
 }
 
-function fmtAmount(minor: number | null | undefined, currency = 'GBP'): string {
+function fmtAmount(minor: number | null | undefined, currency: string): string {
   const amount = (minor ?? 0) / 100;
   try {
     return new Intl.NumberFormat(undefined, {

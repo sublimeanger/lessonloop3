@@ -290,7 +290,11 @@ async function handlePreview(
     .eq("id", orgId)
     .single();
 
-  const currencyCode = org?.currency_code || "GBP";
+  if (!org?.currency_code || typeof org.currency_code !== "string" || org.currency_code.length !== 3) {
+    console.error("[process-term-adjustment] Missing or invalid currency_code on org:", orgId);
+    return jsonResponse({ error: "Organisation currency not configured" }, cors, 500);
+  }
+  const currencyCode = org.currency_code;
   const vatEnabled = org?.vat_enabled || false;
   const vatRate = org?.vat_rate || 0;
 
@@ -773,7 +777,11 @@ async function handleConfirm(
 
     const vatEnabled = org?.vat_enabled || false;
     const vatRate = org?.vat_rate || 0;
-    const currencyCode = org?.currency_code || "GBP";
+    if (!org?.currency_code || typeof org.currency_code !== "string" || org.currency_code.length !== 3) {
+      console.error("[process-term-adjustment] Missing or invalid currency_code on org during invoice creation:", orgId);
+      throw new Error("Organisation currency not configured");
+    }
+    const currencyCode = org.currency_code;
 
     const isCreditNote = adjustmentAmount > 0;
     const absAmount = Math.abs(adjustmentAmount);
@@ -862,7 +870,8 @@ async function handleConfirm(
     const rateFormatted = (adjustment.lesson_rate_minor / 100).toFixed(2);
 
     // Insert invoice item(s)
-    const currencySymbol = currencyCode === "GBP" ? "£" : currencyCode === "USD" ? "$" : currencyCode === "EUR" ? "€" : `${currencyCode} `;
+    const currencySymbolMap: Record<string, string> = { GBP: "£", USD: "$", EUR: "€" };
+    const currencySymbol = currencySymbolMap[currencyCode] ?? `${currencyCode} `;
     const itemDescription = isCreditNote
       ? adjustment.adjustment_type === "withdrawal"
         ? `Term adjustment credit – ${studentName} withdrawal – ${adjustment.lessons_difference} lesson${adjustment.lessons_difference !== 1 ? "s" : ""} × ${currencySymbol}${rateFormatted}`

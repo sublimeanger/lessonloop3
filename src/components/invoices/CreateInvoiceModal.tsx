@@ -146,7 +146,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     setSelectedCredits(new Set());
   }, [payerId, payerType]);
 
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
 
   const { data: guardians = [] } = useQuery({
     queryKey: ['guardians-for-invoice', currentOrg?.id],
@@ -465,7 +465,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                   <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 px-1">
                     <Label className="text-xs text-muted-foreground">Description</Label>
                     <Label className="text-xs text-muted-foreground w-20">Qty</Label>
-                    <Label className="text-xs text-muted-foreground w-24">Price ({currencySymbol(currentOrg?.currency_code || 'GBP')})</Label>
+                    <Label className="text-xs text-muted-foreground w-24">Price ({currencySymbol(currency)})</Label>
                     <div className="w-10" />
                   </div>
                   {fields.map((field, index) => (
@@ -495,7 +495,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                         />
                       </div>
                       <div className="space-y-1 sm:space-y-0">
-                        <Label className="text-xs text-muted-foreground sm:hidden">Price ({currencySymbol(currentOrg?.currency_code || 'GBP')})</Label>
+                        <Label className="text-xs text-muted-foreground sm:hidden">Price ({currencySymbol(currency)})</Label>
                         <Input
                           type="number"
                           step="0.01"

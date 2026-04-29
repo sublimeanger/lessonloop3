@@ -322,7 +322,7 @@ export function InvoiceSettingsTab() {
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="planThreshold">Auto-offer for invoices over ({currencySymbol(currentOrg?.currency_code || 'GBP')})</Label>
+              <Label htmlFor="planThreshold">Auto-offer for invoices over ({currencySymbol(currentOrg?.currency_code ?? '')})</Label>
               <Input
                 id="planThreshold"
                 type="number"

@@ -130,10 +130,18 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    const disputeCurrencyCode = dispute.currency_code?.toUpperCase();
+    if (!disputeCurrencyCode || typeof disputeCurrencyCode !== "string" || disputeCurrencyCode.length !== 3) {
+      console.error("[send-dispute-notification] Missing or invalid currency_code on dispute:", dispute.id);
+      return new Response(
+        JSON.stringify({ error: "Dispute currency not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
     const formatAmount = (minor: number) =>
       new Intl.NumberFormat("en-GB", {
         style: "currency",
-        currency: dispute.currency_code?.toUpperCase() || "GBP",
+        currency: disputeCurrencyCode,
       }).format(minor / 100);
 
     const formattedAmount = formatAmount(dispute.amount_minor);

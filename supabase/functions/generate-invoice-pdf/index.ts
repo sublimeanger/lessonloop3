@@ -183,6 +183,11 @@ serve(async (req) => {
           .single(),
       ]);
 
+    if (!org?.currency_code || typeof org.currency_code !== "string" || org.currency_code.length !== 3) {
+      console.error("[generate-invoice-pdf] Missing or invalid currency_code on org:", invoice.org_id);
+      throw new Error("Organisation currency not configured");
+    }
+
     // Pre-load logo as data URL (Deno-safe).
     let logoDataUrl: string | null = null;
     if (org?.logo_url) {
@@ -222,7 +227,7 @@ serve(async (req) => {
         installments: (installments ?? []) as InvoicePdfInput["invoice"]["installments"],
       },
       org: org as InvoicePdfInput["org"],
-      currency: org?.currency_code ?? "GBP",
+      currency: org.currency_code,
       logoDataUrl,
     };
 

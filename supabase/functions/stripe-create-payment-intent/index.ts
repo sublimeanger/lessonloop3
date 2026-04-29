@@ -218,7 +218,12 @@ serve(async (req) => {
                       `${(invoice.students as any)?.first_name || ''} ${(invoice.students as any)?.last_name || ''}`.trim() ||
                       "Customer";
 
-    const currencyCode = (invoice.currency_code || (invoice.organisations as any)?.currency_code || "GBP").toLowerCase();
+    const rawCurrency = invoice.currency_code || (invoice.organisations as any)?.currency_code;
+    if (!rawCurrency || typeof rawCurrency !== "string" || rawCurrency.length !== 3) {
+      console.error("[stripe-create-payment-intent] Missing or invalid currency_code on invoice/org:", invoiceId);
+      throw new Error("Organisation currency not configured");
+    }
+    const currencyCode = rawCurrency.toLowerCase();
 
     // Fetch org Stripe Connect info
     const { data: orgConnect } = await supabase

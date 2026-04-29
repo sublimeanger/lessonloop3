@@ -1186,24 +1186,28 @@ async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
         .eq("id", payment.org_id)
         .single();
 
-      try {
-        await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/send-refund-notification`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
-          },
-          body: JSON.stringify({
-            refundId: newRefund?.id,
-            paymentId: payment.id,
-            invoiceId: payment.invoice_id,
-            orgId: payment.org_id,
-            amountMinor: refund.amount,
-            currencyCode: orgForCurrency?.currency_code || "GBP",
-          }),
-        });
-      } catch (err) {
-        console.error("Failed to trigger refund notification from webhook:", err);
+      if (!orgForCurrency?.currency_code || typeof orgForCurrency.currency_code !== "string" || orgForCurrency.currency_code.length !== 3) {
+        console.error("[stripe-webhook] Missing or invalid currency_code on org for refund notification:", payment.org_id);
+      } else {
+        try {
+          await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/send-refund-notification`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+            },
+            body: JSON.stringify({
+              refundId: newRefund?.id,
+              paymentId: payment.id,
+              invoiceId: payment.invoice_id,
+              orgId: payment.org_id,
+              amountMinor: refund.amount,
+              currencyCode: orgForCurrency.currency_code,
+            }),
+          });
+        } catch (err) {
+          console.error("Failed to trigger refund notification from webhook:", err);
+        }
       }
     }
 
@@ -1376,6 +1380,12 @@ async function handleDisputeCreated(supabase: any, dispute: Stripe.Dispute) {
     .eq("id", payment.org_id)
     .single();
 
+  const disputeCurrency = dispute.currency || org?.currency_code;
+  if (!disputeCurrency || typeof disputeCurrency !== "string" || disputeCurrency.length !== 3) {
+    console.error(`[stripe-webhook] Missing currency_code for dispute ${truncate(dispute.id)} on org ${payment.org_id}`);
+    return;
+  }
+
   const livemode = !dispute.id.startsWith("dp_test_") && !dispute.id.startsWith("du_test_");
   const dashboardUrl = buildDisputeDashboardUrl(dispute.id, livemode);
 
@@ -1390,7 +1400,7 @@ async function handleDisputeCreated(supabase: any, dispute: Stripe.Dispute) {
       stripe_charge_id: chargeId,
       stripe_payment_intent_id: paymentIntentId,
       amount_minor: dispute.amount,
-      currency_code: (dispute.currency || org?.currency_code || "gbp").toUpperCase(),
+      currency_code: disputeCurrency.toUpperCase(),
       reason: dispute.reason,
       network_reason_code: dispute.network_reason_code ?? null,
       status: dispute.status,

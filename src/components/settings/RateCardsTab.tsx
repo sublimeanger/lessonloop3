@@ -79,7 +79,7 @@ export function RateCardsTab() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [formData, setFormData] = useState<RateCardFormData>(defaultFormData);
 
-  const currency = currentOrg?.currency_code || 'GBP';
+  const currency = currentOrg?.currency_code ?? '';
 
   const handleOpenCreate = () => {
     setEditingCard(null);
