@@ -6,7 +6,7 @@
 
 - **Active area:** Area 2 — Parent Portal
 - **Current batch:** (none in flight) post-merge
-- **Last merged PR / branch:** PR #{TBD} / `claude/fix-rls-guardian-scoping-Szciu` (Batch 2C) — open at end of this session, awaiting merge. PR #374 / `claude/fix-makeup-flow-integrity-jshxb` (Batch 2B) — confirmed complete by Lovable 2026-04-29 07:35 UTC.
+- **Last merged PR / branch:** PR #375 / `claude/fix-rls-guardian-scoping-Szciu` (Batch 2C) — open at end of this session, awaiting merge. PR #374 / `claude/fix-makeup-flow-integrity-jshxb` (Batch 2B) — confirmed complete by Lovable 2026-04-29 07:35 UTC.
 - **What shipped:** Production-live blank-render in parent portal fixed (CC-F15: term_continuation RLS mutual recursion 42P17 between `term_continuation_runs` and `term_continuation_responses` parent SELECT policies broken via two new SECURITY DEFINER recursion-breaker helpers). J1-F31 closed (multi-org guardian scoping in `respond_to_makeup_offer` + `cancel_booked_makeup`: read waitlist row first to obtain `org_id`, scope guardian lookup by both `user_id` and `org_id`, defensive `IS DISTINCT FROM` check). `SectionErrorBoundary` now wraps `useParentContinuationPending` consumer in both `PortalHome.tsx` and `PortalContinuation.tsx` so a single hook 500 cannot blank the page tree (portal-defense-1).
 - **Lovable after-merge actions:** Apply migration `20260514100000_continuation_rls_recursion_fix_and_j1_f31.sql`. (none) for edge functions — no edge fn changes in this batch.
 - **Lovable status:** pending until Jamie confirms
@@ -15,7 +15,7 @@
 - **Next batch in active area:** Batch 2D — J2-F24 location reschedule policy override.
 - **Next area after this one closes:** Area 3 — Students & guardians (per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
 - **Roadmap progress:** Area 1 closed; Area 2 in progress at **8/15 HIGH** (was 7/14; +1 closed, +1 denominator — J1-F31 was newly-discovered and shipped in the same PR that filed it); Areas 0, 3-16 pending (17 areas total per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
-- **Next session first instruction:** After PR #{TBD} merges and Jamie confirms Lovable applied the migration + ran SQL queries A–E + verified portal load in a real browser, paste Batch 2D's prompt into a fresh Claude Code session.
+- **Next session first instruction:** After PR #375 merges and Jamie confirms Lovable applied the migration + ran SQL queries A–E + verified portal load in a real browser, paste Batch 2D's prompt into a fresh Claude Code session.
 
 ---
 
