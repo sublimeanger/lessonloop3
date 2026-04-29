@@ -32,6 +32,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrencyMinor } from '@/lib/utils';
+import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 
 // Token-based response component (for email links, possibly unauthenticated)
 function TokenResponse() {
@@ -496,7 +497,9 @@ export default function PortalContinuation() {
             Confirm whether your child will be continuing lessons next term
           </p>
         </div>
-        <PortalContinuationList />
+        <SectionErrorBoundary name="continuation">
+          <PortalContinuationList />
+        </SectionErrorBoundary>
       </div>
     </PortalLayout>
   );

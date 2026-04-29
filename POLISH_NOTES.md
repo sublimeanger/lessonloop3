@@ -3572,3 +3572,56 @@ Closes three Area 2 HIGH findings on the parent make-up flow plus the make-up + 
 ### Lovable Batch 2A status reconciliation
 
 Batch 2A (PR #373) Lovable status was confirmed complete on 2026-04-29 06:48 UTC. Reconciliation note: PR body listed 20 edge functions to deploy; Lovable deployed 22. The 2 extras are downstream importers of `_shared/auto-pay-reminder-core.ts` (`auto-pay-reminder-3day` + `auto-pay-reminder-1day`) and `_shared/send-invoice-email-core.ts` (`send-invoice-email` + `send-invoice-email-internal`) — Lovable correctly redeployed each consumer of the changed shared modules. The PR body's "20" count was an enumeration gap (it listed each shared module once but the actual deployment redeploys every importer); the deployment itself is correct.
+
+---
+
+## Area 2 — Parent portal — Batch 2C: term_continuation RLS recursion fix + J1-F31 multi-org guardian scope + defensive rendering (closed 2026-04-29)
+
+Closes the production-live blank-render incident in the parent portal (CC-F15), the newly-discovered J1-F31 multi-org guardian-scope HIGH, and adds defensive rendering scaffolding (portal-defense-1) so a future single-hook 500 cannot blank the entire portal page tree. Also flips Lovable status for Batch 2B (PR #374) to confirmed complete with a verification-method note.
+
+### Fixed
+
+- **CC-F15** — `term_continuation_runs` and `term_continuation_responses` parent SELECT policies subqueried each other's table. PR #367 (`20260511100000_lockdown_parent_rls_j6_j8.sql`) introduced `Parents can view runs they have responses in` on `term_continuation_runs` (EXISTS-join through `term_continuation_responses` + `guardians`); the existing `Parents see own responses` on `term_continuation_responses` (from `20260315200500`) already had `org_id = (SELECT tcr.org_id FROM term_continuation_runs tcr WHERE tcr.id = run_id)`. PostgREST evaluates all permissive SELECT policies for a row, so any session reading either table fired both policies → mutual subquery → Postgres `42P17 (infinite recursion in policy)` → HTTP 500 on every page touching either table. Real-world impact: parent portal blank-renders for all users; staff dashboard widgets that touch the continuation surface fail. Closed by introducing two SECURITY DEFINER recursion-breaker helpers (`user_has_continuation_response_in_run`, `continuation_run_org_id`) and rewriting both parent SELECT policies to call them. The function bodies bypass RLS (SECURITY DEFINER), so the cross-table read no longer re-triggers the other policy. Migration `20260514100000_continuation_rls_recursion_fix_and_j1_f31.sql`.
+- **J1-F31** — `respond_to_makeup_offer` and `cancel_booked_makeup` resolved the guardian via `WHERE g.user_id = auth.uid() AND g.deleted_at IS NULL LIMIT 1` with no org filter. For parents with guardian rows in multiple orgs, `LIMIT 1` could bind to the wrong guardian, and the subsequent `_entry.guardian_id IS DISTINCT FROM _guardian_id` ownership check failed silently with `Waitlist entry not found or does not belong to you`. No UX explained the multi-org case. Closed by reading the waitlist row first (by primary key, inside the SECURITY DEFINER body — bypasses RLS so no policy interaction) to obtain `org_id`, then scoping the guardian lookup by both `user_id` AND `g.org_id = _entry.org_id`. Defensive `IS DISTINCT FROM` raise after the lookup is preserved as a load-bearing check for the multi-org case where a parent has guardian records in both org A and org B but only one matches the waitlist's `guardian_id`. New error message `Guardian record not found for this organisation` surfaces the multi-org case explicitly. Migration `20260514100000`.
+- **portal-defense-1** — `useParentContinuationPending` consumers in `PortalHome.tsx` and `PortalContinuation.tsx` now wrap the rendering JSX in `<SectionErrorBoundary name="continuation">`. Future query failures (the recursion or anything else) surface as a compact inline retry card inside the continuation section, leaving the rest of the page tree untouched. Mirrors the existing pattern in `src/components/students/StudentTabsSection.tsx` which already uses per-section `SectionErrorBoundary` wraps around each tab.
+
+### Pattern applied
+
+- **SECURITY DEFINER helpers as RLS recursion-breakers.** When two tables' parent SELECT policies legitimately need to reference each other (here: scope responses by their run's `org_id`; scope runs by whether the parent has a response in them), the policy bodies cannot do the cross-table SELECT directly without triggering 42P17. The fix shape is a `LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public` helper that does the cross-table read inside the function body — SECURITY DEFINER bypasses RLS, so the body's own SELECTs do not re-evaluate the other policy. Same pattern as `is_invoice_payer` (from `20260119235724`) and `is_org_staff` (from `20260120215727`). New helpers grant EXECUTE to `authenticated` and revoke from PUBLIC.
+- **Org-scoped guardian lookups in parent-action RPCs.** Multi-org parents are rare today but real (parents whose families teach at two different orgs hosted on LessonLoop). Any RPC that resolves guardian via `WHERE user_id = auth.uid() LIMIT 1` is vulnerable to wrong-org binding. The waitlist-row-first pattern (read row by primary key inside SECURITY DEFINER, then scope guardian lookup by both `user_id` and the row's `org_id`) is the canonical fix. The defensive `IS DISTINCT FROM` raise after the lookup is preserved as a belt-and-braces check.
+- **Section-level error boundaries on portal hooks that can 500.** `useParentContinuationPending` is the first portal hook this batch wraps; the existing `StudentTabsSection.tsx` pattern is the model. Future batches can extend to other portal hooks (waitlist, invoices, messages, practice) where appropriate. Boundary scope is tight to the failing surface — never wrap the entire page. Hand-written error states (e.g. `PortalErrorState`) and React Query's `isError` field are still the primary UX for handled errors; the boundary is for unhandled render-time exceptions.
+
+### Filed
+
+- **SECURITY DEFINER RPCs leak EXECUTE to PUBLIC/anon by default** — flagged by Jamie during PR #374 verification when reviewing the new `cancel_booked_makeup` and replaced `respond_to_makeup_offer`. Postgres' default function privilege grants EXECUTE to PUBLIC unless explicitly revoked. The two recursion-breaker helpers in this batch's migration follow the discipline (`REVOKE ALL ... FROM PUBLIC; GRANT EXECUTE ... TO authenticated;`) but the broader sweep across existing SECURITY DEFINER RPCs in `supabase/migrations/` is out of scope for Batch 2C. Candidate for a future Track 0.2 RLS-uniformity sweep.
+
+### Migrations
+
+- `supabase/migrations/20260514100000_continuation_rls_recursion_fix_and_j1_f31.sql` — 2 helpers + 2 policy rewrites + 2 RPC replacements (`respond_to_makeup_offer`, `cancel_booked_makeup`). Idempotent (`CREATE OR REPLACE FUNCTION`, `DROP POLICY IF EXISTS` then `CREATE POLICY`). `NOTIFY pgrst, 'reload schema'` at the bottom for the new helper functions.
+
+### Verification
+
+- `npm run typecheck` — pass.
+- `npm run build` — pass (1.25 MB main bundle, no new size regressions).
+- `npm run lint` — clean against the diff. Total error count is 44 with the diff stashed and 44 with the diff applied (verified by `git stash` round-trip); the new code is lint-clean.
+- Migration syntax sanity: 4 `CREATE OR REPLACE FUNCTION` (2 helpers + 2 RPC replacements) + 2 `DROP POLICY` + 2 `CREATE POLICY` + 1 `NOTIFY pgrst, 'reload schema'` at end ✓.
+- J1-F31 sanity: both replaced RPCs include `g.org_id = _entry.org_id` in the guardian lookup and the defensive `_entry.guardian_id IS DISTINCT FROM _guardian_id` check (count 2 each) ✓.
+- Out-of-scope sanity: 0 staff/admin policy hits in the migration (recursion fix does not touch staff/admin policies); 0 `lesson_participants` RLS changes; 0 edge function source changes (this batch ships zero edge fn changes).
+- Frontend defensive boundary: `SectionErrorBoundary` imported in both `PortalHome.tsx` (line 43) and `PortalContinuation.tsx` (line 35); both pages wrap their `useParentContinuationPending` rendering in `<SectionErrorBoundary name="continuation">`. Other consumers of `term_continuation_runs`/`term_continuation_responses` in `src/`: `useUrgentActions.ts` is staff-side (gated by `currentRole`); `TermManagementCard.tsx` is staff settings; `ContinuationWidget.tsx` is staff dashboard. All three are out of Area 2 portal scope and out of this batch's scope; staff-side defensive-rendering review is deferred.
+
+### Lovable after-merge
+
+- Migrations to apply: `20260514100000_continuation_rls_recursion_fix_and_j1_f31.sql`. One migration only.
+- Edge functions: (none).
+- Production SQL verification queries (A through E) listed in PR body §3.
+- Behaviour spot-check by Jamie: open the parent portal in a real browser as the agency owner (or any staff role) — page should load without HTTP 500 and DevTools network tab should show 200 on `/term_continuation_runs` + `/term_continuation_responses`. Repeat as a real parent login — page should render; continuation widget shows pending responses if any. Trigger a continuation run staff-side, send the response email, click the parent's email link — continuation responses load in the parent portal without 500. If a multi-org test parent exists, exercise cancel/decline/accept on a make-up in each org. Optional: simulate a query failure for `useParentContinuationPending` to verify the boundary fallback renders inside the continuation section while the rest of the page renders normally.
+
+### Cross-references
+
+- PR: see `STATUS.md` Next session handoff for current PR number.
+- Walk doc additions: J1-F31 added to J1 table (line ~83); CC-F15 + portal-defense-1 added to cross-cutting walk (lines ~266, ~267); HIGH-priority list bullet 0 (CC-F15) and bullet 15 (J1-F31) added with strikethrough.
+- Roadmap impact: Area 2 row `7/14 HIGH` → `8/15 HIGH` (J1-F31 was a newly-discovered HIGH that ships in the same PR that introduced it; net is +1 closed, +1 denominator).
+
+### Lovable Batch 2B status reconciliation
+
+Batch 2B (PR #374) Lovable status flipped from `pending until Jamie confirms` to `confirmed complete 2026-04-29 07:35 UTC`. All three behaviour spot-checks (cancel booked make-up; decline offered make-up; accept offered make-up) passed end-to-end. Verification method note: the parent portal preview was blanked by the very recursion this batch fixes, so Jamie exercised the RPCs at the SQL level via impersonated parent JWT (`set_config('request.jwt.claims', json_build_object('sub', ..., 'role', 'authenticated'))`). Same code path, same SECURITY DEFINER, same `trg_makeup_participant_removed` trigger. The `audit_make_up_waitlist` trigger fired correctly on every state change. PR #374 functional verification is unaffected by the portal blanking — the bug is on the read path; the write path was always green.
