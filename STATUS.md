@@ -6,7 +6,7 @@
 
 - **Active area:** Area 2 — Parent Portal
 - **Current batch:** (none in flight) post-merge
-- **Last merged PR / branch:** PR #{TBD} / `claude/location-reschedule-override-7qJIX` (Batch 2D) — open at end of this session, awaiting merge. PR #375 / `claude/fix-rls-guardian-scoping-Szciu` (Batch 2C) — confirmed complete by Lovable 2026-04-29 12:05 UTC (verification-method note: real-browser GET on `/rest/v1/term_continuation_responses` under parent JWT returned 200 from previously-blank `/portal/home` — this is the canonical proof for RLS-recursion-class fixes; the earlier `read_query`-role SQL impersonation bypasses RLS so was weaker than initially framed; codify in V2 verification template — filed in POLISH_NOTES Batch 2D).
+- **Last merged PR / branch:** PR #376 / `claude/location-reschedule-override-7qJIX` (Batch 2D) — open at end of this session, awaiting merge. PR #375 / `claude/fix-rls-guardian-scoping-Szciu` (Batch 2C) — confirmed complete by Lovable 2026-04-29 12:05 UTC (verification-method note: real-browser GET on `/rest/v1/term_continuation_responses` under parent JWT returned 200 from previously-blank `/portal/home` — this is the canonical proof for RLS-recursion-class fixes; the earlier `read_query`-role SQL impersonation bypasses RLS so was weaker than initially framed; codify in V2 verification template — filed in POLISH_NOTES Batch 2D).
 - **What shipped:** J2-F24 closed. `PortalSchedule.tsx` page-level `reschedulePolicy/canReschedule/showSlotPicker` declarations replaced with a per-lesson `resolveReschedulePolicy(lesson)` resolver that applies `location.parent_reschedule_policy_override ?? org.parent_reschedule_policy ?? 'request_only'` precedence. `useParentLessons` query and lesson types extended to carry the location override field. Frontend-only fix; no migration, no edge fn change.
 - **Lovable after-merge actions:** (none) for migrations — this batch ships zero migrations. (none) for edge functions — this batch ships zero edge fn changes.
 - **Lovable status:** pending until Jamie confirms
@@ -15,7 +15,7 @@
 - **Next batch in active area:** Batch 2E — TBD by chat-Claude after this PR merges. Candidates: CC-2 money-math (J1-F17 + J3-F7 + CC-F7); J3-F19 refund netting in payment-intent edge function.
 - **Next area after this one closes:** Area 3 — Students & guardians (per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
 - **Roadmap progress:** Area 1 closed; Area 2 in progress at **9/15 HIGH** (was 8/15; +J2-F24); Areas 0, 3-16 pending (17 areas total per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
-- **Next session first instruction:** After PR #{TBD} merges and Jamie confirms the per-lesson override behaviour in a real browser (mixed-policy org + override-location lesson card), paste Batch 2E's prompt into a fresh Claude Code session.
+- **Next session first instruction:** After PR #376 merges and Jamie confirms the per-lesson override behaviour in a real browser (mixed-policy org + override-location lesson card), paste Batch 2E's prompt into a fresh Claude Code session.
 
 ---
 
