@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      _spotcheck_log: {
+        Row: {
+          id: number
+          label: string | null
+          ts: string | null
+          value: Json | null
+        }
+        Insert: {
+          id?: number
+          label?: string | null
+          ts?: string | null
+          value?: Json | null
+        }
+        Update: {
+          id?: number
+          label?: string | null
+          ts?: string | null
+          value?: Json | null
+        }
+        Relationships: []
+      }
       ai_action_proposals: {
         Row: {
           conversation_id: string | null
