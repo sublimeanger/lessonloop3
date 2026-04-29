@@ -1,12 +1,12 @@
 # Project status
 
-**Last updated:** 2026-04-29 (PR: claude/fix-makeup-flow-integrity-jshxb — Batch 2B make-up flow integrity)
+**Last updated:** 2026-04-29 (PR #374 / branch `claude/fix-makeup-flow-integrity-jshxb` — Batch 2B make-up flow integrity)
 
 ## Next session handoff
 
 - **Active area:** Area 2 — Parent Portal
 - **Current batch:** Batch 2B — make-up flow integrity (in flight)
-- **Last merged PR / branch:** PR #373 / `claude/hardcoded-currency-sweep-aZQQj` (Batch 2A — confirmed complete by Lovable 2026-04-29 06:48 UTC; this PR for Batch 2B is open and awaiting merge)
+- **Last merged PR / branch:** PR #373 / `claude/hardcoded-currency-sweep-aZQQj` (Batch 2A — confirmed complete by Lovable 2026-04-29 06:48 UTC). PR #374 / `claude/fix-makeup-flow-integrity-jshxb` (Batch 2B) is open and awaiting merge.
 - **What shipped:** Three Area 2 HIGH findings closed (J1-F1 audit lie on parent decline, J1-F4 silent data integrity on parent cancel-booked-makeup, J1-F29 audit gap on `respond_to_makeup_offer`) plus the make-up + term-continuation portion of CC-1 (audit triggers on `make_up_waitlist` and `term_continuation_responses`). New `cancel_booked_makeup` SECURITY DEFINER RPC routes the parent cancel through `lesson_participants` DELETE so the existing `trg_makeup_participant_removed` restores credit, resets waitlist, and writes audit. `respond_to_makeup_offer` now writes audit_log on both accept and decline. Dead client-side `audit_log` INSERT removed from `PortalHome.executeDecline` (was RLS-blocked).
 - **Lovable after-merge actions:** Apply both migrations in filename order: `20260513100000_makeup_flow_integrity_j1_f4_f29.sql` then `20260513100100_audit_triggers_cc1_makeup_continuation.sql`. (none) for edge functions — no edge fn changes in this batch.
 - **Lovable status:** pending until Jamie confirms
@@ -15,7 +15,7 @@
 - **Next batch in active area:** Batch 2C — TBD by chat-Claude after this PR merges (next candidates from priority list: J2-F24 location reschedule policy override, CC-2 money-math mismatch, J3-F19 refund netting).
 - **Next area after this one closes:** Area 3 — Students & guardians (per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
 - **Roadmap progress:** Area 1 closed; Area 2 in progress at **7/14 HIGH** (was 4/14; +3 this batch — J1-F1 + J1-F4 + J1-F29); Areas 0, 3-16 pending (17 areas total per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
-- **Next session first instruction:** After this PR merges and Jamie confirms Lovable applied both migrations + ran SQL queries A–E, paste Batch 2C's prompt into a fresh Claude Code session.
+- **Next session first instruction:** After PR #374 merges and Jamie confirms Lovable applied both migrations + ran SQL queries A–E, paste Batch 2C's prompt into a fresh Claude Code session.
 
 ---
 
