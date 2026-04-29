@@ -3673,3 +3673,67 @@ Closes the location-level reschedule policy override drift. Schema introduced `l
 ### Lovable Batch 2C status reconciliation
 
 Batch 2C (PR #375) Lovable status flipped from `pending until Jamie confirms` to `confirmed complete 2026-04-29 12:05 UTC`. Migration `20260514100000_continuation_rls_recursion_fix_and_j1_f31.sql` applied; queries A–E pass (both helpers exist with `prosecdef=true`; rewritten policies reference the helpers and not cross-table subqueries; `EXPLAIN SELECT 1 FROM term_continuation_runs/responses` no longer raises 42P17; both replaced RPCs include `g.org_id = _entry.org_id` and the defensive `IS DISTINCT FROM` check; pre-existing `audit_make_up_waitlist` and `audit_term_continuation_responses` triggers from PR #374 still installed). Recursion-proof: `/rest/v1/term_continuation_responses` returned 200 for `demo-parent-1` from the previously-blank `/portal/home` route under parent JWT — this is the canonical real-browser GET proof. The earlier `read_query`-role SQL impersonation pass was useful for SQL-state verification but bypasses RLS, so it was weaker than initially framed (see Filed entry above). `SectionErrorBoundary` visible at `PortalHome.tsx:322`. Linter findings unchanged at 258 (all pre-existing); all four functions touched by the migration carry `proconfig=[search_path=public]`.
+
+---
+
+## Area 2 — Parent portal — Batch 2E: CC-2 money-math mismatch — J1-F17 + J3-F7 + CC-F7 (closed 2026-04-29)
+
+Closes the CC-2 money-math cluster. Three coupled surfaces all filtered invoices by `payer_guardian_id` only, silently dropping invoices billed directly to students (`payer_student_id` set) for mixed-payer households (typical for adult-learner students who pay via their own Stripe customer record alongside their parent's other children). Result: parent dashboard outstanding total + overdue count + oldest-unpaid pointer all under-reported, parent invoice list omitted invoices the household was responsible for, and the AI assistant gave misleading answers ("you have 3 outstanding invoices" when 5 was the truth). Three fix surfaces: one migration (RPC), one frontend hook, one edge function. The audit listed `outstandingMap` in `PaymentPlanInvoiceCard.tsx` as a fourth surface, but data-flow analysis showed it is per-installment for one specific invoice (passed via `invoice.id` prop) and is correct automatically once `useParentInvoices` returns the right invoice set; intentionally not modified.
+
+### Fixed
+
+- **J1-F17** (HIGH) — `supabase/migrations/20260515100000_cc2_money_math_mixed_payer.sql` replaces `get_parent_dashboard_data` so all three guardian-level aggregates (`outstanding_balance`, `overdue_count`, `oldest_unpaid_invoice_id`) include both payer types, scoped to the parent's children. Same signature `(_user_id uuid, _org_id uuid)`, `STABLE SECURITY DEFINER` with `search_path=public` preserved, A6 paid-minor net-of math preserved, empty-children early return preserved. Per-child aggregate (lines 95–101 in the new function) intentionally untouched — student-only is the correct semantic for per-child outstanding.
+- **J3-F7** (HIGH) — `src/hooks/useParentPortal.ts:353` (`useParentInvoices`) now does a `student_guardians` lookup before the invoices query, mirroring the pattern already in `useParentLessons` (lines 234–253). When the parent has children, the filter is `.or('payer_guardian_id.eq.X,payer_student_id.in.(Y,Z,...)')`. When the parent has no children, the filter falls back to `.eq('payer_guardian_id', guardianId)` — semantically equivalent to the pre-fix behaviour for that edge case. Select shape, status filter, ordering, and return type unchanged. Query key still includes `guardianId` (not `studentIds`) because `studentIds` is determined by `guardianId`; cache invalidation chain works correctly without a separate hook.
+- **CC-F7** (LOW) — `supabase/functions/parent-loopassist-chat/index.ts:177` invoices fetch rewritten to OR-filter using both `guardianIds` (already in scope at line 105) and `studentIds` (already in scope at line 128). Same empty-studentIds fallback as the hook. The pre-existing `studentIds.length === 0` early return at line 130 means the empty-fallback path is unreachable in practice, but the guard is kept for defensive correctness — the edge function would otherwise emit malformed `payer_student_id.in.()` syntax if the early return were ever removed.
+
+### Pattern applied
+
+- **`OR payer_guardian_id = X OR payer_student_id = ANY(children)` is the canonical filter for parent-scoped invoice queries.** Pre-fix code paths used `payer_guardian_id` only, which silently dropped student-payer invoices. The schema permits exactly one of the two columns to be non-NULL per row but the code does not rely on that invariant — both sides of the OR are evaluated and row-level mutual-exclusivity makes the result clean. The same shape applied to all three surfaces. The per-child aggregate inside the children sub-query is the intentional asymmetry: per-child means "invoices specifically billed to this child" so student-only is correct there.
+- **`PostgREST.or()` accepts comma-separated UUID lists inside `.in.(...)` without quoting.** UUIDs have no special characters that PostgREST OR syntax would misparse, so `studentIds.join(',')` is sufficient. Pattern matches established usage in `src/hooks/useEnrolmentWaitlist.ts:210`, `src/hooks/useMessageThreads.ts:271`, `src/hooks/useInstruments.ts:42`.
+- **`.in.(EMPTY)` is unsafe; guard with `studentIds.length > 0`.** PostgREST behaviour for `.in.()` with empty parens is version-dependent (parse error or silent no-match); neither is acceptable. The frontend hook and the edge function both branch on `studentIds.length` before assembling the OR string. The hook's empty branch falls back to `.eq('payer_guardian_id', guardianId)` which is exactly the pre-fix behaviour for parents with no children.
+
+### Filed
+
+(none — verification methodology improvement and post-login redirect bug were filed in Batch 2D POLISH_NOTES; not double-filed here.)
+
+### Migrations
+
+- `supabase/migrations/20260515100000_cc2_money_math_mixed_payer.sql` — replaces `get_parent_dashboard_data`. Idempotent (single `CREATE OR REPLACE FUNCTION`); same signature; `NOTIFY pgrst, 'reload schema'` at end because the function source changed.
+
+### Verification
+
+- `npm run typecheck` — pass.
+- `npm run build` — pass (1.25 MB main bundle, no size regression).
+- `npm run lint` — clean against the diff. Pre-stash and post-stash counts identical at 1228 problems / 7 errors / 1221 warnings (verified by `git stash` round-trip). `npx eslint` against just the two changed files returns 5 warnings pre-edit and 5 warnings post-edit — all pre-existing on `parent-loopassist-chat/index.ts` (`todayStr` unused; four `any` accesses on `studentsResult.data`/`upcomingLessonsResult.data` etc.). Zero new findings introduced by this diff.
+- Migration sanity:
+  - 1× `CREATE OR REPLACE FUNCTION` ✓
+  - 3× `OR payer_student_id = ANY(_student_ids)` (one per guardian-level aggregate) ✓
+  - 0× `OR i.payer_student_id` inside the per-child sub-query (confirms per-child aggregate untouched) ✓
+  - 1× `^NOTIFY pgrst` statement ✓
+  - Function signature `(_user_id uuid, _org_id uuid)` unchanged ✓
+- Hook sanity:
+  - `useParentInvoices` does `student_guardians` lookup before invoices query ✓
+  - OR-filter when `studentIds.length > 0`, fall back to `.eq('payer_guardian_id', guardianId)` when empty ✓
+  - Per-finding match counts: `payer_student_id` mentions = 2 (existing select + new OR-clause); `studentIds.length > 0` = 1 inside `useParentInvoices`; `.eq('payer_guardian_id', guardianId)` = 1 (in the else branch) ✓
+- Edge fn sanity:
+  - `payer_student_id` mentioned in OR-clause + comment ✓
+  - `studentIds.length > 0` guard present at the OR-assembly site ✓
+  - `.in("payer_guardian_id", guardianIds)` count = 0 (replaced) ✓
+- Per-child aggregate untouched (read lines 95–101 of new migration: `WHERE i.payer_student_id = s.id AND i.status IN ('sent', 'overdue') AND i.org_id = _org_id`; no OR; no per-guardian reference).
+
+### Lovable after-merge
+
+- Migrations to apply: `supabase/migrations/20260515100000_cc2_money_math_mixed_payer.sql` (CC-2 RPC replacement).
+- Edge functions to deploy: `supabase/functions/parent-loopassist-chat`.
+- Production SQL verification: queries A–D in PR body §3 (function exists with same signature + STABLE SECURITY DEFINER + `proconfig=[search_path=public]`; `prosrc` contains the OR-clauses 3 times; empirical mixed-payer parent test against demo data; pre-fix delta to confirm a real difference exists).
+- Behaviour spot-check by Jamie: log in as a parent with both guardian-payer and student-payer invoices in the demo data — dashboard outstanding card shows the SUM of both, overdue count includes both payer types, parent invoices page lists both invoices (student-payer's "Payer" column shows the student's name), LoopAssist response references both. Regression check on a single-payer parent (no student-payer invoices) — dashboard, invoices page, and LoopAssist response all unchanged from pre-PR behaviour.
+
+### Cross-references
+
+- PR: see `STATUS.md` Next session handoff for current PR number.
+- Walk doc: J1-F17 (line ~70), J3-F7 (line ~127), CC-F7 (line ~258) struck through with shipped markers; CC-2 cross-cutting paragraph (line ~285) appended with closure note; HIGH-priority list bullet 6 (line ~355) struck through with shipped marker.
+- Roadmap impact: Area 2 row `9/15 HIGH` → `11/15 HIGH` (J1-F17 + J3-F7 closed; CC-F7 is LOW so does not increment HIGH count).
+
+### Lovable Batch 2D status reconciliation
+
+Batch 2D (PR #376) Lovable status flipped from `pending until Jamie confirms` to `confirmed complete 2026-04-29 UTC`. All five behaviour tests PASS against the Crescendo Music Agency demo org (org policy `self_service`; locations: Crescendo Central=NULL → inherits org default, Crescendo North=`admin_locked`, Online=`request_only`). DOM extraction across 32 lesson cards confirmed per-row resolver correctness — every card showed the policy that the location override matrix predicted. Test 5 (live override flip from `admin_locked` → `self_service` on Crescendo North) confirmed reactivity: lesson card UI flipped from request-only to self-service action on hard refresh. No console errors during testing. No regression observed on parents at orgs with no per-location override.

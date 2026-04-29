@@ -360,7 +360,18 @@ export function useParentInvoices(options?: { status?: string }) {
     queryFn: async () => {
       if (!user || !currentOrg || !guardianId) return [];
 
-      // Explicit guardian filter uses index before RLS evaluation
+      // CC-2 fix: fetch this parent's children so the invoices query can
+      // include both guardian-payer and student-payer invoices for own
+      // children. Mixed-payer households (adult-learner students with their
+      // own Stripe customer record) silently disappeared from the list under
+      // the previous payer_guardian_id-only filter.
+      const { data: links } = await supabase
+        .from('student_guardians')
+        .select('student_id')
+        .eq('guardian_id', guardianId);
+
+      const studentIds = (links || []).map(l => l.student_id);
+
       let query = supabase
         .from('invoices')
         .select(`
@@ -379,9 +390,16 @@ export function useParentInvoices(options?: { status?: string }) {
           invoice_items(description, quantity, unit_price_minor, amount_minor, student_id)
         `)
         .eq('org_id', currentOrg.id)
-        .eq('payer_guardian_id', guardianId)
         .in('status', ['sent', 'paid', 'overdue', 'void'])
         .order('due_date', { ascending: false });
+
+      if (studentIds.length > 0) {
+        query = query.or(
+          `payer_guardian_id.eq.${guardianId},payer_student_id.in.(${studentIds.join(',')})`
+        );
+      } else {
+        query = query.eq('payer_guardian_id', guardianId);
+      }
 
       if (options?.status && options.status !== 'all') {
         query = query.eq('status', options.status as 'sent' | 'paid' | 'overdue' | 'void');
