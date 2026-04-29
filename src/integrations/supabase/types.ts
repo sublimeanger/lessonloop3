@@ -6855,6 +6855,7 @@ export type Database = {
         Args: { _org_id: string; _waitlist_id: string }
         Returns: Json
       }
+      continuation_run_org_id: { Args: { _run_id: string }; Returns: string }
       convert_lead: {
         Args: { _lead_id: string; _org_id: string; _students: Json }
         Returns: Json
@@ -7405,6 +7406,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      user_has_continuation_response_in_run: {
+        Args: { _run_id: string; _user_id: string }
+        Returns: boolean
       }
       void_invoice: {
         Args: { _invoice_id: string; _org_id: string }
