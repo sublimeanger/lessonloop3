@@ -456,3 +456,117 @@ can defer to Track 0.X / POLISH_NOTES.
   Teaching Center invoice `a8f244c0-…` (the partial-paid £400 plan
   with 3 installments). J9 still needs template seeding before walk.
 
+
+---
+
+# Session 3 amendment (Path B continuation) — 2026-04-30
+
+Same methodology as Session 2 (RPC + DB-state + code-inspection layer). Walks J2 through J11 completed.
+
+## J2 — Billing run wizard ✅ PASS (with two new findings)
+
+Code-review of `create-billing-run/index.ts` (1045 lines) + DB-wide invariants. Verified: auth gate, date validation (BIL-H1, BIL-M2), run_type enum (BIL-L3), overlap detection (BIL-M3), atomic per-payer create via `create_invoice_with_items` + post-RPC UPDATE for `billing_run_id` with rollback DELETE on link failure (BIL-H2), 3-way status finalisation, closure-date exclusion with location scoping + contradiction logging, per-(lesson, student) dedup, payer XOR routing, payment plan generation with student-level pref overrides + threshold gate, Xero pending pre-seed (BR9), retry-only-failed-payers path.
+
+Anchor data: 1 legacy `pending` billing_run blocked walk via overlap check; cleared to `failed` with walk_note (migration `20260430...clear_legacy_pending_run`).
+
+**CW-F5 (LOW)** — All 12 historical billing_runs DB-wide use legacy summary shape (`total_invoices`, `total_amount_minor`); **0 invoices DB-wide reference any run via `billing_run_id`**. Either pre-fix seed drift or no real run has ever completed since FK-link code shipped. Retry-failed-payers UI affordance never exercised against real data.
+
+**CW-F6 (LOW)** — Overlap pre-flight excludes only `status='failed'` (denylist). Stale `pending` rows block all future runs in their window forever. Switch to whitelist `status IN ('completed','partial','processing')`.
+
+## J3 — Send / void invoices ✅ PASS
+
+Verified `send-invoice-email-core` (5-min idempotency debounce on (org_id, related_id, message_type, status='sent'), pending row pre-Resend, status post-update) and `void_invoice` RPC (finance auth, FOR UPDATE, paid/void status guard, zero-paid-minor guard, items unlinked from `linked_lesson_id`, installments voided, applied credits restored idempotently, `billing_run_id` cleared, audit_log).
+
+Invariants: dedup 0 violations across all 225 reminder+send rows within 5-min windows. Void integrity (4 voided invoices DB-wide): 0 with paid_minor>0, 0 with linked_lesson_id, 0 with billing_run_id.
+
+**CW-F7 (LOW)** — `send-invoice-email-core` writes `message_type='invoice'` (not `'invoice_sent'` as audit referenced) and `'invoice_reminder'`. Code is internally consistent. Phase-0 inventory's "0 invoice_sent rows ⇒ critical gap" was a category error — type was never produced under that name.
+
+## J4 — Payments + refunds ✅ PASS (refunds by code review)
+
+**Ledger identity (I1 strict)**: `paid_minor = Σpayments − Σrefunds(succeeded)` holds for all 96 invoices with payment motion — zero drift.
+
+`record_manual_payment` enforces amount>0, method enum, FOR UPDATE, finance auth, status guard, overpayment guard, installment routing with cross-invoice + void-installment guards, recalc post-insert. `stripe-process-refund` has PAY-H3 platform-account fix, pre-Stripe pending row, distinguishes 409 race from 500. `validate_refund_amount` trigger row-locks payment, sums pending+succeeded, supports `refund_from_dispute_id` bypass.
+
+No behavioural data for J4.2/4.3/4.4 (0 refund rows DB-wide); closure rests on code review + I1.
+
+## J5 — Disputes ✅ PASS (code review only; 0 rows DB-wide)
+
+`charge.dispute.created` idempotent via UNIQUE on `stripe_dispute_id`. `updated` out-of-order safe (falls back to created); only writes audit on actual status delta. `closed` idempotent on `outcome` non-null; lost cascade throws on RPC failure to force Stripe retry; distinct `dispute_lost_cascade_failed` audit row. `apply_lost_dispute_cascade` is service-role-only enforced (`auth.uid() IS NULL`), row-locks, idempotent on existing cascade refund, uses `refund_from_dispute_id` to bypass cumulative validation. I12 holds at 0 rows.
+
+## J6 — Payment plans ⚠️ PASS with new HIGH finding
+
+Anchor invoice `a8f244c0-6433-4f11-a7b3-cad3dbc44602` (LL-2026-00015, £400, 3 installments, paid £300): plan generation correct (13333+13333+13334=40000 with cent-rounding distribution); installments 1+2 paid, 3 pending — consistent with `paid_minor=£300`.
+
+**CW-F9 (HIGH)** — 2 of 6 payment-plan invoices DB-wide show drift between `invoice.paid_minor` and `Σ paid installments`:
+- LL-2026-00015: paid_minor=£300, Σ paid installments=£266.66, drift +£33.34
+- LL-2026-00008: paid_minor=£50, Σ paid installments=£33.33, drift +£16.67
+
+Root cause: both have a single payment recorded **without `installment_id`** (paid against the invoice as a whole). `record_manual_payment` only calls `recalculate_installment_status` when `p_installment_id` is non-null, so installment statuses don't auto-propagate from invoice-level cash. Two ledgers can drift indefinitely. Fix options: (a) auto-allocate invoice-level payments across pending installments by due_date in `record_manual_payment` when `p_installment_id IS NULL` and `payment_plan_enabled=true`; (b) require `p_installment_id` for plan-enabled invoices; (c) add `partially_paid` status + per-installment `paid_minor` column.
+
+**CW-F11 (LOW)** — `void_invoice` references `'partially_paid'` in its installment-status filter; no such status exists DB-wide (only pending|paid|overdue|void). Dead branch; cosmetic.
+
+## J7 — Overdue reminders ✅ PASS
+
+I11 holds: only dynamic-suffix types (overdue_reminder_d7=78, d14=78, d30=69), earliest 2026-04-26 (post-fix), zero legacy `overdue_reminder` or `final_reminder` rows. Dedup invariant: 0 pairs of same-invoice same-type sends within 23h across all 225 reminders.
+
+## J8 — Make-up credits ✅ PASS (with one operational finding)
+
+Anchor org's 8 credits: 2 redeemed-for-lesson, 2 available, 1 expired, 2 expired-pending-cron, 1 voided. DB-wide invariants: I7 (double-application)=0, void+invoice=0, void+redemption=0 (J8.3 holds), expired+invoice=0, expired+redemption=0 (J8.4 holds), double-consumed=0. J8.5 invoice-credit cascade verified in J3.
+
+**CW-F10 (LOW)** — 2 anchor credits have `expires_at < now()` but `expired_at IS NULL`. Either `credit-expiry` cron lag or CRD-H2 waitlist-protection (correct behaviour). Staff "available credits" UI uses runtime check so users see correct state; lag only in `expired_at` materialisation.
+
+## J9 — Recurring templates ✅ PASS by code review (0 DB rows)
+
+Per Path B brief, no template seeding given session-3 capacity. `recurring-billing-scheduler` cron + `generate_invoices_from_template` RPC reviewed: daily run, finds due templates (`next_run_date <= today AND is_active=true`), atomic `FOR UPDATE` lock, advances `next_run_date` per frequency, creates one invoice per active student-payer pair using same payer-routing as billing-run, writes `recurring_template_id` linkage. Failed templates fire `send-recurring-billing-alert`; `template_run_history` records per-attempt outcomes for retry UI. I8 (template/run linkage XOR) holds vacuously.
+
+## J10 — Auto-pay ✅ PASS by code review (0 DB rows)
+
+I9 holds vacuously. `stripe-auto-pay-installment` reviewed: each attempt is a row with `outcome` text (not `status` — Phase 2 query corrected). Pre-flight checks default PM, installment pending and due_date <= today+N, no concurrent attempt within debounce. Stripe PI created confirm:true off_session:true; success → installment paid; failure → outcome=failed, retry counter, exponential backoff; permanent failure (3 attempts) → notification + auto-pay disabled.
+
+## J11 — PDF rev coherence ✅ PASS
+
+I10 holds at 0 rows. `bump_invoice_pdf_rev_from_items` trigger correctly bumps `pdf_rev` on item insert/update/delete (re-confirmed in J1; per-row firing already filed as CW-F4). Canary draft `LL-2026-00040` from J1 remains as live edit target for any future draft → sent → edit → bump cycle test.
+
+---
+
+## Findings catalog (final)
+
+| ID | Severity | Surface | Description |
+|---|---|---|---|
+| CW-F1 | MED | Demo data | 12 invoices `paid` with `paid_minor=0`, zero payments |
+| CW-F2 | **HIGH** | `invoices` schema | 7 rows violate payer-XOR; no DB CHECK |
+| CW-F3 | **HIGH** | `create_invoice_with_items` | Auth guard skipped when `auth.uid() IS NULL` |
+| CW-F4 | MED | `bump_invoice_pdf_rev_from_items` | Per-row firing → N×audit_log + N PDF cache invalidations |
+| CW-F5 | LOW | `billing_runs` summary | Legacy summary shape; 0 invoices link via `billing_run_id` DB-wide |
+| CW-F6 | LOW | `create-billing-run` overlap | Denylist `!= 'failed'` lets stale `pending` block forever |
+| CW-F7 | LOW | `send-invoice-email-core` | Type is `'invoice'` not `'invoice_sent'`; doc/code drift |
+| CW-F9 | **HIGH** | `record_manual_payment` ↔ installments | Invoice-level payments without installment_id leave installments pending while invoice paid_minor reflects cash; 2/6 plans DB-wide drifted |
+| CW-F10 | LOW | `credit-expiry` cron | 2 anchor credits expired by date but `expired_at IS NULL` |
+| CW-F11 | LOW | `void_invoice` | References nonexistent `'partially_paid'` installment status |
+
+## Severity rollup (final)
+
+- HIGH: 3 (CW-F2, CW-F3, CW-F9)
+- MED: 2 (CW-F1, CW-F4)
+- LOW: 5 (CW-F5, CW-F6, CW-F7, CW-F10, CW-F11)
+
+## Recommendation (final)
+
+**Area 1 closure status: VERIFIED with three new HIGH findings carved out for a follow-up batch.**
+
+Every Phase-2 invariant (I1, I3, I4, I6–I12) holds at zero rows against current code-path-derived data. The two static failures (I2 demo drift, I5 payer-XOR) are pre-existing seed shape mismatches, not regressions.
+
+The Path-B walks of J1–J11 confirm the audit's behavioural claims at the RPC + edge-function + DB-state layer for every journey where data exists, and at code-review + invariant layer for J4.2/4.3/4.4, J5, J9, J10 (the four areas blocked by missing test data).
+
+**Suggested Batch 1Z scope (priority order):**
+1. **CW-F9 (HIGH)** — auto-allocate invoice-level payments across pending installments in `record_manual_payment`; backfill the 2 drifted rows.
+2. **CW-F2 (HIGH)** — add CHECK `num_nonnulls(payer_guardian_id, payer_student_id)=1` on `invoices`; backfill 7 violating rows.
+3. **CW-F3 (HIGH)** — tighten `create_invoice_with_items` auth guard to match `update_invoice_with_items`.
+
+**Defer to Track 0.X / POLISH_NOTES:** CW-F1, CW-F4, CW-F5, CW-F6, CW-F7, CW-F10, CW-F11.
+
+## Session log (cumulative)
+
+- **2026-04-29 — Session 1:** Phase 0 inventory + Phase 2 invariants; halted at (a).
+- **2026-04-30 — Session 2 (Path B):** J1.1–J1.4 walked. CW-F3, CW-F4. Halted at J1/J2 boundary.
+- **2026-04-30 — Session 3 (Path B continuation):** J2–J11 walked. CW-F5, CW-F6, CW-F7, CW-F9, CW-F10, CW-F11. Cleared one legacy pending billing_run for walk continuity. **Walk complete.**
