@@ -234,11 +234,14 @@ async function handleCreate(
   // BR3: Pre-flight overlap check for UX — the real safety is the
   // unique exclusion constraint on billing_runs (migration 20260421115000).
   // BIL-M3: Check for overlapping billing runs (not just exact date match)
+  // CW-F6 (Batch 1Z): whitelist real in-flight or completed states only;
+  // stale 'pending' rows otherwise block all future runs in their window
+  // forever.
   const { data: overlapping } = await client
     .from("billing_runs")
     .select("id, start_date, end_date")
     .eq("org_id", orgId)
-    .neq("status", "failed")
+    .in("status", ["completed", "partial", "processing"])
     .lte("start_date", body.end_date)
     .gte("end_date", body.start_date)
     .limit(1);

@@ -3737,3 +3737,75 @@ Closes the CC-2 money-math cluster. Three coupled surfaces all filtered invoices
 ### Lovable Batch 2D status reconciliation
 
 Batch 2D (PR #376) Lovable status flipped from `pending until Jamie confirms` to `confirmed complete 2026-04-29 UTC`. All five behaviour tests PASS against the Crescendo Music Agency demo org (org policy `self_service`; locations: Crescendo Central=NULL → inherits org default, Crescendo North=`admin_locked`, Online=`request_only`). DOM extraction across 32 lesson cards confirmed per-row resolver correctness — every card showed the policy that the location override matrix predicted. Test 5 (live override flip from `admin_locked` → `self_service` on Crescendo North) confirmed reactivity: lesson card UI flipped from request-only to self-service action on hard refresh. No console errors during testing. No regression observed on parents at orgs with no per-location override.
+
+---
+
+## Area 1 — Canary walk fix-pass — Batch 1Z: CW-F1 + CW-F2 + CW-F3 + CW-F4 + CW-F6 + CW-F9 (closed 2026-04-30)
+
+Closes the Area 1 canary walk's actionable findings under one combined migration plus one edge-function change. The walk (`docs/audits/2026-04-area-1-canary-walk.md`) traced 10 findings end-to-end across J1–J11 under Path B scope (RPC + edge-function + DB-state layer); 6 are closed in this batch, 4 LOW are filed for Track 0.X follow-up. Area 1's canary-walk closure is verified — every Phase-2 invariant (I1, I3, I4, I6–I12) holds at zero rows; the two static failures (I2, I5) are now structurally guarded (CW-F1 demotes the I2-violating demo rows; CW-F2 adds the missing I5 CHECK constraint as `NOT VALID`).
+
+### Fixed
+
+- **CW-F9** (HIGH) — `record_manual_payment` now auto-allocates plan-invoice payments across pending installments (greedy by `due_date ASC, id ASC`) when `p_installment_id IS NULL` AND `payment_plan_enabled = true`. One payment row per installment touched, so each row's `installment_id` lets `recalculate_installment_status` see the attached cash and converge. The existing overpayment hard-reject (`_new_paid_minor > _invoice.total_minor`) still guards the budget — Σ(installment.amount_minor) = invoice.total_minor by construction, so the allocation cannot run out before exhausting the payment. Backfill block in the same migration re-processes drifted plan invoices: for each, the orphan `installment_id IS NULL` payment row is split in-place — UPDATEd to attach to the first allocated installment, with additional INSERTs for subsequent allocations — preserving the original `payment.id` for any audit_log references. The 2 known drifted invoices (`LL-2026-00015`, `LL-2026-00008`) plus any other plan invoices matching `paid_minor != Σ(paid installments)` get re-aligned. Pre-flight count guard exits cleanly when no drift exists, so re-applying the migration is safe.
+- **CW-F2** (HIGH) — `ALTER TABLE public.invoices ADD CONSTRAINT invoices_payer_xor CHECK (num_nonnulls(payer_guardian_id, payer_student_id) = 1) NOT VALID`. `NOT VALID` lets the migration apply with the 7 violating rows still in place (5 in Jamie's own org with both payer columns set; 2 in E2E Test Academy with neither). Jamie inspects the 7 rows via query D in PR body §3, decides each one's disposition (UPDATE the correct payer / DELETE if orphaned), then runs `VALIDATE CONSTRAINT invoices_payer_xor` once they are clean. Idempotent via `pg_constraint EXISTS` guard.
+- **CW-F3** (HIGH) — `create_invoice_with_items` auth carve-out tightened. The 2026-04-25 carve-out for the J9 generator (which calls CIWI with `auth.uid() IS NULL` from inside a SECURITY DEFINER context) accidentally also let anonymous callers through. New shape: authenticated callers must pass `is_org_finance_team`; service-role callers (`current_setting('role', true) = 'service_role'`) bypass the row-level check on the assumption their wrapper does its own org-scope auth; anonymous callers (no auth.uid() AND not service-role) reject with a clear hint. J9 generator path verified to still work; defence-in-depth gap closed.
+- **CW-F4** (MED) — Three pdf_rev row-level triggers (`trg_bump_invoice_pdf_rev_from_items`, `_from_installments`, `_from_payments`) refactored to STATEMENT-level using transition tables (`REFERENCING NEW TABLE AS _new_rows OLD TABLE AS _old_rows`). One bump per affected invoice per statement, regardless of row count. The fourth pdf_rev trigger (`trg_bump_invoice_pdf_rev` BEFORE UPDATE on `invoices` itself) stays untouched — it fires once per invoice mutation by definition. Three new statement-level functions added; old row-level functions left in place (no callers post-refactor).
+- **CW-F6** (LOW) — `supabase/functions/create-billing-run/index.ts:241` overlap pre-flight switched from denylist (`.neq('status', 'failed')`) to whitelist (`.in('status', ['completed', 'partial', 'processing'])`). Stale `pending` rows from aborted billing-run UI sessions no longer block all future runs in their window forever. The unique exclusion constraint on `billing_runs` is the real safety; the pre-flight is purely UX.
+- **CW-F1** (MED) — 12 demo invoices in 'Premier Music Education Agency' and 'Harmony Music Academy' demoted from `status='paid'` to `status='sent'`. All 12 had `paid_minor=0`, `total_minor>0`, and zero attached payments — pre-fix-period seed drift. Demoting to `sent` preserves the row as a draft-like artefact and makes invariant I2 (status=paid ⇒ paid_minor>=total_minor) hold cleanly. Setting `paid_minor` synthetically would have lied about the ledger; demotion is the truthful fix. Pre-flight guard makes the backfill idempotent.
+
+### Filed for follow-up (Track 0.X candidates)
+
+- **CW-F5** (LOW) — `billing_runs` legacy summary shape; 0 invoices link via `billing_run_id` DB-wide. Either pre-fix seed drift or the FK-link code path has never produced a real run. Investigate whether the BIL-H2 atomic-link path is actually exercised in production — if not, retry-failed-payers UI affordance is dead code.
+- **CW-F7** (LOW) — `send-invoice-email-core` writes `message_type='invoice'` (not `'invoice_sent'` as the audit referenced). Code is internally consistent; doc/audit drift only. Resolve which name is canonical and align the inventory queries + the audit doc copy.
+- **CW-F10** (LOW) — `credit-expiry` cron lag. 2 anchor credits have `expires_at < now()` but `expired_at IS NULL`. May be CRD-H2 waitlist-protection (correct behaviour — credits in waitlists shouldn't auto-expire) or a genuine cron lag in `expired_at` materialisation. Staff "available credits" UI uses runtime checks so user-facing state is correct; this is purely a materialised-column lag.
+- **CW-F11** (LOW) — `void_invoice` references nonexistent `'partially_paid'` installment status. Cosmetic dead branch; the A5 guard makes it unreachable. Remove for cleanliness, or leave as defence-in-depth.
+
+### Filed for follow-up (workflow improvements)
+
+- V2 verification template should distinguish "SQL impersonation proof" (weaker — `read_query` role bypasses RLS) from "browser-path GET under user JWT" (stronger). Folded from Batch 2C/2D filings; recurs as a workflow blind-spot worth codifying. The canonical proof for any RLS-positive change should be a real-browser request under a real JWT, not a SQL impersonation that may bypass the policy being tested.
+- Lovable's `_shared/*` importer enumeration — when any file under `supabase/functions/_shared/*` changes, the Lovable deploy list must include every edge function importing it. Folded from Batch 2A's 20-vs-22 reconciliation. Codify as: "for any change touching `_shared/`, the prompt MUST grep importers and list them in the deploy section."
+- Lint baseline counting basis: this session reads as 1228 problems (7 errors, 1221 warnings), matching the post-Batch-2E baseline. Earlier Claude Code sessions (pre-2A) reported 258 errors-only. Counting basis differs across agents (full-suite vs --max-warnings). Codify a single methodology: "agents always report `npm run lint` whole-suite total post-stash-roundtrip and call out the diff delta separately."
+
+### Migrations
+
+- `supabase/migrations/20260516100000_canary_walk_batch_1z_combined_fixes.sql` — five-section combined migration. Section 1: CW-F3 CIWI auth tighten (CREATE OR REPLACE). Section 2: CW-F9 record_manual_payment auto-allocate (CREATE OR REPLACE) + drift backfill (DO $cwf9_backfill$). Section 3: CW-F4 pdf_rev STATEMENT-level refactor (3 new functions + 3 DROP/CREATE TRIGGER pairs). Section 4: CW-F2 NOT VALID CHECK (DO $cwf2_constraint$ guard). Section 5: CW-F1 demote 12 demo invoices (DO $cwf1_backfill$ guard). Wrapped in BEGIN/COMMIT; one `NOTIFY pgrst, 'reload schema'` at end. Each section independently idempotent.
+
+### Edge functions
+
+- `supabase/functions/create-billing-run/index.ts` — CW-F6 overlap pre-flight whitelist; one-line change at line 241.
+
+### Verification
+
+- `npm run typecheck` — pass.
+- `npm run build` — pass (1.25 MB main bundle, no size regression).
+- `npm run lint` — clean against the diff. Pre-stash and post-stash counts identical at 1228 problems / 7 errors / 1221 warnings (verified by `git stash` round-trip).
+- Migration syntax sanity:
+  - 5× `^CREATE OR REPLACE FUNCTION` (CIWI + record_manual_payment + 3 STATEMENT-level trigger functions) ✓
+  - 3× `^CREATE TRIGGER` + 3× `^DROP TRIGGER IF EXISTS` (matched STATEMENT-level recreations on items/installments/payments) ✓
+  - 1× `ALTER TABLE … ADD CONSTRAINT invoices_payer_xor … NOT VALID` ✓
+  - 1× `^NOTIFY pgrst` (single statement at end) ✓
+  - 3× `^DO $` blocks (CW-F9 backfill, CW-F2 constraint guard, CW-F1 backfill) ✓
+- Edge function sanity:
+  - `.in('status', ['completed', 'partial', 'processing'])` whitelist match = 1 ✓
+  - Old `.neq('status', 'failed')` denylist match = 0 ✓
+- CIWI auth carve-out:
+  - 1× `auth.uid() IS NOT NULL THEN` outer guard (line 56) ✓
+  - 1× `current_setting('role', true) <> 'service_role'` ELSIF (line 60) ✓
+  - J9 generator path verified to still work via code review of `supabase/migrations/20260426100000_recurring_generator_rpcs.sql:390` (CIWI call site) — service-role context with `auth.uid() IS NULL` passes the new ELSIF cleanly.
+- Backfill idempotency:
+  - CW-F9 backfill guarded by `_drifted_count` count + early `RETURN` ✓
+  - CW-F2 constraint guarded by `pg_constraint EXISTS` check ✓
+  - CW-F1 backfill guarded by `_affected_count` count + early `RETURN` ✓
+
+### Lovable after-merge
+
+- Migrations to apply: `supabase/migrations/20260516100000_canary_walk_batch_1z_combined_fixes.sql` (Batch 1Z combined fixes).
+- Edge functions to deploy: `supabase/functions/create-billing-run` (CW-F6 overlap whitelist).
+- Production SQL verification: queries A–G in PR body §3 (CIWI auth carve-out present; record_manual_payment auto-allocate present; CW-F9 drift resolved → 0 drifted plan invoices; CW-F2 violating row enumeration for Jamie's resolution; CW-F4 trigger refactor synthetic test produces +1 increment for 3-item insert; CW-F1 demoted demo invoices → 0 paid-with-zero rows; CW-F6 is code-side only).
+- App behaviour spot-check by Jamie: trigger a recurring template's "Run now" via staff UI (J9 path under CW-F3 carve-out); record a plan-invoice payment without selecting an installment (CW-F9 auto-allocate); attempt to create an invoice with both payer columns set (CW-F2 reject); edit any invoice via the staff UI and confirm `pdf_rev` increments by exactly 1 (CW-F4); manually set a billing_run to `pending` then create a new run in its window (CW-F6 unblocked); regression sanity walk J1 → J2 → J3 → J4 → J7 happy paths from the canary walk. Then `ALTER TABLE invoices VALIDATE CONSTRAINT invoices_payer_xor;` once the 7 CW-F2 rows are resolved.
+
+### Cross-references
+
+- PR: see `STATUS.md` Next session handoff for current PR number.
+- Walk doc: `docs/audits/2026-04-area-1-canary-walk.md` — closed findings strikethrough'd in the final catalog (CW-F1, CW-F2, CW-F3, CW-F4, CW-F6, CW-F9); severity rollup updated to closed counts; recommendation rewritten as closure note; session-4 entry appended to cumulative session log; structural duplicates (interim Findings, Severity, Recommendation, Session log sections from both session 1 and session 2) removed.
+- Roadmap impact: Area 1 row in one-screen status table changed from `done | all | 🟢 closed` to `done | all+canary | 🟢 closed (canary-walk verified)`. Area 2 unchanged — Batch 1Z does not advance Area 2's HIGH count.
