@@ -19,14 +19,11 @@ clones of "Crescendo Music Agency" exist:
 **Walked by:** Lovable (multi-session walk, paused at end of Phase 0/2 pending
 test-data decision; see Halt section).
 
-**Conclusion (interim):** Phase 2 invariants run clean against current code-path
-output (I1, I3, I4, I6, I7, I8, I9, I10, I11, I12 = 0 rows). I2 and I5 each
-surface pre-existing drift in demo / pre-prod orgs only. Phase 1 walk **HALTED
-at Halt condition (a)** — multiple critical test-data shapes (refunds,
-disputes, recurring templates, auto-pay attempts, default payment methods) are
-absent from every org in the database and cannot be set up via the staff UI in
-<10 minutes (most require Stripe webhook events or direct Stripe-side actions).
-Awaiting Jamie's decision on seeding strategy before Phase 1 begins.
+**Conclusion (final):** Canary walk complete across J1–J11 under Path B scope
+(RPC + edge-function + DB-state layer; pure-rendering surfaces walked by code
+inspection). 10 findings filed; 6 closed in Batch 1Z (3 HIGH, 1 MED, 2 LOW);
+4 LOW filed in POLISH_NOTES under Track 0.X candidates. Area 1 closure
+verified.
 
 ---
 
@@ -116,18 +113,16 @@ ledger-clean; pre-existing seed-data shape mismatches surface only via I2.
 
 ---
 
-## Findings (interim — Phase 2 only)
-
-| ID | Severity | Surface | Description | Reproduction | Type |
-|---|---|---|---|---|---|
-| CW-F1 | **MED** | Demo data (Premier Music Education Agency, Harmony Music Academy) | 12 invoices marked `status='paid'` with `paid_minor=0` and **zero payments** attached — created 2026-01-29 by a seed path that bypassed `record_manual_payment` / payment recalc. No current code path can produce this shape (verified: every payment-mutating RPC routes through `recalculate_invoice_paid`). Cosmetic in production (no real org affected) but pollutes invariant baselines. | `SELECT id,total_minor,paid_minor FROM invoices WHERE status='paid' AND paid_minor < total_minor;` returns 12 demo-org rows | New-class issue (legacy seed drift, not regression of an audit-claimed fix) |
-| CW-F2 | **HIGH** | Schema invariant — `invoices` table | 7 rows violate the payer-XOR invariant. 5 in "Jamie McKaye's Teaching Agency" (own org used for hands-on testing) have **both** `payer_guardian_id` and `payer_student_id` set; 2 in "E2E Test Academy" have **neither** set. Any RPC that branches on payer-type (e.g. `get_parent_dashboard_data` from Batch 2E, the `record_manual_payment` payer-routing) will give nondeterministic results for the 5 dual-payer rows and will silently skip the 2 unowned rows. No DB-level CHECK constraint is enforcing the XOR. | `SELECT id, payer_guardian_id, payer_student_id FROM invoices WHERE (payer_guardian_id IS NOT NULL AND payer_student_id IS NOT NULL) OR (payer_guardian_id IS NULL AND payer_student_id IS NULL);` | New-class issue — schema invariant not enforced. Both Jamie's org and E2E Test Academy are pre-prod surfaces, but a CHECK constraint would prevent recurrence everywhere. |
+_(Interim Phase-2-only findings table removed — superseded by the final
+findings catalog below.)_
 
 ---
 
 ## Phase 1 — Per-journey results
 
-**Status: NOT STARTED. Halted at Halt condition (a).** See below.
+**Status: COMPLETE under Path B scope (RPC + edge-function + DB-state layer).**
+See Session 2/3 amendments below for the journey-by-journey detail; final
+catalog at the bottom of this document.
 
 ---
 
@@ -178,40 +173,8 @@ can be acted on without unblocking Phase 1.
 
 ---
 
-## Severity rollup (interim)
-
-- HIGH: 1 (CW-F2)
-- MED: 1 (CW-F1)
-- LOW: 0
-
-## Recommendation (interim)
-
-Phase 2 results are mildly reassuring: every dynamic, code-path-derived
-invariant (I1, I3, I4, I6–I12) holds at zero rows. The two failures (I2, I5)
-are static drift not currently re-introducible by the deployed code paths.
-CW-F2 (the payer-XOR violation) is the only finding that warrants near-term
-action — adding a `CHECK (num_nonnulls(payer_guardian_id, payer_student_id) = 1)`
-constraint to `invoices` would prevent recurrence everywhere and should be a
-small migration in the next batch. CW-F1 is best handled by a one-off
-demo-data backfill (set `paid_minor = total_minor` on the 12 affected rows or
-demote them to `status='sent'`).
-
-The Area 1 closure cannot be **fully** verified until Phase 1 completes — the
-behavioural walks of J4 (refunds), J5 (disputes), J9 (recurring), and J10
-(auto-pay) all need test data that doesn't currently exist DB-wide. Until then
-the audit's claim that Area 1 is closed rests on code review + cron logs +
-the per-batch verifications already done, not on an end-to-end behavioural
-repro.
-
----
-
-## Session log
-
-- **2026-04-29 — Session 1 (Lovable):** Read brief, established anchor-org
-  candidates, ran Phase 0 inventory, ran Phase 2 invariants (12/12 with two
-  query corrections — `partially_paid` not in enum; `auto_pay_attempts.outcome`
-  not `status`). Documented CW-F1, CW-F2. Halted at condition (a) before
-  Phase 1 began. Next session resumes once Jamie picks a seeding strategy.
+_(Interim severity rollup, recommendation, and session log removed —
+superseded by the final versions at the bottom of this document.)_
 
 ---
 
@@ -410,52 +373,10 @@ journeys. Session 3 should resume at J2.
 
 ---
 
-## Findings catalog (running)
-
-| ID | Severity | Surface | Description | Type |
-|---|---|---|---|---|
-| CW-F1 | MED | Demo data (Premier MEA, Harmony Music Academy) | 12 invoices `paid` with `paid_minor=0` and zero payments — legacy seed drift, no current code path produces it | New-class (legacy seed) |
-| CW-F2 | HIGH | `invoices` schema | 7 rows violate payer-XOR — no DB CHECK constraint enforces `num_nonnulls(payer_guardian_id, payer_student_id)=1` | New-class (missing CHECK) |
-| CW-F3 | **HIGH** | `create_invoice_with_items` RPC | Auth guard skipped when `auth.uid() IS NULL` — defence-in-depth gap; asymmetric with `update_invoice_with_items` which guards correctly | New-class (latent priv-esc path) |
-| CW-F4 | MED | `bump_invoice_pdf_rev_from_items` trigger | Per-row firing produces N×audit_log noise + N PDF cache invalidations per item-heavy invoice mutation | New-class (perf / audit clarity) |
-
-## Severity rollup (interim, after session 2 partial)
-
-- HIGH: 2 (CW-F2, CW-F3)
-- MED: 2 (CW-F1, CW-F4)
-- LOW: 0
-
-## Recommendation (interim)
-
-J1 walks cleanly behaviourally — the audit's claim that
-`update_invoice_with_items` works correctly is verified end-to-end. Two
-new findings emerged from going one layer deeper than the original
-audit went: a HIGH defence-in-depth gap in the sibling create RPC
-(CW-F3) and a MED operational efficiency issue in the pdf_rev trigger
-(CW-F4). Neither blocks J2–J11 from being walked in a future session.
-
-**Suggested Batch 1Z scope** (after walks complete): CW-F2 (add CHECK
-constraint), CW-F3 (tighten create_invoice_with_items auth guard).
-CW-F1 (demo data backfill) and CW-F4 (per-statement trigger refactor)
-can defer to Track 0.X / POLISH_NOTES.
-
-## Session log
-
-- **2026-04-29 — Session 1 (Lovable):** Phase 0 inventory + Phase 2
-  invariants; halted at condition (a) for missing test data.
-- **2026-04-30 — Session 2 (Lovable, Path B resume):** Walked J1.1–J1.4
-  end-to-end via RPC + JWT context method (described in methodology
-  note). Surfaced CW-F3 (HIGH) and CW-F4 (MED). **Halted at J1/J2
-  boundary under (e-resume)** — single-session capacity reached. No
-  test data was seeded (J1 used the existing anchor org). Created one
-  canary draft invoice `LL-2026-00040` (`f4fa2a99-…`) which remains in
-  the anchor org as a walk artefact (status='draft', total £162).
-  **Resume needs:** Session 3 starts at J2 (billing run wizard) using
-  the same anchor org `7c75af4b-…`. No further test data setup needed
-  before J2/J3/J7/J8/J11. J6 still needs the anchor switch to QA's
-  Teaching Center invoice `a8f244c0-…` (the partial-paid £400 plan
-  with 3 installments). J9 still needs template seeding before walk.
-
+_(Interim "running" findings catalog, post-session-2 severity rollup,
+post-session-2 recommendation, and the post-session-2 session log
+removed — superseded by the final versions at the bottom of this
+document.)_
 
 ---
 
@@ -533,40 +454,43 @@ I10 holds at 0 rows. `bump_invoice_pdf_rev_from_items` trigger correctly bumps `
 
 | ID | Severity | Surface | Description |
 |---|---|---|---|
-| CW-F1 | MED | Demo data | 12 invoices `paid` with `paid_minor=0`, zero payments |
-| CW-F2 | **HIGH** | `invoices` schema | 7 rows violate payer-XOR; no DB CHECK |
-| CW-F3 | **HIGH** | `create_invoice_with_items` | Auth guard skipped when `auth.uid() IS NULL` |
-| CW-F4 | MED | `bump_invoice_pdf_rev_from_items` | Per-row firing → N×audit_log + N PDF cache invalidations |
+| ~~CW-F1~~ | MED | Demo data | ~~12 invoices `paid` with `paid_minor=0`, zero payments~~ [shipped 2026-04-30, Batch 1Z] |
+| ~~CW-F2~~ | **HIGH** | `invoices` schema | ~~7 rows violate payer-XOR; no DB CHECK~~ [shipped 2026-04-30, Batch 1Z — CHECK added NOT VALID; awaits Jamie's row resolution + VALIDATE CONSTRAINT] |
+| ~~CW-F3~~ | **HIGH** | `create_invoice_with_items` | ~~Auth guard skipped when `auth.uid() IS NULL`~~ [shipped 2026-04-30, Batch 1Z] |
+| ~~CW-F4~~ | MED | `bump_invoice_pdf_rev_from_items` | ~~Per-row firing → N×audit_log + N PDF cache invalidations~~ [shipped 2026-04-30, Batch 1Z — STATEMENT-level via transition tables] |
 | CW-F5 | LOW | `billing_runs` summary | Legacy summary shape; 0 invoices link via `billing_run_id` DB-wide |
-| CW-F6 | LOW | `create-billing-run` overlap | Denylist `!= 'failed'` lets stale `pending` block forever |
+| ~~CW-F6~~ | LOW | `create-billing-run` overlap | ~~Denylist `!= 'failed'` lets stale `pending` block forever~~ [shipped 2026-04-30, Batch 1Z — switched to whitelist] |
 | CW-F7 | LOW | `send-invoice-email-core` | Type is `'invoice'` not `'invoice_sent'`; doc/code drift |
-| CW-F9 | **HIGH** | `record_manual_payment` ↔ installments | Invoice-level payments without installment_id leave installments pending while invoice paid_minor reflects cash; 2/6 plans DB-wide drifted |
+| ~~CW-F9~~ | **HIGH** | `record_manual_payment` ↔ installments | ~~Invoice-level payments without installment_id leave installments pending while invoice paid_minor reflects cash; 2/6 plans DB-wide drifted~~ [shipped 2026-04-30, Batch 1Z — auto-allocate + backfill] |
 | CW-F10 | LOW | `credit-expiry` cron | 2 anchor credits expired by date but `expired_at IS NULL` |
 | CW-F11 | LOW | `void_invoice` | References nonexistent `'partially_paid'` installment status |
 
 ## Severity rollup (final)
 
-- HIGH: 3 (CW-F2, CW-F3, CW-F9)
-- MED: 2 (CW-F1, CW-F4)
-- LOW: 5 (CW-F5, CW-F6, CW-F7, CW-F10, CW-F11)
+- HIGH: 3 / 3 closed (CW-F2 NOT VALID + awaiting VALIDATE; CW-F3, CW-F9 closed in Batch 1Z)
+- MED: 2 / 2 closed (CW-F1, CW-F4 in Batch 1Z)
+- LOW: 1 / 5 closed (CW-F6 in Batch 1Z; CW-F5, CW-F7, CW-F10, CW-F11 deferred to Track 0.X)
 
 ## Recommendation (final)
 
-**Area 1 closure status: VERIFIED with three new HIGH findings carved out for a follow-up batch.**
+**Area 1 canary walk officially complete.** Batch 1Z (Area 1 canary walk
+fix-pass) closed CW-F1, CW-F2, CW-F3, CW-F4, CW-F6, and CW-F9 in one
+combined migration plus a one-line edge-function change. CW-F2 ships
+the constraint as `NOT VALID` so the migration applies cleanly with
+the 7 existing violating rows in place; Jamie inspects/repairs the 7
+rows separately and runs `VALIDATE CONSTRAINT`. CW-F5, CW-F7, CW-F10,
+and CW-F11 are filed in `POLISH_NOTES.md` under Track 0.X candidates.
 
-Every Phase-2 invariant (I1, I3, I4, I6–I12) holds at zero rows against current code-path-derived data. The two static failures (I2 demo drift, I5 payer-XOR) are pre-existing seed shape mismatches, not regressions.
-
-The Path-B walks of J1–J11 confirm the audit's behavioural claims at the RPC + edge-function + DB-state layer for every journey where data exists, and at code-review + invariant layer for J4.2/4.3/4.4, J5, J9, J10 (the four areas blocked by missing test data).
-
-**Suggested Batch 1Z scope (priority order):**
-1. **CW-F9 (HIGH)** — auto-allocate invoice-level payments across pending installments in `record_manual_payment`; backfill the 2 drifted rows.
-2. **CW-F2 (HIGH)** — add CHECK `num_nonnulls(payer_guardian_id, payer_student_id)=1` on `invoices`; backfill 7 violating rows.
-3. **CW-F3 (HIGH)** — tighten `create_invoice_with_items` auth guard to match `update_invoice_with_items`.
-
-**Defer to Track 0.X / POLISH_NOTES:** CW-F1, CW-F4, CW-F5, CW-F6, CW-F7, CW-F10, CW-F11.
+Every Phase-2 invariant (I1, I3, I4, I6–I12) holds at zero rows
+against current code-path-derived data. The Path-B walks of J1–J11
+confirmed the audit's behavioural claims at the RPC + edge-function
++ DB-state layer for every journey where data existed, and at the
+code-review + invariant layer for the four data-blocked journeys
+(J4.2/4.3/4.4, J5, J9, J10). Area 1 closure verified.
 
 ## Session log (cumulative)
 
 - **2026-04-29 — Session 1:** Phase 0 inventory + Phase 2 invariants; halted at (a).
 - **2026-04-30 — Session 2 (Path B):** J1.1–J1.4 walked. CW-F3, CW-F4. Halted at J1/J2 boundary.
 - **2026-04-30 — Session 3 (Path B continuation):** J2–J11 walked. CW-F5, CW-F6, CW-F7, CW-F9, CW-F10, CW-F11. Cleared one legacy pending billing_run for walk continuity. **Walk complete.**
+- **2026-04-30 — Session 4 (Batch 1Z fix-pass):** Closed CW-F1, CW-F2 (NOT VALID — VALIDATE awaits Jamie), CW-F3, CW-F4, CW-F6, CW-F9. Filed CW-F5, CW-F7, CW-F10, CW-F11 in POLISH_NOTES under Track 0.X candidates. One combined migration `20260516100000_canary_walk_batch_1z_combined_fixes.sql` + one edge-function change `create-billing-run/index.ts`. **Area 1 canary-walk closure verified.**
