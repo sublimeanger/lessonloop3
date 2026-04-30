@@ -212,3 +212,247 @@ repro.
   query corrections — `partially_paid` not in enum; `auto_pay_attempts.outcome`
   not `status`). Documented CW-F1, CW-F2. Halted at condition (a) before
   Phase 1 began. Next session resumes once Jamie picks a seeding strategy.
+
+---
+
+# Session 2 amendment (Path B resume) — 2026-04-30
+
+**Methodology note (important for closure semantics):** This walk is conducted
+**at the RPC + edge-function + DB-state layer**, not the browser UI layer.
+Lovable's environment cannot drive a logged-in staff browser session. For each
+sub-step Lovable: (1) calls the same SECURITY DEFINER RPC the staff UI invokes,
+with `request.jwt.claims` set to a real anchor-org owner/teacher user_id so
+`auth.uid()` resolves correctly inside the function; (2) inspects resulting
+table state, audit_log entries, and message_log entries; (3) reads the React
+component / edge function source to verify code-path claims that don't
+manifest as DB state (e.g. UI button presence). This is structurally
+equivalent to a UI walk for everything below the React render layer.
+Pure-rendering claims (e.g. "Refund button is discoverable on the paid-invoice
+header") are walked by code inspection and noted as such.
+
+## Phase 1 progress (Path B scope, partial — halted at J1/J2 boundary, e-resume)
+
+### J1 — Create / edit invoice ✅ PASS (with two new findings)
+
+#### J1.1 — Create new draft invoice via `create_invoice_with_items`
+
+**Action:** Set JWT context to anchor-org owner `829d878e-…`. Call
+`create_invoice_with_items(_org_id='7c75af4b-…', _due_date=2026-05-30,
+_payer_guardian_id='37937a24-…' (Amir Rahman), _items=3 items @ £30 each,
+_notes='CANARY-WALK-J1')`.
+
+**Observed:** Returned `{id: f4fa2a99-2d53-4d23-a91e-ea49adb6221f,
+invoice_number: LL-2026-00040, status: draft, subtotal_minor: 9000,
+tax_minor: 1800, total_minor: 10800, credit_applied_minor: 0}`. VAT is
+correctly applied at the org's 20% rate. Three `invoice_items` rows
+inserted with the expected `unit_price_minor=3000` and `amount_minor=3000`
+each. `audit_log` shows: 1× `invoice|insert` + **3× `invoice|update`** in
+the same microsecond (one per item-insert trigger; see CW-F4 below).
+
+**Status:** ✅ PASS — invoice creation matches the audit's claim. Surfaced
+new finding **CW-F4** (per-item pdf_rev/audit_log churn) during verification.
+
+#### J1.2 — Edit draft (qty change + delete + add)
+
+**Action:** Set JWT context to owner. Call `update_invoice_with_items` on
+the J1.1 invoice with: item-1 qty 1→2 (£60), item-2 dropped, item-3 kept,
+new item-4 added (£45).
+
+**Observed:** Returned `{subtotal_minor: 13500, tax_minor: 2700,
+total_minor: 16200}`. `invoice_items` now contains exactly 3 rows:
+"CW J1 Lesson Mar 6" qty=2 amount=6000, "CW J1 Lesson Mar 20" qty=1
+amount=3000, "CW J1 NEW Lesson Mar 27" qty=1 amount=4500 — matches
+the edits exactly. Final `audit_log` row is `invoice|invoice_edited`
+(singular `entity_type`, semantically-meaningful action name) with
+`actor_user_id=829d878e-…`.
+
+**Status:** ✅ PASS — `update_invoice_with_items` correctly diffs item set,
+recalculates totals, applies VAT, and writes a meaningful audit_log entry.
+
+#### J1.3 — Audit log entity_type / action shape
+
+**Observed:** All audit_log rows for the invoice use `entity_type='invoice'`
+(singular) and actions `insert`, `update`, `invoice_edited`. T01-P3
+singular-normalisation invariant holds. Confirms Phase 2 invariant I4
+result.
+
+**Status:** ✅ PASS.
+
+#### J1.4 — Authorization (teacher role attempts edit)
+
+**Action:** Set JWT context to anchor-org teacher `ed1fab7d-…`. Attempt
+`update_invoice_with_items` on the J1.1 invoice.
+
+**Observed:** RPC raised `42501 Not authorised` from the
+`is_org_finance_team(auth.uid(), …)` guard at line 23 of the function body.
+No state mutation. No audit_log row written.
+
+**Status:** ✅ PASS — RPC-level authorization holds for teacher role.
+
+#### CW-F3 (HIGH) — `create_invoice_with_items` skips authorization when `auth.uid()` is NULL
+
+**Surface:** `public.create_invoice_with_items` (lines 18–21 of definition).
+
+**Description:** The auth guard reads:
+
+```sql
+IF auth.uid() IS NOT NULL
+   AND NOT is_org_finance_team(auth.uid(), _org_id) THEN
+   RAISE EXCEPTION 'Not authorised…';
+END IF;
+```
+
+When `auth.uid()` is NULL — which occurs for any service-role-backed
+caller (edge functions using the service key, internal cron, future
+admin tooling, migrations) — **the auth check is silently skipped and
+the call proceeds**. The function will then accept any `_org_id` in
+the database without verifying that the caller has any relationship to
+that org. By contrast, `update_invoice_with_items` uses the safer
+pattern `IF NOT is_org_finance_team(auth.uid(), …)` (where
+`is_org_finance_team(NULL, …)` returns false), correctly rejecting null
+contexts.
+
+The asymmetry is the bug. While today's only callers are edge functions
+that *do* their own auth before calling the RPC, the guard pattern is
+defence-in-depth that is not actually defending. Any future caller that
+forgets to check authentication first inherits unrestricted org write
+access through this RPC.
+
+**Reproduction:**
+1. Call `create_invoice_with_items(_org_id='<any-org>', _payer_guardian_id='<any-guardian>', _items='[…]')` with no JWT context (no `request.jwt.claims` set, or `auth.uid()` returning NULL).
+2. Observe successful invoice creation in any organization, with `audit_log.actor_user_id = NULL`.
+3. Compare with `update_invoice_with_items` under the same conditions: rejects with `42501`.
+
+**Severity:** HIGH — defence-in-depth gap in a SECURITY DEFINER RPC that
+mutates billing data across orgs. Not currently exploitable from the
+browser layer (the staff UI always has `auth.uid()`), but represents
+a latent privilege escalation path if any future code reaches the RPC
+from a service-role context without its own org-scope check.
+
+**Regression vs new-class:** **New-class issue** — the audit's J1 closure
+notes ("update_invoice_with_items RPC works correctly") verified the
+update path; the create path's `auth.uid() IS NOT NULL` short-circuit
+appears never to have been audited. Likely originated when the RPC was
+first written defensively to allow internal seeding scripts, never
+re-examined.
+
+**Recommended fix:** Replace the create RPC's guard with the same pattern
+the update RPC uses:
+
+```sql
+IF NOT is_org_finance_team(auth.uid(), _org_id) THEN
+   RAISE EXCEPTION 'Not authorised…';
+END IF;
+```
+
+Then any internal caller that legitimately needs to bypass auth must do
+so via service-role + an explicit `service_role` claim check, not by
+having NULL `auth.uid()`.
+
+**Filed as:** **CW-F3**.
+
+#### CW-F4 (MED) — `bump_invoice_pdf_rev_from_items` fires per row, causing N×audit_log noise + N PDF cache invalidations per invoice mutation
+
+**Surface:** trigger `trg_bump_invoice_pdf_rev_from_items` on
+`invoice_items` (BEFORE/AFTER INSERT|UPDATE|DELETE) → calls
+`bump_invoice_pdf_rev_from_items()` which does `UPDATE invoices SET
+pdf_rev = pdf_rev + 1 WHERE id = _invoice_id`.
+
+**Description:** A 3-line-item invoice creation produces:
+- 1 `invoice|insert` audit_log row (the original create), then
+- 3 `invoice|update` audit_log rows (one per item-insert firing the
+  pdf_rev bump), each one a full snapshot of the invoice state.
+
+After the J1.2 edit (which deletes 1 item, updates 1, inserts 1) the
+invoice has 7 additional `invoice|update` rows from item-mutation
+triggers, plus 1 meaningful `invoice|invoice_edited` row from the RPC.
+Final audit_log count for one create+one edit: **12 rows**, of which
+only 2 are semantically interesting.
+
+Effects:
+1. **Audit log noise** — 5–10× legitimate amplification on item-heavy
+   invoices, making forensic/legal traces slower to read and inflating
+   storage growth in `audit_log`.
+2. **PDF cache thrashing** — `pdf_rev` increments per item operation,
+   so a freshly created 10-item invoice has `pdf_rev=10`. The
+   `cleanup-invoice-pdf-orphans` cron then has 9 stale cached PDFs to
+   sweep per invoice if any of those revs got rendered. Wasted Storage
+   I/O.
+
+**Severity:** MED — not a correctness bug (the final invoice state and
+final pdf_rev are coherent) but a real ops-cost and audit-readability
+drag at scale. Worth a small refactor: change the trigger to STATEMENT-
+level (`AFTER INSERT|UPDATE|DELETE … FOR EACH STATEMENT`) referencing
+the changed rows via transition tables, and bump `pdf_rev` exactly once
+per statement. The audit_log trigger already runs row-level so the
+audit-log noise needs a separate fix (e.g. the `update_invoice_with_items`
+RPC could SET LOCAL a session flag the audit trigger checks to skip
+intermediate item-driven updates).
+
+**Reproduction:** Any invoice creation with N>1 line items produces N+1
+audit_log entries on the invoice (1 insert + N updates). See J1.1 audit
+log query result: 4 rows for a 3-item create.
+
+**Regression vs new-class:** **New-class issue** — pdf_rev triggers were
+added during Track 0.5 J11 P1; the per-row firing pattern was likely
+not benchmarked against item-heavy invoices.
+
+**Filed as:** **CW-F4**.
+
+### J2–J11
+
+**Status: NOT WALKED in session 2.** Halted at J1/J2 boundary under
+**Halt condition (e-resume)** (single-session capacity reached after
+two HIGH/MED findings in J1 + the supporting code-inspection work).
+
+The J1 findings are independently filed and do not block the remaining
+journeys. Session 3 should resume at J2.
+
+---
+
+## Findings catalog (running)
+
+| ID | Severity | Surface | Description | Type |
+|---|---|---|---|---|
+| CW-F1 | MED | Demo data (Premier MEA, Harmony Music Academy) | 12 invoices `paid` with `paid_minor=0` and zero payments — legacy seed drift, no current code path produces it | New-class (legacy seed) |
+| CW-F2 | HIGH | `invoices` schema | 7 rows violate payer-XOR — no DB CHECK constraint enforces `num_nonnulls(payer_guardian_id, payer_student_id)=1` | New-class (missing CHECK) |
+| CW-F3 | **HIGH** | `create_invoice_with_items` RPC | Auth guard skipped when `auth.uid() IS NULL` — defence-in-depth gap; asymmetric with `update_invoice_with_items` which guards correctly | New-class (latent priv-esc path) |
+| CW-F4 | MED | `bump_invoice_pdf_rev_from_items` trigger | Per-row firing produces N×audit_log noise + N PDF cache invalidations per item-heavy invoice mutation | New-class (perf / audit clarity) |
+
+## Severity rollup (interim, after session 2 partial)
+
+- HIGH: 2 (CW-F2, CW-F3)
+- MED: 2 (CW-F1, CW-F4)
+- LOW: 0
+
+## Recommendation (interim)
+
+J1 walks cleanly behaviourally — the audit's claim that
+`update_invoice_with_items` works correctly is verified end-to-end. Two
+new findings emerged from going one layer deeper than the original
+audit went: a HIGH defence-in-depth gap in the sibling create RPC
+(CW-F3) and a MED operational efficiency issue in the pdf_rev trigger
+(CW-F4). Neither blocks J2–J11 from being walked in a future session.
+
+**Suggested Batch 1Z scope** (after walks complete): CW-F2 (add CHECK
+constraint), CW-F3 (tighten create_invoice_with_items auth guard).
+CW-F1 (demo data backfill) and CW-F4 (per-statement trigger refactor)
+can defer to Track 0.X / POLISH_NOTES.
+
+## Session log
+
+- **2026-04-29 — Session 1 (Lovable):** Phase 0 inventory + Phase 2
+  invariants; halted at condition (a) for missing test data.
+- **2026-04-30 — Session 2 (Lovable, Path B resume):** Walked J1.1–J1.4
+  end-to-end via RPC + JWT context method (described in methodology
+  note). Surfaced CW-F3 (HIGH) and CW-F4 (MED). **Halted at J1/J2
+  boundary under (e-resume)** — single-session capacity reached. No
+  test data was seeded (J1 used the existing anchor org). Created one
+  canary draft invoice `LL-2026-00040` (`f4fa2a99-…`) which remains in
+  the anchor org as a walk artefact (status='draft', total £162).
+  **Resume needs:** Session 3 starts at J2 (billing run wizard) using
+  the same anchor org `7c75af4b-…`. No further test data setup needed
+  before J2/J3/J7/J8/J11. J6 still needs the anchor switch to QA's
+  Teaching Center invoice `a8f244c0-…` (the partial-paid £400 plan
+  with 3 installments). J9 still needs template seeding before walk.
+
