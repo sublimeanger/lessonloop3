@@ -3826,7 +3826,7 @@ are applied.
 
 ### Fixed
 
-- **Batch 1Z corrected re-apply** (PR #{TBD}). New migration
+- **Batch 1Z corrected re-apply** (PR #379). New migration
   `supabase/migrations/20260516110000_canary_walk_batch_1z_corrected.sql`.
   CW-F4 section split: each of the three pdf_rev trigger surfaces
   (`invoice_items`, `invoice_installments`, `payments`) gets three
