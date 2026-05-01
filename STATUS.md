@@ -1,31 +1,32 @@
 # Project status
 
-**Last updated:** 2026-04-30 (Batch 1Z / branch `claude/area-1-canary-walk-batch-1z-amYwa` — Area 1 canary walk fix-pass closing CW-F1 + CW-F2 + CW-F3 + CW-F4 + CW-F6 + CW-F9)
+**Last updated:** 2026-05-01 (Batch 1Z corrected re-apply / branch `claude/fix-transition-table-aCFuY` — Area 1 canary walk fix-pass corrective; supersedes PR #378's rolled-back migration)
 
 ## Next session handoff
 
-- **Active area:** Area 1 (canary walk fix-pass in flight); reverts to Area 2 — Parent Portal once Batch 1Z merges + Lovable confirms.
-- **Current batch:** Batch 1Z — Area 1 canary walk fix-pass (combined migration + create-billing-run edge fn).
-- **Last merged PR / branch:** PR #377 / `claude/fix-money-math-mismatch-WEYJL` (Batch 2E). Batch 2E Lovable status: confirmed complete 2026-04-29 23:42 UTC. Mixed-payer parent verification PASS (Helen Douglas, +£80 recovered); regression PASS on single-payer parent. Helen Douglas (demo-parent-3) household with the £80 CC2-TEST invoice for Lily Douglas left in place as permanent mixed-payer test data — see POLISH_NOTES Batch 2E entry for asset note.
-- **What shipped:** Batch 1Z closes 6 of the 10 Area 1 canary-walk findings (3 HIGH: CW-F2, CW-F3, CW-F9; 1 MED: CW-F4 — CW-F1 also MED; 2 LOW: CW-F6, CW-F1 demote). One combined migration with five sections (CW-F3 CIWI auth tighten, CW-F9 record_manual_payment auto-allocate + drift backfill, CW-F4 pdf_rev STATEMENT-level refactor across 3 child-table triggers, CW-F2 NOT VALID payer-XOR CHECK, CW-F1 demote 12 demo invoices to 'sent'); one edge-function change (CW-F6 overlap whitelist on create-billing-run). 4 LOW deferred to POLISH_NOTES under Track 0.X candidates: CW-F5, CW-F7, CW-F10, CW-F11. Area 1 canary-walk closure verified.
-- **Lovable after-merge actions:** Apply `supabase/migrations/20260516100000_canary_walk_batch_1z_combined_fixes.sql`. Deploy `supabase/functions/create-billing-run`. After CW-F2 row resolution, run `ALTER TABLE invoices VALIDATE CONSTRAINT invoices_payer_xor;`.
+- **Active area:** Area 1 (canary walk fix-pass corrected re-apply in flight); reverts to Area 2 — Parent Portal once this PR merges + Lovable confirms apply + queries A–H pass.
+- **Current batch:** (none in flight) post-merge — this PR ships the corrective Batch 1Z re-apply only.
+- **Last merged PR / branch:** PR #378 / `claude/area-1-canary-walk-batch-1z-amYwa` (original Batch 1Z). Lovable status: rolled back twice (PostgreSQL 0A000 on CW-F4 transition-table syntax). Sections 1 (CW-F3), 2 (CW-F9), 4 (CW-F2), 5 (CW-F1) un-applied; original per-row pdf_rev triggers remain in production.
+- **What shipped:** Corrected Batch 1Z migration (`supabase/migrations/20260516110000_canary_walk_batch_1z_corrected.sql`). Splits CW-F4 trigger refactor into 9 event-specific functions + 9 triggers across `invoice_items`, `invoice_installments`, `payments` (one INSERT trigger per surface, one UPDATE, one DELETE — each declaring only its own transition tables). Sections 1, 2, 4, 5 byte-identical to PR #378's broken file (already idempotent — safe to re-run regardless of partial-state). Pattern verified end-to-end against PostgreSQL 16.13 in a sandbox before authoring.
+- **Lovable after-merge actions:** Apply `supabase/migrations/20260516110000_canary_walk_batch_1z_corrected.sql`. Deploy `supabase/functions/create-billing-run` (CW-F6 fix from PR #378; was deferred during the failed apply). After CW-F2 row resolution, run `ALTER TABLE invoices VALIDATE CONSTRAINT invoices_payer_xor;`.
 - **Lovable status:** pending until Jamie confirms
-- **Production SQL verification:** Required — see PR body Lovable after-merge actions §3 for queries A–G (CIWI auth carve-out present; record_manual_payment auto-allocate present; CW-F9 drift resolved → 0 drifted plan invoices; CW-F2 violating row enumeration; CW-F4 synthetic +1 increment test; CW-F1 demoted; CW-F6 is code-side only).
-- **App behaviour checks:** trigger recurring template Run now (CW-F3); record plan-invoice payment without installment (CW-F9 auto-allocate); attempt CHECK-violating invoice insert (CW-F2); edit invoice + verify pdf_rev +1 (CW-F4); create billing run that previously was blocked by stale pending (CW-F6); regression sanity walk J1 → J2 → J3 → J4 → J7.
-- **Next batch in active area:** Batch 2F — J3-F19 refund netting in stripe-create-payment-intent (resumes Area 2 after Batch 1Z merges + Lovable confirms).
+- **Production SQL verification:** Required — see PR body §3 for queries A–H (CW-F4 new triggers in place; old combined per-row triggers gone; CW-F9 drift resolved; CW-F1 demoted; CW-F2 violating row enumeration; CIWI auth carve-out present; record_manual_payment auto-allocate present; CW-F4 trigger sanity self-cleaning DO block).
+- **App behaviour checks:** (optional) edit any draft invoice via staff UI — add 2 items in one save action, verify pdf_rev increments by exactly 1 (not 2); trigger any active recurring template's "Run now" via the staff UI and confirm it generates invoices without "Not authorised".
+- **Next batch in active area:** Batch 2F — J3-F19 refund netting in stripe-create-payment-intent (resumes Area 2 after this corrective re-apply confirms).
 - **Next area after this one closes:** Area 3 — Students & guardians (per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
-- **Roadmap progress:** Area 1 closed (canary-walk verified, 6 follow-ups shipped in Batch 1Z, 4 LOW filed); Area 2 in progress at **11/15 HIGH**; Areas 0, 3-16 pending (17 areas total per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
-- **Next session first instruction:** After Batch 1Z PR merges, Lovable applies the migration + deploys the edge function + runs queries A–G + behaviour-checks pass, AND Jamie runs `VALIDATE CONSTRAINT` after resolving the 7 CW-F2 rows, paste Batch 2F's prompt into a fresh Claude Code session.
+- **Roadmap progress:** Area 1 closed (canary-walk verified, fix-pass re-applied via this PR); Area 2 in progress at **11/15 HIGH**; Areas 0, 3-16 pending (17 areas total per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table)
+- **Next session first instruction:** After this PR merges and Lovable confirms apply + queries A–H pass + Jamie resolves the 7 CW-F2 rows + runs `VALIDATE CONSTRAINT`, paste Batch 2F's prompt into a fresh Claude Code session.
 
 ---
 
 ## Active area
 
-**Area 1 — Billing & invoicing (canary walk fix-pass in flight)**
+**Area 1 — Billing & invoicing (canary walk fix-pass — corrected re-apply in flight)**
 
 - Walk: complete (`docs/audits/2026-04-area-1-canary-walk.md`)
 - Findings: 10 (3 HIGH, 2 MED, 5 LOW); Batch 1Z closes 6 (CW-F1, CW-F2 NOT VALID + Jamie's row resolution + VALIDATE pending, CW-F3, CW-F4, CW-F6, CW-F9); 4 LOW filed in POLISH_NOTES under Track 0.X candidates (CW-F5, CW-F7, CW-F10, CW-F11).
-- Status: Area 1 canary-walk closure verified. Reverts to Area 2 active once Batch 1Z merges + Lovable confirms.
+- Status: Area 1 canary-walk closure verified. Reverts to Area 2 active once corrective Batch 1Z PR merges + Lovable confirms.
+- **Batch 1Z (PR #378) — Lovable status:** rolled back twice (PostgreSQL 0A000 on CW-F4 transition-table syntax — `INSERT OR UPDATE OR DELETE` combined with `REFERENCING NEW TABLE / OLD TABLE` on a single trigger; Postgres requires one event per trigger when transition tables are declared). Sections 1 (CW-F3), 2 (CW-F9), 4 (CW-F2), 5 (CW-F1) un-applied; original per-row pdf_rev triggers remain in production. Re-apply via `claude/fix-transition-table-aCFuY` corrected branch.
 
 **Area 2 — Parent Portal (returns active after Batch 1Z lands)**
 
@@ -40,7 +41,7 @@
 
 ## In flight
 
-- Batch 1Z (Area 1 canary walk fix-pass) — PR open; awaiting merge + Lovable apply + Jamie's CW-F2 row resolution + VALIDATE CONSTRAINT.
+- Batch 1Z corrected re-apply (Area 1 canary walk fix-pass corrective) — PR open on `claude/fix-transition-table-aCFuY`; awaiting merge + Lovable apply of `20260516110000_canary_walk_batch_1z_corrected.sql` + deploy of `create-billing-run` + queries A–H + Jamie's CW-F2 row resolution + VALIDATE CONSTRAINT.
 
 ## Awaiting Jamie decision
 
