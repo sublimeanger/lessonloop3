@@ -3809,3 +3809,157 @@ Closes the Area 1 canary walk's actionable findings under one combined migration
 - PR: see `STATUS.md` Next session handoff for current PR number.
 - Walk doc: `docs/audits/2026-04-area-1-canary-walk.md` — closed findings strikethrough'd in the final catalog (CW-F1, CW-F2, CW-F3, CW-F4, CW-F6, CW-F9); severity rollup updated to closed counts; recommendation rewritten as closure note; session-4 entry appended to cumulative session log; structural duplicates (interim Findings, Severity, Recommendation, Session log sections from both session 1 and session 2) removed.
 - Roadmap impact: Area 1 row in one-screen status table changed from `done | all | 🟢 closed` to `done | all+canary | 🟢 closed (canary-walk verified)`. Area 2 unchanged — Batch 1Z does not advance Area 2's HIGH count.
+
+## Area 1 — Canary walk fix-pass — Batch 1Z corrected re-apply (2026-05-01)
+
+Corrects PR #378's Batch 1Z migration. The original
+`20260516100000_canary_walk_batch_1z_combined_fixes.sql` failed at
+production apply with PostgreSQL error 0A000 ("transition tables cannot
+be specified for triggers with more than one event") on the CW-F4
+section, which combined `INSERT OR UPDATE OR DELETE` with `REFERENCING
+NEW TABLE / OLD TABLE` on a single trigger across three surfaces.
+Postgres requires one event per trigger when transition tables are
+declared. Migration was rolled back twice; production currently has
+the original per-row triggers (the broken-but-known +N behaviour) and
+none of Batch 1Z's other four sections (CW-F3, CW-F9, CW-F2, CW-F1)
+are applied.
+
+### Fixed
+
+- **Batch 1Z corrected re-apply** (PR #379). New migration
+  `supabase/migrations/20260516110000_canary_walk_batch_1z_corrected.sql`.
+  CW-F4 section split: each of the three pdf_rev trigger surfaces
+  (`invoice_items`, `invoice_installments`, `payments`) gets three
+  event-specific triggers — one for INSERT (`REFERENCING NEW TABLE`
+  only), one for UPDATE (`REFERENCING NEW TABLE OLD TABLE`), one for
+  DELETE (`REFERENCING OLD TABLE` only). Three trigger functions per
+  surface, each referencing only the transition table its trigger
+  declares. 9 functions + 9 triggers + 12 idempotency
+  `DROP TRIGGER IF EXISTS` guards (3 old per-row trigger names + 9 new
+  statement-level trigger names). Sections 1, 2, 4, 5 (CW-F3, CW-F9,
+  CW-F2, CW-F1) byte-identical to the broken file — already idempotent
+  via `CREATE OR REPLACE FUNCTION`, count-guard `DO $$` blocks, and
+  `IF NOT EXISTS` on the CHECK constraint, so re-running them is safe
+  regardless of the previous failed apply's partial state. Pattern
+  verified end-to-end against PostgreSQL 16.13 in a sandbox before
+  authoring (3-row INSERT bumps pdf_rev by exactly 1; 2-row UPDATE +1;
+  1-row DELETE +1; 0-row UPDATE / DELETE +0; per-surface coverage on
+  invoice_installments and payments confirmed; idempotent re-apply
+  tested). The original broken migration stays in repo as historical
+  record; the new file's timestamp (`20260516110000`) sorts after the
+  broken file's (`20260516100000`) so Postgres applies it in version
+  order.
+
+### Filed for follow-up (workflow improvements)
+
+- **V2 prompt-authoring should sandbox-test SQL migrations involving
+  non-trivial Postgres features before they ship.** Original Batch 1Z's
+  CW-F4 trigger pattern was specified by chat-Claude without a
+  Postgres-runtime check; the agent's repo-level verification
+  (typecheck + build + lint) cannot catch a Postgres-only syntax
+  rejection. Folded into the docs-hygiene batch as a workflow
+  improvement: chat-Claude should sandbox-test SQL migrations that
+  involve transition tables, exclusion constraints, partitioning, GiST
+  indexes, generated columns, or other features whose failure modes
+  are runtime-only. The agent's grep-based migration-syntax sanity
+  step in V2 verification is necessary but insufficient; it cannot
+  substitute for a real `psql` apply.
+- **Migration-failure forensics should capture the exact error code
+  and message in the next-session handoff.** The original PR #378
+  failure was diagnosed through Lovable round-trip, then transcribed
+  into chat. STATUS.md's reconciliation entry below now records the
+  `0A000` code + canonical message verbatim so a future agent picking
+  up a similar halt has the failure mode locally.
+
+### Migrations
+
+- `supabase/migrations/20260516110000_canary_walk_batch_1z_corrected.sql`
+  — 868 lines. Header (lines 1-31): authoring-context block including
+  failure-mode summary and PostgreSQL 16.13 verification statement.
+  Section 1 (lines 33-182): CW-F3 CIWI auth tighten — byte-identical
+  to broken file. Section 2 (lines 184-510): CW-F9 record_manual_payment
+  auto-allocate + drift backfill — byte-identical. Section 3 (lines
+  512-784, REPLACED): 9 functions (`bump_invoice_pdf_rev_from_*_ins`,
+  `_upd`, `_del` for items/installments/payments) + 12 DROP TRIGGER IF
+  EXISTS + 9 CREATE TRIGGER + 9 REVOKE; one event per trigger; only
+  the transition tables relevant to each event declared. Section 4
+  (lines 786-817): CW-F2 NOT VALID CHECK — byte-identical. Section 5
+  (lines 819-859): CW-F1 demote 12 demo invoices — byte-identical.
+  Tail (lines 861-868): CW-F6 stub comment + `NOTIFY pgrst, 'reload
+  schema'` + `COMMIT;`.
+
+### Edge functions
+
+- (none) — `supabase/functions/create-billing-run/index.ts` from PR
+  #378 (CW-F6 fix) is unchanged in this PR; Lovable still needs to
+  deploy it after merge along with applying this migration.
+
+### Verification
+
+- `npm run typecheck` — pass.
+- `npm run build` — pass (1.25 MB main bundle, no size regression).
+- `npm run lint` — N/A against this PR's diff (single SQL file). Repo
+  baseline at 1228 problems / 7 errors / 1221 warnings unchanged by
+  this PR.
+- Migration syntax sanity:
+  - 0 SQL statements with the broken `INSERT OR UPDATE OR DELETE`
+    combined-event trigger pattern (the only `grep` hit lives inside
+    an explanatory comment in the new Section 3 header) ✓
+  - 3× `AFTER INSERT ON public.invoice_items|invoice_installments|payments` ✓
+  - 3× `AFTER UPDATE ON public.invoice_items|invoice_installments|payments` ✓
+  - 3× `AFTER DELETE ON public.invoice_items|invoice_installments|payments` ✓
+  - 9× `^CREATE OR REPLACE FUNCTION public.bump_invoice_pdf_rev_from_*` ✓
+  - 9× `^CREATE TRIGGER trg_bump_invoice_pdf_rev_from_*` ✓
+  - 12× `^DROP TRIGGER IF EXISTS trg_bump_invoice_pdf_rev_from_*` (3
+    old per-row names + 9 new statement-level names; idempotency
+    guards on re-apply) ✓
+  - 1× `NOTIFY pgrst, 'reload schema'` ✓
+  - 1× `BEGIN;` + 1× `COMMIT;` (whole migration wrapped) ✓
+  - 10 paired `AS $$` open / `$$;` close — balanced ✓
+- Section diff verification (sections 1, 2, 4, 5 byte-identical to the
+  broken file):
+  - Section 1 (CW-F3) — `diff` empty ✓
+  - Section 2 (CW-F9) — `diff` empty ✓
+  - Section 4 (CW-F2) — `diff` empty ✓
+  - Section 5 (CW-F1) — `diff` empty ✓
+  - Only Section 3 differs; no unintended drift in the unchanged
+    sections.
+- Unchanged files:
+  - `git diff origin/main --name-only` (post-stage) returns one new
+    file:
+    `supabase/migrations/20260516110000_canary_walk_batch_1z_corrected.sql`
+    ✓ (Branch is ahead of `origin/main` by prior batches; the diff
+    delta from this PR specifically is the single new file.)
+
+### Lovable after-merge
+
+- Migrations to apply:
+  `supabase/migrations/20260516110000_canary_walk_batch_1z_corrected.sql`.
+  The previous broken migration (`20260516100000_*.sql`) was rolled
+  back; this new file's timestamp sorts after it so Postgres applies
+  the new file last. The corrected Section 3 + four byte-identical
+  idempotent sections together apply cleanly.
+- Edge functions to deploy: `supabase/functions/create-billing-run`
+  (CW-F6 overlap whitelist; was deferred during the PR #378 failed
+  apply).
+- Production SQL verification: queries A–H in PR body §3 (CW-F4 new
+  triggers in place; old combined per-row triggers gone; CW-F9 drift
+  resolved; CW-F1 demoted; CW-F2 violating row enumeration; CIWI auth
+  carve-out present; record_manual_payment auto-allocate present;
+  CW-F4 trigger sanity test self-cleaning DO block).
+- App behaviour spot-check by Jamie (optional): edit any draft invoice
+  via the staff UI — add 2 items in one save, verify pdf_rev
+  increments by exactly 1 (not 2). Trigger any active recurring
+  template's "Run now" via the staff UI; confirm it generates invoices
+  without "Not authorised" (CW-F3 service-role carve-out preserves the
+  J9 path).
+
+### Cross-references
+
+- PR: see `STATUS.md` Next session handoff for current PR number.
+- Walk doc: `docs/audits/2026-04-area-1-canary-walk.md` — Session-5
+  entry appended to cumulative session log.
+- Roadmap impact: no change. Area 1 row in `LESSONLOOP_PRODUCTION_ROADMAP.md`
+  status table stays at `done | all+canary | 🟢 closed (canary-walk
+  verified)`. The closure status was conditional on the fix-pass
+  shipping; this PR delivers what PR #378 attempted.
