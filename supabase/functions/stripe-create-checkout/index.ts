@@ -3,6 +3,11 @@ import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import {
+  invoiceAmountDue,
+  installmentOutstanding,
+  PENDING_INSTALLMENT_STATUSES,
+} from "../_shared/invoice-amount-due.ts";
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -124,15 +129,8 @@ serve(async (req) => {
       throw new Error(`Invoice cannot be paid (status: ${invoice.status})`);
     }
 
-    // Calculate amount due (total minus any payments)
-    const { data: payments } = await supabase
-      .from("payments")
-      .select("amount_minor")
-      .eq("invoice_id", invoiceId);
-
-    const totalPaid = payments?.reduce((sum: number, p: any) => sum + p.amount_minor, 0) || 0;
-    const amountDue = invoice.total_minor - totalPaid;
-
+    // Calculate amount due (refund-netted via canonical paid_minor)
+    const amountDue = invoiceAmountDue(invoice);
     if (amountDue <= 0) {
       throw new Error("Invoice is already fully paid");
     }
@@ -149,14 +147,17 @@ serve(async (req) => {
         .select("*")
         .eq("id", requestedInstallmentId)
         .eq("invoice_id", invoice.id)
-        .in("status", ["pending", "overdue"])
+        .in("status", PENDING_INSTALLMENT_STATUSES)
         .single();
 
       if (instError || !installment) {
         throw new Error("Installment not found or already paid");
       }
 
-      paymentAmount = installment.amount_minor;
+      paymentAmount = await installmentOutstanding(supabase, installment.id, installment.amount_minor);
+      if (paymentAmount <= 0) {
+        throw new Error("Installment is already fully paid");
+      }
       description = `${invoice.invoice_number} — Installment ${installment.installment_number} of ${invoice.installment_count}`;
       resolvedInstallmentId = installment.id;
 
@@ -171,7 +172,7 @@ serve(async (req) => {
         .from("invoice_installments")
         .select("*")
         .eq("invoice_id", invoice.id)
-        .in("status", ["pending", "overdue"])
+        .in("status", PENDING_INSTALLMENT_STATUSES)
         .order("installment_number", { ascending: true })
         .limit(1)
         .single();
@@ -180,7 +181,10 @@ serve(async (req) => {
         throw new Error("All installments are already paid");
       }
 
-      paymentAmount = nextInstallment.amount_minor;
+      paymentAmount = await installmentOutstanding(supabase, nextInstallment.id, nextInstallment.amount_minor);
+      if (paymentAmount <= 0) {
+        throw new Error("Installment is already fully paid");
+      }
       description = `${invoice.invoice_number} — Installment ${nextInstallment.installment_number} of ${invoice.installment_count}`;
       resolvedInstallmentId = nextInstallment.id;
 

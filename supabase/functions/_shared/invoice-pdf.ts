@@ -369,7 +369,10 @@ export async function renderInvoicePdf(
   y += 12;
 
   // Payments
-  const totalPaid = (inv.payments || []).reduce((s, p) => s + p.amount_minor, 0);
+  // J3-F19b: Use invoice.paid_minor as single source of truth for
+  // Paid — recalculate_invoice_paid keeps it net of refunds. Mirrors
+  // the existing J4-F23 pattern in the payment-plan block below.
+  const totalPaid = inv.paid_minor ?? 0;
   if (totalPaid > 0) {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");

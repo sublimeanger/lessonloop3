@@ -3,6 +3,11 @@ import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import {
+  invoiceAmountDue,
+  installmentOutstanding,
+  PENDING_INSTALLMENT_STATUSES,
+} from "../_shared/invoice-amount-due.ts";
 
 serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
@@ -114,14 +119,8 @@ serve(async (req) => {
       throw new Error(`Invoice cannot be paid (status: ${invoice.status})`);
     }
 
-    // Calculate amount due
-    const { data: payments } = await supabase
-      .from("payments")
-      .select("amount_minor")
-      .eq("invoice_id", invoiceId);
-
-    const totalPaid = payments?.reduce((sum: number, p: any) => sum + p.amount_minor, 0) || 0;
-    const amountDue = invoice.total_minor - totalPaid;
+    // Calculate amount due (refund-netted via canonical paid_minor)
+    const amountDue = invoiceAmountDue(invoice);
 
     if (amountDue <= 0) throw new Error("Invoice is already fully paid");
 
@@ -130,41 +129,20 @@ serve(async (req) => {
     let description: string;
     let resolvedInstallmentId: string | null = null;
 
-    // Helper: outstanding on an installment = amount_minor minus net prior
-    // payments (post-refund). Covers partially_paid state.
-    async function installmentOutstanding(installmentId: string, amountMinor: number): Promise<number> {
-      const { data: priorPayments } = await supabase
-        .from("payments")
-        .select("id, amount_minor")
-        .eq("installment_id", installmentId);
-      const priorIds = (priorPayments || []).map((p: any) => p.id);
-      let priorRefunded = 0;
-      if (priorIds.length > 0) {
-        const { data: priorRefundRows } = await supabase
-          .from("refunds")
-          .select("amount_minor")
-          .in("payment_id", priorIds)
-          .eq("status", "succeeded");
-        priorRefunded = (priorRefundRows || []).reduce((s: number, r: any) => s + r.amount_minor, 0);
-      }
-      const priorApplied = (priorPayments || []).reduce((s: number, p: any) => s + p.amount_minor, 0) - priorRefunded;
-      return Math.max(0, amountMinor - priorApplied);
-    }
-
     if (requestedInstallmentId) {
       const { data: installment, error: instError } = await supabase
         .from("invoice_installments")
         .select("*")
         .eq("id", requestedInstallmentId)
         .eq("invoice_id", invoice.id)
-        .in("status", ["pending", "overdue", "partially_paid"])
+        .in("status", PENDING_INSTALLMENT_STATUSES)
         .single();
 
       if (instError || !installment) {
         throw new Error("Installment not found or already paid");
       }
 
-      paymentAmount = await installmentOutstanding(installment.id, installment.amount_minor);
+      paymentAmount = await installmentOutstanding(supabase, installment.id, installment.amount_minor);
       if (paymentAmount <= 0) {
         throw new Error("Installment is already fully paid");
       }
@@ -180,7 +158,7 @@ serve(async (req) => {
         .from("invoice_installments")
         .select("*")
         .eq("invoice_id", invoice.id)
-        .in("status", ["pending", "overdue", "partially_paid"])
+        .in("status", PENDING_INSTALLMENT_STATUSES)
         .order("installment_number", { ascending: true })
         .limit(1)
         .single();
@@ -189,7 +167,7 @@ serve(async (req) => {
         throw new Error("All installments are already paid");
       }
 
-      paymentAmount = await installmentOutstanding(nextInstallment.id, nextInstallment.amount_minor);
+      paymentAmount = await installmentOutstanding(supabase, nextInstallment.id, nextInstallment.amount_minor);
       if (paymentAmount <= 0) {
         throw new Error("Installment is already fully paid");
       }
