@@ -72,7 +72,12 @@ export function RecordPaymentModal({
   const [reference, setReference] = useState('');
   const amountInputRef = useRef<HTMLInputElement>(null);
 
-  const totalPaid = invoice?.payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0;
+  // J3-F19d: invoice.paid_minor is canonical-net-of-refunds (maintained
+  // by recalculate_invoice_paid RPC). Summing payments would ignore
+  // refunds and show the wrong "outstanding" figure when recording a
+  // payment after a refund. Same fix pattern as J3-F19/J3-F19b/J3-F19c
+  // shipped in Batch 2F.
+  const totalPaid = invoice?.paid_minor ?? 0;
   const outstandingAmount = invoice ? Math.max(0, invoice.total_minor - totalPaid) : 0;
 
   // Pre-fill amount and method when the modal opens. Only prefill the

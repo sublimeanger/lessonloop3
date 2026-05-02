@@ -185,7 +185,10 @@ export default function InvoiceDetail() {
     ? `${invoice.payer_student.first_name} ${invoice.payer_student.last_name}`
     : 'Unknown';
 
-  const totalPaid = invoice.payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0;
+  // J3-F19d: invoice.paid_minor is canonical-net-of-refunds. See
+  // _shared/invoice-amount-due.ts for the edge-function-side
+  // consolidation (Batch 2F).
+  const totalPaid = invoice.paid_minor ?? 0;
   const amountDue = invoice.total_minor - totalPaid;
 
   const handleVoidConfirm = async () => {
