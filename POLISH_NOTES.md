@@ -4085,4 +4085,104 @@ Lovable applied migration `20260502071153_cw_f2_payer_xor_cleanup_and_validate.s
 
 ### Halt-and-resume note
 
-Per Rule 3.6(d) the batch halted on grep-D once the two staff-side same-bug-class sites surfaced. Halt was raised in chat with three scope options. The user's stop hook subsequently required commit+push before stopping; the most-conservative interpretation was applied (ship Batch 2F as-scoped, file the two staff-side sites for Area 1 follow-up rather than absorbing them into the same PR without explicit chat-Claude approval). Cross-references to the staff-side files are recorded in three places for chat-Claude to pick up: this POLISH_NOTES "Filed for follow-up" subsection; the Area 2 audit doc's CC-8 cross-cutting closure note + Stale-doc-flags section; STATUS.md "Filed for Area 1 follow-up" line in the Next-session handoff block.
+Per Rule 3.6(d) the batch halted on grep-D once the two staff-side same-bug-class sites surfaced. Halt was raised in chat with three scope options. The user's stop hook subsequently required commit+push before stopping; the most-conservative interpretation was applied (ship Batch 2F as-scoped, file the two staff-side sites for Area 1 follow-up rather than absorbing them into the same PR without explicit chat-Claude approval). Cross-references to the staff-side files are recorded in three places for chat-Claude to pick up: this POLISH_NOTES "Filed for follow-up" subsection; the Area 2 audit doc's CC-8 cross-cutting closure note + Stale-doc-flags section; STATUS.md "Filed for Area 1 follow-up" line in the Next-session handoff block. **Resolution:** the two staff-side sites were re-anchored as J3-F19d under Area 2 (CC-8 same-bug-class makes the J3 cluster the right home, not Area 1) and shipped in Batch 2F-followup (PR #<filled at merge time>) two-line diff total. CC-8 cluster fully closed across all five surfaces.
+
+## Area 2 — Parent portal — Batch 2F-followup: J3-F19d staff-side refund netting (closed 2026-05-02)
+
+Closes the two staff-side React surfaces flagged by Batch 2F's grep-D sweep
+under Rule 3.6(d). Brings the CC-8 refund-netting cluster to full closure
+across every surface in the app: two payment edge functions (J3-F19, J3-F19c
+via consolidation onto _shared/invoice-amount-due.ts), two PDF renderers
+(J3-F19b, deno↔browser mirrored), and now two staff-side React surfaces
+(J3-F19d). All five surfaces use the canonical `invoice.paid_minor` figure
+maintained by `recalculate_invoice_paid` RPC.
+
+### Fixed
+
+- **J3-F19d** (HIGH) — `src/components/invoices/RecordPaymentModal.tsx:75-76` and
+  `src/pages/InvoiceDetail.tsx:188-189`. Inline `invoice.payments?.reduce(...)` swapped
+  for `invoice.paid_minor ?? 0`. Two-line net diff. Comment per file referencing
+  Batch 2F's consolidation as the canonical pattern.
+
+### Pattern applied
+
+- **`invoice.paid_minor ?? 0` is canonical-net-of-refunds across both runtimes.** The
+  Batch 2F edge-fn consolidation (`_shared/invoice-amount-due.ts` / `invoiceAmountDue()`)
+  doesn't apply directly to React (different runtime, no shared imports). Inline use
+  of `invoice.paid_minor ?? 0` is the canonical React-side equivalent.
+- **Two callsites is below the shared-helper threshold.** Adding a `getInvoiceOutstanding()`
+  helper for two callsites would be premature abstraction. If a third React-side site
+  surfaces, extract.
+
+### Filed for follow-up
+
+- **`usePaymentAnalytics.ts:86` MED — analytics-dashboard ambiguity.** `totalCollectedMinor`
+  computes `payments.reduce(...)` for a 12-month-collected figure on the analytics
+  dashboard. Whether this should be refund-netted depends on what the dashboard label
+  intends ("Total Collected" — gross cash received, or net cash retained?). Not a clear
+  bug; needs a product decision. Filed for chat-Claude to triage with Jamie. Likely
+  outcome: net is the correct accounting figure; dashboard label may need a tweak too.
+  Severity MED because the misstatement is on an internal-only analytics view, not
+  customer-facing or transaction-affecting.
+
+### Migrations
+
+(none — this batch ships zero migrations)
+
+### Edge functions
+
+(none — frontend-only)
+
+### Verification
+
+- `npm run typecheck` — pass.
+- `npm run build` — pass. Main bundle: 1,252.28 kB (gzip 360.32 kB) — matches Batch 2F
+  baseline (1,252.28 kB / 360.30 kB), no regression. Build time 1m 25s.
+- `npm run lint` — pre-stash baseline 1223 problems (7 errors, 1216 warnings); post-stash
+  with this PR's diff applied 1223 problems (7 errors, 1216 warnings). Net 0 problems / 0
+  errors / 0 warnings. `git stash` round-trip pre/post diff confirmed; no new findings
+  introduced.
+- Sanity grep — old pattern gone:
+  `grep -nE "invoice\.payments\?\.reduce|invoice\?\.payments\?\.reduce" src/components/invoices/RecordPaymentModal.tsx src/pages/InvoiceDetail.tsx`
+  Expected: zero matches. ✓ (0 matches)
+- Sanity grep — new pattern present:
+  `grep -nE "invoice\.paid_minor \?\? 0|invoice\?\.paid_minor \?\? 0" src/components/invoices/RecordPaymentModal.tsx src/pages/InvoiceDetail.tsx`
+  Expected: one match per file. ✓ (1 match per file: RecordPaymentModal.tsx:80, InvoiceDetail.tsx:191)
+- Final sweep — confirm no remaining refund-blind patterns in src/ outside the
+  intentional analytics-dashboard site filed above:
+  `grep -rnE "amount_minor.*reduce|reduce.*amount_minor" src/ | grep -v "test\|spec\|\.d\.ts"` returns 4 hits, dispositioned:
+  - `src/components/invoices/PaymentPlanSetup.tsx:92` (`customRows.reduce((sum, r) => sum + r.amount_minor, 0)`) — legitimate; sums custom installment-row amounts to compute a plan total. Not refund-related.
+  - `src/components/invoices/PaymentPlanSetup.tsx:224` (`existingInstallments.reduce((s, i) => s + i.amount_minor, 0)`) — legitimate; sums installment amounts for plan-edit display. Not refund-related.
+  - `src/hooks/usePaymentAnalytics.ts:86` (`payments.reduce((sum, p) => sum + (p.amount_minor || 0), 0)`) — analytics-dashboard ambiguity. Filed for follow-up above.
+  - `src/lib/paymentUtils.ts:61` (`reduce((sum, r) => sum + (r.amount_minor ?? r.refund_amount_minor ?? 0), 0)`) — legitimate; sums refunds (note `refund_amount_minor`). Not refund-blind.
+
+### Lovable after-merge
+
+- Migrations to apply: (none)
+- Edge functions to deploy: (none)
+- Production SQL verification: (none)
+- Behaviour spot-check by Jamie: open any partially-refunded invoice in the staff UI
+  (e.g. one with status='paid' followed by a partial refund), then click the "Record Payment"
+  menu option. Pre-fix: modal pre-fills the gross outstanding (ignoring the refund). Post-fix:
+  modal pre-fills the net outstanding (refund-netted). Also verify the "Amount Due" header
+  on the InvoiceDetail page shows the net figure.
+
+### Cross-references
+
+- PR: see `STATUS.md` handoff
+- Walk doc: J3-F19d row added to J3 findings table with shipped marker; HIGH count incremented
+  from 19→20 raw, 16→17 distinct briefs; J3 walk-progress row updated from `30 (6 withdrawn) | 5`
+  to `31 (6 withdrawn) | 6`; CC-8 cross-cutting paragraph updated to "fully closed across all
+  five surfaces"; Stale-doc flags entry for the Area-1-follow-up filing struck through with
+  resolution note.
+- Roadmap: Area 2 row 14/17 → 15/18 HIGH
+- Batch 2F: this followup closes the Rule 3.6(d) halt-flagged scope from PR #381 (merged 2026-05-02)
+
+### Lovable Batch 2F status reconciliation
+
+Batch 2F (PR #381) Lovable status remains `pending until Jamie confirms` as of this PR's
+authoring (2026-05-02). Will be flipped to `confirmed complete YYYY-MM-DD HH:MM UTC` by
+chat-Claude in the next batch once Jamie has verified the four-site sweep end-to-end (simple
+invoice with refund history, payment-plan invoice on partially-paid installment, PDF rendering
+of partially-refunded invoice). This followup PR ships independently and does not block the
+Batch 2F Lovable verification.

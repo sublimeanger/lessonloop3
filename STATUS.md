@@ -1,22 +1,21 @@
 # Project status
 
-**Last updated:** 2026-05-02 (Batch 2F — J3-F19 + CC-8 refund-netting sweep + stripe-create-checkout parity; folds CW-F2 closure → Area 1 fully closed)
+**Last updated:** 2026-05-02 (Batch 2F-followup — J3-F19d staff-side refund netting; CC-8 cluster fully closed across all five surfaces)
 
 ## Next session handoff
 
 - **Active area:** Area 2 — Parent Portal
 - **Current batch:** (none in flight). Ready to start Batch 2G.
-- **Last merged PR / branch:** PR #<filled at merge time> / `claude/refund-netting-checkout-parity-Huy2V` (Batch 2F).
-- **What shipped:** Batch 2F closed CC-8 refund-netting sweep across four sites — J3-F19 (`stripe-create-payment-intent`), J3-F19b (both invoice PDF renderers), J3-F19c (`stripe-create-checkout` brought to full parity with sibling). New shared module `_shared/invoice-amount-due.ts` consolidates `invoiceAmountDue()`, `installmentOutstanding()`, `PENDING_INSTALLMENT_STATUSES`. Two new HIGH findings filed (J3-F19b, J3-F19c) and closed in same PR. Also folds the CW-F2 closure confirmation (constraint validated 2026-05-02 by Jamie via direct Lovable migration `20260502071153_cw_f2_payer_xor_cleanup_and_validate.sql` — Area 1 Batch 1Z fully closed).
-- **Filed for Area 1 follow-up (not closed in this PR):** grep-D verification surfaced two same-bug-class staff-side refund-blind sites that the consolidation didn't cover: `src/components/invoices/RecordPaymentModal.tsx:75-76` (staff manual-payment modal prefill under-states outstanding by refund amount) and `src/pages/InvoiceDetail.tsx:188-189` (staff invoice detail page header same shape). Both are pure browser React, staff-facing, Area 1 territory; out-of-scope for Area 2 Batch 2F. Filed for chat-Claude to formalize as Area 1 follow-up findings (one-line fix per site: `totalPaid = invoice?.paid_minor ?? 0`).
-- **Lovable after-merge actions:** Apply (none — no migrations); deploy `stripe-create-payment-intent`, `stripe-create-checkout` (both directly changed), plus downstream importers of `_shared/invoice-pdf.ts` (`generate-invoice-pdf`, `send-payment-receipt`). Run production SQL verification queries A–C in PR body. App behaviour spot-checks: see PR body §3.4.
+- **Last merged PR / branch:** PR #<filled at merge time> / `claude/refund-netting-staff-DUswW` (Batch 2F-followup).
+- **What shipped:** Batch 2F-followup closed J3-F19d — two staff-side React surfaces (`RecordPaymentModal`, `InvoiceDetail`) brought into refund-netting consistency with Batch 2F's edge-fn and PDF fixes. Closes the CC-8 cluster fully across all surfaces (edge fns, PDF mirrors, staff React). Two-line diff total.
+- **Lovable after-merge actions:** No edge function deploys (frontend-only). No migrations. Production SQL verification not required (no schema or RPC change). App behaviour spot-check required (1 check — see PR body §3.4).
 - **Lovable status:** pending until Jamie confirms.
-- **Production SQL verification:** required (queries A–C in PR body §3.3).
-- **App behaviour checks:** required (3 spot-checks: simple invoice with refund history; payment-plan invoice on partially-paid installment; PDF rendering of partially-refunded invoice).
-- **Next batch in active area:** Batch 2G — pick from remaining HIGHs. Recommendation: J4-F13 (parent's own messages invisible) — discrete RLS migration + hook rewrite, named in audit priority list as "high-confidence one-shot." Or a tiny Area 1 follow-up batch closing the two staff-side refund-blind sites (one-liner per file).
+- **Production SQL verification:** not required.
+- **App behaviour checks:** required (1 spot-check on `RecordPaymentModal` against a partially-refunded invoice).
+- **Next batch in active area:** Batch 2G — recommend J4-F13 (parent's own messages invisible) or J5-F3 (milestones server-side compute), chat-Claude to write prompt.
 - **Next area after this one closes:** Area 3 — Students & guardians (per `LESSONLOOP_PRODUCTION_ROADMAP.md` status table).
-- **Roadmap progress:** Area 1 closed (canary-walk verified, fix-pass shipped, CW-F2 fully validated 2026-05-02); Area 2 in progress at **14/17 HIGH** (was 11/15; +1 J3-F19, +2 J3-F19b/c, denominator increased to 17 by the two new HIGH findings); Areas 0, 3–16 pending.
-- **Next session first instruction:** Read `docs/HANDOVER_2026-05-02.md` for full project context if this is a fresh session. Otherwise, proceed to Batch 2G — chat-Claude will write the prompt when Jamie says go. The two staff-side refund-blind sites (`RecordPaymentModal.tsx`, `InvoiceDetail.tsx`) are documented in this PR's POLISH_NOTES and PR body for chat-Claude to slot.
+- **Roadmap progress:** Area 2 at **15/18 HIGH** (J3-F19d closed, denominator increased to 18). Area 1 closed. Areas 0, 3–16 pending.
+- **Next session first instruction:** Read `docs/HANDOVER_2026-05-02.md` if fresh session. Otherwise: chat-Claude writes Batch 2G prompt when Jamie says go.
 
 ---
 
@@ -25,14 +24,15 @@
 **Area 2 — Parent Portal (resumed; Area 1 fully closed)**
 
 - Walk: complete (`docs/audits/2026-04-area-2-parent-portal.md`)
-- Findings: 20 HIGH raw (across 17 fix briefs — J1-F31 added in earlier batches; J3-F19b + J3-F19c added in Batch 2F), 25 MED, ~110 LOW + portal-defense-1 (MED).
-- Fixes shipped: 14 of 17 HIGH (Batches 2A–2F). Net: 14/17 HIGH closed. Next: Batch 2G (TBD; recommendation J4-F13).
+- Findings: 20 HIGH raw (across 17 fix briefs — J1-F31 added in earlier batches; J3-F19b + J3-F19c added in Batch 2F; J3-F19d added in Batch 2F-followup), 25 MED, ~110 LOW + portal-defense-1 (MED).
+- Fixes shipped: 15 of 18 HIGH (Batches 2A–2F + 2F-followup). Net: 15/18 HIGH closed. Next: Batch 2G (TBD; recommendation J4-F13).
 - **Batch 2A (PR #373) — Lovable status:** confirmed complete 2026-04-29 06:48 UTC. Deployed 22 edge functions (20 named in PR body + 2 downstream importers of `_shared/auto-pay-reminder-core.ts` and `_shared/send-invoice-email-core.ts`).
 - **Batch 2B (PR #374) — Lovable status:** confirmed complete 2026-04-29 07:35 UTC. All three behaviour spot-checks (cancel booked make-up; decline offered make-up; accept offered make-up) passed end-to-end via impersonated parent JWT.
 - **Batch 2C (PR #375) — Lovable status:** confirmed complete 2026-04-29 12:05 UTC. Migration applied; queries A–E pass; recursion-proof SQL pass.
 - **Batch 2D (PR #376) — Lovable status:** confirmed complete 2026-04-29 UTC. All 5 tests PASS against Crescendo Music Agency demo org. DOM extraction across 32 lesson cards confirmed per-row resolver correctness; live override flip in Test 5 confirmed reactivity.
 - **Batch 2E (PR #377) — Lovable status:** confirmed complete 2026-04-29 23:42 UTC. Mixed-payer parent verification PASS (Helen Douglas, +£80 recovered); regression PASS on single-payer parent. Helen Douglas (demo-parent-3) household with the £80 CC2-TEST invoice for Lily Douglas left in place as permanent mixed-payer test data.
-- **Batch 2F (this PR) — Lovable status:** pending until Jamie confirms. CC-8 refund-netting four-site sweep via consolidation into `_shared/invoice-amount-due.ts`. J3-F19 + new HIGH J3-F19b + new HIGH J3-F19c.
+- **Batch 2F — Lovable status:** pending until Jamie confirms. CC-8 refund-netting four-site sweep via consolidation into `_shared/invoice-amount-due.ts`. J3-F19 + new HIGH J3-F19b + new HIGH J3-F19c.
+- **Batch 2F-followup (this PR) — Lovable status:** pending until Jamie confirms. Frontend-only two-line diff closing J3-F19d (staff-side React mirror). No migrations, no edge fn deploys.
 
 **Area 1 — Billing & invoicing (fully closed; canary-walk verified)**
 
