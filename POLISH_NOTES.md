@@ -3963,3 +3963,43 @@ are applied.
   status table stays at `done | all+canary | 🟢 closed (canary-walk
   verified)`. The closure status was conditional on the fix-pass
   shipping; this PR delivers what PR #378 attempted.
+
+---
+
+## Area 1 — Canary walk fix-pass — Batch 1Z follow-on (2026-05-02)
+
+Closes Batch 1Z's residual CW-F9 drift exposed during post-PR-#379 verification, plus the empirical Step 4 trigger sanity test, plus three new findings filed in the audit doc (CW-F11 revised, CW-F12 new HIGH, CW-F13 new LOW).
+
+### Fixed
+
+- **CW-F9 LL-2026-00008 one-row remediation** (`supabase/migrations/20260502060707_b3014717-572d-464a-9cad-b73456c3ecf5.sql`). Post-PR-#379 verification surfaced one residual drift row: invoice `LL-2026-00008` (`d7041eeb-6e4d-488a-af82-5c7a70cafea8`) with `paid_minor=5000` but `Σ paid installments=3333`. Forensics via audit_log: a pre-CW-F9 legacy code path had set `inst #1.status='paid'` without attaching a payment row. The CW-F9 backfill's inner cursor `WHERE status IN ('pending','overdue','partially_paid')` therefore correctly skipped inst #1 and allocated the orphan 5000 cash to inst #2 (3333) + inst #3 (1667); downstream `recalculate_installment_status` then demoted inst #1 to `'pending'` (zero attached payments). Net result: cash moved off the earliest-due installment. Remediation migration reattached the two existing payment rows (3333 → inst #1, 1667 → inst #2) and re-ran `recalculate_installment_status` on all three. Final state: inst #1 paid (3333/3333), inst #2 partially_paid (1667/3333), inst #3 pending (0/3334). Pre-flight count guard makes the migration a no-op if the broken state is no longer present. Backfill code itself is correct for fresh writes; the failure mode required a pre-existing legacy-paid-without-payment shape, which only LL-2026-00008 had.
+
+- **CW-F4 trigger sanity verified empirically** (`supabase/migrations/20260502060816_a9efa577-1b53-41d8-aec8-e3e0f2467175.sql`). Self-cleaning one-shot migration: picks one existing invoice from a non-demo org, captures initial `pdf_rev`, runs no-op UPDATE on one row in each of `invoice_items`, `invoice_installments`, `payments`, asserts each UPDATE bumps `pdf_rev` by exactly 1, then restores `pdf_rev` to its initial value via direct UPDATE on `invoices` (which has no statement-level trigger of its own, so the restore doesn't cascade). Migration applied successfully (any failure would have raised + rolled back); pdf_rev returned to its starting value (12). Verifies the 9 statement-level triggers fire correctly on UPDATE — INSERT and DELETE paths are not exercised by this test but the structural state is confirmed by the pg_trigger inventory query (9 triggers with the expected names). The no-op UPDATE pattern is cheaper than insert-then-delete and worth recording as a verification methodology pattern for future trigger sanity tests.
+
+### Filed in audit doc (NOT fixed in this batch)
+
+- **CW-F11 (re-characterised LOW → NO-OP)**: original finding said `void_invoice` references nonexistent `'partially_paid'` installment status. Diagnostic 1 in Session 6 showed the column is `text` (no enum constraint) and one row in production currently has `status='partially_paid'` (inst #3 of LL-2026-00008). The branch is correctly defensive against a real status that exists in the data. No fix needed; revisit alongside CW-F12.
+
+- **CW-F12 (NEW, HIGH)**: `invoice_installments.status` is a plain `text` column with no enum, no CHECK, no domain. Any caller can write any string. Root enabling condition for the pre-CW-F9 `status='paid'`-without-attached-payment shape on LL-2026-00008. Severity HIGH because the schema has zero protection against arbitrary status strings — future code paths could write any value undetected. Remediation requires a domain or enum migration with NOT VALID + per-row inspection pattern (similar to CW-F2). Deferred to Track 0.X / future schema-hardening batch.
+
+- **CW-F13 (NEW, LOW)**: CW-F9 backfill design assumption — "installments in `status='paid'` are correctly paid (have attached payment rows summing to amount_minor)" — failed for one legacy row (LL-2026-00008's inst #1). Backfill skipped the misflagged installment and allocated to later ones; downstream recalc demoted the misflagged installment to pending. One-row remediation shipped (above). No code fix needed: `record_manual_payment` going forward doesn't produce the legacy shape, so the assumption holds for fresh writes. Filed as documentation for any future similar finding.
+
+### Filed for follow-up (workflow improvements)
+
+- **Verification methodology — no-op UPDATE for trigger sanity**: Lovable's CW-F4 sanity test substituted a no-op UPDATE pattern (`UPDATE table SET col = col`) for the prompt's specified INSERT-then-DELETE pattern. The substitution is cleaner: tests one trigger fire per surface (vs two for insert-then-delete), no FK pain on test data, easily restorable via direct UPDATE on the parent table that has no statement-level trigger of its own. Codify this as the canonical trigger sanity test shape going forward.
+
+- **CW-F12 vs CW-F2 schema-integrity gap pattern**: Two separate findings now identified where production schema lacks integrity constraints that the codebase implicitly assumes. CW-F2 was payer-XOR on invoices (CHECK constraint added NOT VALID; awaiting validation). CW-F12 is unconstrained `text` status on invoice_installments. Worth doing a broader schema audit for similar gaps when convenient — likely candidates: any other status columns DB-wide, any foreign-key-like columns without actual FK constraints, any uniqueness invariants enforced only in code.
+
+### Migrations
+
+- `supabase/migrations/20260502060707_b3014717-572d-464a-9cad-b73456c3ecf5.sql`
+- `supabase/migrations/20260502060816_a9efa577-1b53-41d8-aec8-e3e0f2467175.sql`
+
+Both applied directly to production via `supabase--migration` (no PR — these were one-shot migrations under the Session 6 verification flow, applied with chat-Claude's explicit go-ahead after diagnostic queries confirmed the residual state).
+
+### Cross-references
+
+- Audit doc Session 6 entry: `docs/audits/2026-04-area-1-canary-walk.md` (cumulative session log).
+- Findings catalog rows: CW-F11 (revised), CW-F12 (NEW), CW-F13 (NEW) — same audit doc.
+- Severity rollup updated: HIGH 3/4 closed (CW-F12 NEW, deferred); MED 2/2 closed; LOW 2/5 closed (CW-F13 in remediation; CW-F11 → NO-OP; CW-F5/F7/F10 deferred to Track 0.X).
+- Batch 1Z fully closed.
