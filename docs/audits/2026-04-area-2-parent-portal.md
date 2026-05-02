@@ -13,7 +13,7 @@
 |---|---|---|---|---|---|
 | J1 | PortalHome | 966 | walked | 30 (3 withdrawn) | 5 |
 | J2 | PortalSchedule | 711 | walked | 23 (3 withdrawn) | 2 |
-| J3 | PortalInvoices | 611 | walked | 28 (6 withdrawn) | 3 |
+| J3 | PortalInvoices | 611 | walked | 30 (6 withdrawn) | 5 |
 | J4 | PortalMessages | 434 | walked | 19 (7 withdrawn) | 2 |
 | J5 | PortalPractice | 169 + 1254 components | walked | 20 (1 withdrawn) | 2 |
 | J6 | PortalContinuation | 503 + 822 hooks + 421 edge fn | walked | 11 (1 withdrawn) | 2 |
@@ -21,7 +21,7 @@
 | J8 | PortalProfile | 335 + 210 PaymentMethods + 71 hooks | walked | 9 | 1 |
 | Cross | ChildFilter, PortalLayout, PortalSidebar, PortalBottomNav, ChildSwitcher, Header, ParentLoopAssist (273 + 170 hook + 374 edge fn), useUnreadMessages, useProactiveAlerts, useParentOnboardingProgress, useRealtimePortalPayments, useParentCredits, usePortalLink, PortalWelcomeDialog, ParentOnboardingChecklist | ~2300 | walked | 14 (1 withdrawn, 1 folded) | 0 |
 
-**HIGH count: 17 raw findings → 14 distinct fix briefs.** Two duplicates merged (J1-F17 ≡ J3-F7 money-math; J6-F4 + J6-F5 are facets of one RLS migration), plus J5-F11 + J6-F4/F5 + J8-F9 are three separate RLS-lockdown migrations.
+**HIGH count: 19 raw findings → 16 distinct fix briefs.** Two duplicates merged (J1-F17 ≡ J3-F7 money-math; J6-F4 + J6-F5 are facets of one RLS migration), plus J5-F11 + J6-F4/F5 + J8-F9 are three separate RLS-lockdown migrations. J3-F19b and J3-F19c filed and closed together with J3-F19 in Batch 2F as a single consolidation refactor (`_shared/invoice-amount-due.ts`); they share one fix shape but are tracked as three separate findings.
 
 **MED count: 25.** **LOW count: ~110.**
 
@@ -136,7 +136,9 @@
 | J3-F16 | MED | Stripe quota | Each drawer-open creates a new PaymentIntent unless within 300ms close debounce. Chatty. | `PaymentDrawer.tsx:63-78` | Reuse PI within session by invoice + (installmentId or 'remaining' or 'full') key. |
 | J3-F17 | **HIGH** | Cache race | Inline payment success animation invalidates query cache before webhook fires. Parent sees "Payment Successful" but list still shows "Awaiting Payment". | `PaymentDrawer.tsx:391-397` | Either poll for `paid_minor` change before showing success, or call a `verify-payment-intent` edge function. |
 | J3-F18 | MED | Verification | Embedded `confirmPayment` `return_url` lacks `payment_intent` param consumption. Always falls through to 16s polling. | `PaymentDrawer.tsx:380-381` + `PortalInvoices.tsx:117-126` | Add `verify-payment-intent` edge function; PortalInvoices reads `payment_intent` URL param. |
-| J3-F19 | **HIGH** | Refund netting | `stripe-create-payment-intent` calculates `amountDue` from raw `payments.SUM`. Doesn't subtract refunds. Partially-refunded simple invoices rejected as "fully paid". | `supabase/functions/stripe-create-payment-intent/index.ts:118-124` | Replace `amountDue` with `invoice.total_minor - (invoice.paid_minor || 0)`. |
+| ~~J3-F19~~ | ~~**HIGH**~~ | ~~Refund netting~~ | ~~`stripe-create-payment-intent` calculates `amountDue` from raw `payments.SUM`. Doesn't subtract refunds. Partially-refunded simple invoices rejected as "fully paid".~~ | ~~`supabase/functions/stripe-create-payment-intent/index.ts:118-124`~~ | ~~Replace `amountDue` with `invoice.total_minor - (invoice.paid_minor \|\| 0)`.~~ [shipped 2026-05-02, this PR — replaced inline math with shared `invoiceAmountDue()` and `installmentOutstanding()` helpers; closed via consolidation refactor into `supabase/functions/_shared/invoice-amount-due.ts`] |
+| ~~J3-F19b~~ | ~~**HIGH**~~ | ~~Refund netting (PDF)~~ | ~~Invoice PDF renderers (`_shared/invoice-pdf.ts:372` + browser mirror `src/lib/invoice-pdf-renderer.ts:367`) compute the simple-invoice "Paid"/"Amount Due" totals block from `(inv.payments \|\| []).reduce(...)`. Same refund-blind pattern as J3-F19; partially-refunded simple invoices show gross paid figure on the PDF, mis-stating the amount due. The payment-plan totals block 80 lines below already uses the canonical `inv.paid_minor ?? 0` pattern under a J4-F23 comment.~~ | ~~`supabase/functions/_shared/invoice-pdf.ts:372`; `src/lib/invoice-pdf-renderer.ts:367`~~ | ~~Replace `(inv.payments \|\| []).reduce(...)` with `inv.paid_minor ?? 0`. Mirror the existing J4-F23 fix pattern in the payment-plan block of the same file. Severity HIGH because customer-visible money math on a financial document.~~ [shipped 2026-05-02, this PR — both renderers updated byte-identically; J4-F23 comment shape adopted at the new fix site] |
+| ~~J3-F19c~~ | ~~**HIGH**~~ | ~~Checkout parity~~ | ~~`stripe-create-checkout` was a stale clone of `stripe-create-payment-intent` that missed three billing fixes: (1) same refund-blind `amountDue` (line 134); (2) installment status filters (lines 152, 174) used `["pending", "overdue"]` only — skipping `partially_paid`, so partially-paid installments were rejected for payment; (3) no `installmentOutstanding()` helper — used raw `installment.amount_minor` (lines 159, 183) so prior partial payments and refunds on a specific installment were not deducted. A parent on the redirect-to-Stripe payment flow (`useStripePayment`) hitting a partially-paid or partially-refunded invoice would be quoted the wrong amount or rejected outright.~~ | ~~`supabase/functions/stripe-create-checkout/index.ts:127-138, 152, 159, 174, 183`~~ | ~~Bring to full parity with sibling via shared `_shared/invoice-amount-due.ts` module: import `invoiceAmountDue`, `installmentOutstanding`, `PENDING_INSTALLMENT_STATUSES`. Severity HIGH (parents on redirect-to-Stripe flow could be quoted wrong amounts or rejected on partially-paid invoices).~~ [shipped 2026-05-02, this PR — full parity achieved; both functions now import the shared module and stay aligned by construction] |
 | J3-F20 | LOW | Edge case | Stripe customer email lookup could match across orgs. | `stripe-create-payment-intent:262-264` | Filter `stripe.customers.list` results by metadata `lessonloop_org_id`. |
 | J3-F21 | MED | Audit | `stripe-create-payment-intent` writes no `audit_log` entry. Only `stripe_checkout_sessions` row. Inconsistent with canonical audit table convention. (Not HIGH — completion *does* land in audit_log.) | `stripe-create-payment-intent:341-361` | Add `INSERT INTO audit_log` (action='payment_initiated'). |
 | ~~J3-F22~~ | — | — | **WITHDRAWN** — `stripe-update-payment-preferences` is per-guardian. | — | — |
@@ -326,10 +328,12 @@
 **Pattern:** Validation exists in hooks but not in RLS / RPC. Hook validation is UX, not security.
 **Fix shape:** Audit against RLS for every parent INSERT path. Filed as cross-cutting walk after J8.
 
-### CC-8 — Refund netting drift
-**Findings:** J3-F19
-**Pattern:** Edge function reimplemented "total paid" math without consulting `invoice.paid_minor` (which is canonical, refund-netted via `recalculate_invoice_paid`).
-**Fix shape:** One-line replacement in `stripe-create-payment-intent`. Worth a sweep across other edge functions / RPCs that compute "amount due" — could surface more.
+### ~~CC-8 — Refund netting drift~~ [Area 2 portion closed 2026-05-02, Batch 2F; Area 1 staff-side follow-up filed]
+~~**Findings:** J3-F19, J3-F19b (NEW), J3-F19c (NEW)~~
+~~**Pattern:** Edge function reimplemented "total paid" math without consulting `invoice.paid_minor` (which is canonical, refund-netted via `recalculate_invoice_paid`).~~
+~~**Fix shape:** shipped 2026-05-02 in Batch 2F as a four-site sweep — `stripe-create-payment-intent`, `stripe-create-checkout`, `_shared/invoice-pdf.ts`, `src/lib/invoice-pdf-renderer.ts` — via consolidation into `supabase/functions/_shared/invoice-amount-due.ts`. The audit's anticipation that "other edge functions / RPCs that compute amount due could surface more" was correct: J3-F19b and J3-F19c filed and closed in the same PR.~~
+
+**Filed for Area 1 follow-up (out of Area 2 scope):** Batch 2F's grep-D broader sweep also surfaced two same-bug-class refund-blind sites in pure-staff-facing browser React, NOT covered by the edge-function consolidation: `src/components/invoices/RecordPaymentModal.tsx:75-76` and `src/pages/InvoiceDetail.tsx:188-189`. Both compute `totalPaid` from `invoice?.payments?.reduce(...)` instead of `invoice.paid_minor ?? 0`; on partially-refunded invoices both under-state outstanding by the refund amount. Fix is one line per site (replace the reduce with the canonical pattern). These are Area 1 (Billing) territory — staff modal prefill + staff invoice detail header — and were filed as Area 1 follow-on findings for chat-Claude to formalize and slot into a future batch (likely as `CW-F14` and `CW-F15` against `docs/audits/2026-04-area-1-canary-walk.md`, or a fresh mini-audit if preferred).
 
 ### CC-9 — Inline payment success / cache race
 **Findings:** J3-F17
@@ -354,7 +358,7 @@ In the order I'd ship (by smallest blast radius / cleanest fix first):
 4. ~~**CC-3 hardcoded currency sweep — PORTAL ONLY shipped 2026-04-29** (Lovable commit 37163c52). Closed J1-F15 (HIGH) + J3-F2/J3-F10/J3-F15 (LOW, currency portion) across 13 sites in 4 portal files.~~ **Broader sweep shipped 2026-04-29 in this PR.** Closed CC-F8 + the LOW + cross-cutting portion of CC-3 across 59 files (39 B-1 React/hooks/pages, 20 B-2 edge functions). Bucket A (KEEPS) — `src/lib/utils.ts`, `OrgContext`, `onboarding-setup`, test fixtures, seed-demo-* — explicitly out of scope by design (canonical defaults). Pre-flight 123 occurrences across 75 files → post-sweep 45 across 17 files. HIGH count for the area unchanged: J1-F15's HIGH portion was already counted in PR #370.
 5. ~~**J2-F24 — location reschedule policy override resolved** — small page change in PortalSchedule.~~ [shipped 2026-04-29, this PR — frontend-only fix; per-lesson policy resolver replaces page-level resolution]
 6. ~~**CC-2 money-math mismatch** — single migration changes `get_parent_dashboard_data`; hook change in `useParentInvoices`. Closes J1-F17 + J3-F7.~~ [shipped 2026-04-29, this PR — also closed CC-F7 (LOW) in the same `parent-loopassist-chat` edge fn]
-7. **J3-F19 refund netting in payment-intent** — one-line edge function fix. Lovable deploys.
+7. ~~**J3-F19 refund netting in payment-intent** — one-line edge function fix. Lovable deploys.~~ [shipped 2026-05-02, this PR — Batch 2F. Expanded into a CC-8 sweep covering J3-F19 + J3-F19b (PDF mirrors) + J3-F19c (stripe-create-checkout parity via shared module).]
 8. ~~**J1-F4 cancel-booked-makeup RPC** — new SECURITY DEFINER RPC; PortalHome change to call it; deletes deprecated raw UPDATE. Lovable applies migration.~~ [shipped 2026-04-29, this PR]
 9. **CC-1 audit gaps** — single migration adds audit_log writes inside the relevant SECURITY DEFINER paths and audit triggers on `make_up_waitlist` + `term_continuation_responses`. Closes J1-F1 + J1-F29 + J6-F10 + J8-F6 + J8-F7 (and folds J3-F21/F23 if scope allows). [partial: `make_up_waitlist` + `term_continuation_responses` triggers shipped 2026-04-29, this PR — closed J1-F1 + J1-F29 in same migration `20260513100000`; Stripe edge fn audit gaps + continuation-respond audit remain (J6-F10 + J8-F6 + J8-F7)]
 10. **J4-F13 parent's own messages invisible** — RLS policy add + hook query rewrite. Two-part fix (RLS migration + Lovable hook change). High-confidence one-shot.
@@ -384,6 +388,7 @@ J1-F3, J1-F7, J1-F8, J1-F9, J1-F11, J1-F14, J1-F16, J1-F19, J1-F20, J1-F21, J1-F
 - `docs/AUDIT_LOG_AUDIT_2026-04-26.md` — coverage list does not include `make_up_waitlist`. Track 0.1 follow-up needed (folded into CC-1 above).
 - `docs/MIGRATION_CONVENTIONS.md` — not yet read; I'll read it before authoring the migration in fix #3 / #6.
 - `docs/SECURITY_MODEL.md` — verified parent-RBAC section against actual RLS for the tables I touched. Did not exhaustively cross-check.
+- **`docs/audits/2026-04-area-1-canary-walk.md` — Area 1 staff-side refund-blind sites filed during Batch 2F's CC-8 grep-D sweep** (2026-05-02). Surfaced in `src/components/invoices/RecordPaymentModal.tsx:75-76` (staff manual-payment modal prefill) and `src/pages/InvoiceDetail.tsx:188-189` (staff invoice detail page header). Same bug class as J3-F19/J3-F19b (uses `invoice?.payments?.reduce(...)` instead of canonical `invoice.paid_minor ?? 0`). Out of Area 2 scope; Area 1 audit doc should formalize as CW-F14 / CW-F15 (or rename) and slot into a follow-up batch — fix is one line per file.
 
 ---
 

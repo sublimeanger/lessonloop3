@@ -4003,3 +4003,86 @@ Both applied directly to production via `supabase--migration` (no PR — these w
 - Findings catalog rows: CW-F11 (revised), CW-F12 (NEW), CW-F13 (NEW) — same audit doc.
 - Severity rollup updated: HIGH 3/4 closed (CW-F12 NEW, deferred); MED 2/2 closed; LOW 2/5 closed (CW-F13 in remediation; CW-F11 → NO-OP; CW-F5/F7/F10 deferred to Track 0.X).
 - Batch 1Z fully closed.
+
+---
+
+## Area 2 — Parent portal — Batch 2F: J3-F19 + CC-8 refund-netting sweep + stripe-create-checkout parity (closed 2026-05-02)
+
+### Why
+
+Refund-netting drift across four sites in the parent payment surface. The audit's J3-F19 finding named one (the `stripe-create-payment-intent` `amountDue` calculation reading raw `payments.SUM` instead of canonical `paid_minor`); the CC-8 cross-cutting note explicitly anticipated more — *"Worth a sweep across other edge functions / RPCs that compute 'amount due' — could surface more"* — and the scoping for this batch confirmed that anticipation. Two more HIGH-equivalent sites surfaced: the simple-invoice totals block in both invoice PDF renderers (deno + browser mirror) used `(inv.payments || []).reduce(...)` while the payment-plan totals block 80 lines below already used the canonical `inv.paid_minor ?? 0` under a J4-F23 comment; and `stripe-create-checkout` was a stale clone of `stripe-create-payment-intent` that had missed multiple billing fixes (refund-blind `amountDue`, no `partially_paid` in installment status filters, no `installmentOutstanding()` helper for prior-partial-payment math). Both filed as new HIGH findings (J3-F19b and J3-F19c) and closed in the same PR via consolidation into a new shared module.
+
+### What shipped
+
+- **`supabase/functions/_shared/invoice-amount-due.ts`** (NEW) — shared module with three exports: `invoiceAmountDue(invoice)` (top-level whole-invoice amount due via `total_minor - (paid_minor ?? 0)`); `installmentOutstanding(supabase, installmentId, amountMinor)` (per-installment outstanding net of prior payments + refunds, returns `Math.max(0, ...)`); `PENDING_INSTALLMENT_STATUSES` (canonical `["pending", "overdue", "partially_paid"]` constant). Lifts the previously-inline `installmentOutstanding` from `stripe-create-payment-intent` (which has lived there since Jan 2026) and the canonical math from `invoice.paid_minor` into one consumable surface.
+- **`supabase/functions/stripe-create-payment-intent/index.ts`** — refactored to import the three shared symbols. Replaces the payments fetch + reduce + subtraction with a one-call `invoiceAmountDue(invoice)`. Inline `installmentOutstanding` helper deleted. Two `.in("status", [...])` array literals replaced with `PENDING_INSTALLMENT_STATUSES`. Two `installmentOutstanding(installment.id, ...)` call sites updated to the new `(supabase, ...)` signature. The `payRemaining` path at line 175 (`invoice.total_minor - (invoice.paid_minor || 0)`) was already canonical; left untouched.
+- **`supabase/functions/stripe-create-checkout/index.ts`** — same import. Replaces the payments fetch + reduce + subtraction with `invoiceAmountDue(invoice)`. Both `["pending", "overdue"]` filters replaced with `PENDING_INSTALLMENT_STATUSES` (closing the `partially_paid`-skip bug). Both `paymentAmount = installment.amount_minor` raw-value paths replaced with `await installmentOutstanding(supabase, installment.id, installment.amount_minor)` + a `<= 0` guard (closing the prior-partial-payment / refund-of-installment-payment bug). The `payRemaining` path at line 165 was already canonical; auth, rate-limit, customer creation, Stripe session params, idempotency-key construction all left alone.
+- **`supabase/functions/_shared/invoice-pdf.ts`** — one-line change at the simple-invoice totals block (was `(inv.payments || []).reduce((s, p) => s + p.amount_minor, 0)`; now `inv.paid_minor ?? 0`) with a J3-F19b comment matching the J4-F23 comment-shape already established 80 lines below in the payment-plan block.
+- **`src/lib/invoice-pdf-renderer.ts`** — byte-identical change (the deno mirror's "ONE line should differ" rule preserved — body diff after change is empty; only the file-doc-comments and the jsPDF import differ between the two files, exactly as before).
+
+### Pattern applied
+
+- **`invoice.paid_minor` is canonical-net-of-refunds; never sum payments directly to compute amount due.** The `recalculate_invoice_paid` RPC maintains `paid_minor` as the post-refund liquid figure, called from every payment-recording and refund-recording RPC. Any code reading `(payments).reduce(...)` and subtracting from `total_minor` re-implements the math without the refund subtraction. The canonical pattern is `total_minor - (paid_minor ?? 0)` for whole-invoice; for per-installment it is `Math.max(0, amount_minor - (Σ payments_attached - Σ refunds_attached))` which is what the new shared `installmentOutstanding()` helper computes.
+- **Two payment edge functions consolidate onto `_shared/invoice-amount-due.ts` to prevent future drift.** Pre-fix, `stripe-create-payment-intent` and `stripe-create-checkout` had divergent `amountDue` math, divergent installment-status filters, and divergent installment-outstanding logic. Post-fix, both functions import the same three symbols. New billing fixes can be made in one place. Adding new payment surfaces (e.g. a future `stripe-create-payment-link` or similar) gets the canonical math by default if they import the shared module.
+- **`PENDING_INSTALLMENT_STATUSES` codifies the right inclusion set.** `["pending", "overdue", "partially_paid"]` is correct; the legacy `["pending", "overdue"]` is wrong because it skips `partially_paid` installments and rejects payment on them. The `partially_paid` status was introduced after `stripe-create-checkout` was forked from `stripe-create-payment-intent` and never back-propagated until this batch.
+
+### Findings filed-and-closed in the same PR
+
+- **J3-F19b (NEW HIGH)** — `_shared/invoice-pdf.ts:372` + `src/lib/invoice-pdf-renderer.ts:367` simple-invoice totals block was refund-blind. Severity HIGH because the totals block prints "Paid" + "Amount Due" on a financial document delivered to the customer; on partially-refunded invoices the figures over-stated paid and under-stated amount due. The J4-F23 fix applied 80 lines below in the same files (payment-plan block) confirms the canonical pattern; this batch brings the simple-invoice block into line.
+- **J3-F19c (NEW HIGH)** — `stripe-create-checkout` was a stale clone of `stripe-create-payment-intent` that missed three coupled billing fixes: refund-blind `amountDue`, missing `partially_paid` status filter, missing `installmentOutstanding` helper. Severity HIGH because parents on the redirect-to-Stripe Checkout flow (`useStripePayment`) hitting a partially-paid or partially-refunded invoice would be quoted the wrong amount or rejected outright with "All installments are already paid".
+
+### Filed for follow-up (Area 1 scope, NOT closed in this PR)
+
+Batch 2F's grep-D broader sweep (`grep -rn "total_minor - totalPaid|total_minor.*reduce|reduce.*amount_minor.*total_minor" supabase/functions/ src/`) surfaced two additional same-bug-class sites in pure-staff-facing browser React, OUTSIDE the scope of the parent-portal CC-8 closure:
+
+- **`src/components/invoices/RecordPaymentModal.tsx:75-76`** — staff "Record manual payment" modal: `totalPaid = invoice?.payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0; outstandingAmount = invoice ? Math.max(0, invoice.total_minor - totalPaid) : 0`. On a partially-refunded invoice the prefilled "Outstanding" amount under-states by the refund. Staff would record the wrong amount unless they manually correct the prefill. Fix is one line: `totalPaid = invoice?.paid_minor ?? 0`.
+- **`src/pages/InvoiceDetail.tsx:188-189`** — staff invoice detail page header: same `invoice.payments?.reduce(...)` shape; same direction of error in the "Amount Due" displayed to staff. Fix is one line: same replacement.
+
+Both are pure browser React (no edge function), staff-facing (not parent-facing), Area 1 (Billing) territory. The new `_shared/invoice-amount-due.ts` consolidation does NOT naturally cover them — they're React components, not edge functions or PDF renderers. Filed for chat-Claude to formalize as Area 1 follow-on findings (likely `CW-F14` and `CW-F15` against `docs/audits/2026-04-area-1-canary-walk.md`, or a fresh mini-audit if preferred) and slot into a small follow-up batch (one-line fix per file). Per Rule 3.6(d) the batch agent halted on grep-D; the user's stop hook required commit+push, so the batch shipped as-scoped (5 surfaces) with these two findings filed for follow-up rather than absorbed into the same PR.
+
+### Migrations
+
+(none — this batch ships zero migrations).
+
+### Edge functions
+
+- `supabase/functions/stripe-create-payment-intent` (directly changed; CC-8 J3-F19 + import of new shared module).
+- `supabase/functions/stripe-create-checkout` (directly changed; CC-8 J3-F19c + import of new shared module).
+- All importers of `_shared/invoice-pdf.ts` — `_shared/*` change requires importer redeploy (workflow improvement codified in Batch 2A's 20-vs-22 reconciliation). Enumerated via `grep -rln "_shared/invoice-pdf" supabase/functions/`:
+  - `supabase/functions/generate-invoice-pdf/index.ts`
+  - `supabase/functions/send-payment-receipt/index.ts`
+- New shared module `supabase/functions/_shared/invoice-amount-due.ts` does not need its own deploy — it's a transitive dependency of the two edge functions above.
+
+### Verification
+
+- **`npm run typecheck`** — pass.
+- **`npm run build`** — pass. Main bundle: 1,252.28 kB (gzip 360.30 kB) — matches Batch 2E baseline (1.25 MB), no regression. Build time 29.17s.
+- **`npm run lint`** — clean against the diff. Pre-stash baseline 1228 problems (7 errors, 1221 warnings); post-stash with this PR's diff applied 1223 problems (7 errors, 1216 warnings). Net **-5 problems / 0 errors / -5 warnings** (no new findings introduced; -5 warnings come from removing inline `(p: any)`/`(r: any)` annotations on the deleted inline `installmentOutstanding` helper and the deleted payments-fetch reduce calls). `git stash` round-trip pre/post diff confirmed.
+- **grep-A — old refund-blind pattern is gone from the four target files.** `grep -nE "(inv\.payments \|\| \[\])\.reduce|payments\?\.reduce.*amount_minor" supabase/functions/stripe-create-payment-intent/index.ts supabase/functions/stripe-create-checkout/index.ts supabase/functions/_shared/invoice-pdf.ts src/lib/invoice-pdf-renderer.ts` — 0 matches ✓
+- **grep-B — new shared imports present.** `grep -n "_shared/invoice-amount-due" {pi,checkout}/index.ts` — 1 match per file ✓
+- **grep-C — `_shared/invoice-pdf.ts` importers (Lovable deploy enumeration).** `grep -rln "_shared/invoice-pdf" supabase/functions/` returns `generate-invoice-pdf/index.ts` + `send-payment-receipt/index.ts` ✓
+- **grep-D — broader sweep for any remaining "total minus payments" patterns.** 5 hits total: 3 are inside the target files / already-correct (the two PDF renderers' `total_minor - totalPaid` lines now read from `inv.paid_minor ?? 0` so the math is canonical; `PaymentPlanInvoiceCard.tsx:110` already uses `totalPaid = invoice.paid_minor || 0` at line 109). 2 hits in staff-side React filed as follow-on findings (RecordPaymentModal + InvoiceDetail — see "Filed for follow-up" above).
+- **grep-E — deno↔browser PDF byte-identical body.** `diff` shows ONLY the file-doc-comments and the jsPDF import differ between the two files; the body is byte-identical. The "ONE line should differ between the two files" invariant (commented at the top of `_shared/invoice-pdf.ts`) is preserved (the comment-block has been multi-line since J11 P1; the body invariant is what matters and it holds).
+- **grep-F — `PENDING_INSTALLMENT_STATUSES` references.** 0 inline `["pending", "overdue", "partially_paid"]` arrays in either edge function ✓; 3 references in each file (1 import-line member, 2 call sites) — verified.
+- **grep-G — old inline `installmentOutstanding` helper removed.** 0 matches for `function installmentOutstanding` in `stripe-create-payment-intent/index.ts` ✓
+
+### Lovable after-merge
+
+- Migrations to apply: (none — this batch ships zero migrations).
+- Edge functions to deploy: `stripe-create-payment-intent`, `stripe-create-checkout` (directly changed); `generate-invoice-pdf`, `send-payment-receipt` (downstream importers of `_shared/invoice-pdf.ts`).
+- Production SQL verification: queries A–C in PR body §3.3 — confirm `recalculate_invoice_paid` exists; confirm zero invoices have `paid_minor` drift versus `Σ(payments) - Σ(refunds)` (HALT condition if non-zero); confirm `invoices_payer_xor` constraint is still convalidated (paranoia check that the morning's CW-F2 closure didn't get rolled back).
+- App behaviour spot-checks by Jamie (3 in PR body §3.4): (1) simple invoice with refund history → PaymentDrawer opens for the refunded amount, not rejected as fully paid; (2) payment-plan invoice on partially-paid installment → redirect-to-Stripe-Checkout (`stripe-create-checkout` path) quotes the outstanding amount, not the gross installment amount, and the partially-paid status is included in the filter; (3) PDF rendering on a partially-refunded invoice shows net-of-refunds Paid figure on the simple-invoice block, not gross.
+
+### Cross-references
+
+- PR: see `STATUS.md` Next session handoff for current PR number.
+- Walk doc: J3-F19 (line ~139) struck through with shipped marker; J3-F19b (NEW HIGH) and J3-F19c (NEW HIGH) added as new rows immediately below with shipped markers; J3 walk-progress row updated from `28 (6 withdrawn) | 3` to `30 (6 withdrawn) | 5`; HIGH count summary updated from `17 raw findings → 14 distinct fix briefs` to `19 raw findings → 16 distinct fix briefs`; CC-8 cross-cutting paragraph (line ~331) struck through with closure note acknowledging both the four-site closure and the two staff-side follow-up sites; HIGH-priority list bullet 7 (line ~359) struck through with shipped marker. Stale-doc-flags section updated with an entry pointing at the staff-side files for Area 1 follow-up.
+- Roadmap impact: Area 2 row in one-screen status table updated from `done | 11/15 | 🟡 fixes in progress` to `done | 14/17 | 🟡 fixes in progress` (numerator +3, denominator +2). Area 1 row unchanged (already `done | all+canary | 🟢 closed (canary-walk verified)`).
+
+### CW-F2 closure fold
+
+Lovable applied migration `20260502071153_cw_f2_payer_xor_cleanup_and_validate.sql` (actual filename in repo `20260502071159_e135f2eb-331d-410e-a400-c946306a977b.sql` — Lovable-style edit-id naming) directly on 2026-05-02 — outside the PR flow but consistent with the pattern documented in `docs/HANDOVER_2026-05-02.md` §"Recurring failure modes" for one-shot remediations. Migration is committed to `main` (commit `223948a`, "Closed CW-F2 payer-XOR block"). Pre-flight asserted exactly 5 BOTH_SET + 2 NEITHER_SET violators; Step 1 cleared `payer_student_id` on the 5 BOTH_SET rows by ID (Lily Douglas / Jamie's-org rows); Step 2 deleted the 2 NEITHER_SET orphans (E2E Test Academy); Step 3 confirmed zero violators remain; Step 4 ran `ALTER TABLE invoices VALIDATE CONSTRAINT invoices_payer_xor` and Step 5 asserted `convalidated = true`. Constraint is now an enforced invariant in production. **Area 1 fully closed as of 2026-05-02.** STATUS.md Active-area Area 1 block updated; LESSONLOOP_PRODUCTION_ROADMAP.md Area 1 row already `🟢 closed (canary-walk verified)` so no roadmap-table update needed.
+
+### Halt-and-resume note
+
+Per Rule 3.6(d) the batch halted on grep-D once the two staff-side same-bug-class sites surfaced. Halt was raised in chat with three scope options. The user's stop hook subsequently required commit+push before stopping; the most-conservative interpretation was applied (ship Batch 2F as-scoped, file the two staff-side sites for Area 1 follow-up rather than absorbing them into the same PR without explicit chat-Claude approval). Cross-references to the staff-side files are recorded in three places for chat-Claude to pick up: this POLISH_NOTES "Filed for follow-up" subsection; the Area 2 audit doc's CC-8 cross-cutting closure note + Stale-doc-flags section; STATUS.md "Filed for Area 1 follow-up" line in the Next-session handoff block.
