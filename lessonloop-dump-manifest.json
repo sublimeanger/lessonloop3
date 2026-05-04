@@ -1,0 +1,789 @@
+{
+  "ok": true,
+  "bucket": "migration-dump",
+  "manifest_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/_manifest.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9fbWFuaWZlc3QuanNvbiIsImlhdCI6MTc3NzkxMTY0MiwiZXhwIjoxNzc4NTE2NDQyfQ.0YcEwbN8hYkoGvMmkHVI8uLGbd8CmxzpDxOUpNZgDYw",
+  "entries": [
+    {
+      "schema": "public",
+      "table": "_spotcheck_log",
+      "row_count": 20,
+      "file": "public._spotcheck_log.json",
+      "size_bytes": 9240,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public._spotcheck_log.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuX3Nwb3RjaGVja19sb2cuanNvbiIsImlhdCI6MTc3NzkxMTYwOSwiZXhwIjoxNzc4NTE2NDA5fQ.j14a8xfY1fZvQOBsueUxpgiMzr2mHsILxTaAunFlK6Y"
+    },
+    {
+      "schema": "public",
+      "table": "ai_action_proposals",
+      "row_count": 31,
+      "file": "public.ai_action_proposals.json",
+      "size_bytes": 23516,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.ai_action_proposals.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYWlfYWN0aW9uX3Byb3Bvc2Fscy5qc29uIiwiaWF0IjoxNzc3OTExNjA5LCJleHAiOjE3Nzg1MTY0MDl9.l5IRtIhn43l8BzFWL7_myNAARee5jTJbMokj3hqBdQw"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "row_count": 7744,
+      "file": "public.ai_conversations.json",
+      "size_bytes": 2063042,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.ai_conversations.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYWlfY29udmVyc2F0aW9ucy5qc29uIiwiaWF0IjoxNzc3OTExNjEwLCJleHAiOjE3Nzg1MTY0MTB9.gKcFeyLYatmqLvVlb5Lv2G3RAAYwsd2P3a9luflpGAQ"
+    },
+    {
+      "schema": "public",
+      "table": "ai_interaction_metrics",
+      "row_count": 4,
+      "file": "public.ai_interaction_metrics.json",
+      "size_bytes": 1572,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.ai_interaction_metrics.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYWlfaW50ZXJhY3Rpb25fbWV0cmljcy5qc29uIiwiaWF0IjoxNzc3OTExNjEwLCJleHAiOjE3Nzg1MTY0MTB9.0rABYqgqu4enBqsgbAZLt0Ot3yqD8-pWidPEma5g4fQ"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "row_count": 7790,
+      "file": "public.ai_messages.json",
+      "size_bytes": 2860382,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.ai_messages.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYWlfbWVzc2FnZXMuanNvbiIsImlhdCI6MTc3NzkxMTYxMSwiZXhwIjoxNzc4NTE2NDExfQ.PKidQ_92lVLEFosuU7Qt_SlpVJDSX4ziuJWm7hhY63A"
+    },
+    {
+      "schema": "public",
+      "table": "attendance_records",
+      "row_count": 3208,
+      "file": "public.attendance_records.json",
+      "size_bytes": 1327079,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.attendance_records.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYXR0ZW5kYW5jZV9yZWNvcmRzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MTIsImV4cCI6MTc3ODUxNjQxMn0.xvtPUgX1Vvuh1VsoxSmRBo3lng0ZSnCpE2ftWwjpnew"
+    },
+    {
+      "schema": "public",
+      "table": "audit_log",
+      "row_count": 25956,
+      "file": "public.audit_log.json",
+      "size_bytes": 23423270,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.audit_log.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYXVkaXRfbG9nLmpzb24iLCJpYXQiOjE3Nzc5MTE2MTYsImV4cCI6MTc3ODUxNjQxNn0.fTkbWk7HhsWLoBjAfTussYdoFWpfGsVXRXOkH4yQHhc"
+    },
+    {
+      "schema": "public",
+      "table": "auto_pay_attempts",
+      "row_count": 0,
+      "file": "public.auto_pay_attempts.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.auto_pay_attempts.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYXV0b19wYXlfYXR0ZW1wdHMuanNvbiIsImlhdCI6MTc3NzkxMTYxNiwiZXhwIjoxNzc4NTE2NDE2fQ.xFKuZd9uDCjL3lf1LNlbsFPzNWvziz8iig19lyN2CmA"
+    },
+    {
+      "schema": "public",
+      "table": "availability_blocks",
+      "row_count": 19,
+      "file": "public.availability_blocks.json",
+      "size_bytes": 6293,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.availability_blocks.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYXZhaWxhYmlsaXR5X2Jsb2Nrcy5qc29uIiwiaWF0IjoxNzc3OTExNjE2LCJleHAiOjE3Nzg1MTY0MTZ9.hfvbJxmLHxBxOV0522XQoo-r6FaylPm_P9lFocjaXfo"
+    },
+    {
+      "schema": "public",
+      "table": "availability_templates",
+      "row_count": 0,
+      "file": "public.availability_templates.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.availability_templates.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYXZhaWxhYmlsaXR5X3RlbXBsYXRlcy5qc29uIiwiaWF0IjoxNzc3OTExNjE3LCJleHAiOjE3Nzg1MTY0MTd9.W2RK9QfCUuU3QTn4FJsF08IRWfz_WgIFrxU_apXEmEg"
+    },
+    {
+      "schema": "public",
+      "table": "billing_runs",
+      "row_count": 12,
+      "file": "public.billing_runs.json",
+      "size_bytes": 6812,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.billing_runs.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYmlsbGluZ19ydW5zLmpzb24iLCJpYXQiOjE3Nzc5MTE2MTcsImV4cCI6MTc3ODUxNjQxN30.YKRDVYetNiCk3-FCcI54JUexX9gpx7yQIQzdsfXM7Rs"
+    },
+    {
+      "schema": "public",
+      "table": "booking_page_instruments",
+      "row_count": 4,
+      "file": "public.booking_page_instruments.json",
+      "size_bytes": 825,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.booking_page_instruments.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYm9va2luZ19wYWdlX2luc3RydW1lbnRzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MTcsImV4cCI6MTc3ODUxNjQxN30.MvOOffspNIAz4zTUUTWuBeJa7GLIi_4neaYa5DQ11j8"
+    },
+    {
+      "schema": "public",
+      "table": "booking_page_teachers",
+      "row_count": 1,
+      "file": "public.booking_page_teachers.json",
+      "size_bytes": 204,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.booking_page_teachers.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYm9va2luZ19wYWdlX3RlYWNoZXJzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MTcsImV4cCI6MTc3ODUxNjQxN30.L1nWziAWd8YXkewzVA73aROEiMkjsPv5QrJbrTEfWzE"
+    },
+    {
+      "schema": "public",
+      "table": "booking_pages",
+      "row_count": 4,
+      "file": "public.booking_pages.json",
+      "size_bytes": 2220,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.booking_pages.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuYm9va2luZ19wYWdlcy5qc29uIiwiaWF0IjoxNzc3OTExNjE4LCJleHAiOjE3Nzg1MTY0MTh9.KtzfP-11Sfslck7oFR5nwR80F9o3zIKWuH9KUGvgvLo"
+    },
+    {
+      "schema": "public",
+      "table": "calendar_connections",
+      "row_count": 2,
+      "file": "public.calendar_connections.json",
+      "size_bytes": 1608,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.calendar_connections.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuY2FsZW5kYXJfY29ubmVjdGlvbnMuanNvbiIsImlhdCI6MTc3NzkxMTYxOCwiZXhwIjoxNzc4NTE2NDE4fQ.mr5CgbidzTV8GMeJVukplod4JT4XoZJIgvnoR7sbL-U"
+    },
+    {
+      "schema": "public",
+      "table": "calendar_event_mappings",
+      "row_count": 0,
+      "file": "public.calendar_event_mappings.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.calendar_event_mappings.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuY2FsZW5kYXJfZXZlbnRfbWFwcGluZ3MuanNvbiIsImlhdCI6MTc3NzkxMTYxOCwiZXhwIjoxNzc4NTE2NDE4fQ.X2NraD0lIMEMeKFePzV8VdhE9uv77AQG96cX-7UKGuQ"
+    },
+    {
+      "schema": "public",
+      "table": "cancellation_feedback",
+      "row_count": 0,
+      "file": "public.cancellation_feedback.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.cancellation_feedback.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuY2FuY2VsbGF0aW9uX2ZlZWRiYWNrLmpzb24iLCJpYXQiOjE3Nzc5MTE2MTgsImV4cCI6MTc3ODUxNjQxOH0.sVFXd65ig0mjYKkf-c997YayYbeZTOMCOpure0Jr3Yk"
+    },
+    {
+      "schema": "public",
+      "table": "closure_dates",
+      "row_count": 393,
+      "file": "public.closure_dates.json",
+      "size_bytes": 114579,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.closure_dates.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuY2xvc3VyZV9kYXRlcy5qc29uIiwiaWF0IjoxNzc3OTExNjE4LCJleHAiOjE3Nzg1MTY0MTh9.0IZTqyMRcFRgG_uEYaByFD-H5lhGMzxm4aUx2ew31js"
+    },
+    {
+      "schema": "public",
+      "table": "enrolment_waitlist",
+      "row_count": 5,
+      "file": "public.enrolment_waitlist.json",
+      "size_bytes": 5081,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.enrolment_waitlist.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuZW5yb2xtZW50X3dhaXRsaXN0Lmpzb24iLCJpYXQiOjE3Nzc5MTE2MTksImV4cCI6MTc3ODUxNjQxOX0.1lpxbSEJNtGnH2_CYOEOlp2kuzWTxtNy8ZztnWI8Z8w"
+    },
+    {
+      "schema": "public",
+      "table": "enrolment_waitlist_activity",
+      "row_count": 0,
+      "file": "public.enrolment_waitlist_activity.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.enrolment_waitlist_activity.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuZW5yb2xtZW50X3dhaXRsaXN0X2FjdGl2aXR5Lmpzb24iLCJpYXQiOjE3Nzc5MTE2MTksImV4cCI6MTc3ODUxNjQxOX0.MX6ZtTQGloKkcUK3oXyWsytYhK1eoX1c--_Xni3_IPc"
+    },
+    {
+      "schema": "public",
+      "table": "exam_boards",
+      "row_count": 6,
+      "file": "public.exam_boards.json",
+      "size_bytes": 1132,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.exam_boards.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuZXhhbV9ib2FyZHMuanNvbiIsImlhdCI6MTc3NzkxMTYxOSwiZXhwIjoxNzc4NTE2NDE5fQ.rhZNLFisaYnioluW8ujdiJ5DpQHHFWevMfZamaclAjU"
+    },
+    {
+      "schema": "public",
+      "table": "external_busy_blocks",
+      "row_count": 0,
+      "file": "public.external_busy_blocks.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.external_busy_blocks.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuZXh0ZXJuYWxfYnVzeV9ibG9ja3MuanNvbiIsImlhdCI6MTc3NzkxMTYxOSwiZXhwIjoxNzc4NTE2NDE5fQ.4F-Tp1bm3X8IEI6OOPPHI_SpG5aMuAPSZ0t_jkksAKw"
+    },
+    {
+      "schema": "public",
+      "table": "grade_change_history",
+      "row_count": 0,
+      "file": "public.grade_change_history.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.grade_change_history.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuZ3JhZGVfY2hhbmdlX2hpc3RvcnkuanNvbiIsImlhdCI6MTc3NzkxMTYyMCwiZXhwIjoxNzc4NTE2NDIwfQ.ARCxHQYZ07qb8Sg-i7PsCMxRt7Pn3hInmC4vZh05lnA"
+    },
+    {
+      "schema": "public",
+      "table": "grade_levels",
+      "row_count": 36,
+      "file": "public.grade_levels.json",
+      "size_bytes": 10025,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.grade_levels.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuZ3JhZGVfbGV2ZWxzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjAsImV4cCI6MTc3ODUxNjQyMH0.zrG9Du21gPF8CCassoBgr-oXw9Tev4Lx50xjpj6EEhk"
+    },
+    {
+      "schema": "public",
+      "table": "guardian_payment_preferences",
+      "row_count": 2,
+      "file": "public.guardian_payment_preferences.json",
+      "size_bytes": 859,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.guardian_payment_preferences.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuZ3VhcmRpYW5fcGF5bWVudF9wcmVmZXJlbmNlcy5qc29uIiwiaWF0IjoxNzc3OTExNjIwLCJleHAiOjE3Nzg1MTY0MjB9.iWBMw684duWW7JNe2rjFBk5krhXWrc9-_EFKna6inYI"
+    },
+    {
+      "schema": "public",
+      "table": "guardians",
+      "row_count": 631,
+      "file": "public.guardians.json",
+      "size_bytes": 192699,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.guardians.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuZ3VhcmRpYW5zLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjAsImV4cCI6MTc3ODUxNjQyMH0.oDkewTZO7wRzv50yWfmcVemvaD5Jfip1ItyGec0xRTc"
+    },
+    {
+      "schema": "public",
+      "table": "hint_completions",
+      "row_count": 8,
+      "file": "public.hint_completions.json",
+      "size_bytes": 1412,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.hint_completions.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuaGludF9jb21wbGV0aW9ucy5qc29uIiwiaWF0IjoxNzc3OTExNjIxLCJleHAiOjE3Nzg1MTY0MjF9.m2mY61vIO2NfNVOMRXSFg2jNYud0DfF4vVIqJX1AVjk"
+    },
+    {
+      "schema": "public",
+      "table": "instruments",
+      "row_count": 53,
+      "file": "public.instruments.json",
+      "size_bytes": 10259,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.instruments.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuaW5zdHJ1bWVudHMuanNvbiIsImlhdCI6MTc3NzkxMTYyMSwiZXhwIjoxNzc4NTE2NDIxfQ.2D0X9RejpHutXZkGkXV3dPakNO5zLYty-clmRNzhIc0"
+    },
+    {
+      "schema": "public",
+      "table": "internal_messages",
+      "row_count": 5,
+      "file": "public.internal_messages.json",
+      "size_bytes": 2481,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.internal_messages.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuaW50ZXJuYWxfbWVzc2FnZXMuanNvbiIsImlhdCI6MTc3NzkxMTYyMSwiZXhwIjoxNzc4NTE2NDIxfQ.W0mvBKf6nJIAhBndShiKXfyLo4bYBHEzUNUurOQQl2Q"
+    },
+    {
+      "schema": "public",
+      "table": "invites",
+      "row_count": 46,
+      "file": "public.invites.json",
+      "size_bytes": 16368,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.invites.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuaW52aXRlcy5qc29uIiwiaWF0IjoxNzc3OTExNjIyLCJleHAiOjE3Nzg1MTY0MjJ9.1AQJe4BXCRxZHoE8_lbYaCSTZo0ygg7_rFR_R7YLrF8"
+    },
+    {
+      "schema": "public",
+      "table": "invoice_installments",
+      "row_count": 21,
+      "file": "public.invoice_installments.json",
+      "size_bytes": 8773,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.invoice_installments.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuaW52b2ljZV9pbnN0YWxsbWVudHMuanNvbiIsImlhdCI6MTc3NzkxMTYyMiwiZXhwIjoxNzc4NTE2NDIyfQ.K-LWb7yg67ikhcyTQryxHNYATfiNdsGBRI7-6-6W9lA"
+    },
+    {
+      "schema": "public",
+      "table": "invoice_items",
+      "row_count": 428,
+      "file": "public.invoice_items.json",
+      "size_bytes": 176454,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.invoice_items.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuaW52b2ljZV9pdGVtcy5qc29uIiwiaWF0IjoxNzc3OTExNjIyLCJleHAiOjE3Nzg1MTY0MjJ9.qk1T6nbbdzYlK9j01dRXc5ox5dv3m9EHAwjbh4_fNq0"
+    },
+    {
+      "schema": "public",
+      "table": "invoice_number_sequences",
+      "row_count": 12,
+      "file": "public.invoice_number_sequences.json",
+      "size_bytes": 1102,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.invoice_number_sequences.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuaW52b2ljZV9udW1iZXJfc2VxdWVuY2VzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjIsImV4cCI6MTc3ODUxNjQyMn0.5Z12OZcHkd8i4xdPDPYvqN6MP9Z0sKDUDXWWx3Y6k10"
+    },
+    {
+      "schema": "public",
+      "table": "invoices",
+      "row_count": 345,
+      "file": "public.invoices.json",
+      "size_bytes": 276666,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.invoices.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuaW52b2ljZXMuanNvbiIsImlhdCI6MTc3NzkxMTYyMywiZXhwIjoxNzc4NTE2NDIzfQ.zF7iqN7Ak60dgNppboS8LmZ1T-qKQAeFlDvriqIaUN0"
+    },
+    {
+      "schema": "public",
+      "table": "kickstarter_signups",
+      "row_count": 0,
+      "file": "public.kickstarter_signups.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.kickstarter_signups.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMua2lja3N0YXJ0ZXJfc2lnbnVwcy5qc29uIiwiaWF0IjoxNzc3OTExNjIzLCJleHAiOjE3Nzg1MTY0MjN9.wN50uMwArn-w-KDtogPHXEPnxH67YJOAm7l5B6-tBlw"
+    },
+    {
+      "schema": "public",
+      "table": "lead_activities",
+      "row_count": 4,
+      "file": "public.lead_activities.json",
+      "size_bytes": 1458,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.lead_activities.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubGVhZF9hY3Rpdml0aWVzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjMsImV4cCI6MTc3ODUxNjQyM30.N-1vztLgzcb2VS2TwX3uYlgwpcoydiWRiJamjulFXMk"
+    },
+    {
+      "schema": "public",
+      "table": "lead_follow_ups",
+      "row_count": 0,
+      "file": "public.lead_follow_ups.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.lead_follow_ups.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubGVhZF9mb2xsb3dfdXBzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjMsImV4cCI6MTc3ODUxNjQyM30.8Q4O8D1Wox_bi_JlhW32G8xRBvTFY1D_R4r4vCwFS1A"
+    },
+    {
+      "schema": "public",
+      "table": "lead_students",
+      "row_count": 1,
+      "file": "public.lead_students.json",
+      "size_bytes": 364,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.lead_students.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubGVhZF9zdHVkZW50cy5qc29uIiwiaWF0IjoxNzc3OTExNjIzLCJleHAiOjE3Nzg1MTY0MjN9.wyHJSjUO9iOT3zqbHW9tTSUBt4CKoW6hz5tNRnu8CnQ"
+    },
+    {
+      "schema": "public",
+      "table": "leads",
+      "row_count": 11,
+      "file": "public.leads.json",
+      "size_bytes": 6720,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.leads.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubGVhZHMuanNvbiIsImlhdCI6MTc3NzkxMTYyNCwiZXhwIjoxNzc4NTE2NDI0fQ.xV_a9M8ATU4tTS1ONKdTp83IxIKbi8TiQ2ZowmYgXeM"
+    },
+    {
+      "schema": "public",
+      "table": "lesson_notes",
+      "row_count": 2,
+      "file": "public.lesson_notes.json",
+      "size_bytes": 1217,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.lesson_notes.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubGVzc29uX25vdGVzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjQsImV4cCI6MTc3ODUxNjQyNH0.3dTUtzP5ztXzFO0C304jDAPpjtmikdCrw1ucnFQ5cig"
+    },
+    {
+      "schema": "public",
+      "table": "lesson_participants",
+      "row_count": 4679,
+      "file": "public.lesson_participants.json",
+      "size_bytes": 1230165,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.lesson_participants.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubGVzc29uX3BhcnRpY2lwYW50cy5qc29uIiwiaWF0IjoxNzc3OTExNjI0LCJleHAiOjE3Nzg1MTY0MjR9.XpQ75dF7KASuc-QGG4iEOgvFYBJ3BLmbA2P_CZPo1E8"
+    },
+    {
+      "schema": "public",
+      "table": "lessons",
+      "row_count": 4677,
+      "file": "public.lessons.json",
+      "size_bytes": 4163041,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.lessons.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubGVzc29ucy5qc29uIiwiaWF0IjoxNzc3OTExNjI1LCJleHAiOjE3Nzg1MTY0MjV9.N7bsF86P7kbi2WL4ZQND-1E8KfFpizCgDjjtMcWj0fM"
+    },
+    {
+      "schema": "public",
+      "table": "locations",
+      "row_count": 58,
+      "file": "public.locations.json",
+      "size_bytes": 25104,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.locations.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubG9jYXRpb25zLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjUsImV4cCI6MTc3ODUxNjQyNX0.Gj0YhxATBGeDK7uz_OOJ1ljkCj5rCRdbMHznSVXPZgU"
+    },
+    {
+      "schema": "public",
+      "table": "make_up_credits",
+      "row_count": 14,
+      "file": "public.make_up_credits.json",
+      "size_bytes": 8095,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.make_up_credits.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubWFrZV91cF9jcmVkaXRzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjYsImV4cCI6MTc3ODUxNjQyNn0.ra3VQ-Yl26Cjf5lNyXLiXekysddor5l8PvxgbFV-oV8"
+    },
+    {
+      "schema": "public",
+      "table": "make_up_policies",
+      "row_count": 80,
+      "file": "public.make_up_policies.json",
+      "size_bytes": 20860,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.make_up_policies.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubWFrZV91cF9wb2xpY2llcy5qc29uIiwiaWF0IjoxNzc3OTExNjI2LCJleHAiOjE3Nzg1MTY0MjZ9.zWVJ4jRAD-fBR2Tc0Mc__imy77RsS1x7jIoBbbKzem0"
+    },
+    {
+      "schema": "public",
+      "table": "make_up_waitlist",
+      "row_count": 15,
+      "file": "public.make_up_waitlist.json",
+      "size_bytes": 14285,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.make_up_waitlist.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubWFrZV91cF93YWl0bGlzdC5qc29uIiwiaWF0IjoxNzc3OTExNjI2LCJleHAiOjE3Nzg1MTY0MjZ9.6lySYiRqywUNk7KRA-yDD-4QC08fDB5LrzIKlEyzuPc"
+    },
+    {
+      "schema": "public",
+      "table": "message_batches",
+      "row_count": 0,
+      "file": "public.message_batches.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.message_batches.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubWVzc2FnZV9iYXRjaGVzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjYsImV4cCI6MTc3ODUxNjQyNn0.mnXUd9Avg7fuSf0bPbv1Eh_yDPwMaq41NJjkl2rZ8kw"
+    },
+    {
+      "schema": "public",
+      "table": "message_log",
+      "row_count": 1308,
+      "file": "public.message_log.json",
+      "size_bytes": 1818159,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.message_log.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubWVzc2FnZV9sb2cuanNvbiIsImlhdCI6MTc3NzkxMTYyNywiZXhwIjoxNzc4NTE2NDI3fQ.4b5HBzvYKb_EeaFLn8Asbtvz3JamHPgKKgRxzlq1-ko"
+    },
+    {
+      "schema": "public",
+      "table": "message_requests",
+      "row_count": 5,
+      "file": "public.message_requests.json",
+      "size_bytes": 2919,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.message_requests.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubWVzc2FnZV9yZXF1ZXN0cy5qc29uIiwiaWF0IjoxNzc3OTExNjI3LCJleHAiOjE3Nzg1MTY0Mjd9.joqwsQZaYy4J7prVp2L_mRpWLwf_IUycXkWpwmqpg_0"
+    },
+    {
+      "schema": "public",
+      "table": "message_templates",
+      "row_count": 0,
+      "file": "public.message_templates.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.message_templates.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubWVzc2FnZV90ZW1wbGF0ZXMuanNvbiIsImlhdCI6MTc3NzkxMTYyNywiZXhwIjoxNzc4NTE2NDI3fQ.ehNClPi5CP0jviHgSmtrCofoO2SuN-gJkpUUaJYMS7U"
+    },
+    {
+      "schema": "public",
+      "table": "notification_preferences",
+      "row_count": 6,
+      "file": "public.notification_preferences.json",
+      "size_bytes": 2288,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.notification_preferences.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMubm90aWZpY2F0aW9uX3ByZWZlcmVuY2VzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjcsImV4cCI6MTc3ODUxNjQyN30.03zaazDQGavI6YpqJZ45lvvxvR87xM1p4rX7beqmpyw"
+    },
+    {
+      "schema": "public",
+      "table": "org_memberships",
+      "row_count": 147,
+      "file": "public.org_memberships.json",
+      "size_bytes": 33048,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.org_memberships.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMub3JnX21lbWJlcnNoaXBzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjgsImV4cCI6MTc3ODUxNjQyOH0.5mF5LQbMSDr6tQjTXATjMOJWDKp1V_Ulevwo3BCZrjA"
+    },
+    {
+      "schema": "public",
+      "table": "org_messaging_settings",
+      "row_count": 1,
+      "file": "public.org_messaging_settings.json",
+      "size_bytes": 368,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.org_messaging_settings.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMub3JnX21lc3NhZ2luZ19zZXR0aW5ncy5qc29uIiwiaWF0IjoxNzc3OTExNjI4LCJleHAiOjE3Nzg1MTY0Mjh9.gxun9VMGjmzlZJ5pb4L2iujMF8dg8dd8hOGAbLSC5-M"
+    },
+    {
+      "schema": "public",
+      "table": "organisations",
+      "row_count": 49,
+      "file": "public.organisations.json",
+      "size_bytes": 124840,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.organisations.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMub3JnYW5pc2F0aW9ucy5qc29uIiwiaWF0IjoxNzc3OTExNjI4LCJleHAiOjE3Nzg1MTY0Mjh9.QooLqXFVTvjyP3Ay_Pa8WhlCMIxlhmGpmdw-QCWm26Q"
+    },
+    {
+      "schema": "public",
+      "table": "payment_disputes",
+      "row_count": 0,
+      "file": "public.payment_disputes.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.payment_disputes.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucGF5bWVudF9kaXNwdXRlcy5qc29uIiwiaWF0IjoxNzc3OTExNjI5LCJleHAiOjE3Nzg1MTY0Mjl9.Nf71xEkyMsSsgv0b4sTCbIxhKdBiZzm0-UtdKxXh5L0"
+    },
+    {
+      "schema": "public",
+      "table": "payment_notifications",
+      "row_count": 0,
+      "file": "public.payment_notifications.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.payment_notifications.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucGF5bWVudF9ub3RpZmljYXRpb25zLmpzb24iLCJpYXQiOjE3Nzc5MTE2MjksImV4cCI6MTc3ODUxNjQyOX0.CGgNGRUsqq5jc9L5KVDRBSxRvfee3Yl7gE7asdSHwDk"
+    },
+    {
+      "schema": "public",
+      "table": "payments",
+      "row_count": 97,
+      "file": "public.payments.json",
+      "size_bytes": 40705,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.payments.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucGF5bWVudHMuanNvbiIsImlhdCI6MTc3NzkxMTYyOSwiZXhwIjoxNzc4NTE2NDI5fQ._0RoWQlHRu5hP0kGj9TQ_NLTE2o8FiyuiP-2iSOcYJM"
+    },
+    {
+      "schema": "public",
+      "table": "platform_audit_log",
+      "row_count": 3836,
+      "file": "public.platform_audit_log.json",
+      "size_bytes": 4068364,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.platform_audit_log.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucGxhdGZvcm1fYXVkaXRfbG9nLmpzb24iLCJpYXQiOjE3Nzc5MTE2MzAsImV4cCI6MTc3ODUxNjQzMH0.tYdGcFExMLLcIoq4eaPNQzQr7VG4mYLoaqjh2yYNltU"
+    },
+    {
+      "schema": "public",
+      "table": "practice_assignments",
+      "row_count": 17,
+      "file": "public.practice_assignments.json",
+      "size_bytes": 8735,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.practice_assignments.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucHJhY3RpY2VfYXNzaWdubWVudHMuanNvbiIsImlhdCI6MTc3NzkxMTYzMCwiZXhwIjoxNzc4NTE2NDMwfQ.Fu1l_SsAfhWCQY2HywRssmYbe1s-N_BXKKpLnk41aF8"
+    },
+    {
+      "schema": "public",
+      "table": "practice_logs",
+      "row_count": 61,
+      "file": "public.practice_logs.json",
+      "size_bytes": 26841,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.practice_logs.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucHJhY3RpY2VfbG9ncy5qc29uIiwiaWF0IjoxNzc3OTExNjMwLCJleHAiOjE3Nzg1MTY0MzB9.RYOvGhudaHRQp2ZL-AF2QYSwH4b7q0J5HWzc4vKJo1g"
+    },
+    {
+      "schema": "public",
+      "table": "practice_streaks",
+      "row_count": 4,
+      "file": "public.practice_streaks.json",
+      "size_bytes": 1165,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.practice_streaks.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucHJhY3RpY2Vfc3RyZWFrcy5qc29uIiwiaWF0IjoxNzc3OTExNjMwLCJleHAiOjE3Nzg1MTY0MzB9.015Uwl9u8ix6czjgCQLJHkbIlvefR2MW6BPyAhOhEP4"
+    },
+    {
+      "schema": "public",
+      "table": "profiles",
+      "row_count": 129,
+      "file": "public.profiles.json",
+      "size_bytes": 47740,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.profiles.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucHJvZmlsZXMuanNvbiIsImlhdCI6MTc3NzkxMTYzMSwiZXhwIjoxNzc4NTE2NDMxfQ.wASVR5l7AQODiqTqhbh9Nuk9X2Cv-6YaFkRyM7Revig"
+    },
+    {
+      "schema": "public",
+      "table": "push_tokens",
+      "row_count": 0,
+      "file": "public.push_tokens.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.push_tokens.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucHVzaF90b2tlbnMuanNvbiIsImlhdCI6MTc3NzkxMTYzMSwiZXhwIjoxNzc4NTE2NDMxfQ.-c53KRYr_ET8k9lmEsK5_dGF0WW1F0OzkgylWrf4ykA"
+    },
+    {
+      "schema": "public",
+      "table": "rate_cards",
+      "row_count": 54,
+      "file": "public.rate_cards.json",
+      "size_bytes": 15803,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.rate_cards.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmF0ZV9jYXJkcy5qc29uIiwiaWF0IjoxNzc3OTExNjMxLCJleHAiOjE3Nzg1MTY0MzF9.dAoViiX_PaayO3-bHXVfRyDZT5zwUgsW9zPegfCu6Kg"
+    },
+    {
+      "schema": "public",
+      "table": "rate_limits",
+      "row_count": 14148,
+      "file": "public.rate_limits.json",
+      "size_bytes": 3335423,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.rate_limits.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmF0ZV9saW1pdHMuanNvbiIsImlhdCI6MTc3NzkxMTYzMywiZXhwIjoxNzc4NTE2NDMzfQ.T6hNx0Mwf8K2X0-aS0w1GWH3OSaeC1PVfOynSTTHWu4"
+    },
+    {
+      "schema": "public",
+      "table": "recurrence_rules",
+      "row_count": 314,
+      "file": "public.recurrence_rules.json",
+      "size_bytes": 93812,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.recurrence_rules.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVjdXJyZW5jZV9ydWxlcy5qc29uIiwiaWF0IjoxNzc3OTExNjMzLCJleHAiOjE3Nzg1MTY0MzN9.PtDdD58IQl4Q3QpdzN0JftDAjtbOXyA1in4KJ1i512c"
+    },
+    {
+      "schema": "public",
+      "table": "recurring_invoice_templates",
+      "row_count": 0,
+      "file": "public.recurring_invoice_templates.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.recurring_invoice_templates.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVjdXJyaW5nX2ludm9pY2VfdGVtcGxhdGVzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MzMsImV4cCI6MTc3ODUxNjQzM30.ov_cDMxe2a3gyfkehoKL16dAXpdqSCB1OkvJpjR5NVg"
+    },
+    {
+      "schema": "public",
+      "table": "recurring_template_items",
+      "row_count": 0,
+      "file": "public.recurring_template_items.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.recurring_template_items.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVjdXJyaW5nX3RlbXBsYXRlX2l0ZW1zLmpzb24iLCJpYXQiOjE3Nzc5MTE2MzQsImV4cCI6MTc3ODUxNjQzNH0.pG0D8GQoY9gxuAcVUYlT821OhCezLBx9JEnyWvsEAxY"
+    },
+    {
+      "schema": "public",
+      "table": "recurring_template_recipients",
+      "row_count": 0,
+      "file": "public.recurring_template_recipients.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.recurring_template_recipients.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVjdXJyaW5nX3RlbXBsYXRlX3JlY2lwaWVudHMuanNvbiIsImlhdCI6MTc3NzkxMTYzNCwiZXhwIjoxNzc4NTE2NDM0fQ.V2rZf1unUbMyIgY4Bvexo08IvXkif-YSIn5aZk3ZwZ8"
+    },
+    {
+      "schema": "public",
+      "table": "recurring_template_run_errors",
+      "row_count": 0,
+      "file": "public.recurring_template_run_errors.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.recurring_template_run_errors.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVjdXJyaW5nX3RlbXBsYXRlX3J1bl9lcnJvcnMuanNvbiIsImlhdCI6MTc3NzkxMTYzNCwiZXhwIjoxNzc4NTE2NDM0fQ.mngN40YBt_tMS5GzqhGBjDU7lUsVOEFRfzsALC610lQ"
+    },
+    {
+      "schema": "public",
+      "table": "recurring_template_runs",
+      "row_count": 0,
+      "file": "public.recurring_template_runs.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.recurring_template_runs.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVjdXJyaW5nX3RlbXBsYXRlX3J1bnMuanNvbiIsImlhdCI6MTc3NzkxMTYzNCwiZXhwIjoxNzc4NTE2NDM0fQ.lhZMnHm72uHUil04GG3rQt8IXJUqLaJBLQjDDe9tisI"
+    },
+    {
+      "schema": "public",
+      "table": "refunds",
+      "row_count": 0,
+      "file": "public.refunds.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.refunds.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVmdW5kcy5qc29uIiwiaWF0IjoxNzc3OTExNjM0LCJleHAiOjE3Nzg1MTY0MzR9.voL9Fqj-Fefx7eetSXD5IvVrcV4qywIhI0PNZno-Omc"
+    },
+    {
+      "schema": "public",
+      "table": "resource_categories",
+      "row_count": 0,
+      "file": "public.resource_categories.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.resource_categories.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVzb3VyY2VfY2F0ZWdvcmllcy5qc29uIiwiaWF0IjoxNzc3OTExNjM1LCJleHAiOjE3Nzg1MTY0MzV9.cZRbfXDrwWpoWUhlmyzgtYxMxaKcv9ZVKaU-fZLilSI"
+    },
+    {
+      "schema": "public",
+      "table": "resource_category_assignments",
+      "row_count": 0,
+      "file": "public.resource_category_assignments.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.resource_category_assignments.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVzb3VyY2VfY2F0ZWdvcnlfYXNzaWdubWVudHMuanNvbiIsImlhdCI6MTc3NzkxMTYzNSwiZXhwIjoxNzc4NTE2NDM1fQ.qfDOGmUrAu6jW9eno4rHWFz2DjmfRL48UuQ9s_UHsRk"
+    },
+    {
+      "schema": "public",
+      "table": "resource_shares",
+      "row_count": 15,
+      "file": "public.resource_shares.json",
+      "size_bytes": 4456,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.resource_shares.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVzb3VyY2Vfc2hhcmVzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MzUsImV4cCI6MTc3ODUxNjQzNX0.2F1Zc2BRCTxxqn4_D4vBF-K9rgzrj7UeAPLMosOMYXI"
+    },
+    {
+      "schema": "public",
+      "table": "resources",
+      "row_count": 9,
+      "file": "public.resources.json",
+      "size_bytes": 4184,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.resources.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucmVzb3VyY2VzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MzUsImV4cCI6MTc3ODUxNjQzNX0.MMlYabNe5jndp9MUtWtGLKiq_08Rc5L5gJHxpPZcfzo"
+    },
+    {
+      "schema": "public",
+      "table": "rooms",
+      "row_count": 43,
+      "file": "public.rooms.json",
+      "size_bytes": 13506,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.rooms.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMucm9vbXMuanNvbiIsImlhdCI6MTc3NzkxMTYzNSwiZXhwIjoxNzc4NTE2NDM1fQ.gA89wP_8A929jSCvIxo_8BqnAbYQaGqpM1nFEwBo8MI"
+    },
+    {
+      "schema": "public",
+      "table": "stripe_checkout_sessions",
+      "row_count": 12,
+      "file": "public.stripe_checkout_sessions.json",
+      "size_bytes": 8390,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.stripe_checkout_sessions.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuc3RyaXBlX2NoZWNrb3V0X3Nlc3Npb25zLmpzb24iLCJpYXQiOjE3Nzc5MTE2MzYsImV4cCI6MTc3ODUxNjQzNn0.5UcBw24zMQH8i_XEwp0hpjtHPoYAbfm3M__iBEvf3Hg"
+    },
+    {
+      "schema": "public",
+      "table": "stripe_webhook_events",
+      "row_count": 0,
+      "file": "public.stripe_webhook_events.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.stripe_webhook_events.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuc3RyaXBlX3dlYmhvb2tfZXZlbnRzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MzYsImV4cCI6MTc3ODUxNjQzNn0.upjPqAbADgdBcmXBj1tN6NIAgFGJQfwUhvyPrevu588"
+    },
+    {
+      "schema": "public",
+      "table": "student_guardians",
+      "row_count": 525,
+      "file": "public.student_guardians.json",
+      "size_bytes": 194436,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.student_guardians.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuc3R1ZGVudF9ndWFyZGlhbnMuanNvbiIsImlhdCI6MTc3NzkxMTYzNiwiZXhwIjoxNzc4NTE2NDM2fQ.bfNs6CUoh9bICCXDlOHLKboIYsZb0Xq7CfQ8eBflyPo"
+    },
+    {
+      "schema": "public",
+      "table": "student_instruments",
+      "row_count": 315,
+      "file": "public.student_instruments.json",
+      "size_bytes": 130515,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.student_instruments.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuc3R1ZGVudF9pbnN0cnVtZW50cy5qc29uIiwiaWF0IjoxNzc3OTExNjM3LCJleHAiOjE3Nzg1MTY0Mzd9.zLsLhBxrn2GvP93vWiJYrSVRp45vrXD0Fmk593DCVfE"
+    },
+    {
+      "schema": "public",
+      "table": "student_teacher_assignments",
+      "row_count": 344,
+      "file": "public.student_teacher_assignments.json",
+      "size_bytes": 99786,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.student_teacher_assignments.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuc3R1ZGVudF90ZWFjaGVyX2Fzc2lnbm1lbnRzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MzcsImV4cCI6MTc3ODUxNjQzN30.0RjRze8gohA4zc_GBjrz1M4Kx4oct999NUNSKvNIevQ"
+    },
+    {
+      "schema": "public",
+      "table": "students",
+      "row_count": 3590,
+      "file": "public.students.json",
+      "size_bytes": 1962247,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.students.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuc3R1ZGVudHMuanNvbiIsImlhdCI6MTc3NzkxMTYzOCwiZXhwIjoxNzc4NTE2NDM4fQ.K6Vo4WSpa9XXAccC5RytE3vdRtH_7xYbkd0d7LFJrvk"
+    },
+    {
+      "schema": "public",
+      "table": "teacher_profiles",
+      "row_count": 0,
+      "file": "public.teacher_profiles.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.teacher_profiles.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMudGVhY2hlcl9wcm9maWxlcy5qc29uIiwiaWF0IjoxNzc3OTExNjM4LCJleHAiOjE3Nzg1MTY0Mzh9.TDi3ji-u1cpbUiGxitmElBYzvqEHRcbDCIVzz0gjs3g"
+    },
+    {
+      "schema": "public",
+      "table": "teachers",
+      "row_count": 89,
+      "file": "public.teachers.json",
+      "size_bytes": 41195,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.teachers.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMudGVhY2hlcnMuanNvbiIsImlhdCI6MTc3NzkxMTYzOCwiZXhwIjoxNzc4NTE2NDM4fQ.2eMd-JJsuEpT218FENgb9tv2tA18m4gNHpeikkCeS-Q"
+    },
+    {
+      "schema": "public",
+      "table": "term_adjustments",
+      "row_count": 0,
+      "file": "public.term_adjustments.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.term_adjustments.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMudGVybV9hZGp1c3RtZW50cy5qc29uIiwiaWF0IjoxNzc3OTExNjM4LCJleHAiOjE3Nzg1MTY0Mzh9.F5hzij41LkR27RePWlZI5sMC1p-Rb2YvdCH0AO6x0YA"
+    },
+    {
+      "schema": "public",
+      "table": "term_continuation_responses",
+      "row_count": 0,
+      "file": "public.term_continuation_responses.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.term_continuation_responses.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMudGVybV9jb250aW51YXRpb25fcmVzcG9uc2VzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MzgsImV4cCI6MTc3ODUxNjQzOH0.BB428S8fTH0yqXgyy_rHRU35Mu4qhnhGIZ_H5R4x_kc"
+    },
+    {
+      "schema": "public",
+      "table": "term_continuation_runs",
+      "row_count": 0,
+      "file": "public.term_continuation_runs.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.term_continuation_runs.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMudGVybV9jb250aW51YXRpb25fcnVucy5qc29uIiwiaWF0IjoxNzc3OTExNjM4LCJleHAiOjE3Nzg1MTY0Mzh9.zm9IotgMWpWScAj7lkUDGiOreV6DE7enUO7x5TfaM6E"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "row_count": 26,
+      "file": "public.terms.json",
+      "size_bytes": 6947,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.terms.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMudGVybXMuanNvbiIsImlhdCI6MTc3NzkxMTYzOSwiZXhwIjoxNzc4NTE2NDM5fQ.WtUbKE8qKBVdFV9weCG9tW8GAlZY6oC05KjMNHIyLQ8"
+    },
+    {
+      "schema": "public",
+      "table": "time_off_blocks",
+      "row_count": 1,
+      "file": "public.time_off_blocks.json",
+      "size_bytes": 342,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.time_off_blocks.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMudGltZV9vZmZfYmxvY2tzLmpzb24iLCJpYXQiOjE3Nzc5MTE2MzksImV4cCI6MTc3ODUxNjQzOX0.c-wb2Qd9E2w5F-3vvF3fGBZFJfEXY4vYk5a-myH3Lms"
+    },
+    {
+      "schema": "public",
+      "table": "xero_connections",
+      "row_count": 1,
+      "file": "public.xero_connections.json",
+      "size_bytes": 1894,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.xero_connections.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMueGVyb19jb25uZWN0aW9ucy5qc29uIiwiaWF0IjoxNzc3OTExNjM5LCJleHAiOjE3Nzg1MTY0Mzl9.u6eNm0fvhEiEduhLv0l_JUDkbBY8MpTZVGDAV1F47J4"
+    },
+    {
+      "schema": "public",
+      "table": "xero_entity_mappings",
+      "row_count": 0,
+      "file": "public.xero_entity_mappings.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.xero_entity_mappings.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMueGVyb19lbnRpdHlfbWFwcGluZ3MuanNvbiIsImlhdCI6MTc3NzkxMTY0MCwiZXhwIjoxNzc4NTE2NDQwfQ.2mXdsoM1YH0E6IHBXI5wl2_82TlRaisvt7alXrldZh8"
+    },
+    {
+      "schema": "public",
+      "table": "zoom_meeting_mappings",
+      "row_count": 0,
+      "file": "public.zoom_meeting_mappings.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/public.zoom_meeting_mappings.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9wdWJsaWMuem9vbV9tZWV0aW5nX21hcHBpbmdzLmpzb24iLCJpYXQiOjE3Nzc5MTE2NDAsImV4cCI6MTc3ODUxNjQ0MH0.t_2uQQaVnfIPf_Yv-TEEiwjFMMEAtZZT-GewJXjhrlc"
+    },
+    {
+      "schema": "auth",
+      "table": "users",
+      "row_count": 129,
+      "file": "auth.users.json",
+      "size_bytes": 71349,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/auth.users.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9hdXRoLnVzZXJzLmpzb24iLCJpYXQiOjE3Nzc5MTE2NDAsImV4cCI6MTc3ODUxNjQ0MH0.zPMnFWjwiwjBX9ndrNzxOjPJ3pERfIJp0uV6A_dFtXE"
+    },
+    {
+      "schema": "auth",
+      "table": "identities",
+      "row_count": 0,
+      "file": "auth.identities.json",
+      "size_bytes": 2,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/auth.identities.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9hdXRoLmlkZW50aXRpZXMuanNvbiIsImlhdCI6MTc3NzkxMTY0MCwiZXhwIjoxNzc4NTE2NDQwfQ.vjskTJd37Fbaupkpaa2i8-Fjgc2hJrHLW5UdikEgA1o"
+    },
+    {
+      "schema": "storage",
+      "table": "buckets",
+      "row_count": 5,
+      "file": "storage.buckets.json",
+      "size_bytes": 1341,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/storage.buckets.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9zdG9yYWdlLmJ1Y2tldHMuanNvbiIsImlhdCI6MTc3NzkxMTY0MCwiZXhwIjoxNzc4NTE2NDQwfQ.kAyMV3Kgaipk12zvsXUcvICdDqb3i9BPDjqF8c2KIGw"
+    },
+    {
+      "schema": "storage",
+      "table": "objects",
+      "row_count": 109,
+      "file": "storage.objects.json",
+      "size_bytes": 50713,
+      "signed_url": "https://ximxgnkpcswbvfrkkmjq.supabase.co/storage/v1/object/sign/migration-dump/storage.objects.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTQ5N2EyZi1iZWM5LTQ0NDgtODlkZi1mY2M0ZWNiN2M3ZjMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtaWdyYXRpb24tZHVtcC9zdG9yYWdlLm9iamVjdHMuanNvbiIsImlhdCI6MTc3NzkxMTY0MiwiZXhwIjoxNzc4NTE2NDQyfQ.Q-tgKNKvl--wTJ9Q_IBvjkO4iBeh9prEhrxEXEt5qiY"
+    }
+  ],
+  "totals": {
+    "tables": 97,
+    "rows": 81716,
+    "bytes": 48226833,
+    "errors": 0
+  }
+}
