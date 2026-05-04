@@ -257,36 +257,61 @@ Deno.serve(async (req) => {
     });
   }
 
-  // System tables: cron.job, storage.buckets, storage.objects
-  const systemTables: Array<{ schema: string; table: string }> = [
-    { schema: "cron", table: "job" },
-    { schema: "storage", table: "buckets" },
-    { schema: "storage", table: "objects" },
-  ];
-  for (const { schema, table } of systemTables) {
-    try {
-      const rows = await fetchAllRows(schema, table);
-      const file = `${schema}.${table}.json`;
-      const { size, signed_url } = await uploadJson(file, rows);
-      manifest.push({
-        schema,
-        table,
-        row_count: rows.length,
-        file,
-        size_bytes: size,
-        signed_url,
-      });
-    } catch (e) {
-      manifest.push({
-        schema,
-        table,
-        row_count: 0,
-        file: `${schema}.${table}.json`,
-        size_bytes: 0,
-        signed_url: null,
-        error: (e as Error).message,
-      });
+  // System tables (cron.job, storage.buckets, storage.objects) — PostgREST
+  // can't reach them. Use the storage admin API for buckets/objects, and
+  // skip cron.job (the user already has the snapshot from `read_query`).
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const { size, signed_url } = await uploadJson(
+      "storage.buckets.json",
+      buckets ?? [],
+    );
+    manifest.push({
+      schema: "storage", table: "buckets",
+      row_count: (buckets ?? []).length,
+      file: "storage.buckets.json", size_bytes: size, signed_url,
+    });
+    // Enumerate every object in every bucket.
+    const allObjects: Array<Record<string, unknown>> = [];
+    for (const b of buckets ?? []) {
+      const { data: objs } = await supabase.storage
+        .from(b.id)
+        .list("", { limit: 10000, sortBy: { column: "name", order: "asc" } });
+      // Recursively walk subfolders.
+      const stack: string[] = [""];
+      const seen = new Set<string>();
+      while (stack.length) {
+        const prefix = stack.pop()!;
+        if (seen.has(prefix)) continue;
+        seen.add(prefix);
+        const { data: list } = await supabase.storage
+          .from(b.id)
+          .list(prefix, { limit: 10000 });
+        for (const o of list ?? []) {
+          if (o.id === null) {
+            // It's a folder
+            stack.push(prefix ? `${prefix}/${o.name}` : o.name);
+          } else {
+            allObjects.push({ bucket: b.id, prefix, ...o });
+          }
+        }
+      }
     }
+    const { size: s2, signed_url: u2 } = await uploadJson(
+      "storage.objects.json",
+      allObjects,
+    );
+    manifest.push({
+      schema: "storage", table: "objects",
+      row_count: allObjects.length,
+      file: "storage.objects.json", size_bytes: s2, signed_url: u2,
+    });
+  } catch (e) {
+    manifest.push({
+      schema: "storage", table: "buckets+objects",
+      row_count: 0, file: "—", size_bytes: 0, signed_url: null,
+      error: (e as Error).message,
+    });
   }
 
   // Upload manifest itself
