@@ -120,17 +120,35 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Accept either the service-role key as Bearer OR INTERNAL_CRON_SECRET via header.
+  // Accept either: (a) service-role bearer, OR (b) authenticated owner of any org.
   const auth = req.headers.get("Authorization") ?? "";
   const token = auth.replace(/^Bearer\s+/i, "");
-  const cronSecret = req.headers.get("x-cron-secret") ?? "";
-  const expectedCron = Deno.env.get("INTERNAL_CRON_SECRET") ?? "";
-  const ok =
-    (token && token === SERVICE_KEY) ||
-    (expectedCron && cronSecret === expectedCron);
-  if (!ok) {
+  let authorized = false;
+  if (token && token === SERVICE_KEY) {
+    authorized = true;
+  } else if (token) {
+    // Validate user JWT and confirm owner role.
+    const userClient = createClient(
+      SUPABASE_URL,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } },
+    );
+    const { data: userData } = await userClient.auth.getUser(token);
+    const uid = userData?.user?.id;
+    if (uid) {
+      const { data: mem } = await supabase
+        .from("org_memberships")
+        .select("id")
+        .eq("user_id", uid)
+        .eq("role", "owner")
+        .eq("status", "active")
+        .limit(1);
+      if (mem && mem.length > 0) authorized = true;
+    }
+  }
+  if (!authorized) {
     return new Response(
-      JSON.stringify({ error: "Unauthorized — service-role bearer or x-cron-secret required" }),
+      JSON.stringify({ error: "Unauthorized — must be an org owner or use service-role key" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
