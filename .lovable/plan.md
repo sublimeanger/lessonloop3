@@ -1,41 +1,51 @@
-# J9 Phase 4B — apply pending migration
+# J3-F19d spot-check — fixture creation + browser walk
 
-## Status of what's already in the codebase  
-  
-make sure all added UX is polished for both mobile and desktop too.
+## Status of code review
 
-Frontend is fully landed and wired — no code to write:
+Fix is already on main and deployed:
+- `RecordPaymentModal.tsx:80` uses `invoice?.paid_minor ?? 0`
+- `InvoiceDetail.tsx:191` uses `invoice.paid_minor ?? 0`
 
-- `src/pages/RecurringTemplateDetail.tsx`, `src/pages/RecurringRunDetail.tsx` — present
-- `src/hooks/useRecurringTemplateDetailPage.ts`, `src/hooks/useRecurringTemplateRuns.ts` (with `useRetryFailedRecipients`, `useCancelTemplateRun`) — present
-- `src/components/dashboard/RecurringRunsCard.tsx`, `src/components/settings/recurring-billing/RecurringFailuresBanner.tsx` — present
-- `src/config/routes.ts` — both new routes registered (`/settings/recurring-billing/:templateId`, `/settings/recurring-billing/runs/:runId`), gated to owner/admin/finance
-- Phase 4A edits to `RecipientsField`, `ItemsField`, `RecurringBillingTab`, `useRecurringInvoiceTemplates` already in place from prior phases
+The earlier conversation summary that said "fix not present" was incorrect. No code changes are required.
 
-The migration file `supabase/migrations/20260428100000_recurring_retry_failed_recipients.sql` is on disk, but **not yet applied to the database**:
+## Blocker
 
-- `recurring_template_runs.parent_run_id` column → does NOT exist
-- `retry_failed_recipients` RPC → does NOT exist (only `cancel_template_run` and `generate_invoices_from_template` are present)
-- `src/integrations/supabase/types.ts` → no `retry_failed_recipients` entry
+DB has **zero** invoices with a succeeded refund. The spot-check preconditions cannot be satisfied without first creating a fixture. This requires browser interaction (a mutation), which is unavailable in plan mode.
 
-The hooks (`useRetryFailedRecipients`, `useCancelTemplateRun`) already use `(supabase.rpc as any)` casts, so the UI will function the moment the RPC exists in the DB; types will regenerate automatically.
+## Plan once approved
 
-## What this plan does
+1. **Pick fixture invoice.** Query for a paid, non-plan invoice in `E2E Test Academy` (org `25b57950-6c4e-42d8-8089-4942d2bba959`) with `total_minor >= 5000` and at least one payment row. Record its id and current `paid_minor`.
 
-1. **Apply the pending migration** as a Lovable-mirrored migration containing the verbatim contents of `20260428100000_recurring_retry_failed_recipients.sql`:
-  - `ALTER TABLE recurring_template_runs ADD COLUMN IF NOT EXISTS parent_run_id uuid REFERENCES recurring_template_runs(id) ON DELETE SET NULL`
-  - Partial index `idx_recurring_template_runs_parent` on `parent_run_id WHERE NOT NULL`
-  - `CREATE OR REPLACE FUNCTION retry_failed_recipients(_run_id uuid) RETURNS jsonb` (SECURITY DEFINER) — full body per the file, including: parent run lock, `is_org_finance_team` auth gate, refusal of `cancelled`/`running` parents, `parent_run_id` linkage on the new run row with `triggered_by='retry'`, per-recipient savepoint loop, `already_invoiced` pre-check for upfront/hybrid, delivered-mode lesson dedup, rate-card chain, CIWI call with provenance UPDATE, and outcome rollup (`completed` / `partial` / `failed`)
-  - `GRANT EXECUTE … TO authenticated, service_role`
-  - `NOTIFY pgrst, 'reload schema'`
-2. **Verify** post-apply by querying:
-  - `information_schema.columns` for `parent_run_id` (expect 1 row, nullable, uuid)
-  - `pg_proc` for `retry_failed_recipients` (expect 1 row)
-3. **Report back** with the verification results, types.ts regen status (Lovable handles this automatically post-apply), and confirmation that the new routes resolve.
+2. **Create the refund via browser.**
+   - Log in as the E2E Test Academy owner (existing test account).
+   - Navigate to that invoice's detail page.
+   - Trigger the refund flow against the existing payment for ~15% of the total (e.g. £30 on a £200 invoice). Use status 'succeeded' / non-Stripe path to avoid touching live Stripe.
+   - Wait for `paid_minor` to update via `recalculate_invoice_paid` (re-query DB to confirm `paid_minor = total_minor - refund_amount`).
+
+3. **CHECK A — RecordPaymentModal pre-fill.**
+   - Reload invoice detail. Click "Record Payment".
+   - Read the Amount field's pre-fill *and* the "Pay full amount (£X)" link label.
+   - Compare to `(total_minor - paid_minor) / 100`. Expect non-zero, equal to refund amount.
+   - Close without submitting.
+
+4. **CHECK B — InvoiceDetail header.**
+   - Read the "Amount Due" / outstanding header on the parent route.
+   - Compare to same expected value.
+
+5. **CHECK C — clean paid invoice regression.**
+   - Pick any other invoice with `status='paid'` and zero refunds.
+   - Open detail page: header should show £0 outstanding.
+   - Open Record Payment modal: amount empty, "Pay full amount (£0.00)" link present, submit disabled.
+
+6. **Report back** with: invoice ids used, observed values, pass/fail per check, any unexpected behaviour. If all pass, Batch 2F-followup can be flipped to "confirmed complete".
+
+## Cleanup
+
+The created refund will persist on the test invoice. Acceptable for E2E Test Academy; note the invoice id in the report so it can be reversed later if desired.
 
 ## Out of scope
 
-- No edge function changes
-- No cron changes
-- No additional frontend code (everything is already on disk)
-- Manual smoke tests 4-8 require populated org data and operator-driven retry scenarios — I'll note them as "requires test data" in the report rather than attempting them here
+- No code changes (fix already shipped).
+- No migrations.
+- No edge-function deploys.
+- No production-org mutations — only `E2E Test Academy`.
