@@ -138,10 +138,10 @@ Deno.serve(async (req) => {
     if (uid) {
       const { data: mem } = await supabase
         .from("org_memberships")
-        .select("id")
+        .select("id,role")
         .eq("user_id", uid)
-        .eq("role", "owner")
         .eq("status", "active")
+        .in("role", ["owner", "admin"])
         .limit(1);
       if (mem && mem.length > 0) authorized = true;
     }
