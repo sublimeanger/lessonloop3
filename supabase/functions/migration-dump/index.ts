@@ -153,22 +153,31 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Discover all public tables.
-  const { data: tablesData, error: tablesErr } = await supabase
-    .schema("information_schema" as "public")
-    .from("tables")
-    .select("table_name")
-    .eq("table_schema", "public")
-    .eq("table_type", "BASE TABLE");
-  if (tablesErr) {
-    return new Response(
-      JSON.stringify({ error: `discover tables: ${tablesErr.message}` }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
-  const publicTables = (tablesData as { table_name: string }[])
-    .map((r) => r.table_name)
-    .sort();
+  // Hardcoded list of all public.* base tables (snapshot 2026-05-04).
+  const publicTables = [
+    "_spotcheck_log","ai_action_proposals","ai_conversations","ai_interaction_metrics",
+    "ai_messages","attendance_records","audit_log","auto_pay_attempts","availability_blocks",
+    "availability_templates","billing_runs","booking_page_instruments","booking_page_teachers",
+    "booking_pages","calendar_connections","calendar_event_mappings","cancellation_feedback",
+    "closure_dates","enrolment_waitlist","enrolment_waitlist_activity","exam_boards",
+    "external_busy_blocks","grade_change_history","grade_levels","guardian_payment_preferences",
+    "guardians","hint_completions","instruments","internal_messages","invites",
+    "invoice_installments","invoice_items","invoice_number_sequences","invoices",
+    "kickstarter_signups","lead_activities","lead_follow_ups","lead_students","leads",
+    "lesson_notes","lesson_participants","lessons","locations","make_up_credits",
+    "make_up_policies","make_up_waitlist","message_batches","message_log","message_requests",
+    "message_templates","notification_preferences","org_memberships","org_messaging_settings",
+    "organisations","payment_disputes","payment_notifications","payments","platform_audit_log",
+    "practice_assignments","practice_logs","practice_streaks","profiles","push_tokens",
+    "rate_cards","rate_limits","recurrence_rules","recurring_invoice_templates",
+    "recurring_template_items","recurring_template_recipients","recurring_template_run_errors",
+    "recurring_template_runs","refunds","resource_categories","resource_category_assignments",
+    "resource_shares","resources","rooms","stripe_checkout_sessions","stripe_webhook_events",
+    "student_guardians","student_instruments","student_teacher_assignments","students",
+    "teacher_profiles","teachers","term_adjustments","term_continuation_responses",
+    "term_continuation_runs","terms","time_off_blocks","xero_connections",
+    "xero_entity_mappings","zoom_meeting_mappings",
+  ];
 
   const manifest: Array<{
     schema: string;
