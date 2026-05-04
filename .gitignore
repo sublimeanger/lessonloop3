@@ -38,6 +38,9 @@ tsconfig.node.tsbuildinfo
 # Supabase
 supabase/.temp/
 
+# Migration artifacts — manifest contains signed URLs (treat as credentials)
+lessonloop-dump-manifest.json
+
 # Capacitor
 android/app/build/
 android/.gradle/
