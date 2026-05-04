@@ -120,12 +120,17 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Service-role bearer required.
+  // Accept either the service-role key as Bearer OR INTERNAL_CRON_SECRET via header.
   const auth = req.headers.get("Authorization") ?? "";
   const token = auth.replace(/^Bearer\s+/i, "");
-  if (!token || token !== SERVICE_KEY) {
+  const cronSecret = req.headers.get("x-cron-secret") ?? "";
+  const expectedCron = Deno.env.get("INTERNAL_CRON_SECRET") ?? "";
+  const ok =
+    (token && token === SERVICE_KEY) ||
+    (expectedCron && cronSecret === expectedCron);
+  if (!ok) {
     return new Response(
-      JSON.stringify({ error: "Unauthorized — provide service-role key" }),
+      JSON.stringify({ error: "Unauthorized — service-role bearer or x-cron-secret required" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
