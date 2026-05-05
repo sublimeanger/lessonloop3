@@ -40,6 +40,7 @@ supabase/.temp/
 
 # Migration artifacts — manifest contains signed URLs (treat as credentials)
 lessonloop-dump-manifest.json
+private-files-signed-urls-v2.json
 
 # Capacitor
 android/app/build/
