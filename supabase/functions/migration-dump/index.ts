@@ -153,6 +153,37 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Sub-action: sign a fixed list of original storage objects (no copying).
+  // POST body: { action: "sign-files" } → returns 7-day signed URLs for the
+  // 5 remaining migration files in their original buckets.
+  let body: { action?: string } = {};
+  try { body = await req.json(); } catch { /* no body is fine */ }
+  if (body.action === "sign-files") {
+    const targets: Array<{ bucket: string; path: string }> = [
+      { bucket: "invoice-pdfs",      path: "50357e06-1178-463c-a715-d35404832225/9f698294-0b94-4344-aa57-23740aa4dd19_0.pdf" },
+      { bucket: "teaching-resources", path: "50357e06-1178-463c-a715-d35404832225/1774800298893-2rd4s.pdf" },
+      { bucket: "teaching-resources", path: "50357e06-1178-463c-a715-d35404832225/1774800318443-dzom2s.jpg" },
+      { bucket: "teaching-resources", path: "ce918a03-f701-4122-ad21-8e045dcb025d/1775052917829-pdvnpw.pdf" },
+      { bucket: "teaching-resources", path: "ce918a03-f701-4122-ad21-8e045dcb025d/1773250641374-erv18d.JPG" },
+    ];
+    const out: Array<{ bucket: string; path: string; signed_url: string | null; error?: string }> = [];
+    for (const t of targets) {
+      const { data, error } = await supabase.storage
+        .from(t.bucket)
+        .createSignedUrl(t.path, SIGN_EXPIRES);
+      out.push({
+        bucket: t.bucket,
+        path: t.path,
+        signed_url: data?.signedUrl ?? null,
+        error: error?.message,
+      });
+    }
+    return new Response(
+      JSON.stringify({ ok: true, expires_in_seconds: SIGN_EXPIRES, files: out }, null, 2),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   // Hardcoded list of all public.* base tables (snapshot 2026-05-04).
   const publicTables = [
     "_spotcheck_log","ai_action_proposals","ai_conversations","ai_interaction_metrics",
