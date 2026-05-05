@@ -203,8 +203,8 @@ ${sampleDataContext}
 
 Analyze the headers and sample values to determine the best mapping.`;
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
       // ─── Heuristic fallback using comprehensive alias dictionary ───
       const usedTargets = new Set<string>();
       const heuristicMappings = headers.map((header: string) => {
@@ -245,7 +245,7 @@ Analyze the headers and sample values to determine the best mapping.`;
       }
 
       const warnings: string[] = [];
-      if (!LOVABLE_API_KEY) {
+      if (!GEMINI_API_KEY) {
         warnings.push("Using smart heuristic matching. Please verify mappings.");
       }
       if (effectiveSource) {
@@ -265,22 +265,22 @@ Analyze the headers and sample values to determine the best mapping.`;
       });
     }
 
-    // Call AI for mapping
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: MAPPING_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.1,
-      }),
-    });
+    // Call Gemini direct API for mapping.
+    // gemini-flash-latest auto-updates to current production Gemini Flash.
+    // For predictable behaviour in production-critical paths, pin to a specific version
+    // (e.g. gemini-3-flash or gemini-3.1-flash-lite-preview) and bump deliberately.
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          systemInstruction: { parts: [{ text: MAPPING_PROMPT }] },
+          generationConfig: { temperature: 0.1 },
+        }),
+      }
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -293,7 +293,7 @@ Analyze the headers and sample values to determine the best mapping.`;
     }
 
     const aiData = await response.json();
-    const content = aiData.choices?.[0]?.message?.content || "";
+    const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     // Extract JSON from response
     let mappingResult;
