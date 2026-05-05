@@ -160,11 +160,11 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { /* no body is fine */ }
   if (body.action === "sign-files") {
     const targets: Array<{ bucket: string; path: string }> = [
-      { bucket: "invoice-pdfs",      path: "50357e06-1178-463c-a715-d35404832225/9f698294-0b94-4344-aa57-23740aa4dd19_0.pdf" },
-      { bucket: "teaching-resources", path: "50357e06-1178-463c-a715-d35404832225/1774800298893-2rd4s.pdf" },
-      { bucket: "teaching-resources", path: "50357e06-1178-463c-a715-d35404832225/1774800318443-dzom2s.jpg" },
-      { bucket: "teaching-resources", path: "ce918a03-f701-4122-ad21-8e045dcb025d/1775052917829-pdvnpw.pdf" },
-      { bucket: "teaching-resources", path: "ce918a03-f701-4122-ad21-8e045dcb025d/1773250641374-erv18d.JPG" },
+      { bucket: "invoice-pdfs",      path: "5b905216-85ae-4aca-8c50-9757d0444b60/9f698294-0b94-4344-aa57-23740aa4dd19_0.pdf" },
+      { bucket: "teaching-resources", path: "ce918a03-f701-4122-ad21-8e045dcb025d/1774800298893-2rd4s.pdf" },
+      { bucket: "teaching-resources", path: "ce918a03-f701-4122-ad21-8e045dcb025d/1774800318443-dzom2s.jpg" },
+      { bucket: "teaching-resources", path: "34e560fe-38bf-48fe-b9d3-2c911111805d/1775052917829-pdvnpw.pdf" },
+      { bucket: "teaching-resources", path: "25b57950-6c4e-42d8-8089-4942d2bba959/1773250641374-erv18d.JPG" },
     ];
     const out: Array<{ bucket: string; path: string; signed_url: string | null; error?: string }> = [];
     for (const t of targets) {
