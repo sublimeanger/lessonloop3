@@ -98,8 +98,97 @@ Cached partial dump files: `/home/claude/migration-dump-cache/`
 
 ## Phase 5 deferred work
 
+- **`seed-demo-data` deployed-but-inert on destination** — batch deploy pushed all 103 repo functions including this one (config.toml had annotated it "intentionally NOT deployed to production"). Inert because (a) `ALLOW_SEED=false` env var (function returns 403 immediately at line 19), (b) URL guard updated to reject destination project ref. Acceptable; can `supabase functions delete` later if you want extra hygiene.
+- **Cron is LIVE on destination** as of 2026-05-05 23:03 UTC:
+  - 16 HTTP-triggered jobs patched to call destination URLs (`xmrhmxizpslhtkibqyfy.supabase.co`) with `INTERNAL_CRON_SECRET` from vault. Functions reachable but most will internally fail on placeholder secrets (Stripe/Xero/Resend/etc.) until those are filled in.
+  - 2 SQL-only jobs newly scheduled: `complete-expired-assignments` (`0 4 * * *`, calls `public.complete_expired_assignments()`) and `reset-stale-practice-streaks` (`0 3 * * *`, calls `public.reset_stale_streaks()`). These operate on real migrated data — first fires at next 03:00 / 04:00 UTC. Schedule values are placeholder; verify against source's actual schedules and adjust if different.
 - **Recreate SQL-only cron jobs absent from chain:**
   - `complete-expired-assignments` (calls `public.complete_expired_assignments()`)
   - `reset-stale-practice-streaks` (calls `public.reset_stale_streaks()`)
   - Both SQL-only, no HTTP, added on source out-of-band; not in any migration file.
 - **Patch all 16 cron job URLs on destination** from `ximxgnkpcswbvfrkkmjq.supabase.co` to `xmrhmxizpslhtkibqyfy.supabase.co`. Until done, every cron silently 401-fails (destination's `INTERNAL_CRON_SECRET` doesn't match source's). Approach: either `cron.unschedule()` + `cron.schedule()` per job with edited URL, or direct `UPDATE cron.job SET command = REPLACE(command, 'ximxgnkpcswbvfrkkmjq', 'xmrhmxizpslhtkibqyfy')`.
+- **`storage.objects.owner` is NULL for all 11 migrated rows** (6 org-logos + 1 invoice-pdf + 4 teaching-resources). The source dump tool didn't include the `owner` column, so we couldn't preserve it. Confirm storage RLS policies don't depend on `owner` for these rows; populate retroactively if they do.
+- **`storage.objects` source/destination path discrepancy diagnostic:** during private-file upload (Phase 3 Stage 5 Part B), discovered that source's `storage.objects` table held stale rows with paths like `50357e06-…/file.pdf` while the actual stored files were at corrected paths like `ce918a03-…/file.pdf` (or `5b905216-…/`, etc.). Inferring source's storage.objects metadata table drifted from filesystem reality at some point — likely a folder rename that updated the filesystem but failed to update the metadata rows. We migrated the corrected paths only (the working ones); the stale dump rows for these 5 files are intentionally not loaded on destination. No action needed; dropping the dumped storage.objects rows for invoice-pdfs/teaching-resources was the right call.
+
+## Phase 3 surgical interventions
+
+- **`lessons.chk_lesson_time_range` set to NOT VALID** to grandfather 1 corrupted source row (id `672d594d-5461-4808-92ff-bdcbb2ef542e`, "Lesson – Studen Five", end_at 5 hours before start_at — likely DST-transition timezone bug at write time). Constraint re-added post-load as `NOT VALID`. New INSERTs ARE still checked (verified empirically); only this 1 grandfathered row exempt.
+- **`migration-dump` bucket on destination** is a chain artifact from idx 405 (the dump-orchestrator migration). Harmless. Drop during post-cutover cleanup along with the same bucket on source.
+
+## Phase 5 anomalies
+
+### GRANT P0 — public schema role grants missing
+- **Discovered:** 2026-05-05 23:06 UTC during Task C smoke test of profile-ensure (returned 500). Direct PostgREST call against `public.profiles` returned `42501: permission denied for table profiles, hint: GRANT SELECT ON public.profiles TO service_role`.
+- **Scope:** all 93 public tables. `service_role`, `anon`, `authenticated` roles had only `REFERENCES, TRIGGER, TRUNCATE` privileges — no DML (no SELECT/INSERT/UPDATE/DELETE). Verified across `profiles`, `organisations` and 5 other random tables.
+- **Root cause:** Supabase's platform-default `ALTER DEFAULT PRIVILEGES` for the `public` schema were either not applied at destination project setup OR were absent before our migration chain ran. New tables created during chain replay therefore inherited zero DML grants for the API roles. Migration files contained no explicit REVOKE — defaults simply weren't there to grant from. The `postgres` role had full DML throughout (which is why our Management-API-driven loader and direct `db query --linked` worked fine — they connect as postgres).
+- **Fix applied 2026-05-05 23:43 UTC:** canonical grant block as a single transaction:
+  ```sql
+  GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+  GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+  GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
+  GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+  ```
+- **Verification:** 5 sample tables (profiles, organisations, lessons, invoices, audit_log, xero_connections) — each role now has 7 privileges (DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE). `pg_default_acl` shows both `supabase_admin` and `postgres` as default-privilege grantors with full ACL strings (`arwdDxtm` for relations, `X` for functions, `rwU` for sequences) → future CREATE TABLE statements auto-grant correctly.
+- **Other schemas:** auth, storage, extensions, vault, cron all checked — USAGE grants intact (vault correctly admin-only; cron correctly system-only). No further fixes needed.
+- **Severity:** would have caused total app failure post-cutover (every PostgREST/supabase-js call from the frontend would 42501). Caught at smoke-test before any user impact.
+- **Re-test post-fix:** profile-ensure HTTP 200, returns user's actual profile row with source-preserved created_at. ✓
+
+### Note: CHECK constraints + replica mode
+
+`session_replication_role = 'replica'` disables only **trigger and FK constraint** firing. **Value-level CHECK constraints are enforced regardless** — they're checked at the page-write level, not via triggers. Implication: any source data that violates a destination CHECK constraint will fail the load even in replica mode. Standard pattern when this happens: drop the constraint, load the data, re-add as `NOT VALID`.
+
+### DATA LOSS EVENT — account-delete invoked during smoke test (RESOLVED)
+- **Incident:** 2026-05-06 00:00 UTC during Task Y broader smoke testing of "pure-DB" edge functions.
+- **Trigger:** Smoke-test harness iterated through all 40 functions classified as "pure-DB" (no external API calls), invoking each with empty body `{}` and the admin user's JWT (Michael Harris, `81fa08c6-203c-4e98-8575-a9c3f8ccab19`, `demo-solo-parent-2@lessonloop.test`). First function in the loop alphabetically was `account-delete`.
+- **What happened:** `account-delete` returned `{"success":true}` HTTP 200 — and actually deleted the JWT bearer's own account. The function's contract: empty body = "delete the calling user's own account" (no separate target-user param needed; user is identified from JWT). All ~39 subsequent calls in the loop 401'd because the JWT was for the now-deleted user.
+- **Damage:**
+  - `auth.users` row deleted (count 129 → 128).
+  - `public.profiles` row deleted via `profiles_id_fkey ON DELETE CASCADE`. (Trigger on auth.users INSERT had auto-recreated it with default values — full_name="", has_completed_onboarding=false — which I corrected during restore.)
+  - `public.org_memberships` row (`3c0771ce-f9db-4f41-b060-865ff14c2a80`) deleted via `org_memberships_user_id_fkey ON DELETE CASCADE`.
+  - `public.guardians` row (`fafdf309-88e1-443e-86ff-9f9df8d5acee`) **not deleted** — `guardians_user_id_fkey` is `ON DELETE SET NULL`, so the row remained but its `user_id` was nulled out.
+  - `public.audit_log` entry (`95228240-171c-4424-84e2-3381f2b1d47a`) recording the original membership insert: preserved (audit_log has no FK to auth.users; user_id is buried in `after` JSONB column).
+  - 27 other `auth.users`-referencing FKs (CASCADE + SET NULL) had no matching rows for this user — confirmed by full-dump scan.
+- **Root cause analysis:** Two compounding errors in the smoke-test design:
+  1. Classifying functions as "pure-DB" (no HTTP egress / no external dependencies) and treating that as a proxy for "safe to invoke." It isn't. Pure-DB just means the function won't fail externally — it can still be deeply destructive against the database itself.
+  2. Iterating ALL functions in the set unattended with the same JWT, which guaranteed the first destructive function would compromise the JWT identity for the rest of the run.
+- **Restoration applied 2026-05-06 00:04–00:06 UTC:**
+  - Recreated `auth.users` row via Admin API `POST /auth/v1/admin/users` preserving the original UUID, email, role, app_metadata, user_metadata. Random 32-char password (acceptable — this is a seeded demo user; production users would re-establish via password reset email anyway).
+  - `UPDATE auth.users` to restore source timestamps (`created_at` 2026-04-12T06:58:18.534358Z, `updated_at` 2026-04-12T06:58:18.539105Z, `email_confirmed_at` 2026-04-12T06:58:18.537021Z). `confirmed_at` is a generated column (= `email_confirmed_at`) — recomputed automatically.
+  - `UPDATE public.profiles` to restore source values (full_name, has_completed_onboarding, current_org_id, created_at, updated_at, etc.).
+  - `INSERT public.org_memberships` to restore the cascaded membership row.
+  - `UPDATE public.guardians` to relink `user_id` back to the target.
+  - All restoration operations on public schema wrapped in `BEGIN; SET LOCAL session_replication_role='replica'; …; COMMIT;` to suppress the membership/guardian audit triggers (avoids creating a duplicate audit_log entry for the restoration).
+- **Verification post-restore:** `auth.users` count 129. Target user present with original timestamps. Profile values match source. org_memberships row present with original id. Guardian row's user_id = target. Original audit_log row still present.
+- **Drift residual:** `auth.identities` row was created fresh by the Admin API recreate — original source dump had 0 identity rows for any user (source dump tool excluded the identities table), so this isn't a regression vs. the original migrated state. New identity row's timestamps differ from auth.users timestamps by ~1 month (identity created_at = restore time, user created_at = source time). Operationally insignificant.
+- **Severity:** zero customer impact. `demo-solo-parent-2@lessonloop.test` is a seeded demo user, never used a real password, never had real data. The blast radius is fully recoverable from source dump.
+- **Lesson + policy change:** "pure-DB" classification ≠ "safe to invoke." For automated/unattended smoke testing, the safe set is much narrower:
+  - **OK to sweep:** read-only or strictly idempotent functions with no destructive intent. Confirmed-safe set for Phase 5: `booking-get-slots`, `calendar-ical-feed`, `invite-get`, `profile-ensure` (idempotent), `gdpr-export` (read-only export), `generate-invoice-pdf` (read-only PDF generation), `migration-dump` (read-only dump artifact).
+  - **NOT OK to sweep:** any state-mutating function or function with destructive intent. Specifically excluded going forward: `account-delete`, `gdpr-delete`, `csv-import-execute`, `cleanup-*`, `seed-*`, `*-expiry`, `*-overdue-check`, `send-invoice-email*`, `xero-*`, `recurring-billing-scheduler`, `create-billing-run`, `mark-messages-read`, `invite-accept`, `onboarding-setup`, `process-term-adjustment`, `continuation-respond`, `bulk-process-continuation`, `notify-makeup-match`, `looopassist-execute`, `auto-pay-*`. These need human-supervised single-call testing in Phase 6 against scoped test scenarios — never unattended loops.
+
+### sb_secret + verify_jwt incompatibility — 24 functions reconfigured (RESOLVED)
+- **Discovered:** 2026-05-06 00:14 UTC during Y resumption smoke testing of `generate-invoice-pdf` (returned 401 "Service-role authentication required" regardless of which key format was sent in `Authorization: Bearer …`).
+- **Root cause** (matches Supabase's documented guidance): the destination project uses the **new "Publishable + Secret" API key model** alongside legacy JWT keys. Per Supabase docs, *"Edge Functions only support JWT verification via the anon and service_role JWT-based API keys. You will need to use the --no-verify-jwt option when using publishable and secret keys"*. Concretely:
+  - The platform auto-injects `SUPABASE_SERVICE_ROLE_KEY` into edge function runtime as the **`sb_secret_*` value** (verified: SHA256 of stored secret matches the project's `default (secret)` key, NOT the legacy JWT).
+  - The function gateway's `verify_jwt = true` path requires JWT-format `Authorization: Bearer …` and rejects `sb_secret_*` with `UNAUTHORIZED_INVALID_JWT_FORMAT`.
+  - These two are mutually exclusive when a function does `if (authHeader !== \`Bearer ${SR_KEY}\`)` because `SR_KEY` resolves to `sb_secret_*` but the gateway requires JWT format.
+  - The Mgmt API blocks `SUPABASE_*` prefixed secrets, so the platform-injected value can't be overridden via secrets API.
+- **Fix applied 2026-05-06 00:14–00:18 UTC:** added `verify_jwt = false` to 24 functions in `supabase/config.toml` and re-deployed each via `supabase functions deploy --use-api`. Two categories:
+  - **7 service-role-Bearer functions** (compare inbound `Authorization` to `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`):
+    `generate-invoice-pdf`, `send-auto-pay-alert`, `send-auto-pay-failure-notification`, `send-dispute-notification`, `send-invoice-email-internal`, `send-recurring-billing-alert`, `send-refund-notification`
+  - **17 cron-secret-only functions** (called by `pg_cron` via `pg_net.http_post` with `x-cron-secret` header; `_shared/cron-auth.ts` validates):
+    `admin-backfill-default-pm`, `auto-pay-final-reminder`, `cleanup-invoice-pdf-orphans`, `cleanup-orphaned-resources`, `cleanup-webhook-retention`, `credit-expiry`, `credit-expiry-warning`, `cron-health-watchdog`, `ical-expiry-reminder`, `overdue-reminders`, `recurring-billing-scheduler`, `streak-notification`, `trial-expired`, `trial-reminder-1day`, `trial-reminder-3day`, `trial-reminder-7day`, `trial-winback`
+  - 9 other affected functions (3 SR-Bearer + 6 cron-auth) already had `verify_jwt = false` set in source config.toml — no change needed.
+  - 2 functions initially candidate-flagged (`csv-import-execute`, `looopassist-execute`) were excluded after closer inspection: they use **user-JWT auth via `supabase.auth.getUser()`**, not service-role. They genuinely need `verify_jwt = true`.
+- **Verification:**
+  - `generate-invoice-pdf` with `Authorization: Bearer sb_secret_…` → HTTP 200 returning a signed URL for an actual invoice PDF (LL-2026-00721.pdf).
+  - `migration-dump` regression check: HTTP 200, no change.
+  - Cron functions invoked with `x-cron-secret: ${INTERNAL_CRON_SECRET}`:
+    - `invoice-overdue-check` → HTTP 200, recalculated 8 invoices end-to-end against migrated data.
+    - `credit-expiry` → HTTP 200, no expirations to process.
+    - `recurring-billing-scheduler` → HTTP 200, no templates due.
+  - Negative control with wrong x-cron-secret → HTTP 401 (auth still enforced by `_shared/cron-auth.ts`).
+- **What this means in practice:** when pg_cron jobs fire (next scheduled boundary 03:00/04:00 UTC and per-job intervals), they will now reach their target functions instead of being rejected by the gateway. Combined with the earlier cron URL patching (Phase 5 deferred work item), the full cron pipeline destination ⇄ edge functions is now operational.
+- **Pattern for future development:** if a new function needs to be invoked by `pg_cron` (x-cron-secret) or as a service-to-service call (Bearer SR), it must be added to the `verify_jwt = false` list in `supabase/config.toml`. The standard Supabase pattern is documented in `--no-verify-jwt`/`verify_jwt = false`; this isn't a workaround but the recommended approach for non-end-user-facing functions under the new key model.

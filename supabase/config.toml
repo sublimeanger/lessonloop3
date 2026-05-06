@@ -161,3 +161,85 @@ verify_jwt = false
 
 [functions.migration-dump]
 verify_jwt = false
+
+# ── Service-role-Bearer functions (incompatible with sb_secret + verify_jwt=true) ──
+# These compare inbound Authorization to `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`. Under the new
+# Publishable+Secret key model the platform-injected SUPABASE_SERVICE_ROLE_KEY is the
+# sb_secret_* value, but the gateway's verify_jwt requires JWT format. Setting verify_jwt=false
+# bypasses the gateway check; the function's own bearer comparison still authenticates.
+
+[functions.generate-invoice-pdf]
+verify_jwt = false
+
+[functions.send-auto-pay-alert]
+verify_jwt = false
+
+[functions.send-auto-pay-failure-notification]
+verify_jwt = false
+
+[functions.send-dispute-notification]
+verify_jwt = false
+
+[functions.send-invoice-email-internal]
+verify_jwt = false
+
+[functions.send-recurring-billing-alert]
+verify_jwt = false
+
+[functions.send-refund-notification]
+verify_jwt = false
+
+# ── Cron-secret-only functions (called by pg_cron with x-cron-secret header) ──
+# pg_cron does not send a JWT; auth is via the x-cron-secret header validated by
+# _shared/cron-auth.ts. verify_jwt=false lets the gateway forward these requests through.
+
+[functions.admin-backfill-default-pm]
+verify_jwt = false
+
+[functions.auto-pay-final-reminder]
+verify_jwt = false
+
+[functions.cleanup-invoice-pdf-orphans]
+verify_jwt = false
+
+[functions.cleanup-orphaned-resources]
+verify_jwt = false
+
+[functions.cleanup-webhook-retention]
+verify_jwt = false
+
+[functions.credit-expiry]
+verify_jwt = false
+
+[functions.credit-expiry-warning]
+verify_jwt = false
+
+[functions.cron-health-watchdog]
+verify_jwt = false
+
+[functions.ical-expiry-reminder]
+verify_jwt = false
+
+[functions.overdue-reminders]
+verify_jwt = false
+
+[functions.recurring-billing-scheduler]
+verify_jwt = false
+
+[functions.streak-notification]
+verify_jwt = false
+
+[functions.trial-expired]
+verify_jwt = false
+
+[functions.trial-reminder-1day]
+verify_jwt = false
+
+[functions.trial-reminder-3day]
+verify_jwt = false
+
+[functions.trial-reminder-7day]
+verify_jwt = false
+
+[functions.trial-winback]
+verify_jwt = false

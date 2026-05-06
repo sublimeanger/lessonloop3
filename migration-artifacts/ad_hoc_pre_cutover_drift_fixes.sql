@@ -128,3 +128,54 @@ ALTER TABLE public.recurring_template_items
 -- ALTER TYPE public.invoice_status ADD VALUE IF NOT EXISTS 'outstanding';
 --
 -- Verified post-apply: enum_range = {draft, sent, paid, overdue, void, outstanding}.
+
+
+-- ============================================================
+-- SECTION 5 — Phase 5 prep, before edge function deploys / smoke tests
+-- Status: APPLIED 2026-05-05
+-- ============================================================
+-- Source has columns destination's chain doesn't create (V9 fingerprint findings).
+-- See migration-journal.md "Phase 3 final state" for full V9 drift breakdown.
+
+ALTER TABLE public.make_up_credits
+  ADD COLUMN IF NOT EXISTS voided_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+
+ALTER TABLE public.organisations
+  ADD COLUMN IF NOT EXISTS reminder_before_due_days integer DEFAULT 3 NOT NULL,
+  ADD COLUMN IF NOT EXISTS reminder_before_due_enabled boolean DEFAULT true NOT NULL,
+  ADD COLUMN IF NOT EXISTS reminder_escalation_days integer DEFAULT 7 NOT NULL,
+  ADD COLUMN IF NOT EXISTS reminder_escalation_enabled boolean DEFAULT true NOT NULL,
+  ADD COLUMN IF NOT EXISTS reminder_overdue_days integer DEFAULT 1 NOT NULL,
+  ADD COLUMN IF NOT EXISTS reminder_overdue_enabled boolean DEFAULT true NOT NULL;
+
+
+-- ============================================================
+-- SECTION 6 — Phase 5 GRANT P0 fix
+-- Status: APPLIED 2026-05-05 23:43 UTC
+-- ============================================================
+-- Discovered during Phase 5 smoke testing: anon, authenticated, service_role
+-- had no DML privileges on any public table. Caused profile-ensure to 500 with
+-- "permission denied for table profiles". Supabase's platform-default
+-- ALTER DEFAULT PRIVILEGES were either not applied at destination project
+-- creation or were absent before chain replay. New tables therefore inherited
+-- zero DML grants for API roles. See migration-journal.md "Phase 5 anomalies".
+-- Without this fix the app would 42501 on every PostgREST/supabase-js call
+-- from the frontend post-cutover.
+
+BEGIN;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+COMMIT;
+
+-- Verification queries:
+-- SELECT grantee, count(*)::int FROM information_schema.role_table_grants
+--   WHERE table_schema='public' AND grantee IN ('anon','authenticated','service_role')
+--   GROUP BY grantee;  -- expect 7 privileges per role per table
+-- SELECT defaclrole::regrole, defaclnamespace::regnamespace, defaclacl
+--   FROM pg_default_acl WHERE defaclnamespace='public'::regnamespace;
+--   -- expect rows for both 'postgres' and 'supabase_admin' with full ACL strings
