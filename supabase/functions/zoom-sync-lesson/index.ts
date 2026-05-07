@@ -259,7 +259,11 @@ Deno.serve(async (req) => {
       } else {
         result = { success: true }; // No meeting to delete
       }
-    } else if (action === 'update' && existingMapping?.zoom_meeting_id) {
+    // Idempotency: if a mapping already exists, update the existing Zoom meeting
+    // regardless of whether the caller passed action='create' or 'update'. Otherwise
+    // POST creates a duplicate Zoom meeting each call while the mapping silently
+    // updates to the new id, leaving the prior meeting orphaned.
+    } else if (existingMapping?.zoom_meeting_id) {
       // Update existing Zoom meeting
       const duration = calculateDurationMinutes(lesson.start_at, lesson.end_at);
       const topic = buildMeetingTopic(lesson);
@@ -341,32 +345,18 @@ Deno.serve(async (req) => {
       if (createResponse.ok) {
         const meeting = await createResponse.json();
 
-        // Create or update mapping
-        if (existingMapping) {
-          await supabase
-            .from('zoom_meeting_mappings')
-            .update({
-              zoom_meeting_id: meeting.id,
-              join_url: meeting.join_url,
-              start_url: meeting.start_url || null,
-              sync_status: 'synced',
-              last_synced_at: new Date().toISOString(),
-              error_message: null,
-            })
-            .eq('id', existingMapping.id);
-        } else {
-          await supabase
-            .from('zoom_meeting_mappings')
-            .insert({
-              connection_id: connection.id,
-              lesson_id: lesson_id,
-              zoom_meeting_id: meeting.id,
-              join_url: meeting.join_url,
-              start_url: meeting.start_url || null,
-              sync_status: 'synced',
-              last_synced_at: new Date().toISOString(),
-            });
-        }
+        // No existingMapping by construction — the path above handles updates.
+        await supabase
+          .from('zoom_meeting_mappings')
+          .insert({
+            connection_id: connection.id,
+            lesson_id: lesson_id,
+            zoom_meeting_id: meeting.id,
+            join_url: meeting.join_url,
+            start_url: meeting.start_url || null,
+            sync_status: 'synced',
+            last_synced_at: new Date().toISOString(),
+          });
 
         // Store join URL on the lesson
         await supabase

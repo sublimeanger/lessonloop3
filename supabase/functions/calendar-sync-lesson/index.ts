@@ -282,7 +282,11 @@ Deno.serve(async (req) => {
         status: lesson.status === 'cancelled' ? 'cancelled' : 'confirmed',
       };
 
-      if (action === 'update' && existingMapping?.external_event_id) {
+      // Idempotency: if a mapping already exists, update the existing Google event
+      // regardless of whether the caller passed action='create' or 'update'. Otherwise
+      // POST creates a duplicate Google event each call while the mapping silently
+      // updates to the new id, leaving the prior event orphaned.
+      if (existingMapping?.external_event_id) {
         // Update existing event
         const updateResponse = await fetch(
           `${baseUrl}/${existingMapping.external_event_id}`,
@@ -336,28 +340,16 @@ Deno.serve(async (req) => {
         if (createResponse.ok) {
           const createdEvent = await createResponse.json();
 
-          // Create or update mapping
-          if (existingMapping) {
-            await supabase
-              .from('calendar_event_mappings')
-              .update({
-                external_event_id: createdEvent.id,
-                sync_status: 'synced',
-                last_synced_at: new Date().toISOString(),
-                error_message: null,
-              })
-              .eq('id', existingMapping.id);
-          } else {
-            await supabase
-              .from('calendar_event_mappings')
-              .insert({
-                connection_id: connection.id,
-                lesson_id: lesson_id,
-                external_event_id: createdEvent.id,
-                sync_status: 'synced',
-                last_synced_at: new Date().toISOString(),
-              });
-          }
+          // No existingMapping by construction — the path above handles updates.
+          await supabase
+            .from('calendar_event_mappings')
+            .insert({
+              connection_id: connection.id,
+              lesson_id: lesson_id,
+              external_event_id: createdEvent.id,
+              sync_status: 'synced',
+              last_synced_at: new Date().toISOString(),
+            });
 
           result = { success: true, external_event_id: createdEvent.id };
         } else {

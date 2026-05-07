@@ -174,14 +174,21 @@ Deno.serve(async (req) => {
     const xeroPaymentId = paymentData.Payments[0].PaymentID;
 
     // Save mapping
-    await supabase
+    const { error: paymentMappingError } = await supabase
       .from('xero_entity_mappings')
       .insert({
         org_id: orgId,
+        connection_id: connection.id,
         entity_type: 'payment',
         local_id: payment_id,
         xero_id: xeroPaymentId,
+        sync_status: 'synced',
+        last_synced_at: new Date().toISOString(),
       });
+    if (paymentMappingError) {
+      console.error('[xero-sync-payment] Failed to insert payment mapping:', paymentMappingError);
+      // Don't fail the function — Xero payment already created — but log loud
+    }
 
     // (f) Return success
     return new Response(JSON.stringify({ success: true, xero_payment_id: xeroPaymentId }), {
