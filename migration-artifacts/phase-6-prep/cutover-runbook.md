@@ -6,6 +6,32 @@
 
 ---
 
+## Destination state (already applied; not part of cutover steps)
+
+These were applied during Phases 5–6 and are already live on destination. Listed here so the runbook is self-documenting; no action needed at cutover time.
+
+- ✅ **GRANTS P0** — `anon`, `authenticated`, `service_role` have full DML on all 93 public tables; `ALTER DEFAULT PRIVILEGES` set so future tables auto-grant.
+- ✅ **sb_secret/verify_jwt fix on 24 functions** — service-role-Bearer + cron-secret-only functions reconfigured to bypass gateway JWT verification (per Supabase docs for the new key model).
+- ✅ **`xero_connections.org_id` UNIQUE constraint** — added because migration chain didn't carry it (table was created out-of-band on source); upsert-on-org_id now works.
+- ✅ **8 found-while-migrating bug fixes committed to branch** — these are in commits `025a423`, `2c4b410`, `b3b762c`, `6ad1179`, `9c72ca3`. The cutover Step 3 `npm run build` automatically picks them up because they're in the git tree.
+- ✅ **24 secrets set + verified by SHA256** (16 third-party + 8 internal). Only `STRIPE_WEBHOOK_SECRET` still pending (intentional — created during Step 5 below).
+
+---
+
+## Atomic switch identification
+
+**The cutover switch is Step 4** — frontend redeploy with the new `VITE_SUPABASE_*` env values. Until that deploy hits the CDN, every browser loading `app.lessonloop.net` still gets a bundle pointed at source. The moment the new bundle goes live, every fresh page load talks to destination.
+
+**Before Step 4:** destination is provisioned, configured, and idle. Source is serving real (test) traffic.
+
+**After Step 4:** destination is serving traffic. Source is idle except for in-flight long-lived sessions on the OLD bundle (rare given hard-refresh behavior; warm cache may keep some users on source for ~minutes until they navigate).
+
+**Stripe webhook is a parallel switch** (Step 5) — Stripe events flip from source's webhook to destination's. Once destination's webhook is registered + source's is disabled, all Stripe events go to destination. This is independent of Step 4 timing — but practically should happen close together to avoid "frontend on destination, webhook on source" gap.
+
+**Order:** Steps 1–3 (prep), Step 4 (atomic), Step 5 (Stripe switch), Steps 6–8 (validation + iOS + post-checks).
+
+---
+
 ## Pre-cutover checklist
 
 - [ ] All 16 third-party secrets fetched and set on destination per `secret-fetch-checklist.md`. Verify: `supabase secrets list --project-ref xmrhmxizpslhtkibqyfy | grep -E "PENDING_"` is empty.
@@ -14,6 +40,7 @@
 - [ ] Site URL + 10-entry redirect whitelist set per `phase-6-site-url-config.md`.
 - [ ] Phase 6 smoke tests pass per `phase-6-smoke-tests.md`.
 - [ ] Destination publishable key on hand: `sb_publishable_4VxL8SzppJdtroj4IbmnXg_Ka530Y8f`
+- [ ] Working tree on `claude/supabase-migration-setup-Pb4Eu` branch is clean and pushed (no uncommitted bug fixes left behind).
 
 ---
 
@@ -116,17 +143,29 @@ After deploy: open `https://app.lessonloop.net` incognito, sign in, confirm Netw
 
 1. [Stripe Dashboard → Webhooks](https://dashboard.stripe.com/webhooks) → "Add endpoint"
 2. URL: `https://xmrhmxizpslhtkibqyfy.supabase.co/functions/v1/stripe-webhook`
-3. Events: same set source's webhook subscribes to
-4. Stripe shows the new `whsec_…` once — copy immediately
-5. Set:
+3. **Events to subscribe** (exact 6 — match source's existing webhook config, captured during T2.0 recon):
+   - `checkout.session.completed`
+   - `invoice.paid`
+   - `invoice.payment_failed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+4. API version: leave at account default (currently `2025-12-15.clover`)
+5. Stripe shows the new `whsec_…` **once** — copy immediately
+6. Set:
    ```bash
    supabase secrets set --project-ref xmrhmxizpslhtkibqyfy STRIPE_WEBHOOK_SECRET=whsec_PASTE_HERE
    ```
-6. Disable source's webhook (don't delete — rollback option).
+7. Disable source's webhook (`we_1Ss075AzPfYm94uxhHSdqZUu`) in [Stripe Dashboard → Webhooks](https://dashboard.stripe.com/webhooks) → click endpoint → "Disable" button. **Don't delete** — keeps as rollback option.
 
-**Test:** Stripe dashboard → "Send test webhook" → `checkout.session.completed` → expect HTTP 200; `stripe_webhook_events` table got a new row.
+**Test:** Stripe dashboard → click destination's webhook → "Send test webhook" → `checkout.session.completed` → expect HTTP 200; verify destination's `stripe_webhook_events` table got a new row:
+```bash
+# Run via Mgmt API or supabase db query
+SELECT count(*), max(received_at::text) FROM stripe_webhook_events
+  WHERE received_at > now() - interval '5 minutes';
+```
 
-**Rollback:** re-enable source's webhook; disable destination's.
+**Rollback:** re-enable source's webhook; disable destination's. Stripe retries failed webhook deliveries for 3 days, so any events received during a transient destination-side issue can be re-delivered.
 
 ---
 
@@ -210,11 +249,40 @@ curl -X PATCH -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type
 
 ## Post-cutover cleanup (Phase 8)
 
+### Code / config cleanup
 - [ ] Apple Sign-In code cleanup (3 files per `phase-6-ios-cutover-prep.md` D2 list).
-- [ ] Drop `migration-dump` bucket on both projects.
-- [ ] Address Phase 5 deferred items in journal (xero_connections RLS, storage.objects.owner, etc.).
-- [ ] Source decommission: D6 — whenever, no rush. Snapshot first.
+- [ ] Address Phase 5 deferred items in journal (xero_connections RLS policies, storage.objects.owner, etc.).
 - [ ] Update internal docs / monitoring / alerts to reference destination ref.
+- [ ] Xero `LL-LL-` cosmetic prefix bug (if you decide to fix — see `product-readiness-checklist.md`).
+
+### Test artifacts created during Phases 4–6 smoke testing
+**Stripe (live account `acct_1SrzbkAzPfYm94ux`):**
+- [ ] Stripe customer `cus_UTM8UaqtrlyJ6Z` (linked to org Ms Taylor's Music for T2.1) — optional delete.
+- [x] 6 Stripe Checkout sessions from T2.1 — already expired, no action needed.
+- [x] 1 Stripe Customer Portal session — already auto-expired (5 min).
+
+**Xero (sandbox tenant `0931cf0b-…`, `tenant_name='test'`):**
+- [ ] Xero invoice `c2651503-…` (from T3.1.B post-fix valid sync) — optional delete.
+- [ ] Xero invoice `c6c94335-…` (orphan from T3.1.B broken-INSERT test pass) — optional delete; no DB mapping references it.
+- [ ] Xero contact "Michael Harris" (`29f252e7-…`) — optional delete.
+
+**Google Calendar (jamie@searchflare.co.uk):**
+- [x] Google event `08rc...` (orphan from idempotency bug) — already deleted via Google API during fix verification.
+- [x] Google event `9fg2...` (intermediate test) — already deleted.
+- [ ] Google event `h7btnvamvpope0bfl0ihpquph4` (T3.3.B final valid sync) — optional delete; mapping in destination DB still references it.
+
+**Destination DB rows (test connections + mappings):**
+- [ ] `xero_connections` row for org Ms Taylor's Music (`46b20ac7-…`) — created during T3.1.A. Optional delete.
+- [ ] `calendar_connections` row (provider=google, user_id=8e7ff67d) — created during T3.3.A. Optional delete.
+- [ ] `calendar_event_mappings` row mapping lesson `e184749e-…` to Google event `h7bt...` — optional delete.
+- [x] `external_busy_blocks` 2 rows from T3.3.D — will refresh on next cron, no manual action.
+
+### Storage / infrastructure
+- [ ] Drop `migration-dump` bucket on both projects.
+
+### Source decommission
+- [ ] **D6:** whenever, no rush. Snapshot first.
+- [ ] Decision: full delete or freeze in read-only mode for archival?
 
 ---
 
