@@ -192,3 +192,30 @@ Cached partial dump files: `/home/claude/migration-dump-cache/`
   - Negative control with wrong x-cron-secret → HTTP 401 (auth still enforced by `_shared/cron-auth.ts`).
 - **What this means in practice:** when pg_cron jobs fire (next scheduled boundary 03:00/04:00 UTC and per-job intervals), they will now reach their target functions instead of being rejected by the gateway. Combined with the earlier cron URL patching (Phase 5 deferred work item), the full cron pipeline destination ⇄ edge functions is now operational.
 - **Pattern for future development:** if a new function needs to be invoked by `pg_cron` (x-cron-secret) or as a service-to-service call (Bearer SR), it must be added to the `verify_jwt = false` list in `supabase/config.toml`. The standard Supabase pattern is documented in `--no-verify-jwt`/`verify_jwt = false`; this isn't a workaround but the recommended approach for non-end-user-facing functions under the new key model.
+
+## Phase 6 anomalies
+
+### Xero schema drift — `xero_connections` missing UNIQUE on org_id (RESOLVED)
+- **Discovered:** 2026-05-07 during T3.1.A Xero OAuth smoke test.
+- **Symptom:** OAuth flow completed (token exchange + tenant fetch succeeded), but `xero-oauth-callback` function redirected with `?xero_error=save_failed`. No row written to `xero_connections`.
+- **Root cause:** function calls `supabase.upsert(..., { onConflict: 'org_id' })`, which requires a unique constraint on `org_id`. Destination's table had only the PK (`id`); source has the UNIQUE constraint but the migration chain didn't capture it (xero_connections was created out-of-band on source — see Phase 2 deferred work and Section 2 of `ad_hoc_pre_cutover_drift_fixes.sql`).
+- **Fix:** added `xero_connections_org_id_key UNIQUE (org_id)` constraint. Documented as Section 7 in the ad-hoc SQL doc. Retry of T3.1.A then wrote a fresh row + audit_log entry as expected.
+- **Other Phase 2 deferred items still open for `xero_connections`:** RLS policies (no policies exist; service_role bypass works for current edge-function-only access pattern, but anon/authenticated calls would 403 if the frontend ever queried this table directly), per-column indexes (e.g., on `tenant_id` for sync queries — performance, not correctness).
+
+### `xero-sync-invoice` — wrong FK name in PostgREST embed (RESOLVED)
+- **Discovered:** 2026-05-07 during T3.1.B Xero functional sync smoke test (after T3.1.A succeeded).
+- **Symptom:** function returned `{"error":"Invoice not found"}` HTTP 404 for every invoice, regardless of validity.
+- **Root cause:** function code at `supabase/functions/xero-sync-invoice/index.ts:67` referenced `guardians!invoices_guardian_id_fkey` in the PostgREST embed. The actual FK constraint is `invoices_payer_guardian_id_fkey` (FK column is `payer_guardian_id`, not `guardian_id`). PostgREST couldn't resolve the embed → `.single()` returned an error → function returned 404. Likely a latent bug on source too — Xero sync was probably broken there as well, just not exercised recently.
+- **Fix:** one-line code change in the function (commit `025a423` on this branch). Redeployed via `supabase functions deploy --use-api`.
+- **Verified post-fix:** function returned HTTP 200 + `xero_invoice_id`. Direct Xero API confirms the invoice exists in the connected tenant: `Type=ACCREC`, `Reference=LL-LL-2026-00010`, `Status=AUTHORISED`, `Total=792 GBP` (£660 + 20% VAT auto-applied by Xero), `Contact.Name=Michael Harris`, 2 line items. Guardian embed working as intended.
+
+### `xero-sync-invoice` — silent INSERT failure on `xero_entity_mappings` (OPEN)
+- **Discovered:** 2026-05-07 immediately after the FK fix above.
+- **Symptom:** function returns 200 + creates the Xero invoice successfully, but no rows persist to `xero_entity_mappings`. Subsequent re-sync of the same invoice would create a duplicate in Xero (no idempotency check possible without the mapping row).
+- **Root cause:** `xero_entity_mappings` table on destination has 3 NOT NULL columns without defaults: `connection_id`, `sync_status`, `last_synced_at`. The function's INSERT statements (one for the contact mapping at line ~173, one for the invoice mapping at line ~257) provide only `org_id`, `entity_type`, `local_id`, `xero_id`. INSERT fails on NOT NULL violations. Function uses fire-and-forget `await supabase.from(...).insert(...)` without capturing the error → silently swallows the failure → returns success regardless. Either:
+  - source has those columns nullable / with defaults (schema drift on destination), OR
+  - source's deployed function code provides the missing columns (code drift in our git tree)
+- **Status:** OPEN — pending direction on which fix path. Two options:
+  - **(A) Code fix:** update both INSERTs in `xero-sync-invoice/index.ts` to populate `connection_id` (= `connection.id`), `sync_status` (= `'success'`), `last_synced_at` (= `new Date().toISOString()`). Defensive and obviously correct regardless of source's schema state. Also recommend adding error capture (`const { error } = await supabase...insert(...); if (error) { ... }`) so future silent failures don't hide.
+  - **(B) Schema fix:** alter destination's `xero_entity_mappings` to make these columns nullable or add defaults. Less defensive — if source's source-of-truth schema actually has them NOT NULL (and it should — `connection_id` particularly is meaningful), we'd be papering over a bug.
+- **Recommendation:** code fix (A). Same one-shot pattern as the FK fix committed in `025a423`.

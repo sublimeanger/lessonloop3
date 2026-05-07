@@ -179,3 +179,35 @@ COMMIT;
 -- SELECT defaclrole::regrole, defaclnamespace::regnamespace, defaclacl
 --   FROM pg_default_acl WHERE defaclnamespace='public'::regnamespace;
 --   -- expect rows for both 'postgres' and 'supabase_admin' with full ACL strings
+
+
+-- ============================================================
+-- SECTION 7 — Phase 6 Tier 3 prep: xero_connections schema drift
+-- Status: APPLIED 2026-05-07 during T3.1 smoke test
+-- ============================================================
+-- Discovered during T3.1.A Xero OAuth smoke test: xero-oauth-callback function
+-- calls supabase.upsert(..., { onConflict: 'org_id' }) which requires a
+-- unique constraint on org_id. Source's table has one (otherwise their
+-- function would fail identically); destination's didn't (xero_connections
+-- was created out-of-band on source — see Section 2 + Phase 2 deferred work
+-- in migration-journal.md). The migration chain only carried the PK on id.
+--
+-- Symptom: OAuth flow completes (token exchange + tenant fetch succeed),
+-- callback redirects to <redirect_uri>?xero_error=save_failed.
+--
+-- Fix:
+
+ALTER TABLE public.xero_connections
+  ADD CONSTRAINT xero_connections_org_id_key UNIQUE (org_id);
+
+-- Verification:
+-- SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--   WHERE conrelid = 'public.xero_connections'::regclass AND contype = 'u';
+-- Expected: xero_connections_org_id_key with definition UNIQUE (org_id)
+--
+-- Other Phase 2 deferred items for xero_connections still TBD before cutover:
+--  - RLS policies (table has RLS enabled but no policies; service_role bypass works
+--    but anon/authenticated calls would 403 — relevant if frontend ever queries this
+--    table directly rather than via edge functions)
+--  - Per-column indexes (e.g., on tenant_id for sync queries) — performance, not
+--    correctness. Add if observed slow at scale.
