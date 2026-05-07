@@ -243,3 +243,12 @@ verify_jwt = false
 
 [functions.trial-winback]
 verify_jwt = false
+
+# ── OAuth provider callback (no JWT — OAuth providers redirect with code+state only) ──
+# Found-while-migrating in Phase 6 Tier 3.3: Google's OAuth redirect to this function
+# was rejected at the gateway with UNAUTHORIZED_NO_AUTH_HEADER because verify_jwt was
+# defaulting to true. Sister functions xero-oauth-callback and zoom-oauth-callback
+# already had verify_jwt=false in source config; calendar-oauth-callback was missed.
+
+[functions.calendar-oauth-callback]
+verify_jwt = false
