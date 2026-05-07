@@ -1,0 +1,19 @@
+-- Disable all 18 active cron jobs for migration cutover
+SELECT cron.alter_job(5::bigint,  null, null, null, null, false);
+SELECT cron.alter_job(6::bigint,  null, null, null, null, false);
+SELECT cron.alter_job(54::bigint, null, null, null, null, false);
+SELECT cron.alter_job(55::bigint, null, null, null, null, false);
+SELECT cron.alter_job(56::bigint, null, null, null, null, false);
+SELECT cron.alter_job(57::bigint, null, null, null, null, false);
+SELECT cron.alter_job(58::bigint, null, null, null, null, false);
+SELECT cron.alter_job(59::bigint, null, null, null, null, false);
+SELECT cron.alter_job(60::bigint, null, null, null, null, false);
+SELECT cron.alter_job(61::bigint, null, null, null, null, false);
+SELECT cron.alter_job(62::bigint, null, null, null, null, false);
+SELECT cron.alter_job(63::bigint, null, null, null, null, false);
+SELECT cron.alter_job(64::bigint, null, null, null, null, false);
+SELECT cron.alter_job(65::bigint, null, null, null, null, false);
+SELECT cron.alter_job(66::bigint, null, null, null, null, false);
+SELECT cron.alter_job(67::bigint, null, null, null, null, false);
+SELECT cron.alter_job(68::bigint, null, null, null, null, false);
+SELECT cron.alter_job(69::bigint, null, null, null, null, false);
