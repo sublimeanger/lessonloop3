@@ -223,6 +223,27 @@ Cached partial dump files: `/home/claude/migration-dump-cache/`
 - **Code location:** `xero-sync-invoice/index.ts`: `Reference: \`LL-${invoice.invoice_number}\``
 - **Status:** DEFERRED — source has the same bug (same code in our git tree); fixing would be a behaviour change for any historical Xero data already synced from source. Defer to a post-cutover code-cleanup pass.
 
+### `calendar-oauth-callback` — verify_jwt missing + maxResults=1 calendar selection bug (RESOLVED)
+- **Discovered:** 2026-05-07 during T3.3.A Google Calendar OAuth smoke test.
+- **Symptom 1 (gateway):** Google's OAuth redirect returned `UNAUTHORIZED_NO_AUTH_HEADER` HTTP 401 — gateway rejected the callback before the function could run.
+- **Root cause 1:** `calendar-oauth-callback` defaulted to `verify_jwt: true`. OAuth providers don't send a Supabase JWT; they redirect with `code+state` only. Sister functions `xero-oauth-callback` and `zoom-oauth-callback` were already `verify_jwt: false` in source config; calendar-oauth-callback was missed (Phase 5 W1 grep didn't catch it because it doesn't fit Pattern A or B — third pattern: OAuth callbacks).
+- **Fix 1:** added `[functions.calendar-oauth-callback] verify_jwt = false` to `supabase/config.toml`. Commit `b3b762c`.
+- **Symptom 2 (post-fix):** OAuth completed; `calendar_connections` row written, but `calendar_id` was `en.uk#holiday@group.v.calendar.google.com` ("Holidays in United Kingdom") — Google's read-only system calendar, not the user's actual primary.
+- **Root cause 2:** function fetched `calendarList?maxResults=1`. With only 1 entry returned, the `.find(c.primary)` search ran over a single (often-non-primary) item and fell through to `items[0]`. Effect: every Google Calendar connection ended up pointed at the holidays calendar, silently breaking lesson-to-calendar sync (the holidays calendar is read-only). Source has same bug — the 1 google `calendar_connections` row migrated from source is also pointed at the holidays calendar, suggesting feature was effectively broken in source production for this user too.
+- **Fix 2:** removed the `?maxResults=1` query param. Default Google API page size is 100 — more than enough. Commit `6ad1179`.
+- **Verified post-fix:** `calendar_id = jamie@searchflare.co.uk` (primary), tokens populated, 1-hour expiry, audit log entry recorded.
+
+### `calendar-sync-lesson`, `zoom-sync-lesson`, `xero-sync-payment` — three sibling sync function bugs (RESOLVED)
+- **Discovered:** 2026-05-07 during T3.3.B Google Calendar functional sync smoke test.
+- **calendar-sync-lesson idempotency-on-create bug:** `action='create'` always POSTed to Google Calendar (creating a new event) even when a mapping already existed. Subsequent mapping update silently re-pointed at the new event id, leaving the original event orphaned in the user's calendar. Bug verified: first sync created event `08rc...`; second sync (same payload) created `9fg2...`; mapping points at `9fg2...`; both events visible in Google Calendar.
+- **zoom-sync-lesson:** identical bug shape — same logic for action='create' creating duplicate Zoom meetings while mapping moved to new id. Found via sibling scan.
+- **xero-sync-payment:** different shape — idempotency itself was correct (early-return on existing-mapping). But the payment-mapping INSERT was missing 3 NOT NULL columns (`connection_id`, `sync_status`, `last_synced_at`) and used fire-and-forget pattern with no error capture. Same drift class as `xero-sync-invoice` (commit `2c4b410`). The INSERT was silently failing → no mapping persisted → idempotency check on subsequent calls always missed → would create duplicate Xero payments.
+- **Fix:** commit `9c72ca3`.
+  - For calendar-sync-lesson + zoom-sync-lesson: collapsed update/create paths. If mapping exists, always update regardless of caller's `action`. POST-create only when no mapping. Same idempotency pattern as the original `xero-sync-invoice` design.
+  - For xero-sync-payment: added 3 missing NOT NULL columns + `console.error` capture on insert failure (same pattern as xero-sync-invoice fix).
+- **Verified post-fix:** 3-sync sequence (create/create/update) on calendar-sync-lesson returned identical `external_event_id` for all three calls. 1 mapping row, 1 Google event. Full idempotency.
+- **Phase 8 cleanup:** orphan Google event `08rc53ffbgqh7ji1p81og5p94g` deleted via Google API during the test. No residual artifacts.
+
 ### Phase 6 Tier 3.2 (Zoom) — server-side validated, full E2E deferred to cutover
 - **2026-05-07 server-side passes (T3.2.A.1, A.2, A.3):**
   - `zoom-oauth-start` returns valid Zoom authorize URL with correct client_id (SHA256 match vs stored secret), correct redirect_uri, well-formed state.
