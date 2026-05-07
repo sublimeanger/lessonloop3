@@ -209,13 +209,27 @@ Cached partial dump files: `/home/claude/migration-dump-cache/`
 - **Fix:** one-line code change in the function (commit `025a423` on this branch). Redeployed via `supabase functions deploy --use-api`.
 - **Verified post-fix:** function returned HTTP 200 + `xero_invoice_id`. Direct Xero API confirms the invoice exists in the connected tenant: `Type=ACCREC`, `Reference=LL-LL-2026-00010`, `Status=AUTHORISED`, `Total=792 GBP` (£660 + 20% VAT auto-applied by Xero), `Contact.Name=Michael Harris`, 2 line items. Guardian embed working as intended.
 
-### `xero-sync-invoice` — silent INSERT failure on `xero_entity_mappings` (OPEN)
+### `xero-sync-invoice` — silent INSERT failure on `xero_entity_mappings` (RESOLVED)
 - **Discovered:** 2026-05-07 immediately after the FK fix above.
 - **Symptom:** function returns 200 + creates the Xero invoice successfully, but no rows persist to `xero_entity_mappings`. Subsequent re-sync of the same invoice would create a duplicate in Xero (no idempotency check possible without the mapping row).
-- **Root cause:** `xero_entity_mappings` table on destination has 3 NOT NULL columns without defaults: `connection_id`, `sync_status`, `last_synced_at`. The function's INSERT statements (one for the contact mapping at line ~173, one for the invoice mapping at line ~257) provide only `org_id`, `entity_type`, `local_id`, `xero_id`. INSERT fails on NOT NULL violations. Function uses fire-and-forget `await supabase.from(...).insert(...)` without capturing the error → silently swallows the failure → returns success regardless. Either:
-  - source has those columns nullable / with defaults (schema drift on destination), OR
-  - source's deployed function code provides the missing columns (code drift in our git tree)
-- **Status:** OPEN — pending direction on which fix path. Two options:
-  - **(A) Code fix:** update both INSERTs in `xero-sync-invoice/index.ts` to populate `connection_id` (= `connection.id`), `sync_status` (= `'success'`), `last_synced_at` (= `new Date().toISOString()`). Defensive and obviously correct regardless of source's schema state. Also recommend adding error capture (`const { error } = await supabase...insert(...); if (error) { ... }`) so future silent failures don't hide.
-  - **(B) Schema fix:** alter destination's `xero_entity_mappings` to make these columns nullable or add defaults. Less defensive — if source's source-of-truth schema actually has them NOT NULL (and it should — `connection_id` particularly is meaningful), we'd be papering over a bug.
-- **Recommendation:** code fix (A). Same one-shot pattern as the FK fix committed in `025a423`.
+- **Root cause:** `xero_entity_mappings` table on destination has 3 NOT NULL columns without defaults: `connection_id`, `sync_status`, `last_synced_at`. The function's INSERT statements (one for the contact mapping at line ~173, one for the invoice mapping at line ~257) provided only `org_id`, `entity_type`, `local_id`, `xero_id`. INSERT failed on NOT NULL violations. Function used fire-and-forget `await supabase.from(...).insert(...)` without capturing the error → silently swallowed the failure → returned success regardless. Latent bug; likely affecting source's Xero sync identically.
+- **Fix:** updated both INSERTs in `xero-sync-invoice/index.ts` to populate `connection_id` (= `connection.id`), `sync_status` (= `'synced'`), `last_synced_at` (= `new Date().toISOString()`). Added `const { error } = ...` capture + `console.error` so future silent failures surface. Redeployed via `supabase functions deploy --use-api`.
+- **Verified post-fix (2026-05-07):** first sync wrote 2 rows (one contact, one invoice mapping) with all NOT NULL fields populated. Second sync of the same invoice returned the SAME `xero_invoice_id` and added no new rows — full idempotency confirmed (existing-mapping check at lines 134 + 204 was already correct; just couldn't fire because mappings never persisted).
+- **Idempotency analysis:** the function ALWAYS had the right idempotency logic — `select('xero_id').eq('entity_type','contact'/'invoice')` lookup before each Xero call, and reuses the existing `xero_id` if found. The mapping-insert bug just meant the lookup always returned nothing. With the fix, idempotency is now operational.
+
+### `xero-sync-invoice` — `Reference=LL-LL-...` cosmetic prefix bug (DEFERRED)
+- **Discovered:** 2026-05-07 during T3.1.B verification of the Xero invoice via direct Xero API.
+- **Symptom:** Xero invoice's `Reference` field is e.g. `LL-LL-2026-00010` — the function adds `LL-` to `invoice.invoice_number` which already begins with `LL-`.
+- **Code location:** `xero-sync-invoice/index.ts`: `Reference: \`LL-${invoice.invoice_number}\``
+- **Status:** DEFERRED — source has the same bug (same code in our git tree); fixing would be a behaviour change for any historical Xero data already synced from source. Defer to a post-cutover code-cleanup pass.
+
+### Phase 6 Tier 3 test artifacts in Xero (logged for cleanup)
+- Tenant `0931cf0b-…` (`tenant_name: 'test'`) — confirmed sandbox tenant per the OAuth handshake metadata, so no production data risk. Cleanup not urgent.
+- Test artifacts created during T3.1 smoke testing:
+  - 1 Xero Contact (`29f252e7-…`, "Michael Harris", `michael.harris@example.com`)
+  - 2 Xero Invoices:
+    - `c6c94335-…` — created during the broken-INSERT test pass (no mapping row exists; **orphan in Xero**, never reachable via destination's idempotency lookup; manual delete in Xero dashboard if unwanted)
+    - `c2651503-…` — created during the post-fix test pass (mapping row exists; would be reused on subsequent syncs, not duplicated)
+  - 1 destination `xero_connections` row for org `46b20ac7-…` (Ms Taylor's Music) — this row's tokens authenticate the connection and will refresh as needed
+  - 2 destination `xero_entity_mappings` rows linking the post-fix Xero invoice + contact to the LessonLoop invoice
+- **Phase 8 cleanup item:** decide whether to delete the orphan invoice `c6c94335-…` in Xero. Low priority — it's in a sandbox tenant.

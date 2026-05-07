@@ -170,14 +170,21 @@ Deno.serve(async (req) => {
       xeroContactId = contactData.Contacts[0].ContactID;
 
       // Save mapping
-      await supabase
+      const { error: contactMappingError } = await supabase
         .from('xero_entity_mappings')
         .insert({
           org_id: orgId,
+          connection_id: connection.id,
           entity_type: 'contact',
           local_id: guardian.id,
           xero_id: xeroContactId,
+          sync_status: 'synced',
+          last_synced_at: new Date().toISOString(),
         });
+      if (contactMappingError) {
+        console.error('[xero-sync-invoice] Failed to insert contact mapping:', contactMappingError);
+        // Don't fail the function — Xero contact already created — but log loud
+      }
     }
 
     // (e) Create or update invoice in Xero
@@ -254,14 +261,21 @@ Deno.serve(async (req) => {
       xeroInvoiceId = createData.Invoices[0].InvoiceID;
 
       // Save mapping
-      await supabase
+      const { error: invoiceMappingError } = await supabase
         .from('xero_entity_mappings')
         .insert({
           org_id: orgId,
+          connection_id: connection.id,
           entity_type: 'invoice',
           local_id: invoice_id,
           xero_id: xeroInvoiceId,
+          sync_status: 'synced',
+          last_synced_at: new Date().toISOString(),
         });
+      if (invoiceMappingError) {
+        console.error('[xero-sync-invoice] Failed to insert invoice mapping:', invoiceMappingError);
+        // Don't fail the function — Xero invoice already created — but log loud
+      }
     }
 
     // (f) Update last_sync_at
