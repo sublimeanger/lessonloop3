@@ -74,17 +74,20 @@ cp .env .env.pre-cutover-backup
 cp supabase/config.toml supabase/config.toml.pre-cutover-backup
 
 # Swap .env
+# Note: VITE_STRIPE_PUBLISHABLE_KEY was missing from source's .env (Stripe Elements would
+# warn at runtime). Adding it here so the frontend can load Stripe Elements correctly.
 cat > .env << 'EOF'
 VITE_SUPABASE_PROJECT_ID="xmrhmxizpslhtkibqyfy"
 VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_4VxL8SzppJdtroj4IbmnXg_Ka530Y8f"
 VITE_SUPABASE_URL="https://xmrhmxizpslhtkibqyfy.supabase.co"
+VITE_STRIPE_PUBLISHABLE_KEY="pk_live_51SrzbkAzPfYm94uxnOmeYsSDBu2NCGUxPjvTShMXjCGHQQnmS8Eo9rkZj5RgEiTZm8Zjg7qs75GDrABUJ2Sge4rK00qwTULz0G"
 EOF
 
 # Swap config.toml
 sed -i 's|^project_id = "ximxgnkpcswbvfrkkmjq"|project_id = "xmrhmxizpslhtkibqyfy"|' supabase/config.toml
 
 # Verify
-grep -E "VITE_SUPABASE" .env
+grep -E "VITE_" .env
 grep "^project_id" supabase/config.toml
 
 # Build + smoke
