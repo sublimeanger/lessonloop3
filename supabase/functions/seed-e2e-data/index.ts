@@ -19,7 +19,11 @@ Deno.serve(async (req) => {
 
   // Guard 2: URL-based production check (belt-and-suspenders)
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-  if (supabaseUrl.includes('ximxgnkpcswbvfrkkmjq') || supabaseUrl.includes('lessonloop') && !supabaseUrl.includes('local')) {
+  const PRODUCTION_REFS = ['ximxgnkpcswbvfrkkmjq', 'xmrhmxizpslhtkibqyfy'];
+  const looksProduction =
+    PRODUCTION_REFS.some((ref) => supabaseUrl.includes(ref)) ||
+    (supabaseUrl.includes('lessonloop') && !supabaseUrl.includes('local'));
+  if (looksProduction) {
     return new Response(
       JSON.stringify({ error: 'Seed functions are disabled in production' }),
       { status: 403, headers: { 'Content-Type': 'application/json' } }

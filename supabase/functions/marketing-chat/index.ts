@@ -204,30 +204,35 @@ Deno.serve(async (req) => {
       }))
       .slice(-20);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not configured');
       return new Response(JSON.stringify({ error: 'AI service not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...messages,
-        ],
-        stream: true,
-      }),
-    });
+    // Gemini direct API. Translate {role:'user'/'assistant', content:'...'} into
+    // Gemini's contents=[{role:'user'/'model', parts:[{text}]}] shape.
+    const geminiContents = messages.map((m: { role: string; content: string }) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+    // gemini-flash-latest auto-updates to current production Gemini Flash.
+    // For predictable behaviour in production-critical paths, pin to a specific version
+    // (e.g. gemini-3-flash or gemini-3.1-flash-lite-preview) and bump deliberately.
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: geminiContents,
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        }),
+      }
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -250,8 +255,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+    // Non-streaming: return the assembled assistant text in OpenAI-compatible shape
+    // so any existing client parser that reads choices[0].message.content still works.
+    const aiData = await response.json();
+    const text = aiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return new Response(JSON.stringify({
+      choices: [{ message: { role: 'assistant', content: text } }],
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Marketing chat error:', error);

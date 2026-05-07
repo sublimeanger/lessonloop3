@@ -64,9 +64,10 @@ Deno.serve(async (req) => {
     // Calculate token expiry
     const tokenExpiresAt = new Date(Date.now() + (expires_in * 1000));
 
-    // Fetch user's primary calendar
+    // Fetch user's calendar list (no limit — need the full list so .find(c.primary) below
+    // can actually locate the primary calendar, not just whatever Google returns first).
     const calendarListResponse = await fetch(
-      'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1',
+      'https://www.googleapis.com/calendar/v3/users/me/calendarList',
       {
         headers: { Authorization: `Bearer ${access_token}` },
       }

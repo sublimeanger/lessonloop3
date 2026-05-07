@@ -1,0 +1,4811 @@
+{
+  "public._spotcheck_log": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "ts",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "label",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "value",
+        "type": "text",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 20,
+    "row_count_total": 20,
+    "size_bytes": 9240
+  },
+  "public.ai_action_proposals": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "conversation_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "proposal",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "result",
+        "type": "jsonb",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "executed_at",
+        "type": "timestamptz",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 31,
+    "row_count_total": 31,
+    "size_bytes": 23516
+  },
+  "public.ai_conversations": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "title",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 7744,
+    "size_bytes": 2063042
+  },
+  "public.ai_interaction_metrics": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "message_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "conversation_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "feedback",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "response_time_ms",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "action_proposed",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "action_executed",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 4,
+    "row_count_total": 4,
+    "size_bytes": 1572
+  },
+  "public.ai_messages": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "conversation_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "role",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "content",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "metadata",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 7790,
+    "size_bytes": 2860382
+  },
+  "public.attendance_records": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "lesson_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "attendance_status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "recorded_by",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "recorded_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "cancellation_reason",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "absence_reason_category",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "absence_notified_at",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 3208,
+    "size_bytes": 1327079
+  },
+  "public.audit_log": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "actor_user_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "action",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "entity_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "entity_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "before",
+        "type": "jsonb",
+        "nullable": true
+      },
+      {
+        "name": "after",
+        "type": "jsonb",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 25956,
+    "size_bytes": 23423270
+  },
+  "public.auto_pay_attempts": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.availability_blocks": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "teacher_user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "day_of_week",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "start_time_local",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "end_time_local",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "teacher_id",
+        "type": "uuid",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 19,
+    "row_count_total": 19,
+    "size_bytes": 6293
+  },
+  "public.availability_templates": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.billing_runs": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "run_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "end_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "created_by",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "summary",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "billing_mode",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "term_id",
+        "type": "uuid",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 12,
+    "row_count_total": 12,
+    "size_bytes": 6812
+  },
+  "public.booking_page_instruments": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "booking_page_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "instrument_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 4,
+    "row_count_total": 4,
+    "size_bytes": 825
+  },
+  "public.booking_page_teachers": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "booking_page_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "teacher_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 1,
+    "row_count_total": 1,
+    "size_bytes": 204
+  },
+  "public.booking_pages": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "slug",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "title",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "logo_url",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "accent_color",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "lesson_duration_mins",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "advance_booking_days",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "min_notice_hours",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "buffer_minutes",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "require_phone",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "welcome_message",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "confirmation_message",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 4,
+    "row_count_total": 4,
+    "size_bytes": 2220
+  },
+  "public.calendar_connections": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "provider",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "calendar_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "calendar_name",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "access_token",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "refresh_token",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "token_expires_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "sync_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "last_sync_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "sync_status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "ical_token",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "ical_token_expires_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "guardian_id",
+        "type": "uuid",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 2,
+    "row_count_total": 2,
+    "size_bytes": 1608
+  },
+  "public.calendar_event_mappings": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.cancellation_feedback": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.closure_dates": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "location_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "reason",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "applies_to_all_locations",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "created_by",
+        "type": "uuid",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 393,
+    "size_bytes": 114579
+  },
+  "public.enrolment_waitlist": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "lead_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "contact_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "contact_email",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "contact_phone",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "guardian_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "child_first_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "child_last_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "child_age",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "instrument_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "instrument_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "preferred_teacher_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "preferred_location_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "preferred_days",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "preferred_time_earliest",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "preferred_time_latest",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "experience_level",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "lesson_duration_mins",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "offered_slot_day",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "offered_slot_time",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "offered_teacher_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "offered_location_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "offered_rate_minor",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "offered_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "offer_expires_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "responded_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "offer_message_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "converted_student_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "converted_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "source",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "priority",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "created_by",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 5,
+    "row_count_total": 5,
+    "size_bytes": 5081
+  },
+  "public.enrolment_waitlist_activity": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.exam_boards": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "short_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "country_code",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "sort_order",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 6,
+    "row_count_total": 6,
+    "size_bytes": 1132
+  },
+  "public.external_busy_blocks": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.grade_change_history": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.grade_levels": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "exam_board_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "short_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "sort_order",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "is_diploma",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 36,
+    "row_count_total": 36,
+    "size_bytes": 10025
+  },
+  "public.guardian_payment_preferences": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "guardian_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "stripe_customer_id",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "auto_pay_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "default_payment_method_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "auto_pay_paused_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "auto_pay_paused_reason",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "consecutive_failure_count",
+        "type": "integer",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 2,
+    "row_count_total": 2,
+    "size_bytes": 859
+  },
+  "public.guardians": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "full_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "email",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "phone",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "deleted_at",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 631,
+    "size_bytes": 192699
+  },
+  "public.hint_completions": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "hint_id",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "dismissed_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 8,
+    "row_count_total": 8,
+    "size_bytes": 1412
+  },
+  "public.instruments": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "category",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "sort_order",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "is_custom",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 53,
+    "size_bytes": 10259
+  },
+  "public.internal_messages": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "sender_user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "sender_role",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "recipient_user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "recipient_role",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "subject",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "body",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "read_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "thread_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "parent_message_id",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 5,
+    "row_count_total": 5,
+    "size_bytes": 2481
+  },
+  "public.invites": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "email",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "role",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "token",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "expires_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "accepted_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "related_student_id",
+        "type": "uuid",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 46,
+    "row_count_total": 46,
+    "size_bytes": 16368
+  },
+  "public.invoice_installments": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "invoice_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "installment_number",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "amount_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "due_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "paid_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "payment_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "stripe_payment_intent_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 21,
+    "row_count_total": 21,
+    "size_bytes": 8773
+  },
+  "public.invoice_items": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "invoice_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "quantity",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "unit_price_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "amount_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "linked_lesson_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "source_rate_card_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "calculation_notes",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 428,
+    "size_bytes": 176454
+  },
+  "public.invoice_number_sequences": {
+    "columns": [
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "current_year",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "current_number",
+        "type": "integer",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 12,
+    "row_count_total": 12,
+    "size_bytes": 1102
+  },
+  "public.invoices": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "invoice_number",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "issue_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "due_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "currency_code",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "subtotal_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "tax_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "total_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "vat_rate",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "payer_guardian_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "payer_student_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "credit_applied_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "term_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "payment_plan_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "installment_count",
+        "type": "integer",
+        "nullable": true
+      },
+      {
+        "name": "paid_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "is_credit_note",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "related_invoice_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "adjustment_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "billing_run_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "overpayment_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "generated_from_template_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "generated_from_run_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "pdf_rev",
+        "type": "integer",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 345,
+    "size_bytes": 276666
+  },
+  "public.kickstarter_signups": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.lead_activities": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "lead_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "activity_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "metadata",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "created_by",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 4,
+    "row_count_total": 4,
+    "size_bytes": 1458
+  },
+  "public.lead_follow_ups": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.lead_students": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "lead_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "first_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "last_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "age",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "instrument",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "experience_level",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "converted_student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 1,
+    "row_count_total": 1,
+    "size_bytes": 364
+  },
+  "public.leads": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "contact_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "contact_email",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "contact_phone",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "stage",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "source",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "source_detail",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "assigned_to",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "trial_lesson_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "trial_date",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "converted_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "lost_reason",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "preferred_instrument",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "preferred_day",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "preferred_time",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_by",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 11,
+    "row_count_total": 11,
+    "size_bytes": 6720
+  },
+  "public.lesson_notes": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "lesson_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "teacher_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "content_covered",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "homework",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "focus_areas",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "engagement_rating",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "teacher_private_notes",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "parent_visible",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 2,
+    "row_count_total": 2,
+    "size_bytes": 1217
+  },
+  "public.lesson_participants": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "lesson_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "rate_minor",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 4679,
+    "size_bytes": 1230165
+  },
+  "public.lessons": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "start_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "end_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "lesson_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "teacher_user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "location_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "room_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "online_meeting_url",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "recurrence_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "title",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "notes_private",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "notes_shared",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_by",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "cancellation_reason",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "cancelled_by",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "cancelled_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "teacher_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "is_series_exception",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "max_participants",
+        "type": "integer",
+        "nullable": true
+      },
+      {
+        "name": "recap_url",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "is_online",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "is_open_slot",
+        "type": "boolean",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 4677,
+    "size_bytes": 4163041
+  },
+  "public.locations": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "address_line_1",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "address_line_2",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "city",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "postcode",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "country_code",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "is_primary",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "location_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "parent_reschedule_policy_override",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "is_archived",
+        "type": "boolean",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 58,
+    "size_bytes": 25104
+  },
+  "public.make_up_credits": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "issued_for_lesson_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "issued_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "expires_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "redeemed_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "redeemed_lesson_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "credit_value_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_by",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "applied_to_invoice_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "expired_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "voided_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "voided_by",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 14,
+    "row_count_total": 14,
+    "size_bytes": 8095
+  },
+  "public.make_up_policies": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "absence_reason",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "eligibility",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "releases_slot",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "max_credits_per_term",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 80,
+    "size_bytes": 20860
+  },
+  "public.make_up_waitlist": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "guardian_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "missed_lesson_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "missed_lesson_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "absence_reason",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "attendance_record_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "teacher_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "lesson_duration_minutes",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "lesson_title",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "location_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "matched_lesson_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "matched_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "offered_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "responded_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "booked_lesson_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "credit_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "preferred_days",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "preferred_time_earliest",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "preferred_time_latest",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "expires_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "offer_expires_at",
+        "type": "timestamptz",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 15,
+    "row_count_total": 15,
+    "size_bytes": 14285
+  },
+  "public.message_batches": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.message_log": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "recipient_email",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "recipient_name",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "message_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "subject",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "body",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "error_message",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "related_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "sent_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "channel",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "sender_user_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "recipient_type",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "recipient_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "read_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "batch_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "thread_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "parent_message_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "source",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "payment_id",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 1308,
+    "size_bytes": 1818159
+  },
+  "public.message_requests": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "guardian_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "lesson_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "request_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "subject",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "message",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "admin_response",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "responded_by",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "responded_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 5,
+    "row_count_total": 5,
+    "size_bytes": 2919
+  },
+  "public.message_templates": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.notification_preferences": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "email_lesson_reminders",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "email_invoice_reminders",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "email_payment_receipts",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "email_marketing",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "email_makeup_offers",
+        "type": "boolean",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 6,
+    "row_count_total": 6,
+    "size_bytes": 2288
+  },
+  "public.org_memberships": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "role",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 147,
+    "size_bytes": 33048
+  },
+  "public.org_messaging_settings": {
+    "columns": [
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "parent_can_initiate",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "parent_can_message_owner",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "parent_can_message_admin",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "parent_can_message_teacher",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "auto_assign_to_teacher",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "notify_staff_on_new_message",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "notify_parent_on_reply",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 1,
+    "row_count_total": 1,
+    "size_bytes": 368
+  },
+  "public.organisations": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "org_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "country_code",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "currency_code",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "timezone",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "vat_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "vat_rate",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "vat_registration_number",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_by",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "billing_approach",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "default_lesson_length_mins",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "block_scheduling_on_closures",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "invoice_from_name",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "invoice_from_address_line1",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "invoice_from_address_line2",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "invoice_from_city",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "invoice_from_postcode",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "invoice_from_country",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "logo_url",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "invoice_footer_note",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "address",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "default_payment_terms_days",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "cancellation_notice_hours",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "subscription_plan",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "subscription_status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "trial_ends_at",
+        "type": "timestamptz",
+        "nullable": true
+      },
+      {
+        "name": "max_students",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "max_teachers",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "stripe_customer_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "stripe_subscription_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "buffer_minutes_between_locations",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "overdue_reminder_days",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "auto_pause_lessons_after_days",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "parent_reschedule_policy",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "stripe_connect_account_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "stripe_connect_status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "stripe_connect_onboarded_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "platform_fee_percent",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "payment_methods_enabled",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "bank_account_name",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "bank_sort_code",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "bank_account_number",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "bank_reference_prefix",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "online_payments_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "schedule_start_hour",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "schedule_end_hour",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "make_up_waitlist_expiry_weeks",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "past_due_since",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "cancels_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "max_credits_per_term",
+        "type": "integer",
+        "nullable": true
+      },
+      {
+        "name": "credit_expiry_days",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "default_exam_board_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "ai_preferences",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "teacher_payment_notifications_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "teacher_payment_analytics_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "brand_color",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "accent_color",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "invoice_number_prefix",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "invoice_number_digits",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "enrolment_offer_expiry_hours",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "terms_conditions_url",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "teacher_limit_exceeded",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "continuation_notice_weeks",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "continuation_assumed_continuing",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "continuation_reminder_days",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "default_plan_threshold_minor",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "default_plan_installments",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "default_plan_frequency",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "payment_reminder_settings",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "reminder_before_due_days",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "reminder_before_due_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "reminder_overdue_days",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "reminder_overdue_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "reminder_escalation_days",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "reminder_escalation_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "reminder_lesson_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "reminder_lesson_hours",
+        "type": "integer",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 49,
+    "row_count_total": 49,
+    "size_bytes": 124840
+  },
+  "public.payment_disputes": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.payment_notifications": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.payments": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "invoice_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "amount_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "currency_code",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "method",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "provider",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "provider_reference",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "paid_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "installment_id",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 97,
+    "size_bytes": 40705
+  },
+  "public.platform_audit_log": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "action",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "source",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "severity",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "details",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 3836,
+    "size_bytes": 4068364
+  },
+  "public.practice_assignments": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "teacher_user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "title",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "target_minutes_per_day",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "target_days_per_week",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "end_date",
+        "type": "date",
+        "nullable": true
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "teacher_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "grade_level_id",
+        "type": "uuid",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 17,
+    "row_count_total": 17,
+    "size_bytes": 8735
+  },
+  "public.practice_logs": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "assignment_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "logged_by_user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "practice_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "teacher_feedback",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "reviewed_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "reviewed_by_user_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 61,
+    "size_bytes": 26841
+  },
+  "public.practice_streaks": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "current_streak",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "longest_streak",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "last_practice_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "streak_started_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 4,
+    "row_count_total": 4,
+    "size_bytes": 1165
+  },
+  "public.profiles": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "full_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "email",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "phone",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "has_completed_onboarding",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "current_org_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "first_run_completed",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "first_run_path",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "avatar_url",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 129,
+    "size_bytes": 47740
+  },
+  "public.push_tokens": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.rate_cards": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "duration_mins",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "rate_amount",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "currency_code",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "is_default",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 54,
+    "size_bytes": 15803
+  },
+  "public.rate_limits": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "action_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "window_start",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "request_count",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 14148,
+    "size_bytes": 3335423
+  },
+  "public.recurrence_rules": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "pattern_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "days_of_week",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "interval_weeks",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "end_date",
+        "type": "date",
+        "nullable": true
+      },
+      {
+        "name": "timezone",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "exception_dates",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 314,
+    "size_bytes": 93812
+  },
+  "public.recurring_invoice_templates": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.recurring_template_items": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.recurring_template_recipients": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.recurring_template_run_errors": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.recurring_template_runs": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.refunds": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.resource_categories": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.resource_category_assignments": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.resource_shares": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "resource_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "shared_by",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "shared_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 15,
+    "row_count_total": 15,
+    "size_bytes": 4456
+  },
+  "public.resources": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "title",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "file_path",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "file_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "file_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "file_size_bytes",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "uploaded_by",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 9,
+    "row_count_total": 9,
+    "size_bytes": 4184
+  },
+  "public.rooms": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "location_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "capacity",
+        "type": "integer",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "max_capacity",
+        "type": "integer",
+        "nullable": true
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": true
+      }
+    ],
+    "sampled_rows": 43,
+    "row_count_total": 43,
+    "size_bytes": 13506
+  },
+  "public.stripe_checkout_sessions": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "invoice_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "stripe_session_id",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "stripe_payment_intent_id",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "stripe_customer_id",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "amount_minor",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "currency_code",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "payer_email",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "payer_user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "metadata",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "completed_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "expires_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 12,
+    "row_count_total": 12,
+    "size_bytes": 8390
+  },
+  "public.stripe_webhook_events": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.student_guardians": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "guardian_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "relationship",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "is_primary_payer",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "receives_billing",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "receives_schedule",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "receives_practice",
+        "type": "boolean",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 525,
+    "size_bytes": 194436
+  },
+  "public.student_instruments": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "instrument_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "exam_board_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "current_grade_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "target_grade_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "is_primary",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "started_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 315,
+    "size_bytes": 130515
+  },
+  "public.student_teacher_assignments": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "teacher_user_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "is_primary",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "teacher_id",
+        "type": "uuid",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 344,
+    "size_bytes": 99786
+  },
+  "public.students": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "first_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "last_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "email",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "phone",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "dob",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "deleted_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "default_location_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "default_teacher_user_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "default_rate_card_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "default_teacher_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "gender",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "start_date",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "tags",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "payment_plan_preference",
+        "type": "text",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 3590,
+    "size_bytes": 1962247
+  },
+  "public.teacher_profiles": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.teachers": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": true
+      },
+      {
+        "name": "display_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "email",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "phone",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "instruments",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "employment_type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "pay_rate_type",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "pay_rate_value",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "payroll_notes",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "bio",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "default_lesson_length_mins",
+        "type": "integer",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 89,
+    "size_bytes": 41195
+  },
+  "public.term_adjustments": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.term_continuation_responses": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.term_continuation_runs": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.terms": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "end_date",
+        "type": "date",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "created_by",
+        "type": "uuid",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 26,
+    "row_count_total": 26,
+    "size_bytes": 6947
+  },
+  "public.time_off_blocks": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "teacher_user_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "start_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "end_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "reason",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "teacher_id",
+        "type": "uuid",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 1,
+    "row_count_total": 1,
+    "size_bytes": 342
+  },
+  "public.xero_connections": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "org_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "tenant_id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "tenant_name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "access_token",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "refresh_token",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "token_expires_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "sync_enabled",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "sync_status",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "auto_sync_invoices",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "auto_sync_payments",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "last_sync_at",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "error_message",
+        "type": "text",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "connected_by",
+        "type": "uuid",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 1,
+    "row_count_total": 1,
+    "size_bytes": 1894
+  },
+  "public.xero_entity_mappings": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "public.zoom_meeting_mappings": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "auth.users": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "email",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "phone",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "last_sign_in_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "email_confirmed_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "confirmed_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "is_anonymous",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "role",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "app_metadata",
+        "type": "jsonb",
+        "nullable": false
+      },
+      {
+        "name": "user_metadata",
+        "type": "jsonb",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 129,
+    "size_bytes": 71349
+  },
+  "auth.identities": {
+    "columns": [],
+    "sampled_rows": 0,
+    "row_count_total": 0,
+    "note": "no parseable rows"
+  },
+  "storage.buckets": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "owner",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "public",
+        "type": "boolean",
+        "nullable": false
+      },
+      {
+        "name": "type",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "file_size_limit",
+        "type": "integer",
+        "nullable": true
+      },
+      {
+        "name": "allowed_mime_types",
+        "type": "jsonb",
+        "nullable": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 5,
+    "row_count_total": 5,
+    "size_bytes": 1341
+  },
+  "storage.objects": {
+    "columns": [
+      {
+        "name": "bucket",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "prefix",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "nullable": false
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "last_accessed_at",
+        "type": "timestamptz",
+        "nullable": false
+      },
+      {
+        "name": "metadata",
+        "type": "jsonb",
+        "nullable": false
+      }
+    ],
+    "sampled_rows": 50,
+    "row_count_total": 109,
+    "size_bytes": 50713
+  }
+}
