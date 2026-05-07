@@ -134,9 +134,11 @@ After deploy: open `https://app.lessonloop.net` incognito, sign in, confirm Netw
 
 Add destination's callback to each (don't replace source's — both can coexist):
 
-- **Xero:** [developer.xero.com/app/manage](https://developer.xero.com/app/manage) → add callback `https://app.lessonloop.net/settings/integrations/xero/callback`
-- **Zoom:** [marketplace.zoom.us/develop/apps](https://marketplace.zoom.us/develop/apps) → add Whitelist URL `https://app.lessonloop.net/settings/integrations/zoom/callback`
-- **Google:** already done in Step 1 of `phase-6-auth-providers.md`
+- **Xero:** [developer.xero.com/app/manage](https://developer.xero.com/app/manage) → add redirect URI `https://xmrhmxizpslhtkibqyfy.supabase.co/functions/v1/xero-oauth-callback`
+- **Zoom:** [marketplace.zoom.us/develop/apps](https://marketplace.zoom.us/develop/apps) → add Whitelist URL `https://app.lessonloop.net/auth/zoom/callback` (Zoom is the only one that uses a frontend route — it forwards the code to the edge function)
+- **Google:** add TWO redirect URIs to existing OAuth client at [console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials):
+  - `https://xmrhmxizpslhtkibqyfy.supabase.co/auth/v1/callback` — sign-in (also done in Step 1)
+  - `https://xmrhmxizpslhtkibqyfy.supabase.co/functions/v1/calendar-oauth-callback` — Calendar OAuth
 
 **Test:** complete each OAuth flow against destination from a clean account → row in `xero_connections` / `calendar_connections`.
 

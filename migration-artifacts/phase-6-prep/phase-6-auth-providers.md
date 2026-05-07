@@ -27,14 +27,16 @@ Reuse the same Google OAuth client ID/secret currently in use on source. Just ad
 
 ### Steps
 
-**A. Google Cloud Console — add destination callback URL**
+**A. Google Cloud Console — add destination callback URLs (TWO needed)**
 
 1. [Console → Credentials](https://console.cloud.google.com/apis/credentials)
 2. Open your existing LessonLoop OAuth 2.0 Client (Web application)
-3. Under **Authorized redirect URIs**, click "ADD URI" and paste:
+3. Under **Authorized redirect URIs**, click "ADD URI" twice and paste both:
    ```
    https://xmrhmxizpslhtkibqyfy.supabase.co/auth/v1/callback
+   https://xmrhmxizpslhtkibqyfy.supabase.co/functions/v1/calendar-oauth-callback
    ```
+   First is for sign-in (Supabase Auth handles the OAuth dance). Second is for the Google Calendar integration (separate edge function).
 4. Save. Leave source's URI in place too (D6: source stays around).
 
 **B. Supabase Auth dashboard — destination**
