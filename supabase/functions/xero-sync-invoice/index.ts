@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       .select(`
         *,
         invoice_items (*),
-        guardian:guardians!invoices_guardian_id_fkey (id, full_name, email, phone),
+        guardian:guardians!invoices_payer_guardian_id_fkey (id, full_name, email, phone),
         org:organisations!invoices_org_id_fkey (id, name, currency_code)
       `)
       .eq('id', invoice_id)
