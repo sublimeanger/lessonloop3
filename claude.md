@@ -6,7 +6,7 @@ LessonLoop is a music academy management SaaS. React 18 / TypeScript / Vite fron
 **Repo:** github.com/sublimeanger/lessonloop3
 **App:** https://app.lessonloop.net
 **Marketing:** https://lessonloop.net
-**Supabase project:** ximxgnkpcswbvfrkkmjq.supabase.co
+**Supabase project:** xmrhmxizpslhtkibqyfy.supabase.co
 
 ## Architecture
 ### Two-Site Setup
@@ -141,7 +141,7 @@ openid profile email offline_access accounting.contacts accounting.invoices
 - `accounting.payments` is **not yet available** for new apps (expected end of April 2026)
 - `accounting.contacts` and `accounting.settings` are unchanged and work as before
 - Xero Client ID: `383EE6AE69FF4B86A4DBBA68F0DFAB47`
-- Redirect URI: `https://ximxgnkpcswbvfrkkmjq.supabase.co/functions/v1/xero-oauth-callback`
+- Redirect URI: `https://xmrhmxizpslhtkibqyfy.supabase.co/functions/v1/xero-oauth-callback`
 
 ### Cron Jobs (16 active HTTP crons + 2 SQL-only)
 

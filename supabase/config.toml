@@ -1,4 +1,4 @@
-project_id = "ximxgnkpcswbvfrkkmjq"
+project_id = "xmrhmxizpslhtkibqyfy"
 
 # ── User-facing functions: JWT verification DISABLED ──────────────────
 # Platform-level verify_jwt is incompatible with the signing-keys system.
