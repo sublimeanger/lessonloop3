@@ -174,6 +174,16 @@ Re-run smoke tests against the live URL `https://app.lessonloop.net`:
 - Function logs: `supabase functions logs <name> --project-ref xmrhmxizpslhtkibqyfy --tail` for any 5xx
 - Cron: confirm next scheduled fire produces expected output (`audit_log`, `message_log` entries)
 
+**Phase 6 deferred Tier 3 items — must be exercised here for the first time:**
+- **Zoom OAuth + sync** (was untestable pre-cutover because flow is frontend-mediated and the production frontend was bound to source's Supabase URL):
+  - Sign in → Settings → Integrations → Zoom → "Connect"
+  - Authorize against a real or test Zoom account
+  - Verify: row appears in `calendar_connections WHERE provider = 'zoom'`
+  - Pick a test lesson, click "Sync to Zoom" (or trigger via `zoom-sync-lesson` function call)
+  - Verify: Zoom meeting created in Zoom dashboard, row in `zoom_meeting_mappings`
+  - Re-run sync, verify same Zoom meeting ID (idempotency)
+  - **If failure:** check causes in priority order — (1) ZOOM_CLIENT_ID/SECRET pairing, (2) redirect URI in Zoom Marketplace, (3) zoom-oauth-callback `verify_jwt` config, (4) `zoom_meeting_mappings` schema drift (analogous to the xero_entity_mappings bug we fixed in Phase 6 — INSERT may silently fail on NOT NULL columns; check function logs for `console.error` from any insert)
+
 ---
 
 ## Decision points during cutover

@@ -223,6 +223,14 @@ Cached partial dump files: `/home/claude/migration-dump-cache/`
 - **Code location:** `xero-sync-invoice/index.ts`: `Reference: \`LL-${invoice.invoice_number}\``
 - **Status:** DEFERRED — source has the same bug (same code in our git tree); fixing would be a behaviour change for any historical Xero data already synced from source. Defer to a post-cutover code-cleanup pass.
 
+### Phase 6 Tier 3.2 (Zoom) — server-side validated, full E2E deferred to cutover
+- **2026-05-07 server-side passes (T3.2.A.1, A.2, A.3):**
+  - `zoom-oauth-start` returns valid Zoom authorize URL with correct client_id (SHA256 match vs stored secret), correct redirect_uri, well-formed state.
+  - `zoom-oauth-callback` ACTIVE, `verify_jwt: false`, gracefully rejects synthetic invalid state (HTTP 400) and bogus code (HTTP 302 redirect with error). Zero side effects in DB on synthetic input.
+  - Direct Zoom OAuth token endpoint probe with our credentials returned `invalid_grant: Invalid authorization code` (creds accepted, code rejected) — confirming ZOOM_CLIENT_ID + ZOOM_CLIENT_SECRET are a valid pairing in Zoom's records and the redirect_uri is registered in the Marketplace app config.
+- **Why full E2E was deferred:** Zoom OAuth flow is **frontend-mediated** (unlike Xero/Google which redirect directly to a Supabase edge function). `zoom-oauth-start` hardcodes redirect_uri to `${FRONTEND_URL}/auth/zoom/callback`; Zoom redirects there; the React component (`src/pages/ZoomOAuthCallback.tsx`) reads `import.meta.env.VITE_SUPABASE_URL` and forwards `code+state` to that URL's `/functions/v1/zoom-oauth-callback`. The deployed `app.lessonloop.net` was built with source's URL → OAuth code goes to source, never destination. Full E2E impossible until cutover Step 3 frontend rebuild.
+- **Cutover Step 8 covers the deferred validation:** see `cutover-runbook.md`. If `zoom_meeting_mappings` table has the same schema drift as `xero_entity_mappings` (NOT NULL columns the function doesn't populate → silent INSERT failure), expect to find it during cutover-time sync test. Watch function logs for `console.error` from inserts; pattern fix is identical to commit `2c4b410`.
+
 ### Phase 6 Tier 3 test artifacts in Xero (logged for cleanup)
 - Tenant `0931cf0b-…` (`tenant_name: 'test'`) — confirmed sandbox tenant per the OAuth handshake metadata, so no production data risk. Cleanup not urgent.
 - Test artifacts created during T3.1 smoke testing:

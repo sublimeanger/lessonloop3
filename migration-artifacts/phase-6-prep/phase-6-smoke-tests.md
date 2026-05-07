@@ -89,38 +89,74 @@ Same expectations + failure modes as T1.3.
 
 ## Tier 2 — Payments
 
-### T2.1 — Stripe Checkout
+### T2.0 — Stripe MCP recon (✅ done 2026-05-07)
 
-Use Stripe **test mode** (set `STRIPE_SECRET_KEY` to test-mode key for this test, or use a parallel test deployment).
+Verified via MCP + direct Stripe API:
+- Account: `acct_1SrzbkAzPfYm94ux` (LessonLoop), live mode
+- Products: 3 (Teacher / Studio / Agency), pricing structure ✓
+- 6 Price IDs match destination secrets by SHA256 (see T2.1 results)
+- Source webhook: `https://ximxgnkpcswbvfrkkmjq.supabase.co/functions/v1/stripe-webhook`, 6 enabled events:
+  `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
+- These 6 events are the exact list to register on destination at cutover Step 5.
 
-Sign in to destination's frontend, navigate to subscription/billing, click "Subscribe", use test card `4242 4242 4242 4242`.
+### T2.1 — `stripe-subscription-checkout` end-to-end (✅ done 2026-05-07, 6/6 PASS)
 
-**Expected:** redirect back with success state; new row in `stripe_checkout_sessions`; new subscription row.
+Tested all 6 plan × interval combinations against destination using `demo-solo-owner@lessonloop.test` JWT. Each call:
+1. POST to `stripe-subscription-checkout` returned HTTP 200 with valid Stripe Checkout URL
+2. Session retrieved via direct Stripe API verified:
+   - `line_items[].price.id` matches the corresponding `STRIPE_PRICE_*` secret
+   - `metadata.lessonloop_org_id` = caller's org
+   - `mode = 'subscription'`, `status = 'open'`, `livemode = true`
+3. All 6 sessions expired post-test for cleanup
 
-**Failure modes:**
-- "No such price" → wrong/test-mode-only `STRIPE_PRICE_*` IDs
-- 401 from Stripe → `STRIPE_SECRET_KEY` invalid
-- Webhook event not processed → Step 5 of cutover runbook not done yet
+Stripe customer `cus_UTM8UaqtrlyJ6Z` was created and persisted to `organisations.stripe_customer_id` for org `46b20ac7-…`. Acceptable test residue; can be reset during Phase 8 cleanup if desired.
 
----
+### T2.2 — Stripe webhook delivery (DEFERRED to cutover Step 5)
 
-### T2.2 — Stripe webhook delivery
+**Decision (2026-05-07):** defer webhook signature path testing to cutover. Rationale:
+- Pre-cutover dual-processing window risks real-name customer outbound notifications (e.g., `invoice.paid` triggers Resend confirmation emails)
+- Webhook signature verification logic was not modified in Phase 5; Phase 5 redeploys only changed `verify_jwt = false` config, which is the gateway's path, not the function's `stripe.webhooks.constructEvent()` call
+- Stripe dashboard's "Send test webhook" feature gives 30-second post-cutover validation; if it fails, rollback is fast
 
-Stripe Dashboard → Webhooks → destination's endpoint → "Send test webhook" → `checkout.session.completed`.
+At cutover Step 5:
+1. Register `https://xmrhmxizpslhtkibqyfy.supabase.co/functions/v1/stripe-webhook` with the 6 events from T2.0 recon
+2. Capture the new `whsec_…` from Stripe (shown once)
+3. `supabase secrets set --project-ref xmrhmxizpslhtkibqyfy STRIPE_WEBHOOK_SECRET=whsec_…`
+4. Stripe dashboard → "Send test webhook" → `checkout.session.completed` → expect HTTP 200 + new row in `stripe_webhook_events`
+5. Disable source's webhook (don't delete — rollback option)
 
-**Expected:** HTTP 200; new row in `stripe_webhook_events` within 10s.
+### T2.3 — Subscription lifecycle (DEFERRED to cutover)
 
-**Failure modes:**
-- `signature verification failed` → `STRIPE_WEBHOOK_SECRET` mismatch
-- `permission denied` → service-role auth wrong (Phase 5 sb_secret fix should resolve this)
+Requires real subscription state to test. Pre-cutover testing would either:
+- Mutate live subscription state (unsafe with real-name customers)
+- OR require synthetic test customers + destination-only state (possible but not necessary pre-cutover)
 
----
+Defer entirely. At cutover, verify by running through one real subscription create/cancel via Stripe Dashboard test mode after webhook is confirmed working in T2.2.
 
-### T2.3 — Subscription lifecycle
+### T2.4 — Read-only Stripe functions (✅ done 2026-05-07, 3/3 PASS)
 
-After T2.1, cancel the subscription in Stripe dashboard. Wait 30s. Verify destination's `subscriptions` row updates to `canceled`.
+Tested with admin user JWT (`demo-solo-owner@lessonloop.test`) against org `46b20ac7-…`:
+- `stripe-list-payment-methods` → HTTP 200, `{"paymentMethods":[]}` (no PMs attached — expected for fresh test customer)
+- `stripe-billing-history` → HTTP 200, `{"invoices":[]}` (no invoices yet)
+- `stripe-customer-portal` → HTTP 200, returns signed `billing.stripe.com/p/session/live_…` URL (5-min expiry, harmless)
 
-**Failure modes:** same as T2.2.
+### T2.5 — DEFERRED Stripe functions (state-mutating; tested at cutover)
+
+These functions mutate Stripe state (charges, refunds, payment method attachment, subscription updates). Not safe to test pre-cutover against live mode without scoped test data. Defer to Phase 7 cutover testing OR a separate test-mode harness:
+
+| Function | Why deferred |
+|---|---|
+| `stripe-create-payment-intent` | Creates a PaymentIntent (real intent, no charge until card attached); minor test residue but reachable. Could test in isolation but no value vs. waiting for real flow. |
+| `stripe-create-checkout` | Different from `stripe-subscription-checkout` — this one is for **invoice payment** (one-time, requires real invoice ID). Defer; tested as part of real invoice payment flow at cutover. |
+| `stripe-process-refund` | Creates real refunds. Cannot test without a real charge to refund. Cutover-time test on a recent test charge if needed. |
+| `stripe-detach-payment-method` | Removes a saved card. Requires an attached PM to detach. Cutover-time. |
+| `stripe-update-payment-preferences` | Mutates `guardian_payment_preferences` table state. Could test in isolation but no value. |
+| `stripe-auto-pay-installment` | Triggered by cron + idempotent; verified end-to-end via cron-job-history smoke (Tier 5). |
+| `stripe-verify-session` | Reads a Checkout session's status. Used post-checkout return; tested implicitly at cutover when first real subscription is created. |
+| `stripe-webhook` | Defers with T2.2 — tested at cutover Step 5. |
+
+### Old format (replaced by T2.0–T2.5 above)
+~~Use Stripe test mode...~~ (irrelevant — destination has live keys; tested via real-mode pending sessions, expired post-test)
 
 ---
 
@@ -140,9 +176,46 @@ Sign in → Settings → Integrations → Xero → "Connect to Xero". Authorize 
 
 ### T3.2 — Zoom OAuth + lesson room
 
-Same pattern as T3.1, with Zoom OAuth + creating a test lesson with Zoom enabled.
+**Architecture quirk:** Zoom OAuth flow is **frontend-mediated**, unlike Xero/Google which redirect directly to a Supabase edge function. Zoom's app config has redirect_uri = `https://app.lessonloop.net/auth/zoom/callback` (a frontend route). The React component at `src/pages/ZoomOAuthCallback.tsx` reads `import.meta.env.VITE_SUPABASE_URL` and forwards `code+state` to `<that-URL>/functions/v1/zoom-oauth-callback`. Whichever Supabase the frontend was *built* against gets the OAuth code.
 
-**Expected:** Zoom meeting created; `zoom_meeting_mappings` row inserted.
+**Pre-cutover state:** the deployed `app.lessonloop.net` was built with source's `VITE_SUPABASE_URL`, so any Zoom OAuth lands at source's edge function, not destination's. Full E2E test of T3.2 is **not possible** until cutover Step 3 (frontend rebuild + redeploy with destination's URL).
+
+#### T3.2.A.1 — `zoom-oauth-start` server-side (✅ done 2026-05-07, PASS)
+Validated:
+- HTTP 200, returns `{auth_url, state}`
+- URL base is `https://zoom.us/oauth/authorize`, with `response_type=code`, `redirect_uri=https://app.lessonloop.net/auth/zoom/callback`, non-empty `state`
+- `client_id` in URL matches stored `ZOOM_CLIENT_ID` secret by SHA256
+- `state` decodes to `{user_id, org_id, nonce}` correctly
+
+#### T3.2.A.2 — `zoom-oauth-callback` reachability (✅ done 2026-05-07, PASS)
+Function ACTIVE, `verify_jwt: false`, version 10. Synthetic invocations:
+- Garbage state → HTTP 400 "Invalid state parameter"
+- Well-formed state + bogus code → HTTP 302 (redirect to error)
+- `error=access_denied` query param → graceful redirect chain
+- Zero side effects in DB (no rows in `calendar_connections`/`zoom_meeting_mappings`/`audit_log`)
+
+#### T3.2.A.3 — Credential validation via Zoom OAuth token endpoint (✅ done 2026-05-07, PASS)
+Direct probes against `https://zoom.us/oauth/token`:
+- Valid creds + bogus code → `invalid_grant: Invalid authorization code` (creds accepted, code rejected)
+- Bogus creds (negative control) → `invalid_client: Invalid client_id or client_secret`
+- Transitively confirms `redirect_uri` is in Zoom app's registered list (otherwise Zoom would reject earlier with `invalid_redirect_uri`).
+
+#### T3.2.A.4 — Full OAuth click-through (DEFERRED to cutover Step 8)
+
+#### T3.2.B — `zoom-sync-lesson` functional sync (DEFERRED to cutover Step 8)
+
+**Cutover Step 8 must include:**
+1. Real Zoom OAuth click-through after frontend cutover (Step 3) is complete
+2. Verify a row appears in destination's `calendar_connections WHERE provider = 'zoom'`
+3. Pick a test lesson, invoke `zoom-sync-lesson`, verify Zoom meeting created + `zoom_meeting_mappings` row inserted
+4. Re-run sync, verify same Zoom meeting ID returned (idempotency)
+
+**Most likely failure modes at cutover (in priority order):**
+1. ZOOM_CLIENT_ID/SECRET pairing wrong → `invalid_client` at token exchange
+2. Redirect URI mismatch in Zoom app → `invalid_redirect_uri` at authorize endpoint
+3. `zoom-oauth-callback` `verify_jwt` config wrong → 401 from gateway before function runs
+4. Zoom app suspended → broader auth failures
+5. `zoom_meeting_mappings` schema drift (analogous to xero_entity_mappings — see journal "found-while-migrating" entries) → silent INSERT failures, idempotency broken
 
 ---
 
