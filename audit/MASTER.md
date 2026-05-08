@@ -244,25 +244,27 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Trial reminder 1-day | trial-reminder-1day | daily 09:00 (assumed) | P1 | ❓ | — |
 | Trial expired | trial-expired | daily | P0 | ❓ | — |
 | Trial winback | trial-winback | weekly | P2 | ❓ | — |
-| Recurring billing scheduler | recurring-billing-scheduler | daily 04:00 UTC | P0 | ❓ | — |
-| Invoice overdue check | invoice-overdue-check | daily 05:30 UTC | P0 | ❓ | — |
-| Installment overdue check | installment-overdue-check | daily 06:00 UTC | P0 | ❓ | — |
-| Installment upcoming reminder | installment-upcoming-reminder | daily 08:00 UTC | P1 | ❓ | — |
-| Auto-pay upcoming reminder | auto-pay-upcoming-reminder | daily 08:00 UTC | P1 | ❓ | — |
-| Auto-pay final reminder | auto-pay-final-reminder | daily 08:00 UTC | P0 | ❓ | — |
-| Stripe auto-pay installment | stripe-auto-pay-installment | daily 09:00 UTC | P0 | ❓ | — |
-| Send lesson reminders | send-lesson-reminders | hourly | P1 | ❓ | — |
-| Calendar refresh busy | calendar-refresh-busy | every 15 min | P1 | ❓ | — |
-| Overdue reminders | overdue-reminders | daily 09:00 UTC | P1 | ❓ | — |
-| Credit expiry | credit-expiry | daily 02:00 UTC | P0 | ❓ | — |
-| Credit expiry warning | credit-expiry-warning | daily 08:00 UTC | P1 | ❓ | — |
-| iCal expiry reminder | ical-expiry-reminder | daily | P2 | ❓ | — |
-| Enrolment offer expiry | enrolment-offer-expiry | hourly | P1 | ❓ | — |
-| Waitlist expiry | waitlist-expiry | daily | P1 | ❓ | — |
-| Cleanup orphaned resources | cleanup-orphaned-resources | daily 03:00 UTC | P2 | ❓ | — |
-| Cleanup webhook retention | cleanup-webhook-retention | daily 03:30 UTC | P2 | ❓ | — |
-| Cleanup invoice PDF orphans | cleanup-invoice-pdf-orphans | daily 03:45 UTC | P2 | ❓ | — |
-| Cron health watchdog | cron-health-watchdog | daily 09:30 UTC | P0 | ❓ | — |
+| Recurring billing scheduler | recurring-billing-scheduler | daily 04:00 UTC | P0 | 🟡 | 2026-05-08 fired ok; output untested |
+| Invoice overdue check | invoice-overdue-check | daily 05:30 UTC | P0 | 🟡 | 2026-05-08 fired ok |
+| Installment overdue check | installment-overdue-check | daily 06:00 UTC | P0 | 🟡 | 2026-05-08 fired ok |
+| Installment upcoming reminder | installment-upcoming-reminder | daily 08:00 UTC | P1 | 🟡 | 2026-05-08 fired ok |
+| Auto-pay upcoming reminder | auto-pay-upcoming-reminder | daily 08:00 UTC | P1 | 🟡 | 2026-05-08 fired ok |
+| Auto-pay final reminder | auto-pay-final-reminder | daily 08:00 UTC | P0 | 🟡 | 2026-05-08 fired ok |
+| Stripe auto-pay installment | stripe-auto-pay-installment | daily 09:00 UTC | P0 | 🟡 | 2026-05-08 fired ok |
+| Send lesson reminders | send-lesson-reminders | hourly | P1 | 🟡 | 2026-05-08 firing every hour; some 5s-timeout — see findings/2026-05-08-cron-net-http-post-5s-timeout |
+| Calendar refresh busy | calendar-refresh-busy | every 15 min | P1 | 🟡 | 2026-05-08 firing every 15min; 5s-timeout common (function still completes) |
+| Overdue reminders | overdue-reminders | daily 09:00 UTC | P1 | 🟡 | 2026-05-08 fired ok |
+| Credit expiry | credit-expiry | daily 02:00 UTC | P0 | 🟡 | 2026-05-08 fired ok |
+| Credit expiry warning | credit-expiry-warning | daily 08:00 UTC | P1 | 🟡 | 2026-05-08 fired ok |
+| iCal expiry reminder | ical-expiry-reminder | daily | P2 | ❓ | not registered in pg_cron — verify |
+| Enrolment offer expiry | enrolment-offer-expiry | hourly | P1 | ❓ | not registered in pg_cron — verify |
+| Waitlist expiry | waitlist-expiry | daily | P1 | ❓ | not registered in pg_cron — verify |
+| Cleanup orphaned resources | cleanup-orphaned-resources | daily 03:00 UTC | P2 | 🟡 | 2026-05-08 fired ok |
+| Cleanup webhook retention | cleanup-webhook-retention | daily 03:30 UTC | P2 | 🟡 | 2026-05-08 fired ok |
+| Cleanup invoice PDF orphans | cleanup-invoice-pdf-orphans | daily 03:45 UTC | P2 | 🟡 | 2026-05-08 fired ok |
+| Cron health watchdog | cron-health-watchdog | daily 09:30 UTC | P0 | 🟢 | 2026-05-08 — fixed 3-bug chain in `check_cron_health()`; was 500'ing every run since deployment. Class A working; Class B no-op (separate finding) |
+| Complete expired assignments (SQL fn) | complete_expired_assignments | daily 04:00 UTC | P1 | 🟡 | 2026-05-08 fired ok |
+| Reset stale practice streaks (SQL fn) | reset_stale_streaks | daily 03:00 UTC | P2 | 🟡 | 2026-05-08 fired ok |
 
 ## Mobile (Capacitor)
 
