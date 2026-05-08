@@ -76,16 +76,24 @@ test.describe('Owner Dashboard', () => {
     test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/dashboard', 'Dashboard');
 
-    // Core nav links that owner/admin always see
+    // Top-level sidebar links that owner/admin always see directly
+    // (Leads is nested under the "Pipeline" dropdown — checked separately below)
     const expectedLinks = [
       'Dashboard', 'Calendar', 'Students', 'Teachers', 'Register',
-      'Invoices', 'Leads', 'Reports', 'Locations', 'Messages',
+      'Invoices', 'Reports', 'Locations', 'Messages',
     ];
 
     for (const linkName of expectedLinks) {
       const link = page.getByRole('link', { name: linkName, exact: true }).first();
       await expect(link, `Sidebar link "${linkName}" should be visible`).toBeVisible({ timeout: 10_000 });
     }
+
+    // Pipeline group (collapsed by default) — clicking it should reveal Leads
+    const pipelineToggle = page.getByRole('button', { name: 'Pipeline', exact: true }).first();
+    await expect(pipelineToggle, 'Pipeline group toggle should be visible').toBeVisible({ timeout: 5_000 });
+    await pipelineToggle.click();
+    const leadsLink = page.getByRole('link', { name: 'Leads', exact: true }).first();
+    await expect(leadsLink, 'Leads should appear after expanding Pipeline').toBeVisible({ timeout: 5_000 });
   });
 
   test('sidebar footer has Settings and Help links', async ({ page }) => {

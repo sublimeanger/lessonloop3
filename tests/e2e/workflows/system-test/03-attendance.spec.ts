@@ -13,7 +13,7 @@ test.describe('Part 3: Attendance', () => {
 
   // ── 3.1 — Daily Register ──
 
-  test('3.1.1 – /register loads with today's date', async ({ page }) => {
+  test("3.1.1 – /register loads with today's date", async ({ page }) => {
     await safeGoTo(page, '/register');
     // Should show today's date somewhere on the page
     const today = new Date();

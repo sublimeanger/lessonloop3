@@ -5,10 +5,20 @@
  */
 import { execSync } from 'child_process';
 import fs from 'fs';
+import { randomBytes } from 'crypto';
 
-const SUPABASE_URL = 'https://ximxgnkpcswbvfrkkmjq.supabase.co';
-const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpbXhnbmtwY3N3YnZmcmtrbWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NTI4MDcsImV4cCI6MjA4NDQyODgwN30.cA56tVd1UVtwEKGBwXajOpm-gLmCeD_QUzoMwiX8d0M';
+/** Generate a unique tmpfile suffix that won't collide across parallel workers. */
+const uniqueSuffix = () => `${Date.now()}-${randomBytes(8).toString('hex')}`;
+
+const SUPABASE_URL = process.env.E2E_SUPABASE_URL
+  || process.env.SUPABASE_URL
+  || 'https://xmrhmxizpslhtkibqyfy.supabase.co';
+const SUPABASE_ANON_KEY = process.env.E2E_SUPABASE_ANON_KEY
+  || process.env.SUPABASE_ANON_KEY
+  || '';
+if (!SUPABASE_ANON_KEY) {
+  throw new Error('[supabase-admin] E2E_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY) must be set in .env.test');
+}
 
 /** Cache the owner's access token for the session */
 let ownerAccessToken: string | null = null;
@@ -20,7 +30,7 @@ function getOwnerToken(): string {
   const password = process.env.E2E_OWNER_PASSWORD || 'TestPass123!';
 
   const payload = JSON.stringify({ email, password });
-  const tmpFile = `/tmp/sb-admin-login-${Date.now()}.json`;
+  const tmpFile = `/tmp/sb-admin-login-${uniqueSuffix()}.json`;
   fs.writeFileSync(tmpFile, payload);
 
   try {
@@ -90,7 +100,7 @@ export function supabaseSelect(table: string, query: string): any[] {
 export function supabaseInsert(table: string, payload: Record<string, unknown>): any {
   const token = getOwnerToken();
   const data = JSON.stringify(payload);
-  const tmpFile = `/tmp/sb-insert-${Date.now()}.json`;
+  const tmpFile = `/tmp/sb-insert-${uniqueSuffix()}.json`;
   fs.writeFileSync(tmpFile, data);
   try {
     const result = execSync(
@@ -273,7 +283,7 @@ export function deleteResourceById(resourceId: string): void {
 export function supabaseRpc(fnName: string, params: Record<string, unknown>): unknown {
   const token = getOwnerToken();
   const payload = JSON.stringify(params);
-  const tmpFile = `/tmp/sb-rpc-${Date.now()}.json`;
+  const tmpFile = `/tmp/sb-rpc-${uniqueSuffix()}.json`;
   fs.writeFileSync(tmpFile, payload);
   try {
     const result = execSync(
