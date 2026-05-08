@@ -248,11 +248,13 @@ test or delete the line.
 1. ~~§24 Stripe payments~~ — **DONE (10/17 catalog items real, ~60%)**.
 2. ~~§13 Invoices~~ — **DONE (10 real tests, ~70%)**.
 3. ~~§14 Invoice detail~~ — **DONE (12 real tests, ~75%)**.
-4. **§26 Parent portal — STARTED** (6 real, ~30%). §26.7 practice
-   log done; remaining gaps in TODO comment block: §26.4 makeup
-   respond, §26.10 compose thread, §26.12/§26.13 continuation
-   response. Most need small seed-data prep (multi-child parent,
-   active continuation run).
+4. **§26 Parent portal — STARTED** (10 real, ~40%). §26.7 practice
+   log + §26.4 makeup respond (accept / decline / cross-tenant
+   reject / re-respond reject) done; remaining gaps in TODO
+   comment block: §26.10 compose thread + notify-internal-message,
+   §26.12/§26.13 continuation response (authed + public token).
+   Most need small seed-data prep (active continuation run, message
+   threads).
 5. **§20 Continuation (term rollover)** — DEFERRED. Needs term
    boundaries + continuation_run + response rows seeded. ~6-8 hours.
 6. **§8 Lesson CRUD — STARTED** (4 real, ~30%). Group / cancel /
