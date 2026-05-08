@@ -1,9 +1,23 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-08 (evening) by Claude Opus 4.7 (1M context, 2nd session)
-**Working repo:** `sublimeanger/lessonloop3` (branch: `main`, last commit `e36e486`)
+**Last updated:** 2026-05-08 (late evening) by Claude Opus 4.7 (1M context, 2nd session)
+**Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
+
+**Session ledger (commits on `main`):**
+- `b7900ab` — J24-A canary (migration + helper + stripe-list-payment-methods)
+- `763c474` — Batch A+B (6 read/light-write fns)
+- `049e84f` — Batch C (payment-intent + checkout)
+- `5a8ca45` — Batch D (refund + connect-onboard + auto-pay)
+- `10f35e2` — Batch E (admin-backfill + reminder shared core)
+- `2bf0aea` — dual-mode webhook signature verification
+- `e36e486` — §24 Stripe — 10 real tests (was 11 fixmes)
+- `7dcd024` — fix(test-infra): seedInvoice silently lost status transitions
+- `<§13/§14 commit>` — 22 real tests across §13 + §14
+- Live Stripe webhook subscription patched (we_1TUlSHAzPfYm94ux4mOfF72i),
+  18 events configured (was 6) — closes the P0 production gap previously
+  flagged in the §24 progress notes. No commit (Stripe Dashboard config).
 
 ---
 
@@ -214,15 +228,15 @@ test or delete the line.
 
 ### Priority order
 
-1. ~~§24 Stripe payments~~ — **DONE 2026-05-08 evening (10/17 catalog
-   items real, ~60%)**. See [§24 progress](#24-progress) below for
-   gaps + the J24-A infra notes.
-2. **§13/§14 Invoices + invoice detail** — revenue path (related to §24).
-   **Start here next.** ~6-9 hours.
-3. **§26 Parent portal** — primary customer interface. ~6-10 hours.
-4. **§20 Continuation (term rollover)** — term-end critical, complex.
-   ~6-8 hours.
-5. **§8 Lesson CRUD** — recurring patterns are subtle. ~4-6 hours.
+1. ~~§24 Stripe payments~~ — **DONE 2026-05-08 (10/17 catalog items real, ~60%)**.
+2. ~~§13 Invoices~~ — **DONE 2026-05-08 (10 real tests, ~70%)**. Manual payment,
+   refund, void, generate_installments, RBAC + status transition triggers.
+3. ~~§14 Invoice detail~~ — **DONE 2026-05-08 (12 real tests, ~75%)**.
+   Manual payment full + partial, manual refund, payment plan post-send,
+   status-transition blocking, parent RBAC.
+4. **§26 Parent portal** — primary customer interface. **Start here next.** ~6-10 hours.
+5. **§20 Continuation (term rollover)** — term-end critical, complex. ~6-8 hours.
+6. **§8 Lesson CRUD** — recurring patterns are subtle. ~4-6 hours.
 
 After those 5 sections, the remaining 27 are gap-fillers and per-page smoke.
 
@@ -269,28 +283,20 @@ Implemented (commits `b7900ab` → `e36e486` on `main`, all pushed):
 - §24.9 Stripe Connect onboarding (multi-step OAuth flow).
 - §24.11 Verify session post-checkout (subscription-checkout return URL).
 
-**Two latent issues found in the codebase, surfaced as follow-ups:**
-1. The catalog references `update_invoice_status(_invoice_id, _status)`
-   RPC; that function doesn't exist in the schema. `tests/e2e/supabase-admin.ts`
-   line ~500 calls it via `supabaseRpc` but `supabaseRpc` doesn't surface
-   the PGRST202 error — silent no-op. Other test files relying on
-   `seedInvoice({ status: 'sent' })` may be silently leaving invoices
-   in draft. Worked around in §24 with `updateInvoiceStatusViaPatch`
-   (service-role direct PATCH). **Fix in next session: either add the
-   RPC or update `seedInvoice` to PATCH directly.**
-2. The live Stripe webhook endpoint subscribes to **6** events but the
-   handler dispatches on **17**. So `payment_intent.succeeded`,
-   `charge.refunded`, `charge.dispute.*`, `refund.updated`, `account.*`
-   etc are NOT being delivered in production. This means:
-     - Payment intents from the embedded drawer never get recorded as
-       payments (the handler's PI succeeded branch never runs).
-     - Refunds initiated via the Stripe Dashboard never get recorded.
-     - Disputes never get a notification email.
-   Listed live events: `checkout.session.completed`,
-   `customer.subscription.{created,updated,deleted}`, `invoice.paid`,
-   `invoice.payment_failed`. **Fix: add the missing 12 events to
-   the live webhook endpoint via Stripe Dashboard or API.** This is
-   a P0 production gap. The test endpoint already has the full superset.
+**Two latent issues found and FIXED this session:**
+1. ~~`update_invoice_status` RPC doesn't exist; `seedInvoice` silently
+   no-op'd status transitions.~~ Fixed in `7dcd024`: replaced with
+   `patchInvoiceStatus` in `tests/e2e/supabase-admin.ts` — direct
+   service-role PATCH that goes through the
+   `enforce_invoice_status_transition` trigger.
+2. ~~Live Stripe webhook only subscribed to 6 of the 17 events the
+   handler dispatches on.~~ Fixed via Stripe API:
+   `we_1TUlSHAzPfYm94ux4mOfF72i` now subscribes to the same 18-event
+   superset as the test endpoint. `payment_intent.succeeded`,
+   `charge.refunded`, `charge.dispute.*` etc are now being delivered
+   in production. **Verify post-launch:** when the first real
+   embedded-drawer payment lands, confirm the payment row writes via
+   the webhook (not just via stripe_checkout_sessions).
 
 **Rate limit gotcha:** stripe-create-checkout is 10/hr per user;
 stripe-process-refund is 5/hr. Tests reset `rate_limits` rows for known
