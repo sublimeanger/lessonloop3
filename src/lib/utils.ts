@@ -58,15 +58,36 @@ export function formatDateTimeForOrg(date: Date | string, timezone: string): str
 /**
  * Format currency with proper locale
  */
+/**
+ * Coerce a currency code to a valid ISO 4217 string.
+ *
+ * Many call sites pass `currentOrg?.currency_code ?? ''` — when the org
+ * hasn't loaded yet, this becomes `''`, and `Intl.NumberFormat` then
+ * throws `RangeError: Invalid currency code` causing the React error
+ * boundary to catch and show "Something went wrong". Centralising the
+ * coercion here keeps callers simple and unbreakable.
+ *
+ * Discovered 2026-05-08 via the e2e parent-portal invoices error.
+ */
+function safeCurrencyCode(code: string | null | undefined): string {
+  const trimmed = (code ?? '').toString().trim();
+  // Must be a 3-letter ISO 4217 code; fall back to GBP for anything
+  // shorter / longer / weird (e.g. empty string, lowercase, numeric).
+  if (/^[A-Za-z]{3}$/.test(trimmed)) {
+    return trimmed.toUpperCase();
+  }
+  return 'GBP';
+}
+
 export function formatCurrency(
   amount: number,
-  currencyCode = 'GBP',
+  currencyCode: string | null | undefined = 'GBP',
   options: { fromMinor?: boolean } = {}
 ): string {
   const value = options.fromMinor ? amount / 100 : amount;
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
-    currency: currencyCode,
+    currency: safeCurrencyCode(currencyCode),
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value);
@@ -75,7 +96,7 @@ export function formatCurrency(
 /**
  * Format currency from minor units (pence/cents)
  */
-export function formatCurrencyMinor(amountMinor: number, currencyCode = 'GBP'): string {
+export function formatCurrencyMinor(amountMinor: number, currencyCode: string | null | undefined = 'GBP'): string {
   return formatCurrency(amountMinor, currencyCode, { fromMinor: true });
 }
 
@@ -83,9 +104,10 @@ export function formatCurrencyMinor(amountMinor: number, currencyCode = 'GBP'): 
  * Return the narrow currency symbol for a given ISO 4217 code.
  * e.g. 'GBP' → '£', 'USD' → '$', 'EUR' → '€'
  */
-export function currencySymbol(code: string): string {
-  return new Intl.NumberFormat('en', { style: 'currency', currency: code })
-    .formatToParts(0).find(p => p.type === 'currency')?.value || code;
+export function currencySymbol(code: string | null | undefined): string {
+  const safe = safeCurrencyCode(code);
+  return new Intl.NumberFormat('en', { style: 'currency', currency: safe })
+    .formatToParts(0).find(p => p.type === 'currency')?.value || safe;
 }
 
 /**

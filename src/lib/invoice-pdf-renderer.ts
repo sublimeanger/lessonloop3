@@ -108,10 +108,17 @@ function contrastColor(hex: string): [number, number, number] {
   return luminance(r, g, b) > 0.4 ? [26, 26, 46] : [255, 255, 255];
 }
 
-function fmtCur(amountMinor: number, currencyCode: string): string {
+function fmtCur(amountMinor: number, currencyCode: string | null | undefined): string {
+  // Coerce to a valid ISO 4217 code — empty string / null / undefined / lowercase
+  // / non-3-letter inputs all fall back to GBP. Without this, an empty string
+  // (e.g. when org hasn't loaded yet) triggers
+  // `RangeError: Invalid currency code` and propagates up to the React error
+  // boundary. Fixed 2026-05-08 alongside src/lib/utils.ts.
+  const trimmed = (currencyCode ?? "").toString().trim();
+  const safe = /^[A-Za-z]{3}$/.test(trimmed) ? trimmed.toUpperCase() : "GBP";
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
-    currency: currencyCode,
+    currency: safe,
   }).format(amountMinor / 100);
 }
 
