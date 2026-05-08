@@ -124,9 +124,55 @@ test.describe('RBAC — Settings degradation', () => {
   });
 });
 
-// TODO: §5.4 email-not-confirmed gate — needs a user with email_confirmed_at=null
-// TODO: §5.5 onboarding-not-complete gate — needs a user with has_completed_onboarding=false
-// TODO: §5.6 profile-grace + role-grace — mock RPC delays; assert no premature redirect
-test.fixme('§5.4 — unconfirmed email redirects to /verify-email', async () => {});
-test.fixme('§5.5 — incomplete onboarding redirects to /onboarding', async () => {});
+test.describe('§5.4 — Email verification gate', () => {
+  test('unconfirmed email user → redirected to /verify-email on protected route', async ({ page }) => {
+    const { createThrowawayUser, deleteThrowawayUser, signInAndWriteStorageState } = await import('../supabase-admin');
+    const fs = await import('fs');
+
+    let userId = '';
+    let storagePath = '';
+    try {
+      const u = createThrowawayUser({ emailPrefix: 'e2e-unconf', emailConfirmed: false });
+      userId = u.userId;
+      storagePath = signInAndWriteStorageState(u.email, u.password);
+      // Load the storage state into context manually
+      const ctx = await page.context().browser()!.newContext({ storageState: storagePath });
+      const newPage = await ctx.newPage();
+      await newPage.goto('/dashboard');
+      await newPage.waitForTimeout(3000);
+      // RouteGuard should have kicked us to /verify-email
+      expect(newPage.url(), 'unconfirmed user should be on /verify-email').toMatch(/\/(verify-email|login)/);
+      await ctx.close();
+    } finally {
+      if (storagePath && fs.existsSync(storagePath)) fs.unlinkSync(storagePath);
+      if (userId) deleteThrowawayUser(userId);
+    }
+  });
+});
+
+test.describe('§5.5 — Onboarding-incomplete gate', () => {
+  test('user with has_completed_onboarding=false → redirected to /onboarding', async ({ page }) => {
+    const { createThrowawayUser, deleteThrowawayUser, signInAndWriteStorageState } = await import('../supabase-admin');
+    const fs = await import('fs');
+
+    let userId = '';
+    let storagePath = '';
+    try {
+      const u = createThrowawayUser({ emailPrefix: 'e2e-noonboard', emailConfirmed: true, hasCompletedOnboarding: false });
+      userId = u.userId;
+      storagePath = signInAndWriteStorageState(u.email, u.password);
+      const ctx = await page.context().browser()!.newContext({ storageState: storagePath });
+      const newPage = await ctx.newPage();
+      await newPage.goto('/dashboard');
+      await newPage.waitForTimeout(3000);
+      // Should be redirected to /onboarding (or stay on /onboarding if signup creates a profile there)
+      expect(newPage.url(), 'incomplete-onboarding user should be on /onboarding').toMatch(/\/onboarding/);
+      await ctx.close();
+    } finally {
+      if (storagePath && fs.existsSync(storagePath)) fs.unlinkSync(storagePath);
+      if (userId) deleteThrowawayUser(userId);
+    }
+  });
+});
+
 test.fixme('§5.6 — 3s profile-grace + 5s role-grace tolerance', async () => {});

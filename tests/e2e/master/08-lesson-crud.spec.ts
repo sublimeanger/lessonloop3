@@ -76,5 +76,29 @@ test.describe('Lesson CRUD — DB-side assertions', () => {
 // TODO §8.8 closure-date banner
 test.fixme('§8.5 — edit recurring lesson "all" updates every instance', async () => {});
 test.fixme('§8.5 — edit recurring lesson "this only" detaches single instance', async () => {});
-test.fixme('§8.7 — delete invoiced lesson is blocked by trigger', async () => {});
+test.describe('§8.7 — prevent_invoiced_lesson_delete', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('lesson with invoice_items reference cannot be deleted (FK)', async () => {
+    // Find an existing invoiced lesson in the test org
+    const invoiceItems = supabaseSelect('invoice_items', `lesson_id=not.is.null&select=lesson_id&limit=5`);
+    if (!invoiceItems || invoiceItems.length === 0 || !invoiceItems[0]?.lesson_id) {
+      test.skip(true, 'No invoiced lesson in test org to test against');
+      return;
+    }
+    const lessonId = invoiceItems[0].lesson_id;
+
+    // Confirm lesson exists
+    const before = supabaseSelect('lessons', `id=eq.${lessonId}&select=id`);
+    expect(before.length).toBe(1);
+
+    // Try to delete via owner-JWT REST — the prevent_invoiced_lesson_delete
+    // trigger should block (raises exception, returns 4xx).
+    supabaseDelete('lessons', `id=eq.${lessonId}`);
+
+    // Lesson should still exist
+    const after = supabaseSelect('lessons', `id=eq.${lessonId}&select=id`);
+    expect(after.length, 'invoiced lesson must not be deletable').toBe(1);
+  });
+});
 test.fixme('§8.10 — student-side cancellation issues make-up credit', async () => {});

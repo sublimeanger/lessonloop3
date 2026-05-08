@@ -557,6 +557,142 @@ export function cleanupByPrefix(testId: string): void {
 }
 
 /**
+ * Create a throwaway auth user via the admin API.
+ * Returns { userId, email, password } so the test can sign in.
+ *
+ * Useful for tests that need a fresh user (onboarding wizard,
+ * email-not-confirmed gate, account-delete, etc.). Always call
+ * `deleteThrowawayUser(userId)` in afterEach to clean up.
+ */
+export interface ThrowawayUserOpts {
+  emailPrefix?: string;
+  password?: string;
+  emailConfirmed?: boolean;
+  hasCompletedOnboarding?: boolean;
+}
+
+export function createThrowawayUser(opts: ThrowawayUserOpts = {}): {
+  userId: string;
+  email: string;
+  password: string;
+} {
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('createThrowawayUser: E2E_SUPABASE_SERVICE_ROLE_KEY required');
+  }
+  const prefix = opts.emailPrefix || 'e2e-throwaway';
+  const stamp = `${Date.now()}-${randomBytes(4).toString('hex')}`;
+  const email = `${prefix}-${stamp}@test.lessonloop.net`;
+  const password = opts.password || 'ThrowawayPass123!';
+  const emailConfirmed = opts.emailConfirmed !== false; // default true
+
+  const tmpFile = `/tmp/sb-throwaway-${stamp}.json`;
+  fs.writeFileSync(
+    tmpFile,
+    JSON.stringify({
+      email,
+      password,
+      email_confirm: emailConfirmed,
+      user_metadata: { full_name: 'E2E Throwaway' },
+    })
+  );
+
+  try {
+    const result = execSync(
+      `curl -s -X POST "${SUPABASE_URL}/auth/v1/admin/users" ` +
+        `-H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" ` +
+        `-H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" ` +
+        `-H "Content-Type: application/json" ` +
+        `-d @${tmpFile}`,
+      { encoding: 'utf-8', timeout: 15_000 }
+    );
+    const parsed = JSON.parse(result);
+    if (!parsed.id) {
+      throw new Error(`createThrowawayUser failed: ${JSON.stringify(parsed)}`);
+    }
+
+    // Optionally update profile.has_completed_onboarding via direct SQL-ish
+    if (opts.hasCompletedOnboarding === false) {
+      // The `handle_new_user` trigger will create profile with has_completed=false
+      // by default. Nothing to do.
+    }
+
+    return { userId: parsed.id, email, password };
+  } finally {
+    try {
+      fs.unlinkSync(tmpFile);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** Delete a throwaway user via admin API. Idempotent. */
+export function deleteThrowawayUser(userId: string): void {
+  if (!SUPABASE_SERVICE_ROLE_KEY) return;
+  try {
+    execSync(
+      `curl -s -X DELETE "${SUPABASE_URL}/auth/v1/admin/users/${userId}" ` +
+        `-H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" ` +
+        `-H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}"`,
+      { encoding: 'utf-8', timeout: 15_000 }
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Sign in as a specific user (typically a throwaway one), and write
+ * an ephemeral storage-state file. Returns the path to the file so a
+ * test can do `test.use({ storageState: path })`.
+ *
+ * Caller is responsible for cleanup via fs.unlinkSync.
+ */
+export function signInAndWriteStorageState(
+  email: string,
+  password: string
+): string {
+  const tmpFile = `/tmp/sb-throwaway-login-${Date.now()}-${randomBytes(8).toString('hex')}.json`;
+  const payloadFile = `/tmp/sb-throwaway-payload-${Date.now()}-${randomBytes(8).toString('hex')}.json`;
+  fs.writeFileSync(payloadFile, JSON.stringify({ email, password }));
+
+  try {
+    const result = execSync(
+      `curl -s -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" ` +
+        `-H "apikey: ${SUPABASE_ANON_KEY}" ` +
+        `-H "Content-Type: application/json" ` +
+        `-d @${payloadFile}`,
+      { encoding: 'utf-8', timeout: 15_000 }
+    );
+    const session = JSON.parse(result);
+    if (!session.access_token) {
+      throw new Error(`signInAndWriteStorageState failed: ${JSON.stringify(session)}`);
+    }
+    const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
+    const baseURL = process.env.E2E_BASE_URL || 'https://app.lessonloop.net';
+    const state = {
+      cookies: [],
+      origins: [
+        {
+          origin: baseURL,
+          localStorage: [
+            { name: `sb-${projectRef}-auth-token`, value: JSON.stringify(session) },
+          ],
+        },
+      ],
+    };
+    fs.writeFileSync(tmpFile, JSON.stringify(state, null, 2));
+    return tmpFile;
+  } finally {
+    try {
+      fs.unlinkSync(payloadFile);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/**
  * Get user_id of the test owner from profiles.
  * Cached after first call.
  */

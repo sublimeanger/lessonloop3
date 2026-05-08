@@ -28,6 +28,29 @@ test.describe('Messages page', () => {
   });
 });
 
+test.describe('§16 — message_log table tracking', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('message_log accepts queries and rows match expected schema', async () => {
+    const { supabaseSelect } = await import('../supabase-admin');
+    const orgId = process.env.E2E_ORG_ID;
+    const rows = supabaseSelect('message_log', `org_id=eq.${orgId}&select=id,message_type,recipient_email,status,sent_at&order=created_at.desc&limit=10`);
+    expect(Array.isArray(rows)).toBe(true);
+    if (rows.length > 0) {
+      // Each row should have expected shape
+      expect(typeof rows[0].id).toBe('string');
+      expect(typeof rows[0].message_type).toBe('string');
+    }
+  });
+
+  test('message_requests table queryable for parent-staff requests', async () => {
+    const { supabaseSelect } = await import('../supabase-admin');
+    const orgId = process.env.E2E_ORG_ID;
+    const rows = supabaseSelect('message_requests', `org_id=eq.${orgId}&select=id,status&limit=5`);
+    expect(Array.isArray(rows)).toBe(true);
+  });
+});
+
 test.fixme('§16.3 — Compose single message → send-message edge fn called', async () => {});
 test.fixme('§16.3 — Bulk compose to all parents of active piano students', async () => {});
 test.fixme('§16.3 — Merge tokens render per recipient', async () => {});

@@ -3,21 +3,20 @@
  *
  * Problem: Supabase JWTs default to 1hr exp. Full suite runs > 1hr cause
  * later tests to fail with `UNAUTHORIZED_ASYMMETRIC_JWT - Invalid JWT`
- * when edge functions reject the expired token.
+ * when edge functions reject the expired token. Even ~9min parallel runs
+ * stale tokens because workers pick up storage state files written near
+ * the start of the run.
  *
- * Solution: each test loads its storage state, decodes the JWT, and if
- * it's within 5 minutes of expiry (or already expired), refreshes via
- * the refresh_token endpoint and writes the updated state back to disk
- * before the test continues.
- *
- * Usage:
- *   import { test, expect } from '../_fixtures/auth-refresh';
- *   test.use({ storageState: AUTH.owner });
- *   test('my test', async ({ page }) => { ... });
+ * Solution: Override Playwright's `storageState` fixture so the file is
+ * refreshed every time a context loads it — i.e. before EACH test (in
+ * test files using `test.use({ storageState: AUTH.x })`). Cheap when
+ * fresh (decode JWT exp; if fresh, return immediately). Refresh via
+ * `refresh_token` only when within 5min of expiry.
  */
 
 import { test as base, expect } from '@playwright/test';
 import fs from 'fs';
+import path from 'path';
 import { execSync } from 'child_process';
 import { randomBytes } from 'crypto';
 
@@ -78,7 +77,7 @@ function refreshSessionViaCurl(refreshToken: string): SessionLike | null {
 
 /**
  * Read storage state from disk, refresh JWT if stale, write back.
- * Idempotent — safe to call once per test.
+ * Idempotent — safe to call repeatedly. Cheap when fresh (<10ms).
  *
  * Returns the refreshed access_token (for tests that need to make
  * direct REST calls).
@@ -113,7 +112,6 @@ export function refreshStorageStateIfStale(storagePath: string): string | null {
   const fiveMinutesFromNow = now + 5 * 60;
 
   if (exp > fiveMinutesFromNow) {
-    // Still fresh
     return session.access_token;
   }
 
@@ -125,24 +123,12 @@ export function refreshStorageStateIfStale(storagePath: string): string | null {
     return null;
   }
 
-  // Persist back. Preserve any extra session fields (e.g. user metadata).
   const merged = { ...session, ...fresh };
   lsEntry.value = JSON.stringify(merged);
   fs.writeFileSync(storagePath, JSON.stringify(state, null, 2));
 
   return fresh.access_token;
 }
-
-/**
- * Playwright test extended with auto-refresh:
- * - `beforeAll`: refresh all known auth storage states once per worker.
- *   Cheap when fresh (<100ms), essential after long batch runs.
- *
- * The original beforeAll-only pattern still works for short-running specs.
- * For longer ones, the fixture below catches the case where a storage
- * state was fresh at file start but stales mid-run.
- */
-import path from 'path';
 
 const AUTH_DIR = path.resolve(process.cwd(), 'tests/e2e/.auth');
 const ALL_ROLE_FILES = ['owner', 'admin', 'teacher', 'finance', 'parent', 'parent2'].map(
@@ -151,17 +137,42 @@ const ALL_ROLE_FILES = ['owner', 'admin', 'teacher', 'finance', 'parent', 'paren
 
 /**
  * Refresh all known role storage states. Call from `test.beforeAll` in
- * every spec file. Idempotent + cheap when fresh (under 100ms total).
+ * every spec file. Idempotent + cheap when fresh.
  */
 export function refreshAllStorageStates(): void {
   for (const f of ALL_ROLE_FILES) {
     try {
       refreshStorageStateIfStale(f);
     } catch {
-      // missing file — auth.setup.ts will create on first run
+      /* ignore — auth.setup.ts will create on first run */
     }
   }
 }
 
-export const test = base;
+/**
+ * Playwright test extended with auto-refreshing storageState.
+ *
+ * Override the built-in `storageState` fixture so that every time a
+ * test context loads a state file (via `test.use({ storageState: ... })`),
+ * we first refresh that file's JWT if stale. This catches the case
+ * where a parallel batch run takes >60min and earlier-loaded states
+ * have gone stale by the time later workers pick them up.
+ *
+ * The override is a no-op when:
+ *  - storageState is not a file path (e.g. `{ cookies: [], origins: [] }`)
+ *  - the JWT in the file is still > 5min from expiry
+ */
+export const test = base.extend<{}, {}>({
+  storageState: async ({ storageState }, use) => {
+    if (typeof storageState === 'string') {
+      try {
+        refreshStorageStateIfStale(storageState);
+      } catch {
+        /* ignore */
+      }
+    }
+    await use(storageState);
+  },
+});
+
 export { expect };
