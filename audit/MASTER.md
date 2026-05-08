@@ -40,7 +40,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
 | Email signup → onboarding wizard end-to-end | src/pages/Signup.tsx → onboarding-setup → complete_onboarding RPC | P0 | 🟡 | 2026-05-08 | RPC 3-bug chain fixed (commit 19d8efc); AuthContext async-callback hang fixed (62a9282); needs fresh signup-to-dashboard browser test |
-| Email + password sign-in | src/pages/Login.tsx | P0 | ❓ | — | core path; needs basic smoke |
+| Email + password sign-in | src/pages/Login.tsx | P0 | 🟡 | 2026-05-08 | Code path clean (account-enum mitigation, validation, AuthContext fix landed). 2 security gaps filed: weak password policy (6-char min, no chars) + CAPTCHA disabled. See audit/findings/2026-05-08-supabase-{password-policy-too-weak,captcha-disabled}.md |
 | Google OAuth | src/pages/Login.tsx → supabase.auth | P0 | ⏸ | 2026-05-08 | UI button hidden via VITE_SOCIAL_AUTH_GOOGLE flag; OAuth client in Google verification (2-6 wk lead). Re-enable + audit when verification approves. |
 | Apple OAuth | src/pages/Login.tsx | P0 | ⏸ | 2026-05-08 | UI button hidden via VITE_SOCIAL_AUTH_APPLE flag; provider not configured at dest Supabase. Re-enable post-config. |
 | Password reset request | src/pages/ForgotPassword.tsx | P0 | ❓ | — | |
