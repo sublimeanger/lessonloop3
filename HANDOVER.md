@@ -47,22 +47,30 @@ this is the only mind-share between sessions. Specifically:
 
 **Catalog completeness: ~30% (was 25-30%, +10 real §24 tests this session).**
 
-Current baseline (2026-05-08 late evening, end of session):
-- **371 passed** (was 312 at session start; +59 net)
-- **1 failed**: §5.4 email-verification gate (documented JWT-stale
-  flake; signInAndWriteStorageState fails when the throwaway user's
-  email_confirmed_at hasn't yet been set by the trigger).
-- **169 skipped** (was 212; this session converted 43 fixmes to real
-  tests across §24, §13, §14, §26).
-- ~3.3 min wall-clock at 4 workers.
+Current baseline (end of session):
+- **372 passed** (was 312 at session start; +60 net)
+- **1-3 failed**: always includes the documented §5.4 email-verification
+  flake. Sometimes also: Owner Dashboard LoopAssist visibility (JWT-stale)
+  and the §22/§24 mutations race (see flake notes below).
+- **165 skipped** (was 212; this session converted 47 fixmes to real
+  tests across §24, §13, §14, §26, §8).
+- ~3.3-4.4 min wall-clock at 4 workers.
 
-**Known intermittent flake (didn't fire this run):** the §22 settings
-mutations (timezone + VAT toggle) race with §24's customer-creation
-expectations across parallel workers. When it fires, ~4 §22/§24 tests
-fail and §24's intra-file serial mode cascade-skips ~9 downstream
-tests. To stabilise: give §22 tests their own throwaway org or mark
-§22 + §24 as `mode: 'serial'` at the project level in
-`playwright.config.ts`.
+**Known intermittent flake — §22/§24 cross-file race:** §22 settings
+mutations (timezone + VAT toggle) modify org config that §24 invoice
+totals depend on. Within-file serial mode is ON for both files now.
+For cross-file pinning, the next session needs a `playwright.config.ts`
+change. Recommended approach:
+```ts
+// playwright.config.ts
+projects: [
+  { name: 'master', ... },
+  // run §22 + §24 in their own pool, serial against each other
+],
+```
+or simpler: assign each test org to a different worker via a fixture-
+generated throwaway org. The §22 mutations only run for the e2e org
+today; if §22 had its own throwaway org, the race would be eliminated.
 
 Storage state hygiene matters: if you see ~35 owner-side failures, the
 storage state JWTs have gone stale (or the e2e-owner profile has
@@ -237,17 +245,21 @@ test or delete the line.
 
 ### Priority order
 
-1. ~~§24 Stripe payments~~ — **DONE 2026-05-08 (10/17 catalog items real, ~60%)**.
-2. ~~§13 Invoices~~ — **DONE 2026-05-08 (10 real tests, ~70%)**.
-3. ~~§14 Invoice detail~~ — **DONE 2026-05-08 (12 real tests, ~75%)**.
-4. **§26 Parent portal — STARTED** (1 new real + 5 existing UI smokes,
-   ~30%). §26.7 practice log done; the rest of the fixmes have been
-   converted to a TODO comment block tracking what's needed for the
-   next pass: §26.4 makeup-offer respond, §26.10 compose new thread,
-   §26.12/§26.13 continuation response (authed + token).
-5. **§20 Continuation (term rollover)** — DEFERRED. Heavy setup
-   (term boundaries, continuation runs, response rows). ~6-8 hours.
-6. **§8 Lesson CRUD** — recurring patterns are subtle. ~4-6 hours.
+1. ~~§24 Stripe payments~~ — **DONE (10/17 catalog items real, ~60%)**.
+2. ~~§13 Invoices~~ — **DONE (10 real tests, ~70%)**.
+3. ~~§14 Invoice detail~~ — **DONE (12 real tests, ~75%)**.
+4. **§26 Parent portal — STARTED** (6 real, ~30%). §26.7 practice
+   log done; remaining gaps in TODO comment block: §26.4 makeup
+   respond, §26.10 compose thread, §26.12/§26.13 continuation
+   response. Most need small seed-data prep (multi-child parent,
+   active continuation run).
+5. **§20 Continuation (term rollover)** — DEFERRED. Needs term
+   boundaries + continuation_run + response rows seeded. ~6-8 hours.
+6. **§8 Lesson CRUD — STARTED** (4 real, ~30%). Group / cancel /
+   edit duration done; recurring edit dialog (§8.5: "all" /
+   "this+following" / "this only") + student-side cancellation
+   credit issuance left as TODO (need recurrence_rules +
+   lesson_recurrence_overrides setup).
 
 After those 5 sections, the remaining 27 are gap-fillers and per-page smoke.
 
