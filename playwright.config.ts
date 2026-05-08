@@ -71,6 +71,19 @@ export default defineConfig({
       timeout: 120_000,
       dependencies: ['auth-setup'],
     },
+    {
+      // Master suite — one spec per major feature area, mapped 1:1 to
+      // PLAYWRIGHT_MASTER_CATALOG.md. Runs in parallel with longer per-test
+      // timeout for AI/Stripe-touching flows. Auth refresh fixture keeps
+      // JWTs fresh across long runs (>60min wall time).
+      name: 'master',
+      testDir: './tests/e2e/master',
+      testIgnore: ['**/_fixtures/**'],
+      fullyParallel: true,
+      use: { ...devices['Desktop Chrome'] },
+      timeout: 180_000,
+      dependencies: ['auth-setup'],
+    },
   ],
   webServer: undefined,
 });

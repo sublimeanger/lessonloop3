@@ -336,3 +336,222 @@ export function getFirstGuardianId(): string {
   const guardians = supabaseSelect('guardians', `org_id=eq.${orgId}&deleted_at=is.null&select=id&limit=1&order=full_name`);
   return guardians.length > 0 ? guardians[0].id : '';
 }
+
+// ════════════════════════════════════════════════════════════════
+// FACTORIES (per PLAYWRIGHT_MASTER_CATALOG.md §1.5)
+// ════════════════════════════════════════════════════════════════
+// Deterministic seeders for `e2e_*`-prefixed test data, used in
+// `test.beforeAll` blocks. All factories return the inserted row's
+// id so the test can reference it; cleanup is via cleanupByPrefix.
+//
+// Convention: every name field starts with the testId prefix
+// (e.g. `e2e_${Date.now()}_lesson1`) so cleanup can sweep by prefix.
+
+const E2E_PREFIX = 'e2e_';
+
+export interface SeedStudentOpts {
+  testId: string;
+  firstName?: string;
+  lastName?: string;
+  status?: 'active' | 'inactive';
+  withGuardian?: boolean;
+  guardianEmail?: string;
+  instrumentId?: string;
+}
+
+/** Insert a student. If `withGuardian`, also seeds a guardian + student_guardians link. */
+export function seedStudent(opts: SeedStudentOpts): { studentId: string; guardianId?: string } {
+  const orgId = getOrgId();
+  if (!orgId) throw new Error('seedStudent: No org ID');
+
+  const student = supabaseInsert('students', {
+    org_id: orgId,
+    first_name: opts.firstName ?? `${E2E_PREFIX}${opts.testId}_first`,
+    last_name: opts.lastName ?? `${E2E_PREFIX}${opts.testId}_last`,
+    status: opts.status ?? 'active',
+  });
+  if (!student?.id) throw new Error('seedStudent: insert failed');
+
+  let guardianId: string | undefined;
+  if (opts.withGuardian) {
+    const guardian = supabaseInsert('guardians', {
+      org_id: orgId,
+      full_name: `${E2E_PREFIX}${opts.testId} Guardian`,
+      email: opts.guardianEmail ?? `${E2E_PREFIX}${opts.testId}@test.lessonloop.net`,
+    });
+    if (guardian?.id) {
+      guardianId = guardian.id;
+      supabaseInsert('student_guardians', {
+        org_id: orgId,
+        student_id: student.id,
+        guardian_id: guardianId,
+        relationship: 'parent',
+        is_primary_payer: true,
+      });
+    }
+  }
+
+  if (opts.instrumentId) {
+    supabaseInsert('student_instruments', {
+      org_id: orgId,
+      student_id: student.id,
+      instrument_id: opts.instrumentId,
+      status: 'current',
+    });
+  }
+
+  return { studentId: student.id, guardianId };
+}
+
+export interface SeedLessonOpts {
+  testId: string;
+  teacherId: string;
+  createdBy: string; // user_id
+  studentIds?: string[];
+  startAt?: string;
+  durationMins?: number;
+  status?: 'scheduled' | 'completed' | 'cancelled';
+  title?: string;
+}
+
+/** Insert a lesson + lesson_participants for each student. */
+export function seedLesson(opts: SeedLessonOpts): { lessonId: string } {
+  const orgId = getOrgId();
+  if (!orgId) throw new Error('seedLesson: No org ID');
+
+  const startAt = opts.startAt ?? new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+  const durMs = (opts.durationMins ?? 30) * 60 * 1000;
+  const endAt = new Date(new Date(startAt).getTime() + durMs).toISOString();
+
+  const lesson = supabaseInsert('lessons', {
+    org_id: orgId,
+    teacher_id: opts.teacherId,
+    created_by: opts.createdBy,
+    start_at: startAt,
+    end_at: endAt,
+    status: opts.status ?? 'scheduled',
+    title: opts.title ?? `${E2E_PREFIX}${opts.testId}_lesson`,
+  });
+  if (!lesson?.id) throw new Error('seedLesson: insert failed');
+
+  for (const studentId of opts.studentIds ?? []) {
+    supabaseInsert('lesson_participants', {
+      org_id: orgId,
+      lesson_id: lesson.id,
+      student_id: studentId,
+    });
+  }
+
+  return { lessonId: lesson.id };
+}
+
+export interface SeedInvoiceOpts {
+  testId: string;
+  payerGuardianId?: string;
+  payerStudentId?: string;
+  status?: 'draft' | 'sent' | 'paid' | 'overdue' | 'void';
+  dueDate?: string;
+  items?: Array<{ description: string; quantity: number; unit_price_minor: number }>;
+}
+
+/** Insert an invoice via the RPC (uses create_invoice_with_items). */
+export function seedInvoice(opts: SeedInvoiceOpts): { invoiceId: string; invoiceNumber: string } {
+  const orgId = getOrgId();
+  if (!orgId) throw new Error('seedInvoice: No org ID');
+
+  const result = createTestInvoice({
+    dueDate: opts.dueDate ?? new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+    payerGuardianId: opts.payerGuardianId,
+    payerStudentId: opts.payerStudentId,
+    notes: `${E2E_PREFIX}${opts.testId}_invoice`,
+    items: opts.items ?? [
+      { description: `${E2E_PREFIX}${opts.testId}_item`, quantity: 1, unit_price_minor: 5000 },
+    ],
+  });
+
+  // Optional status transition (default RPC creates as draft).
+  if (opts.status && opts.status !== 'draft') {
+    supabaseRpc('update_invoice_status', { _invoice_id: result.id, _status: opts.status });
+  }
+
+  return { invoiceId: result.id, invoiceNumber: result.invoice_number };
+}
+
+export interface SeedLeadOpts {
+  testId: string;
+  contactName?: string;
+  contactEmail?: string;
+  source?: string;
+  stage?: 'enquiry' | 'contacted' | 'trial_booked' | 'trial_completed' | 'enrolled' | 'lost';
+}
+
+/** Insert a lead. */
+export function seedLead(opts: SeedLeadOpts): { leadId: string } {
+  const orgId = getOrgId();
+  if (!orgId) throw new Error('seedLead: No org ID');
+
+  const lead = supabaseInsert('leads', {
+    org_id: orgId,
+    contact_name: opts.contactName ?? `${E2E_PREFIX}${opts.testId} Lead`,
+    contact_email: opts.contactEmail ?? `${E2E_PREFIX}${opts.testId}.lead@test.lessonloop.net`,
+    source: opts.source ?? 'manual',
+    stage: opts.stage ?? 'enquiry',
+  });
+  if (!lead?.id) throw new Error('seedLead: insert failed');
+  return { leadId: lead.id };
+}
+
+/**
+ * Sweep all test rows tagged with the given testId prefix from this org.
+ * Best-effort — failures don't throw.
+ *
+ * Most factories prefix the row's name/notes/title field with `e2e_${testId}`,
+ * so this can find them by like-pattern. Order matters: child tables first.
+ */
+export function cleanupByPrefix(testId: string): void {
+  const orgId = getOrgId();
+  if (!orgId) return;
+  const prefix = encodeURIComponent(`%${E2E_PREFIX}${testId}%`);
+
+  // Order: dependent rows first (FK constraints), then parents.
+  const sweeps: Array<[string, string]> = [
+    ['lesson_participants', `org_id=eq.${orgId}&lesson_id=in.(select id from lessons where title ilike '${E2E_PREFIX}${testId}%')`],
+    ['attendance_records', `org_id=eq.${orgId}`],
+    ['student_guardians', `org_id=eq.${orgId}&student_id=in.(select id from students where first_name ilike '${E2E_PREFIX}${testId}%')`],
+    ['lessons', `org_id=eq.${orgId}&title=like.${prefix}`],
+    ['invoices', `org_id=eq.${orgId}&notes=like.${prefix}`],
+    ['students', `org_id=eq.${orgId}&first_name=like.${prefix}`],
+    ['guardians', `org_id=eq.${orgId}&full_name=like.${prefix}`],
+    ['leads', `org_id=eq.${orgId}&contact_name=like.${prefix}`],
+  ];
+
+  for (const [table, query] of sweeps) {
+    supabaseDelete(table, query);
+  }
+}
+
+/**
+ * Get teacher_id for the e2e-owner user (frequently needed in seedLesson).
+ */
+export function getOwnerTeacherId(): string {
+  const orgId = getOrgId();
+  if (!orgId) return '';
+  const ownerEmail = process.env.E2E_OWNER_EMAIL || 'e2e-owner@test.lessonloop.net';
+  const teachers = supabaseSelect(
+    'teachers',
+    `org_id=eq.${orgId}&email=eq.${encodeURIComponent(ownerEmail)}&select=id&limit=1`
+  );
+  return teachers.length > 0 ? teachers[0].id : '';
+}
+
+/**
+ * Get user_id of the test owner from auth.users (via profiles).
+ */
+export function getOwnerUserId(): string {
+  const ownerEmail = process.env.E2E_OWNER_EMAIL || 'e2e-owner@test.lessonloop.net';
+  const profiles = supabaseSelect(
+    'profiles',
+    `email=eq.${encodeURIComponent(ownerEmail)}&select=id&limit=1`
+  );
+  return profiles.length > 0 ? profiles[0].id : '';
+}
