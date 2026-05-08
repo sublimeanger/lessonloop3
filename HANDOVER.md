@@ -82,7 +82,7 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~90 | +10 §24 Stripe end-to-end |
+| Genuinely behavioural tests (full journeys) | ~96 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
