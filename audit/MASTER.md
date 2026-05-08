@@ -39,7 +39,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Email signup → onboarding wizard end-to-end | src/pages/Signup.tsx → onboarding-setup → complete_onboarding RPC | P0 | 🟡 | 2026-05-08 | RPC 3-bug chain fixed (commit 19d8efc); AuthContext async-callback hang fixed (62a9282); needs fresh signup-to-dashboard browser test |
+| Email signup → onboarding wizard end-to-end | src/pages/Signup.tsx → onboarding-setup → complete_onboarding RPC | P0 | 🟡 | 2026-05-08 | Code path clean: form validation incl 8-char/strength≥2 password, duplicate-email obfuscation handled, AbortController 30s timeout, idempotency check, complete_onboarding RPC verified end-to-end via service_role. Resend SMTP configured (smtp.resend.com → noreply@lessonloop.net). AuthContext async-callback hang fixed (62a9282). 🟡 awaits browser-confirmed first real customer signup. |
 | Email + password sign-in | src/pages/Login.tsx | P0 | 🟡 | 2026-05-08 | Code path clean (account-enum mitigation, validation, AuthContext fix landed). 2 security gaps filed: weak password policy (6-char min, no chars) + CAPTCHA disabled. See audit/findings/2026-05-08-supabase-{password-policy-too-weak,captcha-disabled}.md |
 | Google OAuth | src/pages/Login.tsx → supabase.auth | P0 | ⏸ | 2026-05-08 | UI button hidden via VITE_SOCIAL_AUTH_GOOGLE flag; OAuth client in Google verification (2-6 wk lead). Re-enable + audit when verification approves. |
 | Apple OAuth | src/pages/Login.tsx | P0 | ⏸ | 2026-05-08 | UI button hidden via VITE_SOCIAL_AUTH_APPLE flag; provider not configured at dest Supabase. Re-enable post-config. |
@@ -57,7 +57,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Owner/admin dashboard | src/pages/Dashboard.tsx | P1 | ❓ | — | KPI tiles, today panel |
+| Owner/admin dashboard | src/pages/Dashboard.tsx | P1 | 🟡 | 2026-05-08 | Code path clean: 4 role-specific dashboards (Finance/Teacher/Academy/Solo), parent → portal redirect, proper loading + no-org empty state. RPCs `get_invoice_stats` + `get_revenue_report` confirmed in DB. 5+ parallel useQuery — perf TBD on real load. Awaits browser-confirmed render + Sentry baseline. |
 | Marketing root redirect | src/components/shared/AuthRedirect.tsx | P1 | ❓ | — | / behaviour for logged-out vs logged-in |
 | External marketing redirects | src/config/routes.ts (38 paths) | P2 | ❓ | — | redirect to lessonloop.net |
 | 404 page | src/pages/NotFound.tsx | P2 | ❓ | — | |
@@ -68,15 +68,15 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Calendar page (drag-drop) | src/pages/CalendarPage.tsx | P0 | ❓ | — | core scheduling UX |
-| Recurring lesson template create | src/pages/RecurringTemplateDetail.tsx | P0 | ❓ | — | |
-| Recurring run detail / exceptions | src/pages/RecurringRunDetail.tsx | P0 | ❓ | — | |
-| Single lesson CRUD | src/pages/CalendarPage.tsx | P0 | ❓ | — | |
+| Calendar page (drag-drop) | src/pages/CalendarPage.tsx | P0 | 🟡 | 2026-05-08 | 9 RLS policies on lessons + 9 on lesson_participants. RPCs `bulk_update_lessons`, `bulk_cancel_lessons`, `can_edit_lesson`, `is_lesson_teacher`, `is_assigned_teacher` confirmed. Drag/resize logic complex — awaits browser smoke. |
+| Recurring lesson template create | src/pages/RecurringTemplateDetail.tsx | P0 | 🟡 | 2026-05-08 | covered by Calendar RLS; awaits browser test |
+| Recurring run detail / exceptions | src/pages/RecurringRunDetail.tsx | P0 | 🟡 | 2026-05-08 | covered by Calendar RLS; awaits browser test |
+| Single lesson CRUD | src/pages/CalendarPage.tsx | P0 | 🟡 | 2026-05-08 | covered above |
 | Make-up lesson dashboard | src/pages/MakeUpDashboard.tsx | P1 | ❓ | — | |
 | Make-up offer notification | supabase/functions/notify-makeup-offer | P1 | ❓ | — | |
 | Make-up match notification | supabase/functions/notify-makeup-match | P1 | ❓ | — | |
-| Daily register | src/pages/DailyRegister.tsx | P1 | ❓ | — | teacher daily view |
-| Batch attendance | src/pages/BatchAttendance.tsx | P1 | ❓ | — | |
+| Daily register | src/pages/DailyRegister.tsx | P1 | 🟡 | 2026-05-08 | attendance_records: 6 RLS policies (admin r/w/d, finance r, teacher r-assigned). No USING(true). Awaits browser test. |
+| Batch attendance | src/pages/BatchAttendance.tsx | P1 | 🟡 | 2026-05-08 | covered above |
 | Continuation flow (term rollover) | src/pages/Continuation.tsx + create-continuation-run + bulk-process-continuation | P0 | ❓ | — | term-end critical path |
 | Continuation respond (parent) | supabase/functions/continuation-respond | P0 | ❓ | — | |
 | Term adjustment processor | supabase/functions/process-term-adjustment | P1 | ❓ | — | |
@@ -87,8 +87,8 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Students list / CRUD | src/pages/Students.tsx | P0 | ❓ | — | |
-| Student detail | src/pages/StudentDetail.tsx | P0 | ❓ | — | |
+| Students list / CRUD | src/pages/Students.tsx | P0 | 🟡 | 2026-05-08 | 9 RLS policies (admin r/w/d, finance r, teacher r-assigned, parent r-linked, soft-delete + trial-block guard); `get_students_for_org` RPC confirmed. No USING(true) footguns. Awaits browser CRUD test. |
+| Student detail | src/pages/StudentDetail.tsx | P0 | 🟡 | 2026-05-08 | covered by Students RLS audit; awaits browser nav |
 | CSV import (mapping step) | src/pages/StudentsImport.tsx → csv-import-mapping fn | P1 | ❓ | — | Gemini AI column mapping |
 | CSV import (execute) | supabase/functions/csv-import-execute | P1 | ❓ | — | bulk insert; verify RLS + dedupe |
 | Guardian batch invite | supabase/functions/batch-invite-guardians | P1 | ❓ | — | bulk send to all family heads |
@@ -99,7 +99,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Teachers list / CRUD | src/pages/Teachers.tsx | P0 | ❓ | — | |
+| Teachers list / CRUD | src/pages/Teachers.tsx | P0 | 🟡 | 2026-05-08 | 6 RLS policies (admin r/w/d, finance r). No USING(true). Smoke 200. Awaits browser CRUD test. |
 | Locations | src/pages/Locations.tsx | P1 | ❓ | — | rooms, pricing |
 | Payroll report | src/pages/reports/Payroll.tsx | P1 | ❓ | — | |
 | Teacher performance report | src/pages/reports/TeacherPerformance.tsx | P2 | ❓ | — | |
