@@ -15,6 +15,13 @@ test.beforeAll(() => {
   refreshStorageStateIfStale(AUTH.owner);
 });
 
+// All seedLesson() calls without an explicit startAt default to
+// `now + 24h`. Three tests in this describe each call seedLesson, and
+// the check_lesson_conflicts trigger blocks the second and third when
+// they hit the same teacher + same timestamp under parallel scheduling.
+// Serial keeps the conflict trigger satisfied within the file.
+test.describe.configure({ mode: 'serial' });
+
 test.describe('Lesson CRUD — DB-side assertions', () => {
   test.use({ storageState: AUTH.owner });
 
