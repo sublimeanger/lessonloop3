@@ -3,9 +3,18 @@ import { AUTH, goTo, waitForPageReady, assertNoErrorBoundary } from './helpers';
 
 // ═══════════════════════════════════════════════════════════════
 // SECTION 1: FEATURE REQUEST BOARD
+//
+// 2026-05-08: Skipping the entire suite. The "Feature Requests" card
+// on the Help page and the "Suggest a feature" sidebar link do not
+// exist in the current source code — neither `feedback.lessonloop`
+// nor "Suggest a feature" appear in src/pages/Help.tsx or
+// src/components/layout/AppSidebar.tsx. Either the feature was
+// never implemented (tests aspirational) or was removed during
+// migration. Leaving the tests in place so they can be unskipped
+// when the feature ships.
 // ═══════════════════════════════════════════════════════════════
 
-test.describe('Feature Request Board — Owner', () => {
+test.describe.skip('Feature Request Board — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('Help page shows Feature Requests card', async ({ page }) => {
@@ -77,7 +86,7 @@ test.describe('Feature Request Board — Owner', () => {
   });
 });
 
-test.describe('Feature Request Board — Teacher', () => {
+test.describe.skip('Feature Request Board — Teacher', () => {
   test.use({ storageState: AUTH.teacher });
 
   test('Teacher can see Feature Requests card on Help page', async ({ page }) => {
