@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { getStripeClient } from "../_shared/stripe-client.ts";
 
 serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
@@ -9,9 +9,6 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -53,8 +50,9 @@ serve(async (req) => {
     let dashboardUrl = null;
 
     if (org.stripe_connect_account_id) {
-      const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-      
+      // J24-A: org-scoped Stripe key (live by default, test for e2e org).
+      const { stripe } = await getStripeClient(orgId, supabase);
+
       try {
         const account = await stripe.accounts.retrieve(org.stripe_connect_account_id);
         

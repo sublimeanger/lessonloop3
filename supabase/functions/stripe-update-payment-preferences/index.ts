@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { getStripeClient } from "../_shared/stripe-client.ts";
 
 /**
  * Updates guardian payment preferences (auto-pay toggle, default payment method).
@@ -54,9 +54,6 @@ serve(async (req) => {
     // stripe-list-payment-methods rationale); retrieve on the platform
     // account, not the connected account.
     if (typeof defaultPaymentMethodId === "string") {
-      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-      if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
-
       const { data: prefs } = await supabase
         .from("guardian_payment_preferences")
         .select("stripe_customer_id")
@@ -73,7 +70,8 @@ serve(async (req) => {
         throw new Error("No Stripe customer on file for this guardian; complete a payment first.");
       }
 
-      const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+      // J24-A: org-scoped Stripe key (test for e2e org, live otherwise).
+      const { stripe } = await getStripeClient(orgId, supabase);
       const pm = await stripe.paymentMethods.retrieve(defaultPaymentMethodId);
       if (pm.customer !== prefs.stripe_customer_id) {
         throw new Error("Payment method does not belong to this customer");

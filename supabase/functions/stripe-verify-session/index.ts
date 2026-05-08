@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { getStripeClient } from "../_shared/stripe-client.ts";
 
 /**
  * Verifies a Stripe Checkout Session or PaymentIntent status.
@@ -17,8 +17,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
 
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
@@ -85,8 +83,9 @@ serve(async (req) => {
       );
     }
 
-    // If still pending, check Stripe directly
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    // If still pending, check Stripe directly. J24-A: org-scoped key
+    // (test for e2e org, live for everyone else).
+    const { stripe } = await getStripeClient(localSession.org_id, supabase);
     const stripeSession = await stripe.checkout.sessions.retrieve(sessionId);
 
     const isComplete = stripeSession.payment_status === "paid" || stripeSession.status === "complete";
