@@ -20,6 +20,28 @@ if (!SUPABASE_ANON_KEY) {
   throw new Error('[supabase-admin] E2E_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY) must be set in .env.test');
 }
 
+/**
+ * Service-role key for RLS-bypassing writes. When present, factory
+ * functions (seedStudent, seedLesson, etc.) use this instead of the
+ * test-owner JWT — necessary because direct table inserts on org-scoped
+ * tables are RLS-blocked even for owners (writes go through RPCs in
+ * production code; tests need raw inserts for speed).
+ *
+ * If absent, factories fall back to owner-JWT writes (which work for
+ * RPCs like `create_invoice_with_items` but fail on raw table inserts).
+ */
+const SUPABASE_SERVICE_ROLE_KEY = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY
+  || process.env.SUPABASE_SERVICE_ROLE_KEY
+  || '';
+
+/** Returns service-role bearer when available, else falls back to owner JWT. */
+function getWriteAuth(): { token: string; isServiceRole: boolean } {
+  if (SUPABASE_SERVICE_ROLE_KEY) {
+    return { token: SUPABASE_SERVICE_ROLE_KEY, isServiceRole: true };
+  }
+  return { token: getOwnerToken(), isServiceRole: false };
+}
+
 /** Cache the owner's access token for the session */
 let ownerAccessToken: string | null = null;
 
@@ -57,11 +79,12 @@ function getOwnerToken(): string {
  * Returns true on success, false on failure (best-effort).
  */
 export function supabaseDelete(table: string, query: string): boolean {
-  const token = getOwnerToken();
+  const { token, isServiceRole } = getWriteAuth();
+  const apikey = isServiceRole ? SUPABASE_SERVICE_ROLE_KEY : SUPABASE_ANON_KEY;
   try {
     execSync(
       `curl -s -X DELETE "${SUPABASE_URL}/rest/v1/${table}?${query}" ` +
-      `-H "apikey: ${SUPABASE_ANON_KEY}" ` +
+      `-H "apikey: ${apikey}" ` +
       `-H "Authorization: Bearer ${token}" ` +
       `-H "Content-Type: application/json" ` +
       `-H "Prefer: return=minimal"`,
@@ -98,14 +121,17 @@ export function supabaseSelect(table: string, query: string): any[] {
  * Returns parsed JSON result or null on failure.
  */
 export function supabaseInsert(table: string, payload: Record<string, unknown>): any {
-  const token = getOwnerToken();
+  // Use service-role for writes when available (RLS-bypassing). Falls back
+  // to owner-JWT for environments without service-role configured.
+  const { token, isServiceRole } = getWriteAuth();
+  const apikey = isServiceRole ? SUPABASE_SERVICE_ROLE_KEY : SUPABASE_ANON_KEY;
   const data = JSON.stringify(payload);
   const tmpFile = `/tmp/sb-insert-${uniqueSuffix()}.json`;
   fs.writeFileSync(tmpFile, data);
   try {
     const result = execSync(
       `curl -s -X POST "${SUPABASE_URL}/rest/v1/${table}" ` +
-      `-H "apikey: ${SUPABASE_ANON_KEY}" ` +
+      `-H "apikey: ${apikey}" ` +
       `-H "Authorization: Bearer ${token}" ` +
       `-H "Content-Type: application/json" ` +
       `-H "Prefer: return=representation" ` +
@@ -531,27 +557,40 @@ export function cleanupByPrefix(testId: string): void {
 }
 
 /**
- * Get teacher_id for the e2e-owner user (frequently needed in seedLesson).
+ * Get user_id of the test owner from profiles.
+ * Cached after first call.
  */
-export function getOwnerTeacherId(): string {
-  const orgId = getOrgId();
-  if (!orgId) return '';
-  const ownerEmail = process.env.E2E_OWNER_EMAIL || 'e2e-owner@test.lessonloop.net';
-  const teachers = supabaseSelect(
-    'teachers',
-    `org_id=eq.${orgId}&email=eq.${encodeURIComponent(ownerEmail)}&select=id&limit=1`
-  );
-  return teachers.length > 0 ? teachers[0].id : '';
-}
-
-/**
- * Get user_id of the test owner from auth.users (via profiles).
- */
+let cachedOwnerUserId: string | null = null;
 export function getOwnerUserId(): string {
+  if (cachedOwnerUserId) return cachedOwnerUserId;
   const ownerEmail = process.env.E2E_OWNER_EMAIL || 'e2e-owner@test.lessonloop.net';
   const profiles = supabaseSelect(
     'profiles',
     `email=eq.${encodeURIComponent(ownerEmail)}&select=id&limit=1`
   );
-  return profiles.length > 0 ? profiles[0].id : '';
+  if (profiles.length > 0) {
+    cachedOwnerUserId = profiles[0].id;
+  }
+  return cachedOwnerUserId || '';
+}
+
+/**
+ * Get teacher_id for the e2e-owner user (frequently needed in seedLesson).
+ * Looks up by user_id (teacher.email is often null when teacher was
+ * auto-linked via membership).
+ */
+let cachedOwnerTeacherId: string | null = null;
+export function getOwnerTeacherId(): string {
+  if (cachedOwnerTeacherId) return cachedOwnerTeacherId;
+  const orgId = getOrgId();
+  const userId = getOwnerUserId();
+  if (!orgId || !userId) return '';
+  const teachers = supabaseSelect(
+    'teachers',
+    `org_id=eq.${orgId}&user_id=eq.${userId}&select=id&limit=1`
+  );
+  if (teachers.length > 0) {
+    cachedOwnerTeacherId = teachers[0].id;
+  }
+  return cachedOwnerTeacherId || '';
 }

@@ -18,15 +18,7 @@ test.beforeAll(() => {
 test.describe('Lesson CRUD — DB-side assertions', () => {
   test.use({ storageState: AUTH.owner });
 
-  test.fixme('seed → lesson + participants rows exist', async () => {
-    // Disabled until factories pass: seedLesson currently fails because the
-    // anon-key REST connection routes can't satisfy lessons.created_by NOT NULL
-    // when called via PostgREST without a service-role token. Use a service-
-    // role admin client (via Supabase MCP) instead, or extend supabase-admin.ts
-    // to use the service-role key for write paths. See catalog §1.5 follow-up.
-  });
-
-  test.fixme('seed (alternate name)', async () => {
+  test('seed → lesson + participants rows exist (service-role)', async () => {
     const testId = `crud_${Date.now()}`;
     const teacherId = getOwnerTeacherId();
     const userId = getOwnerUserId();
