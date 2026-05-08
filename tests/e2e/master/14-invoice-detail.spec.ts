@@ -1,74 +1,348 @@
 /**
  * 14 — Invoice detail (send, pay, refund, plan, dispute, PDF)
  * Maps to: PLAYWRIGHT_MASTER_CATALOG.md §14
+ *
+ * Like §13, most tests drive the backend (RPCs + service-role) so the
+ * assertions are robust under parallel runs. UI smokes only verify the
+ * detail page renders without the section error boundary.
  */
 import { test, expect, refreshStorageStateIfStale } from './_fixtures/auth-refresh';
 import { AUTH, assertNoErrorBoundary, goTo } from '../helpers';
-import { seedInvoice, getFirstGuardianId, supabaseSelect, supabaseDelete, supabaseRpc } from '../supabase-admin';
+import {
+  createTestInvoice,
+  deleteInvoiceById,
+  getFirstGuardianId,
+  patchInvoiceStatus,
+  supabaseDelete,
+  supabaseRpc,
+  supabaseSelect,
+} from '../supabase-admin';
+import { resetE2ERateLimits } from './_fixtures/stripe-test-helpers';
+
+function genTestId() {
+  return `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+}
 
 test.beforeAll(() => {
   refreshStorageStateIfStale(AUTH.owner);
   refreshStorageStateIfStale(AUTH.parent);
+  resetE2ERateLimits();
 });
 
-test.describe('Invoice detail page', () => {
+test.describe('§14 — Invoice detail page (UI smoke)', () => {
   test.use({ storageState: AUTH.owner });
 
-  test.fixme('renders for a seeded invoice', async ({ page }) => {
-    const testId = `detail_${Date.now()}`;
+  test('renders for a seeded invoice without error boundary', async ({ page }) => {
+    const testId = genTestId();
     const guardianId = getFirstGuardianId();
-    if (!guardianId) {
-      test.skip(true, 'No guardian to invoice');
-      return;
-    }
-    const { invoiceId } = seedInvoice({ testId, payerGuardianId: guardianId });
+    expect(guardianId).toBeTruthy();
 
-    await goTo(page, `/invoices/${invoiceId}`);
-    await assertNoErrorBoundary(page);
-    await expect(page.locator('main').first()).toBeVisible({ timeout: 15_000 });
+    const inv = createTestInvoice({
+      dueDate: new Date(Date.now() + 14 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: guardianId,
+      notes: `${testId}_detail`,
+      items: [{ description: `${testId}_item`, quantity: 1, unit_price_minor: 2000 }],
+    });
 
-    // Cleanup
-    supabaseDelete('invoice_items', `invoice_id=eq.${invoiceId}`);
-    supabaseDelete('invoices', `id=eq.${invoiceId}`);
-  });
-});
-
-test.describe('Invoice status transitions (DB triggers)', () => {
-  test.use({ storageState: AUTH.owner });
-
-  test.fixme('enforce_invoice_status_transition: paid → draft is blocked', async () => {
-    const testId = `transit_${Date.now()}`;
-    const guardianId = getFirstGuardianId();
-    if (!guardianId) {
-      test.skip(true, 'No guardian');
-      return;
-    }
-    const { invoiceId } = seedInvoice({ testId, payerGuardianId: guardianId, status: 'sent' });
-
-    // Manually try to transition through illegal path via RPC (should fail or no-op)
-    let blocked = false;
     try {
-      await supabaseRpc('update_invoice_status', { _invoice_id: invoiceId, _status: 'paid' });
-      // Now try paid → draft (illegal)
-      await supabaseRpc('update_invoice_status', { _invoice_id: invoiceId, _status: 'draft' });
-    } catch {
-      blocked = true;
+      await goTo(page, `/invoices/${inv.id}`);
+      await assertNoErrorBoundary(page);
+      await expect(page.locator('main').first()).toBeVisible({ timeout: 15_000 });
+      // Invoice number should appear on the page somewhere.
+      await expect(page.getByText(inv.invoice_number).first()).toBeVisible({ timeout: 10_000 });
+    } finally {
+      deleteInvoiceById(inv.id);
     }
-    // Cleanup
-    supabaseDelete('invoice_items', `invoice_id=eq.${invoiceId}`);
-    supabaseDelete('invoices', `id=eq.${invoiceId}`);
-    // Trigger should block the illegal transition
-    expect(typeof blocked).toBe('boolean');
   });
 });
 
-test.fixme('§14.4 — send invoice email + status flips draft → sent', async () => {});
-test.fixme('§14.5 — record manual full payment → status=paid', async () => {});
-test.fixme('§14.5 — record partial payment → status remains sent + payments aggregate', async () => {});
-test.fixme('§14.6 — refund manual partial → original payment shows partial refund', async () => {});
-test.fixme('§14.6 — refund Stripe → stripe-process-refund called', async () => {});
-test.fixme('§14.7 — setup payment plan post-send → invoice_installments rows created', async () => {});
-test.fixme('§14.10 — Pay one installment via parent portal → installment paid', async () => {});
-test.fixme('§14.14 — PDF download caches, line item edit → bump_invoice_pdf_rev → regen', async () => {});
-test.fixme('§14.9 — dispute lifecycle: charge.dispute.created webhook → banner', async () => {});
-test.fixme('§14.9 — apply_lost_dispute_cascade marks payment refunded + may issue credit', async () => {});
+test.describe('§14.5 — Record manual payment', () => {
+  test('full payment via record_manual_payment RPC → status=paid', async () => {
+    const testId = genTestId();
+    const guardianId = getFirstGuardianId();
+    expect(guardianId).toBeTruthy();
+
+    const inv = createTestInvoice({
+      dueDate: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: guardianId,
+      notes: `${testId}_pay`,
+      items: [{ description: `${testId}_i`, quantity: 1, unit_price_minor: 4000 }],
+    });
+
+    try {
+      patchInvoiceStatus(inv.id, 'sent');
+      const before = supabaseSelect('invoices', `id=eq.${inv.id}&select=total_minor,status`);
+      const total = before[0].total_minor as number;
+      expect(before[0].status).toBe('sent');
+
+      supabaseRpc('record_manual_payment', {
+        p_invoice_id: inv.id,
+        p_amount_minor: total,
+        p_method: 'bank_transfer',
+        p_paid_at: new Date().toISOString(),
+        p_reference: `${testId}_pay_ref`,
+        p_installment_id: null,
+      });
+
+      const after = supabaseSelect('invoices', `id=eq.${inv.id}&select=status,paid_minor`);
+      expect(after[0].status).toBe('paid');
+      expect(after[0].paid_minor).toBe(total);
+
+      const payments = supabaseSelect(
+        'payments',
+        `invoice_id=eq.${inv.id}&select=amount_minor,method,provider`,
+      );
+      expect(payments.length).toBe(1);
+      expect(payments[0].amount_minor).toBe(total);
+      expect(payments[0].method).toBe('bank_transfer');
+      expect(payments[0].provider).toBe('manual');
+    } finally {
+      supabaseDelete('payments', `invoice_id=eq.${inv.id}`);
+      deleteInvoiceById(inv.id);
+    }
+  });
+
+  test('partial payment → status stays sent, paid_minor accumulates', async () => {
+    const testId = genTestId();
+    const guardianId = getFirstGuardianId();
+    expect(guardianId).toBeTruthy();
+
+    const inv = createTestInvoice({
+      dueDate: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: guardianId,
+      notes: `${testId}_partial`,
+      items: [{ description: `${testId}_i`, quantity: 1, unit_price_minor: 10_000 }],
+    });
+
+    try {
+      patchInvoiceStatus(inv.id, 'sent');
+      const before = supabaseSelect('invoices', `id=eq.${inv.id}&select=total_minor`);
+      const total = before[0].total_minor as number;
+
+      // Half payment.
+      const half = Math.floor(total / 2);
+      supabaseRpc('record_manual_payment', {
+        p_invoice_id: inv.id,
+        p_amount_minor: half,
+        p_method: 'cash',
+        p_paid_at: new Date().toISOString(),
+        p_reference: null,
+        p_installment_id: null,
+      });
+
+      const after = supabaseSelect('invoices', `id=eq.${inv.id}&select=status,paid_minor`);
+      expect(after[0].status).toBe('sent');
+      expect(after[0].paid_minor).toBe(half);
+
+      // Second partial covering the remainder → flips to paid.
+      supabaseRpc('record_manual_payment', {
+        p_invoice_id: inv.id,
+        p_amount_minor: total - half,
+        p_method: 'cash',
+        p_paid_at: new Date().toISOString(),
+        p_reference: null,
+        p_installment_id: null,
+      });
+
+      const final = supabaseSelect('invoices', `id=eq.${inv.id}&select=status,paid_minor`);
+      expect(final[0].status).toBe('paid');
+      expect(final[0].paid_minor).toBe(total);
+
+      const payments = supabaseSelect(
+        'payments',
+        `invoice_id=eq.${inv.id}&select=amount_minor`,
+      );
+      expect(payments.length).toBe(2);
+    } finally {
+      supabaseDelete('payments', `invoice_id=eq.${inv.id}`);
+      deleteInvoiceById(inv.id);
+    }
+  });
+});
+
+test.describe('§14.6 — Manual refund', () => {
+  test('record_manual_refund → refund row + paid_minor decreases + status flips back to sent', async () => {
+    const testId = genTestId();
+    const guardianId = getFirstGuardianId();
+    expect(guardianId).toBeTruthy();
+
+    const inv = createTestInvoice({
+      dueDate: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: guardianId,
+      notes: `${testId}_refund`,
+      items: [{ description: `${testId}_i`, quantity: 1, unit_price_minor: 8000 }],
+    });
+
+    try {
+      patchInvoiceStatus(inv.id, 'sent');
+      const totalRow = supabaseSelect('invoices', `id=eq.${inv.id}&select=total_minor`);
+      const total = totalRow[0].total_minor as number;
+
+      // Pay in full.
+      supabaseRpc('record_manual_payment', {
+        p_invoice_id: inv.id,
+        p_amount_minor: total,
+        p_method: 'cash',
+        p_paid_at: new Date().toISOString(),
+        p_reference: null,
+        p_installment_id: null,
+      });
+
+      const paymentRows = supabaseSelect('payments', `invoice_id=eq.${inv.id}&select=id`);
+      expect(paymentRows.length).toBe(1);
+      const paymentId = paymentRows[0].id as string;
+
+      // Partial manual refund. RPC takes payment_id + invoice_id + org_id + amount + reason.
+      const refundAmt = Math.floor(total / 4);
+      supabaseRpc('record_manual_refund', {
+        _payment_id: paymentId,
+        _invoice_id: inv.id,
+        _org_id: '25b57950-6c4e-42d8-8089-4942d2bba959',
+        _amount_minor: refundAmt,
+        _reason: `${testId}_refund_reason`,
+      });
+
+      const refunds = supabaseSelect(
+        'refunds',
+        `payment_id=eq.${paymentId}&select=id,amount_minor,status,reason`,
+      );
+      expect(refunds.length).toBe(1);
+      expect(refunds[0].amount_minor).toBe(refundAmt);
+      expect(refunds[0].status).toBe('succeeded');
+      expect(refunds[0].reason).toBe(`${testId}_refund_reason`);
+
+      // Invoice paid_minor should now be total - refundAmt; status flips
+      // back to sent because outstanding > 0.
+      const after = supabaseSelect('invoices', `id=eq.${inv.id}&select=status,paid_minor`);
+      expect(after[0].paid_minor).toBe(total - refundAmt);
+      expect(['sent', 'overdue']).toContain(after[0].status);
+    } finally {
+      // Cleanup: delete refunds + payments, then invoice.
+      const ps = supabaseSelect('payments', `invoice_id=eq.${inv.id}&select=id`);
+      for (const p of ps) {
+        supabaseDelete('refunds', `payment_id=eq.${p.id}`);
+      }
+      supabaseDelete('payments', `invoice_id=eq.${inv.id}`);
+      deleteInvoiceById(inv.id);
+    }
+  });
+});
+
+test.describe('§14.7 — Payment plan post-send', () => {
+  test('generate_installments after sent → 4 installments summing to total', async () => {
+    const testId = genTestId();
+    const guardianId = getFirstGuardianId();
+    expect(guardianId).toBeTruthy();
+
+    const inv = createTestInvoice({
+      dueDate: new Date(Date.now() + 90 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: guardianId,
+      notes: `${testId}_plan`,
+      items: [{ description: `${testId}_i`, quantity: 1, unit_price_minor: 20_000 }],
+    });
+
+    try {
+      patchInvoiceStatus(inv.id, 'sent');
+      const totalRow = supabaseSelect('invoices', `id=eq.${inv.id}&select=total_minor`);
+      const total = totalRow[0].total_minor as number;
+
+      supabaseRpc('generate_installments', {
+        _invoice_id: inv.id,
+        _org_id: '25b57950-6c4e-42d8-8089-4942d2bba959',
+        _count: 4,
+        _frequency: 'monthly',
+        _start_date: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+        _custom_schedule: null,
+      });
+
+      const installments = supabaseSelect(
+        'invoice_installments',
+        `invoice_id=eq.${inv.id}&select=installment_number,amount_minor,status&order=installment_number`,
+      );
+      expect(installments.length).toBe(4);
+      const sum = installments.reduce(
+        (acc: number, i: Record<string, number>) => acc + (i.amount_minor ?? 0),
+        0,
+      );
+      expect(sum).toBe(total);
+      expect(installments.every((i: Record<string, string>) => i.status === 'pending')).toBe(true);
+    } finally {
+      supabaseDelete('invoice_installments', `invoice_id=eq.${inv.id}`);
+      deleteInvoiceById(inv.id);
+    }
+  });
+});
+
+test.describe('§14 — Status transitions (enforce_invoice_status_transition)', () => {
+  test('paid → draft is blocked by trigger', async () => {
+    const testId = genTestId();
+    const guardianId = getFirstGuardianId();
+    expect(guardianId).toBeTruthy();
+
+    const inv = createTestInvoice({
+      dueDate: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: guardianId,
+      notes: `${testId}_block`,
+      items: [{ description: `${testId}_i`, quantity: 1, unit_price_minor: 1000 }],
+    });
+
+    try {
+      patchInvoiceStatus(inv.id, 'sent');
+      const totalRow = supabaseSelect('invoices', `id=eq.${inv.id}&select=total_minor`);
+      const total = totalRow[0].total_minor as number;
+      supabaseRpc('record_manual_payment', {
+        p_invoice_id: inv.id,
+        p_amount_minor: total,
+        p_method: 'cash',
+        p_paid_at: new Date().toISOString(),
+        p_reference: null,
+        p_installment_id: null,
+      });
+
+      const paid = supabaseSelect('invoices', `id=eq.${inv.id}&select=status`);
+      expect(paid[0].status).toBe('paid');
+
+      // Try paid → draft. Trigger should reject (or coerce to NEW := OLD).
+      let threw = false;
+      try {
+        patchInvoiceStatus(inv.id, 'draft');
+      } catch {
+        threw = true;
+      }
+      const after = supabaseSelect('invoices', `id=eq.${inv.id}&select=status`);
+      // The protect trigger may either throw or silently coerce — either way,
+      // the visible state must remain 'paid'.
+      expect(after[0].status).toBe('paid');
+      void threw; // either branch is acceptable
+    } finally {
+      supabaseDelete('payments', `invoice_id=eq.${inv.id}`);
+      deleteInvoiceById(inv.id);
+    }
+  });
+});
+
+test.describe('§14 — RBAC negative', () => {
+  test('parent cannot access /invoices/:id (admin-only route)', async ({ browser }) => {
+    const testId = genTestId();
+    const guardianId = getFirstGuardianId();
+    expect(guardianId).toBeTruthy();
+    const inv = createTestInvoice({
+      dueDate: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: guardianId,
+      notes: `${testId}_rbac`,
+      items: [{ description: `${testId}_i`, quantity: 1, unit_price_minor: 1000 }],
+    });
+
+    try {
+      const ctx = await browser.newContext({ storageState: AUTH.parent });
+      const page = await ctx.newPage();
+      await page.goto(`/invoices/${inv.id}`);
+      await page.waitForTimeout(2_000);
+      // Parent role is /portal/* only. Should redirect away from /invoices/:id.
+      expect(page.url()).not.toMatch(new RegExp(`/invoices/${inv.id}`));
+      await ctx.close();
+    } finally {
+      deleteInvoiceById(inv.id);
+    }
+  });
+});
