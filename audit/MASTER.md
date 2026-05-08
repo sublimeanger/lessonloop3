@@ -89,8 +89,8 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 |---|---|---|---|---|---|
 | Students list / CRUD | src/pages/Students.tsx | P0 | 🟡 | 2026-05-08 | 9 RLS policies (admin r/w/d, finance r, teacher r-assigned, parent r-linked, soft-delete + trial-block guard); `get_students_for_org` RPC confirmed. No USING(true) footguns. Awaits browser CRUD test. |
 | Student detail | src/pages/StudentDetail.tsx | P0 | 🟡 | 2026-05-08 | covered by Students RLS audit; awaits browser nav |
-| CSV import (mapping step) | src/pages/StudentsImport.tsx → csv-import-mapping fn | P1 | ❓ | — | Gemini AI column mapping |
-| CSV import (execute) | supabase/functions/csv-import-execute | P1 | ❓ | — | bulk insert; verify RLS + dedupe |
+| CSV import (mapping step) | src/pages/StudentsImport.tsx → csv-import-mapping fn | P1 | 🟡 | 2026-05-08 | Gemini AI column mapping (gemini-flash-latest); GEMINI_API_KEY required; structural ok, fresh test pending |
+| CSV import (execute) | supabase/functions/csv-import-execute | P1 | 🟡 | 2026-05-08 | bulk insert into students/teachers/instruments/org_memberships; deterministic (no AI); structural ok, fresh test pending |
 | Guardian batch invite | supabase/functions/batch-invite-guardians | P1 | ❓ | — | bulk send to all family heads |
 | Family/guardian linking | src/pages/Students.tsx panels | P1 | ❓ | — | |
 | Streak notification | supabase/functions/streak-notification | P3 | ❓ | — | |
@@ -165,10 +165,10 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| LoopAssist chat (staff) | looopassist-chat | P0 | ❓ | — | Anthropic Claude; tier routing Haiku/Sonnet |
-| LoopAssist execute (tool calls) | looopassist-execute | P0 | ❓ | — | side-effecting tool calls; verify confirm gate |
-| Parent LoopAssist chat | parent-loopassist-chat | P1 | ❓ | — | |
-| CSV import column mapping | csv-import-mapping | P1 | ❓ | — | Gemini |
+| LoopAssist chat (staff) | looopassist-chat | P0 | 🟡 | 2026-05-08 | Anthropic Claude — Sonnet (academy/agency/custom) or Haiku (free/solo); date-pinned snapshots claude-sonnet-4-5-20250929 + claude-haiku-4-5-20251001; ANTHROPIC_API_KEY required; prompt-injection sanitiser on org-pref injection (control chars + system: prefix + "ignore previous instructions"); 7744 historical conversations carried over; last activity 2026-05-03 (pre-migration); fresh chat test pending Jamie |
+| LoopAssist execute (tool calls) | looopassist-execute | P0 | 🟡 | 2026-05-08 | deterministic SQL execution from `ai_action_proposals`; 31 historical proposals; user-confirm gate; structural ok |
+| Parent LoopAssist chat | parent-loopassist-chat | P1 | 🟡 | 2026-05-08 | Anthropic Claude; structural ok, awaits parent-portal browser test |
+| CSV import column mapping | csv-import-mapping | P1 | 🟡 | 2026-05-08 | Gemini Flash (gemini-flash-latest); GEMINI_API_KEY required; structural ok |
 | Marketing chat | marketing-chat | P2 | ⏸ | — | marketing site separate stack — out of cutover |
 
 ## Messaging
