@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { getStripeClient } from "../_shared/stripe-client.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
 const PAUSE_THRESHOLD = 3;
@@ -87,14 +88,25 @@ serve(async (req) => {
   if (cronAuthError) return cronAuthError;
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+
+    // J24-A: org-scoped Stripe clients. This cron iterates installments
+    // across MANY orgs; each may be in test or live mode independently
+    // (in practice only the e2e org is in test mode, but the helper
+    // selects per-org so we don't ever cross streams). Cache one client
+    // per org to amortise the helper's flag lookup.
+    const stripeCache = new Map<string, Stripe>();
+    async function getStripeFor(orgId: string): Promise<Stripe> {
+      const cached = stripeCache.get(orgId);
+      if (cached) return cached;
+      const { stripe } = await getStripeClient(orgId, supabase);
+      stripeCache.set(orgId, stripe);
+      return stripe;
+    }
+
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
     // Find all due/overdue installments with auto-pay enabled. Includes
@@ -279,6 +291,7 @@ serve(async (req) => {
           }
         }
 
+        const stripe = await getStripeFor(invoice.org_id);
         const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams, stripeOpts);
 
         // J6-F15: Local audit trail independent of webhook delivery.

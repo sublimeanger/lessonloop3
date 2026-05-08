@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { getStripeClient } from "../_shared/stripe-client.ts";
 import { log } from "../_shared/log.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { recalcWithRetry } from "../_shared/recalc-with-retry.ts";
@@ -32,9 +33,6 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -142,8 +140,10 @@ serve(async (req) => {
       throw new Error(`Maximum refundable amount is ${maxRefundable}. Already claimed: ${totalClaimed}`);
     }
 
-    // Process refund via Stripe
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    // J24-A: org-scoped Stripe key. The org that owns this payment
+    // determines test vs live; refunds must use the same mode the
+    // original charge used or Stripe will refuse to find the PI.
+    const { stripe } = await getStripeClient(payment.org_id, supabase);
 
     // Insert a pending refund row BEFORE calling Stripe API
     const { data: refundRecord, error: refundInsertError } = await supabase
