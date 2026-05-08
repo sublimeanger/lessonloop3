@@ -60,3 +60,25 @@ export const SUPABASE_PROJECT_ID: string = supabaseProjectId;
 
 /** Optional Sentry DSN — empty string if not configured */
 export const SENTRY_DSN: string = (import.meta.env.VITE_SENTRY_DSN ?? '').trim();
+
+/**
+ * Feature flags for social auth on Login + Signup screens.
+ *
+ * Both default to OFF. Re-enable by setting the env var to "true" (or "1") in
+ * the deploy platform's env config and triggering a rebuild.
+ *
+ * - VITE_SOCIAL_AUTH_GOOGLE: blocked while Google OAuth consent screen is in
+ *   verification (~2-6 week lead). Sister Calendar OAuth uses a separate
+ *   client and is unaffected.
+ * - VITE_SOCIAL_AUTH_APPLE: blocked because Apple Sign-In provider is not
+ *   configured at destination Supabase yet (Apple Developer Service ID +
+ *   Key + Supabase auth provider config required).
+ */
+const isTruthyFlag = (raw: unknown): boolean => {
+  const v = String(raw ?? '').trim().toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+};
+
+export const SOCIAL_AUTH_GOOGLE_ENABLED: boolean = isTruthyFlag(import.meta.env.VITE_SOCIAL_AUTH_GOOGLE);
+export const SOCIAL_AUTH_APPLE_ENABLED: boolean = isTruthyFlag(import.meta.env.VITE_SOCIAL_AUTH_APPLE);
+export const SOCIAL_AUTH_ANY_ENABLED: boolean = SOCIAL_AUTH_GOOGLE_ENABLED || SOCIAL_AUTH_APPLE_ENABLED;

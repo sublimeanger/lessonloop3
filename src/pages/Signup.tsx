@@ -15,6 +15,11 @@ import { lovable } from '@/integrations/lovable';
 import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH, getPasswordScore } from '@/components/auth/PasswordStrengthIndicator';
 import { supabase } from '@/integrations/supabase/client';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import {
+  SOCIAL_AUTH_GOOGLE_ENABLED,
+  SOCIAL_AUTH_APPLE_ENABLED,
+  SOCIAL_AUTH_ANY_ENABLED,
+} from '@/lib/env';
 
 export default function Signup() {
   usePageMeta('Sign Up | LessonLoop', 'Create your free LessonLoop account');
@@ -203,46 +208,52 @@ export default function Signup() {
           <CardDescription>Start managing your music lessons today</CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-3 pb-3">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-11"
-            onClick={handleGoogleSignup}
-            disabled={anyLoading}
-          >
-            {isGoogleLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <GoogleIcon className="mr-2 h-5 w-5" />
+        {SOCIAL_AUTH_ANY_ENABLED && (
+          <CardContent className="space-y-3 pb-3">
+            {SOCIAL_AUTH_GOOGLE_ENABLED && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-11"
+                onClick={handleGoogleSignup}
+                disabled={anyLoading}
+              >
+                {isGoogleLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <GoogleIcon className="mr-2 h-5 w-5" />
+                )}
+                Continue with Google
+              </Button>
             )}
-            Continue with Google
-          </Button>
 
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-11"
-            onClick={handleAppleSignup}
-            disabled={anyLoading}
-          >
-            {isAppleLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <AppleIcon className="mr-2 h-5 w-5" />
+            {SOCIAL_AUTH_APPLE_ENABLED && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-11"
+                onClick={handleAppleSignup}
+                disabled={anyLoading}
+              >
+                {isAppleLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <AppleIcon className="mr-2 h-5 w-5" />
+                )}
+                Continue with Apple
+              </Button>
             )}
-            Continue with Apple
-          </Button>
 
-          <div className="relative py-1">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
+            <div className="relative py-1">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">or</span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">or</span>
-            </div>
-          </div>
-        </CardContent>
+          </CardContent>
+        )}
 
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4 pt-0">
