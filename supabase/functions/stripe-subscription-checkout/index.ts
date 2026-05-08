@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { getStripeClient } from "../_shared/stripe-client.ts";
 import { PLAN_LIMITS as DB_PLAN_LIMITS, TRIAL_DAYS } from "../_shared/plan-config.ts";
 
 // ─── CANONICAL PLAN CONFIG ───────────────────────────────────────
@@ -57,11 +57,6 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) {
-      throw new Error("STRIPE_SECRET_KEY not configured");
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -123,8 +118,14 @@ serve(async (req) => {
       throw new Error("Organisation not found");
     }
 
-    // Initialize Stripe
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    // J24-A: org-scoped Stripe key (test for e2e org, live otherwise).
+    // NOTE: STRIPE_PRICE_* env vars are LIVE price IDs. If a test-mode org
+    // is ever upgraded via this fn, Stripe will reject the live price IDs
+    // under the test key. Configure separate STRIPE_PRICE_*_TEST env vars
+    // before exercising §24.9 (plan upgrade) tests, or guard the price
+    // lookup off `mode`. For now this is a no-op for the e2e org because
+    // §24 catalog focuses on parent payments, not platform subscriptions.
+    const { stripe } = await getStripeClient(orgId, supabase);
 
     // Get or create Stripe customer
     let customerId = org.stripe_customer_id;
