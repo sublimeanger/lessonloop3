@@ -42,10 +42,14 @@ serve(async (req) => {
       throw new Error("No Stripe signature found");
     }
 
-    // Verify webhook signature
+    // Verify webhook signature.
+    // Use constructEventAsync — Deno's Web Crypto API is async, and the sync
+    // constructEvent() throws "SubtleCryptoProvider cannot be used in a
+    // synchronous context" (or returns an opaque verification failure depending
+    // on SDK version), so signatures never validate in Supabase Edge Functions.
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
       console.error("Webhook signature verification failed:", message);
