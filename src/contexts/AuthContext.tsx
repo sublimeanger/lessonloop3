@@ -276,16 +276,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up BEFORE calling initializeAuth so we don't miss events that fire
     // during getSession(). The INITIAL_SESSION event is handled by getSession
     // above, so we skip it here to avoid double-processing.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    // ⚠️ This callback MUST be synchronous + non-async. Per Supabase docs:
+    //   "Avoid using async functions as callbacks. Async callbacks can lead to issues."
+    // Awaiting DB queries inside the handler holds the auth-internal lock and
+    // causes downstream queries to stall (5s timeout, root cause of the
+    // post-signup Profile/Roles fetch timeout we shipped fixing 2026-05-08).
+    // Defer any DB work via setTimeout(0) so it runs OUTSIDE the auth lock.
+    // See audit/findings/2026-05-08-authcontext-onauthstatechange-async-hang.md
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mountedRef.current) return;
-      
+
       logger.debug('Auth state change:', event);
 
       // Skip INITIAL_SESSION — we handle it deterministically via getSession()
       if (event === 'INITIAL_SESSION') {
         return;
       }
-      
+
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
@@ -304,26 +311,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           logger.debug('Already initialised with same user - skipping refetch');
           return;
         }
-        
+
         if (fetchingRef.current) {
           return;
         }
         fetchingRef.current = true;
-        
-        const [profileData, rolesData] = await Promise.all([
-          fetchProfile(newSession.user.id),
-          fetchRoles(newSession.user.id),
-        ]);
-        
-        if (mountedRef.current) {
-          setProfile(profileData);
-          setRoles(rolesData);
-          setIsLoading(false);
-          setIsInitialised(true);
-          initialisedRef.current = true;
-          Sentry.setUser({ id: newSession.user.id, email: newSession.user.email });
-        }
-        fetchingRef.current = false;
+
+        // Defer the DB work outside the auth lock window.
+        const userId = newSession.user.id;
+        const userEmail = newSession.user.email;
+        setTimeout(async () => {
+          try {
+            const [profileData, rolesData] = await Promise.all([
+              fetchProfile(userId),
+              fetchRoles(userId),
+            ]);
+
+            if (mountedRef.current) {
+              setProfile(profileData);
+              setRoles(rolesData);
+              setIsLoading(false);
+              setIsInitialised(true);
+              initialisedRef.current = true;
+              Sentry.setUser({ id: userId, email: userEmail });
+            }
+          } finally {
+            fetchingRef.current = false;
+          }
+        }, 0);
       } else {
         if (mountedRef.current) {
           // If previously signed in and session dropped, notify user
