@@ -147,19 +147,19 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Google Calendar OAuth | calendar-oauth-{start,callback} | P0 | ❓ | — | (was ✅ Phase 6 T3.3 — verify_jwt + maxResults bug fixes; needs fresh OAuth round-trip from a new test org) |
-| Calendar disconnect | calendar-disconnect | P1 | ❓ | — | |
-| Calendar busy fetch (now) | calendar-fetch-busy | P1 | ❓ | — | |
-| Calendar lesson sync (write back) | calendar-sync-lesson | P0 | ❓ | — | (was ✅ — idempotency fixed in 9c72ca3; needs fresh sync of a real lesson + verify single Google event) |
-| iCal feed (read-only export) | calendar-ical-feed | P1 | ❓ | — | tokenised URL |
-| Zoom OAuth start | zoom-oauth-start | P0 | 🟡 | 2026-05-07 | Phase 6 T3.2 server-side validated only — needs fresh full E2E |
-| Zoom OAuth callback | zoom-oauth-callback + src/pages/ZoomOAuthCallback.tsx | P0 | 🟡 | 2026-05-07 | E2E pending — fresh test of the React-mediated flow |
-| Zoom lesson sync | zoom-sync-lesson | P0 | 🟡 | 2026-05-07 | idempotency preemptively fixed; full E2E pending |
-| Xero OAuth start | xero-oauth-start | P0 | ❓ | — | (was ✅ Phase 6 T3.1 — needs fresh OAuth from a new test org) |
-| Xero OAuth callback | xero-oauth-callback | P0 | ❓ | — | (was ✅) |
-| Xero invoice sync | xero-sync-invoice | P0 | ❓ | — | (was ✅ — schema drift fix 2c4b410 + FK fix 025a423; fresh sync of a brand-new invoice end-to-end pending) |
-| Xero payment sync | xero-sync-payment | P0 | ❓ | — | (was ✅ — NOT NULL drift fix 9c72ca3; fresh end-to-end payment sync pending) |
-| Xero disconnect | xero-disconnect | P1 | ❓ | — | |
+| Google Calendar OAuth | calendar-oauth-{start,callback} | P0 | 🟡 | 2026-05-08 | verify_jwt=false on callback ✓; 1 active Google connection in production (last sync 14:00 UTC today, token still valid). 1 errored connection (refresh_token revoked — user reconnect required). Needs fresh E2E sign-in by Jamie |
+| Calendar disconnect | calendar-disconnect | P1 | 🟡 | 2026-05-08 | structural verify only |
+| Calendar busy fetch (now) | calendar-fetch-busy | P1 | 🟡 | 2026-05-08 | calendar-refresh-busy cron firing every 15 min; sync_status='active' for 1 connection |
+| Calendar lesson sync (write back) | calendar-sync-lesson | P0 | 🟡 | 2026-05-08 | idempotency fixed in 9c72ca3; fresh sync of a real lesson + verify single Google event pending Jamie |
+| iCal feed (read-only export) | calendar-ical-feed | P1 | 🟡 | 2026-05-08 | tokenised URL; 1 Apple iCal connection in DB but `last_sync_at='2026-04-03'` (>30 days stale) — see findings |
+| Zoom OAuth start | zoom-oauth-start | P0 | 🟡 | 2026-05-08 | verify_jwt=false ✓; no production Zoom connections yet (table calendar_connections has 0 rows with provider='zoom') |
+| Zoom OAuth callback | zoom-oauth-callback + src/pages/ZoomOAuthCallback.tsx | P0 | 🟡 | 2026-05-08 | structural; E2E pending Jamie |
+| Zoom lesson sync | zoom-sync-lesson | P0 | 🟡 | 2026-05-08 | idempotency preemptively fixed; full E2E pending Jamie |
+| Xero OAuth start | xero-oauth-start | P0 | 🟡 | 2026-05-08 | verify_jwt=false ✓; 2 connections in production (both with expired access tokens — refresh-on-demand via shared/xero-auth.ts) |
+| Xero OAuth callback | xero-oauth-callback | P0 | 🟡 | 2026-05-08 | verify_jwt=false ✓ |
+| Xero invoice sync | xero-sync-invoice | P0 | 🟡 | 2026-05-08 | schema drift fix 2c4b410 + FK fix 025a423; auto_sync_invoices=true on both connections; fresh sync pending Jamie |
+| Xero payment sync | xero-sync-payment | P0 | 🟡 | 2026-05-08 | NOT NULL drift fix 9c72ca3; auto_sync_payments=true on both connections; fresh sync pending Jamie |
+| Xero disconnect | xero-disconnect | P1 | 🟡 | 2026-05-08 | structural verify only |
 
 ## AI
 
