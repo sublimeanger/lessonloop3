@@ -14,6 +14,7 @@
 // single installment do not abort the loop.
 
 import Stripe from "https://esm.sh/stripe@14.21.0";
+import { getStripeClient } from "./stripe-client.ts";
 import { escapeHtml } from "./escape-html.ts";
 import { isNotificationEnabled } from "./check-notification-pref.ts";
 
@@ -59,8 +60,28 @@ export async function sendAutoPayReminders(
   opts: SendOpts,
 ): Promise<SendResult> {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-  const stripe = stripeKey ? new Stripe(stripeKey, { apiVersion: "2023-10-16" }) : null;
+
+  // J24-A: per-org Stripe clients. Each org may resolve test or live
+  // independently. Cache one client per org per invocation to avoid
+  // re-querying the flag for every installment within the same org.
+  const stripeCache = new Map<string, Stripe>();
+  async function getStripeFor(orgId: string): Promise<Stripe | null> {
+    const cached = stripeCache.get(orgId);
+    if (cached) return cached;
+    try {
+      const { stripe } = await getStripeClient(orgId, supabase);
+      stripeCache.set(orgId, stripe);
+      return stripe;
+    } catch (err) {
+      // Helper only throws if test mode is requested but secret is missing.
+      // Reminder is best-effort — fall back to "your saved card" wording.
+      console.error(
+        `[auto-pay-reminder-core] getStripeClient failed for org ${orgId}:`,
+        err,
+      );
+      return null;
+    }
+  }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -194,6 +215,7 @@ export async function sendAutoPayReminders(
     let card: CardDetails | null = null;
     let cardExpiringBeforeCharge = false;
 
+    const stripe = await getStripeFor(invoice.org_id);
     if (stripe) {
       try {
         const pm = await stripe.paymentMethods.retrieve(prefs.default_payment_method_id);

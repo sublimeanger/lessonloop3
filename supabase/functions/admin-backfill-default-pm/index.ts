@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { getStripeClient } from "../_shared/stripe-client.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
 // J10-F1 / J10-P1-C3 — One-shot operator-triggered backfill driver.
@@ -29,13 +30,20 @@ serve(async (req) => {
   if (authError) return authError;
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+
+    // J24-A: per-org Stripe clients (test for e2e org, live otherwise).
+    // Backfill iterates many orgs, so cache to amortise the helper lookup.
+    const stripeCache = new Map<string, Stripe>();
+    async function getStripeFor(orgId: string): Promise<Stripe> {
+      const cached = stripeCache.get(orgId);
+      if (cached) return cached;
+      const { stripe } = await getStripeClient(orgId, supabase);
+      stripeCache.set(orgId, stripe);
+      return stripe;
+    }
 
     const { data: candidates, error: queryError } = await supabase
       .from("guardian_payment_preferences")
@@ -60,6 +68,7 @@ serve(async (req) => {
 
     for (const row of candidates) {
       try {
+        const stripe = await getStripeFor(row.org_id);
         const cards = await stripe.paymentMethods.list({
           customer: row.stripe_customer_id,
           type: "card",
