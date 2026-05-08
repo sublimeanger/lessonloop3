@@ -26,36 +26,88 @@ for (const [envKey, planKey] of priceEnvPairs) {
 
 serve(async (req) => {
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-    
-    if (!stripeKey || !webhookSecret) {
-      throw new Error("Stripe configuration missing");
+    const liveStripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const liveWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+    const testStripeKey = Deno.env.get("STRIPE_TEST_SECRET_KEY");
+    const testWebhookSecret = Deno.env.get("STRIPE_TEST_WEBHOOK_SECRET");
+
+    if (!liveStripeKey || !liveWebhookSecret) {
+      throw new Error("Stripe configuration missing (live)");
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-    
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
-    
+
     if (!signature) {
       throw new Error("No Stripe signature found");
     }
 
-    // Verify webhook signature.
-    // Use constructEventAsync — Deno's Web Crypto API is async, and the sync
-    // constructEvent() throws "SubtleCryptoProvider cannot be used in a
-    // synchronous context" (or returns an opaque verification failure depending
-    // on SDK version), so signatures never validate in Supabase Edge Functions.
-    let event: Stripe.Event;
-    try {
-      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      console.error("Webhook signature verification failed:", message);
+    // J24-A: dual-mode signature verification.
+    //
+    // Stripe Dashboard has two endpoints pointing at this URL: one for
+    // live mode, one for test mode. Each delivers events signed with
+    // its own secret. We don't know upfront which mode an incoming event
+    // came from (the body contains `livemode` but we must NOT trust the
+    // body before verifying the signature). So we try test first, fall
+    // back to live. A signature verifies against ONE endpoint's secret
+    // only — if test verifies, the event is unambiguously from test
+    // mode (and event.livemode === false is guaranteed by Stripe).
+    //
+    // Order: test → live. In production, live events vastly outnumber
+    // test events (only the e2e org operates in test). The expected hot
+    // path is: test verify fails → live verify succeeds → 1 wasted
+    // signature attempt per event. On Deno's Web Crypto that's ~1ms.
+    // Cheap insurance against operator misconfiguring the wrong secret.
+    //
+    // constructEventAsync is required — Deno's Web Crypto is async, and
+    // the sync constructEvent() throws "SubtleCryptoProvider cannot be
+    // used in a synchronous context" or returns an opaque verification
+    // failure depending on SDK version.
+    let event: Stripe.Event | null = null;
+    let stripe: Stripe | null = null;
+    let webhookMode: "live" | "test" = "live";
+    let lastVerificationError: unknown = null;
+
+    if (testWebhookSecret && testStripeKey) {
+      const testStripe = new Stripe(testStripeKey, { apiVersion: "2023-10-16" });
+      try {
+        event = await testStripe.webhooks.constructEventAsync(body, signature, testWebhookSecret);
+        stripe = testStripe;
+        webhookMode = "test";
+      } catch (err) {
+        lastVerificationError = err;
+        // fall through to live attempt
+      }
+    }
+
+    if (!event) {
+      const liveStripe = new Stripe(liveStripeKey, { apiVersion: "2023-10-16" });
+      try {
+        event = await liveStripe.webhooks.constructEventAsync(body, signature, liveWebhookSecret);
+        stripe = liveStripe;
+        webhookMode = "live";
+      } catch (err) {
+        lastVerificationError = err;
+      }
+    }
+
+    if (!event || !stripe) {
+      const message = lastVerificationError instanceof Error
+        ? lastVerificationError.message
+        : "Unknown error";
+      console.error("Webhook signature verification failed (both modes):", message);
       return new Response(
         JSON.stringify({ error: "Invalid signature" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Defensive cross-check: a test secret can't verify a live event and
+    // vice versa, but log if the body's livemode disagrees with the secret
+    // that verified — would indicate a misconfigured endpoint.
+    if (event.livemode !== (webhookMode === "live")) {
+      console.error(
+        `[stripe-webhook] mode mismatch: verified by ${webhookMode} secret but event.livemode=${event.livemode}`,
       );
     }
 
@@ -63,7 +115,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    log(`Processing event: ${event.type}`);
+    log(`Processing event: ${event.type} (mode=${webhookMode}, livemode=${event.livemode})`);
 
     // Two-phase dedup. See supabase/migrations/20260502100000_webhook_dedup_two_phase.sql
     // for the rationale and semantics. Phase 1: claim an in-flight row
