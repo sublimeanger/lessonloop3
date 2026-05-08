@@ -1,7 +1,7 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-08 by Claude Opus 4.7 (1M context)
-**Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
+**Last updated:** 2026-05-08 (evening) by Claude Opus 4.7 (1M context, 2nd session)
+**Working repo:** `sublimeanger/lessonloop3` (branch: `main`, last commit `e36e486`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
 
@@ -12,35 +12,53 @@
 Read this whole file before doing anything. Your context starts cold;
 this is the only mind-share between sessions. Specifically:
 
-- Don't trust the "312 tests passing" number alone — that's misleading.
-  Real catalog completeness is ~25-30% (see [Reality check](#reality-check)).
-- Don't use `test.fixme()` as a placeholder — that's why we're behind.
-  Either write the real test or leave it out (see [Anti-patterns](#anti-patterns)).
+- Don't trust raw test counters. Track **real catalog coverage**, not
+  spec count. §24 went from 0 real tests (11 fixmes) → 10 real (60% of
+  catalog §24 items) this session. Catalog overall ~30% (was 25%).
+- Don't use `test.fixme()` as a placeholder — see [Anti-patterns](#anti-patterns).
 - The catalog at `tests/e2e/master/PLAYWRIGHT_MASTER_CATALOG.md` is the
   source of truth for "what should be tested". Treat each section as a
   contract.
-- Section §24 (Stripe payments) is the next priority. See [Next session](#next-session).
+- §24 Stripe payments — **DONE**. Next priority: §13/§14 Invoices.
+  See [Next session](#next-session).
+- **J24-A infra is live in production.** 14 stripe-* edge fns + the
+  webhook now route through `_shared/stripe-client.ts` with org-scoped
+  test/live key dispatch. The e2e org has `stripe_test_mode=true`. Do
+  NOT toggle that flag for any other org without testing — it would
+  break that org's live payments instantly.
 
 ---
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~25-30%.**
+**Catalog completeness: ~30% (was 25-30%, +10 real §24 tests this session).**
+
+Current baseline (2026-05-08 evening, post-J24-A):
+- **343 passed** (was 312; +31 stop-the-bleeding fixes from previous Claude
+  + my §24 work added 10 real tests)
+- **5 failed** (the documented JWT-stale flakes; same 5 every run)
+- **211 skipped** (down from 212 — one §24 fixme converted to a real
+  test; the file-level conversion was 11 fixmes → 0)
+- ~3.2 min wall-clock at 4 workers (was ~9 min when storage states stale)
+
+Storage state hygiene matters: if you see ~35 owner-side failures, the
+storage state JWTs have gone stale (or the e2e-owner profile has
+`has_completed_onboarding=false`). Fix:
+```bash
+rm tests/e2e/.auth/*.json   # auth.setup.ts regenerates
+```
+And via service-role SQL if onboarding flag drifted (see [Known issues](#known-issues)).
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~80 | These exercise multi-step flows |
+| Genuinely behavioural tests (full journeys) | ~90 | +10 §24 Stripe end-to-end |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
-| **`test.fixme()` empty placeholders** | **212** | **Empty function bodies. They run as "skipped". They prove NOTHING.** |
-| **Total spec functions** | **~537** | |
+| **`test.fixme()` empty placeholders** | **211** | Empty function bodies. They run as "skipped". They prove NOTHING. |
+| **Total spec functions** | **~547** | |
 
-The catalog spells out roughly **500-700 specific test cases**. We've
-implemented ~80 of those properly. The rest is scaffolding +
-placeholders + adjacent tests.
-
-**Don't pretend otherwise. Track real catalog coverage, not test count.**
+**Track real catalog coverage, not test count.**
 
 ---
 
@@ -190,23 +208,97 @@ your setup. Check `.env.test` first.
 
 ## Next session
 
-We're switching to **Mode B**: grind through the catalog section by
-section, finishing one fully before moving to the next. **Stop using
-`test.fixme()` as a placeholder.** Either write the real test or
-delete the line.
+Continue **Mode B**: grind through the catalog section by section.
+**Stop using `test.fixme()` as a placeholder.** Either write the real
+test or delete the line.
 
-### Priority order (from earlier discussion with Jamie)
+### Priority order
 
-1. **§24 Stripe payments** — most expensive failure mode in any SaaS,
-   real money flows. ~6-8 hours focused.
+1. ~~§24 Stripe payments~~ — **DONE 2026-05-08 evening (10/17 catalog
+   items real, ~60%)**. See [§24 progress](#24-progress) below for
+   gaps + the J24-A infra notes.
 2. **§13/§14 Invoices + invoice detail** — revenue path (related to §24).
-   ~6-9 hours.
+   **Start here next.** ~6-9 hours.
 3. **§26 Parent portal** — primary customer interface. ~6-10 hours.
 4. **§20 Continuation (term rollover)** — term-end critical, complex.
    ~6-8 hours.
 5. **§8 Lesson CRUD** — recurring patterns are subtle. ~4-6 hours.
 
 After those 5 sections, the remaining 27 are gap-fillers and per-page smoke.
+
+### §24 progress (this session)
+
+Implemented (commits `b7900ab` → `e36e486` on `main`, all pushed):
+
+**Infrastructure (J24-A):**
+- Migration `20260517100000_org_stripe_test_mode_flag.sql`: adds
+  `organisations.stripe_test_mode boolean NOT NULL DEFAULT false`.
+  E2E org `25b57950-…` set true; every other org defaults to live.
+- New helper `supabase/functions/_shared/stripe-client.ts`:
+  `getStripeClient(orgId, supabase)` → `{ stripe, mode }`. Defensive:
+  missing column / null orgId / lookup failure → live fallback.
+  Test mode requested but `STRIPE_TEST_SECRET_KEY` missing → throws
+  (never silently routes a flagged org through live, never accidentally
+  routes a live org through test).
+- 14 stripe-* edge fns + `_shared/auto-pay-reminder-core.ts` +
+  `admin-backfill-default-pm` refactored to use the helper. Cron-style
+  fns (auto-pay-installment, auto-pay reminders, admin-backfill) cache
+  one Stripe client per org to amortise the per-installment lookup.
+- `stripe-webhook` is dual-mode: tries `STRIPE_TEST_WEBHOOK_SECRET`
+  first, falls back to `STRIPE_WEBHOOK_SECRET`. Each verified event
+  uses the matching SDK client for downstream calls (e.g.
+  `stripe.subscriptions.retrieve` in `handleSubscriptionCheckoutCompleted`).
+- Stripe Dashboard test-mode webhook endpoint `we_1TUwZhBAjFOLYDS3QGslhpbj`
+  (URL: `https://xmrhmxizpslhtkibqyfy.supabase.co/functions/v1/stripe-webhook`)
+  subscribed to the 18-event superset the handler dispatches on. Secret
+  stored as Supabase env `STRIPE_TEST_WEBHOOK_SECRET`.
+
+**Tests (10/17 catalog §24 items real):**
+- `tests/e2e/master/_fixtures/stripe-test-helpers.ts` — driven via
+  Stripe TEST API directly, not Stripe Elements iframe.
+- `24-stripe.spec.ts` covers §24.1, §24.2/§24.3, §24.5 list, §24.5 detach,
+  §24.7 partial refund, §24.10 billing history, §24.12 dedup contract,
+  RBAC negative (finance → stripe-process-refund 400), cross-tenant
+  (parent2 → parent1's invoice 400), UI smoke.
+
+**Not yet covered (out of §24 scope):**
+- §24.3 Apple Pay button visibility (mobile-safari project only).
+- §24.4 Hosted checkout fallback (web/native split — `stripe-create-checkout`).
+- §24.6 Auto-pay installment success / failure (cron + decline cards).
+- §24.8 Dispute simulation (requires Stripe CLI `stripe trigger`).
+- §24.9 Stripe Connect onboarding (multi-step OAuth flow).
+- §24.11 Verify session post-checkout (subscription-checkout return URL).
+
+**Two latent issues found in the codebase, surfaced as follow-ups:**
+1. The catalog references `update_invoice_status(_invoice_id, _status)`
+   RPC; that function doesn't exist in the schema. `tests/e2e/supabase-admin.ts`
+   line ~500 calls it via `supabaseRpc` but `supabaseRpc` doesn't surface
+   the PGRST202 error — silent no-op. Other test files relying on
+   `seedInvoice({ status: 'sent' })` may be silently leaving invoices
+   in draft. Worked around in §24 with `updateInvoiceStatusViaPatch`
+   (service-role direct PATCH). **Fix in next session: either add the
+   RPC or update `seedInvoice` to PATCH directly.**
+2. The live Stripe webhook endpoint subscribes to **6** events but the
+   handler dispatches on **17**. So `payment_intent.succeeded`,
+   `charge.refunded`, `charge.dispute.*`, `refund.updated`, `account.*`
+   etc are NOT being delivered in production. This means:
+     - Payment intents from the embedded drawer never get recorded as
+       payments (the handler's PI succeeded branch never runs).
+     - Refunds initiated via the Stripe Dashboard never get recorded.
+     - Disputes never get a notification email.
+   Listed live events: `checkout.session.completed`,
+   `customer.subscription.{created,updated,deleted}`, `invoice.paid`,
+   `invoice.payment_failed`. **Fix: add the missing 12 events to
+   the live webhook endpoint via Stripe Dashboard or API.** This is
+   a P0 production gap. The test endpoint already has the full superset.
+
+**Rate limit gotcha:** stripe-create-checkout is 10/hr per user;
+stripe-process-refund is 5/hr. Tests reset `rate_limits` rows for known
+e2e users in `beforeAll` (see `resetE2ERateLimits` in
+`stripe-test-helpers.ts`). If you debug-rerun and start hitting 429,
+that helper unsticks you.
+
+### How to do a section properly
 
 ### How to do a section properly
 
@@ -353,28 +445,15 @@ test.beforeEach(async ({ page }, testInfo) => {
 See [Anti-patterns → don't trust catalog column names](#anti-patterns).
 Always verify columns via `information_schema.columns` first.
 
-### Stripe test mode is wired but not dispatched
+### ~~Stripe test mode is wired but not dispatched~~ — DONE 2026-05-08
 
-`STRIPE_TEST_SECRET_KEY` is set as a Supabase secret + `.env.test` +
-`~/.claude/settings.json`. Verified working (`livemode: false`, GBP).
+J24-A landed (commits `b7900ab` → `2bf0aea`). 14 stripe-* edge fns +
+shared modules now route through `_shared/stripe-client.ts`. Webhook
+is dual-mode. Test webhook endpoint `we_1TUwZhBAjFOLYDS3QGslhpbj` is
+configured. See [§24 progress](#24-progress) for the full change set.
 
-But the Stripe edge functions (`stripe-create-payment-intent`,
-`stripe-webhook`, etc.) all hardcode `Deno.env.get("STRIPE_SECRET_KEY")`
-which is the live key. Test mode dispatch is the next infra task before
-§24 tests can run end-to-end.
-
-**Recommended approach:**
-1. Add column `organisations.stripe_test_mode boolean DEFAULT false`
-2. Set `true` on the e2e test org (id `25b57950-6c4e-42d8-8089-4942d2bba959`)
-3. Create `_shared/stripe-client.ts` with `getStripeClient(orgId, supabase)`
-   that returns a Stripe instance configured with the test key when the
-   org has `stripe_test_mode=true`, else live key
-4. Update ~10 stripe edge fns to use the helper instead of direct env
-5. Configure a separate Stripe webhook endpoint in test mode pointing
-   at `functions/v1/stripe-webhook` and store the test webhook secret
-   as `STRIPE_TEST_WEBHOOK_SECRET`
-6. The `stripe-webhook` fn needs to detect test vs live signature and
-   verify against the right secret
+**Live webhook subscription gap (P0)** — see §24 progress. The live
+endpoint is missing 12 events the handler expects. Fix before launch.
 
 ### Resend SMTP
 
@@ -420,6 +499,31 @@ SET encrypted_password = crypt('E2eTestPass123!', gen_salt('bf')),
     email_confirmed_at = COALESCE(email_confirmed_at, now())
 WHERE email LIKE 'e2e-%@test.lessonloop.net';
 ```
+
+### Owner `has_completed_onboarding` drifts to false (re-fix)
+
+If the baseline shows ~35 failures (instead of 13) all on owner-storage-state
+routes, with screenshots showing "Preparing your account…" → the owner
+profile's `has_completed_onboarding` flag has drifted to false. The
+`/dashboard` route guard redirects unfinished-onboarding users to
+`/onboarding`, which hangs on the loading screen.
+
+The `protect_onboarding_flag` trigger blocks direct UPDATE — must run as
+service_role:
+
+```sql
+DO $$
+BEGIN
+  SET LOCAL role TO service_role;
+  UPDATE profiles SET has_completed_onboarding = true
+  WHERE email = 'e2e-owner@test.lessonloop.net';
+END $$;
+```
+
+(Discovered + fixed 2026-05-08 by Claude Opus 4.7 — root-cause unknown,
+the previous session's HANDOVER snapshot claimed all 6 users were
+true. If this drifts repeatedly, look for a trigger or migration that
+resets it.)
 
 ### Useful test factories (in `tests/e2e/supabase-admin.ts`)
 
