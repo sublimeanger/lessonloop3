@@ -225,15 +225,15 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Portal home | src/pages/portal/PortalHome.tsx | P1 | ❓ | — | (Area-2 Batch 2A-2F shipped pre-cutover — needs fresh re-audit on the migrated/destination state) |
-| Portal schedule | src/pages/portal/PortalSchedule.tsx | P1 | ❓ | — | (Area-2 — fresh re-audit pending) |
-| Portal practice | src/pages/portal/PortalPractice.tsx | P2 | ❓ | — | (Area-2 — fresh re-audit pending) |
-| Portal resources | src/pages/portal/PortalResources.tsx | P2 | ❓ | — | (Area-2 — fresh re-audit pending; Storage bucket policies in particular) |
-| Portal invoices & pay | src/pages/portal/PortalInvoices.tsx | P0 | ❓ | — | (Area-2 — fresh re-audit pending; pay flow exercises Stripe webhook chain) |
-| Portal messages | src/pages/portal/PortalMessages.tsx | P1 | ❓ | — | (Area-2 — fresh re-audit pending) |
-| Portal profile | src/pages/portal/PortalProfile.tsx | P2 | ❓ | — | (Area-2 — fresh re-audit pending) |
-| Portal continuation | src/pages/portal/PortalContinuation.tsx | P0 | ❓ | — | Batch 2G remains |
-| Public continuation respond | /respond/continuation route | P0 | ❓ | — | tokenised URL no-auth path |
+| Portal home | src/pages/portal/PortalHome.tsx | P1 | 🟡 | 2026-05-08 | drives `respond_to_makeup_offer` + `cancel_booked_makeup` RPCs — both SECURITY DEFINER + auth.uid() check + guardian-belongs-to-org check + waitlist-belongs-to-guardian check + status guards + audit_log entries on every action. Robust. Browser test pending Jamie |
+| Portal schedule | src/pages/portal/PortalSchedule.tsx | P1 | 🟡 | 2026-05-08 | data via React Query hooks (no direct supabase.from); RLS handles via parent ↔ student linkage |
+| Portal practice | src/pages/portal/PortalPractice.tsx | P2 | 🟡 | 2026-05-08 | RLS verified: `practice_logs` Parent INSERT `WITH CHECK is_parent_of_student(auth.uid(), student_id)` — parents cannot create logs for unrelated students. SELECT/DELETE same guard. 0 logs in last 30 days (low usage); 61 historical. Browser test pending |
+| Portal resources | src/pages/portal/PortalResources.tsx | P2 | 🟡 | 2026-05-08 | bucket `teaching-resources` confirmed `public=false`; access via signed URLs; structural ok |
+| Portal invoices & pay | src/pages/portal/PortalInvoices.tsx | P0 | 🟡 | 2026-05-08 | RLS `Parent can view own invoices` uses `is_invoice_payer(auth.uid(), id)` — checks both `payer_guardian_id` direct path AND `payer_student_id → student_guardians → guardians.user_id` indirect path. Robust. Pay flow invokes `stripe-verify-session`. Browser test pending |
+| Portal messages | src/pages/portal/PortalMessages.tsx | P1 | 🟡 | 2026-05-08 | data via hooks (no direct supabase.from); RLS handles |
+| Portal profile | src/pages/portal/PortalProfile.tsx | P2 | 🟡 | 2026-05-08 | reads/writes `notification_preferences`, `guardians`, `profiles`; `guardians` Parent UPDATE policy uses `user_id = auth.uid()` — can only edit own record |
+| Portal continuation | src/pages/portal/PortalContinuation.tsx | P0 | 🟡 | 2026-05-08 | invokes `continuation-respond` edge fn with tokenised payload; structural ok; full term-rollover E2E pending Jamie |
+| Public continuation respond | /respond/continuation route | P0 | 🟡 | 2026-05-08 | tokenised URL no-auth path; needs E2E with a real continuation token |
 
 ## Cron / lifecycle jobs
 
