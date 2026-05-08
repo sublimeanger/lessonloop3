@@ -158,7 +158,13 @@ export const appRoutes: RouteConfig[] = [
   { path: '/reports/teacher-performance', component: TeacherPerformanceReport, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Teacher Performance' },
   { path: '/continuation', component: Continuation, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Continuation' },
   { path: '/notes', component: NotesExplorer, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher'], label: 'Lesson Notes' },
-  { path: '/settings', component: Settings, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Settings' },
+  // Settings page itself gracefully degrades for non-admins (shows only the
+  // Profile tab via Settings.tsx:137 — adminTabs gated on isOrgAdmin). The
+  // sidebar also shows the Settings link to teacher/finance roles.
+  // Route guard previously only allowed owner/admin, which created a UX
+  // mismatch (link visible but click bounces to /dashboard). Fixed
+  // 2026-05-08 to match the page's actual capability.
+  { path: '/settings', component: Settings, auth: 'protected', allowedRoles: ['owner', 'admin', 'finance', 'teacher'], label: 'Settings' },
   { path: '/settings/recurring-billing/runs/:runId', component: RecurringRunDetail, auth: 'protected', allowedRoles: ['owner', 'admin', 'finance'], label: 'Recurring Run Detail' },
   { path: '/settings/recurring-billing/:templateId', component: RecurringTemplateDetail, auth: 'protected', allowedRoles: ['owner', 'admin', 'finance'], label: 'Recurring Template Detail' },
   { path: '/help', component: Help, auth: 'protected', label: 'Help' },
