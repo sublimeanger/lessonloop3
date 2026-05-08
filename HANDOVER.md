@@ -47,13 +47,25 @@ this is the only mind-share between sessions. Specifically:
 
 **Catalog completeness: ~30% (was 25-30%, +10 real §24 tests this session).**
 
-Current baseline (2026-05-08 evening, post-J24-A):
-- **343 passed** (was 312; +31 stop-the-bleeding fixes from previous Claude
-  + my §24 work added 10 real tests)
-- **5 failed** (the documented JWT-stale flakes; same 5 every run)
-- **211 skipped** (down from 212 — one §24 fixme converted to a real
-  test; the file-level conversion was 11 fixmes → 0)
-- ~3.2 min wall-clock at 4 workers (was ~9 min when storage states stale)
+Current baseline (2026-05-08 late evening, post-J24-A + §13/§14):
+- **357 passed**
+- **5 failed**:
+  - §5.4 email-verification gate (documented JWT-stale flake)
+  - Owner Dashboard stat cards (documented JWT-stale flake)
+  - §22.2 timezone update + VAT toggle (settings mutations racing
+    parallel workers — possibly always present, surfaced more reliably
+    with the new §13/§14 traffic)
+  - §24.1 customer creation (passes alone; flakes when running in
+    parallel with §22 because §22 mutates org config). Serial mode
+    within the file ensures §24 tests don't cascade-fail; parallel
+    isolation across files is what's missing. Fix: either give §22
+    tests their own throwaway org, or mark §24 + §22 specs as
+    `mode: 'serial'` at project level.
+- **181 skipped** (was 211; my §24/§13/§14 work converted 30 fixmes)
+- **9 did not run** — §24 tests downstream of §24.1's parallel-flake
+  failure (serial mode within `24-stripe.spec.ts`). They pass in
+  isolation; net §24 coverage in parallel run is degraded vs isolated.
+- ~4.0 min wall-clock at 4 workers
 
 Storage state hygiene matters: if you see ~35 owner-side failures, the
 storage state JWTs have gone stale (or the e2e-owner profile has
