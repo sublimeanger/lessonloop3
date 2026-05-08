@@ -281,13 +281,13 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Concern | Criticality | State | Notes |
 |---|---|---|---|
 | RLS coverage | P0 | 🟡 | per Mega Audit + Phase 6 — broadly verified; per-feature RLS spot-checks happen during each /sweep run (especially parent ↔ staff data isolation, cross-org isolation) |
-| Sentry capture (browser) | P1 | 🟡 | DSN wired 2026-05-08; first real test is the AuthContext timeout fix landing today; source maps still missing |
+| Sentry capture (browser) | P1 | 🟢 | DSN wired 2026-05-08; @sentry/vite-plugin 4.4 wired into vite.config.ts with source-map upload + post-upload .map deletion (so .map files never reach CDN); SENTRY_AUTH_TOKEN/ORG/PROJECT set as Netlify build env on next deploy |
 | Sentry capture (edge functions) | P1 | ❓ | spot-check selected fns |
 | Cookie consent banner | P1 | 🔴 | flagged in claude.md remaining items |
 | Anthropic sub-processor disclosure | P1 | 🔴 | flagged in claude.md remaining items |
 | Cloudflare WAF rules | P1 | ❓ | not configured for app.lessonloop.net |
 | Rate limiting on auth endpoints | P0 | ❓ | verify Supabase auth defaults |
-| CSP allow-list (pwnedpasswords) | P0 | 🔴 | known launch blocker |
+| CSP allow-list (pwnedpasswords) | P0 | 🟢 | 2026-05-08 fixed in index.html — added `https://api.pwnedpasswords.com` to connect-src; also removed stale `*.lovable.app` and `*.lovableproject.com` references (Lovable detached) |
 | Stripe Checkout branding | P1 | 🔴 | known launch blocker |
 | Realtime subscriptions reconnect | P1 | ❓ | sleep/wake on mobile devices |
 | Storage bucket policies | P0 | ❓ | resources, invoice PDFs, avatars |
