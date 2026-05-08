@@ -480,6 +480,51 @@ export interface SeedInvoiceOpts {
   items?: Array<{ description: string; quantity: number; unit_price_minor: number }>;
 }
 
+/**
+ * Update invoice status via direct service-role PATCH on PostgREST.
+ *
+ * The catalog references an `update_invoice_status(_invoice_id, _status)`
+ * RPC; that function doesn't exist in the schema (only the
+ * `enforce_invoice_status_transition` trigger does). Earlier versions
+ * of this file called the missing RPC via `supabaseRpc` — the call
+ * silently failed (PGRST202 returned as JSON, not thrown), leaving
+ * test invoices stuck in `draft` and breaking every Stripe flow that
+ * requires `status in ('sent', 'overdue')`.
+ *
+ * This helper goes through PostgREST PATCH using the service-role
+ * key. The trigger validates the transition; invalid moves still
+ * raise. Service-role bypasses RLS but NOT triggers (by design).
+ */
+export function patchInvoiceStatus(invoiceId: string, status: string): boolean {
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('patchInvoiceStatus: E2E_SUPABASE_SERVICE_ROLE_KEY required');
+  }
+  const tmpFile = `/tmp/sb-patch-status-${uniqueSuffix()}.json`;
+  fs.writeFileSync(tmpFile, JSON.stringify({ status }));
+  try {
+    const result = execSync(
+      `curl -s -X PATCH "${SUPABASE_URL}/rest/v1/invoices?id=eq.${invoiceId}" ` +
+      `-H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" ` +
+      `-H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" ` +
+      `-H "Content-Type: application/json" ` +
+      `-H "Prefer: return=minimal" ` +
+      `-d @${tmpFile}`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    // PostgREST returns empty body on success with Prefer: return=minimal.
+    // Any body content here is the trigger's exception payload.
+    if (result.trim().length > 0 && result.trim().startsWith('{')) {
+      const err = JSON.parse(result);
+      if (err.message || err.code) {
+        throw new Error(`patchInvoiceStatus(${invoiceId}, ${status}) rejected: ${result}`);
+      }
+    }
+    return true;
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+  }
+}
+
 /** Insert an invoice via the RPC (uses create_invoice_with_items). */
 export function seedInvoice(opts: SeedInvoiceOpts): { invoiceId: string; invoiceNumber: string } {
   const orgId = getOrgId();
@@ -495,9 +540,11 @@ export function seedInvoice(opts: SeedInvoiceOpts): { invoiceId: string; invoice
     ],
   });
 
-  // Optional status transition (default RPC creates as draft).
+  // Default status from create_invoice_with_items is 'draft'. PATCH if
+  // caller wants a different status. Goes through enforce_invoice_status
+  // _transition trigger — invalid moves throw.
   if (opts.status && opts.status !== 'draft') {
-    supabaseRpc('update_invoice_status', { _invoice_id: result.id, _status: opts.status });
+    patchInvoiceStatus(result.id, opts.status);
   }
 
   return { invoiceId: result.id, invoiceNumber: result.invoice_number };
