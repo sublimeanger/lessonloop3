@@ -47,6 +47,13 @@ test.describe('Settings — non-admin degradation', () => {
 });
 
 test.describe('§22.2 — Organisation settings mutations', () => {
+  // J22-X: settings mutations toggle org-wide config (timezone, VAT) and
+  // restore in afterEach. Across-file parallel runs interleave with §24
+  // Stripe tests that compute invoice totals from the same org config,
+  // producing flakes. Serial within this describe at minimum prevents
+  // self-collision; cross-file pinning would require playwright.config
+  // changes to mark §22 + §24 mutually exclusive.
+  test.describe.configure({ mode: 'serial' });
   test.use({ storageState: AUTH.owner });
 
   test('update timezone via REST → trigger validates + persists', async () => {
