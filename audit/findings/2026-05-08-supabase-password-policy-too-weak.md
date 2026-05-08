@@ -1,11 +1,11 @@
 # Supabase password policy is too weak (6-char minimum, no character requirements)
 
 **Severity:** high
-**Status:** open
+**Status:** fixed
 **Area:** auth
 **Discovered:** 2026-05-08
-**Fixed:** —
-**Fixed in:** —
+**Fixed:** 2026-05-08
+**Fixed in:** Supabase Auth config update via Management API (no commit)
 **Affected components:** Supabase Auth project config (`xmrhmxizpslhtkibqyfy`)
 
 ## Symptom
