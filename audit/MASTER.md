@@ -108,15 +108,15 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Invoices list | src/pages/Invoices.tsx | P0 | ❓ | — | |
-| Invoice detail / line edit | src/pages/InvoiceDetail.tsx | P0 | ❓ | — | |
-| Invoice PDF generation | supabase/functions/generate-invoice-pdf | P0 | ❓ | — | |
-| Send invoice email (parent) | supabase/functions/send-invoice-email | P0 | ❓ | — | Resend |
-| Send invoice email (internal copy) | supabase/functions/send-invoice-email-internal | P1 | ❓ | — | |
-| Stripe checkout (one-off) | supabase/functions/stripe-create-checkout | P0 | ❓ | — | branding TODO |
+| Invoices list | src/pages/Invoices.tsx | P0 | 🟡 | 2026-05-08 | invoices: 6 RLS policies (admin/finance r, parent-via-guardian r). No USING(true). Awaits browser test. |
+| Invoice detail / line edit | src/pages/InvoiceDetail.tsx | P0 | 🟡 | 2026-05-08 | invoice_items: 5 RLS policies. CHECK constraints (NOT VALID) on prices/amounts/quantities (per claude.md). |
+| Invoice PDF generation | supabase/functions/generate-invoice-pdf | P0 | 🟡 | 2026-05-08 | service-role-only fn (verify_jwt=false post-Phase-5); caches in invoice-pdfs bucket; signed URL response or inline base64. End-to-end render not yet exercised on dest. |
+| Send invoice email (parent) | supabase/functions/send-invoice-email | P0 | 🟡 | 2026-05-08 | User JWT + rate limit + Resend SMTP (smtp.resend.com → noreply@lessonloop.net configured). Awaits real send test. |
+| Send invoice email (internal copy) | supabase/functions/send-invoice-email-internal | P1 | 🟡 | 2026-05-08 | service-role-only (Phase 5 reconfigured); Awaits browser-driven test |
+| Stripe checkout (one-off invoice payment) | supabase/functions/stripe-create-checkout | P0 | 🟡 | 2026-05-08 | User JWT + rate-limit + invoiceId required. Confirmed via 6.A.2 browser test on subscription path; one-off-invoice path still untested. Branding gap noted in 00-launch-readiness. |
 | Stripe payment intent (custom) | supabase/functions/stripe-create-payment-intent | P0 | ❓ | — | |
 | Stripe customer portal | supabase/functions/stripe-customer-portal | P1 | ❓ | — | |
-| Stripe webhook (events) | supabase/functions/stripe-webhook | P0 | ❓ | — | (was ✅ Phase 6/7 — structural-only; needs fresh end-to-end customer-purchase test) |
+| Stripe webhook (events) | supabase/functions/stripe-webhook | P0 | 🟡 | 2026-05-08 | constructEventAsync fix verified (commit baa072c); two-phase dedup pattern; 90s stale threshold. Confirmed via test customer.created. Real-world payment flow not yet exercised on destination. |
 | Stripe verify session | supabase/functions/stripe-verify-session | P0 | ❓ | — | post-checkout return |
 | List payment methods | supabase/functions/stripe-list-payment-methods | P1 | ❓ | — | |
 | Detach payment method | supabase/functions/stripe-detach-payment-method | P1 | ❓ | — | |
@@ -129,7 +129,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Auto-pay alert | supabase/functions/send-auto-pay-alert | P1 | ❓ | — | |
 | Auto-pay failure notification | supabase/functions/send-auto-pay-failure-notification | P0 | ❓ | — | |
 | Dispute notification | supabase/functions/send-dispute-notification | P1 | ❓ | — | Stripe dispute webhook fan-out |
-| Recurring billing run create | supabase/functions/create-billing-run | P0 | ❓ | — | |
+| Recurring billing run create | supabase/functions/create-billing-run | P0 | 🟡 | 2026-05-08 | 1048 lines, mature. User JWT + role check (owner/admin/finance) + rate limit. ISO-date + run_type enum validation (BIL-H1 / BIL-L3 fixes). billing_runs RLS: 4 policies. End-to-end run not yet exercised on dest. |
 | Recurring billing alert | supabase/functions/send-recurring-billing-alert | P1 | ❓ | — | |
 
 ## Subscriptions & Trial
