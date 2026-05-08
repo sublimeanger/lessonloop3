@@ -53,7 +53,15 @@ test.fixme('§22.2 — manual subscription_plan update via REST is blocked by tr
 test.fixme('§22.4 — invite by email + role → invites row + email queued', async () => {});
 test.fixme('§22.4 — try to remove the owner → blocked (protect_owner_role)', async () => {});
 test.fixme('§22.5 — add closure date → calendar grid greyed', async () => {});
-test.fixme('§22.6 — audit log filter by entity_type=student', async () => {});
+test.describe('§22.6 — Audit log tab loads', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('audit_log tab navigates without error', async ({ page }) => {
+    await goTo(page, '/settings?tab=audit');
+    await page.waitForTimeout(2000);
+    await assertNoErrorBoundary(page);
+  });
+});
 test.fixme('§22.7 — privacy: GDPR export queues email', async () => {});
 test.fixme('§22.8 — rate cards CRUD', async () => {});
 test.fixme('§22.11 — availability: overlapping block → trigger error', async () => {});

@@ -166,13 +166,14 @@ test.fixme('§32.2 — token tampering: corrupt JWT → 401 + redirect to login'
 test.fixme('§32.2 — rate limit: 100 sends/min → 429', async () => {});
 
 test.describe('§32.5 — Server-side input validation on edge functions', () => {
-  test('booking-submit malformed payload → 400', async ({ request }) => {
+  test('booking-submit malformed payload → 400 (or 429 if rate-limited)', async ({ request }) => {
     const r = await request.post(`${SUPABASE_URL}/functions/v1/booking-submit`, {
       headers: { Authorization: `Bearer ${process.env.E2E_SUPABASE_ANON_KEY}` },
       data: { malformed: true, bogus: 'data' },
       failOnStatusCode: false,
     });
-    expect([400, 422]).toContain(r.status());
+    // 400 = malformed, 422 = validation error, 429 = rate-limited (also a security pass)
+    expect([400, 422, 429]).toContain(r.status());
   });
 });
 

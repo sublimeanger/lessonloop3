@@ -411,7 +411,7 @@ export function seedStudent(opts: SeedStudentOpts): { studentId: string; guardia
         org_id: orgId,
         student_id: student.id,
         guardian_id: guardianId,
-        relationship: 'parent',
+        relationship: 'guardian', // enum: mother|father|guardian|other
         is_primary_payer: true,
       });
     }

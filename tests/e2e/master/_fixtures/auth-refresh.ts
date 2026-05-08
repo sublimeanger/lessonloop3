@@ -135,27 +135,33 @@ export function refreshStorageStateIfStale(storagePath: string): string | null {
 
 /**
  * Playwright test extended with auto-refresh:
- * - On every test, if the storage state file is referenced via test.use(),
- *   refresh it before the browser context loads it.
+ * - `beforeAll`: refresh all known auth storage states once per worker.
+ *   Cheap when fresh (<100ms), essential after long batch runs.
  *
- * NOTE: Playwright loads storageState at context creation (before the test
- * function runs), so we use the `storageStateInput` worker fixture trick
- * to intercept. In practice, calling `refreshStorageStateIfStale()` in a
- * `beforeEach` is too late. So instead we rely on consumers calling it
- * in a `beforeAll` per file (cheap — once per file, runs in <100ms when
- * already fresh).
- *
- * Recommended pattern in each spec file:
- *
- *   import { test, refreshStorageStateIfStale } from '../_fixtures/auth-refresh';
- *   import { AUTH } from '../../helpers';
- *
- *   test.beforeAll(() => {
- *     refreshStorageStateIfStale(AUTH.owner);
- *     refreshStorageStateIfStale(AUTH.parent);
- *     // …whichever roles this file uses
- *   });
- *   test.use({ storageState: AUTH.owner });
+ * The original beforeAll-only pattern still works for short-running specs.
+ * For longer ones, the fixture below catches the case where a storage
+ * state was fresh at file start but stales mid-run.
  */
+import path from 'path';
+
+const AUTH_DIR = path.resolve(process.cwd(), 'tests/e2e/.auth');
+const ALL_ROLE_FILES = ['owner', 'admin', 'teacher', 'finance', 'parent', 'parent2'].map(
+  (r) => path.join(AUTH_DIR, `${r}.json`)
+);
+
+/**
+ * Refresh all known role storage states. Call from `test.beforeAll` in
+ * every spec file. Idempotent + cheap when fresh (under 100ms total).
+ */
+export function refreshAllStorageStates(): void {
+  for (const f of ALL_ROLE_FILES) {
+    try {
+      refreshStorageStateIfStale(f);
+    } catch {
+      // missing file — auth.setup.ts will create on first run
+    }
+  }
+}
+
 export const test = base;
 export { expect };
