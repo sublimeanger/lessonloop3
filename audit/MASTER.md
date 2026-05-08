@@ -1,0 +1,296 @@
+# LessonLoop production-readiness — MASTER tracker
+
+**Last updated:** 2026-05-08
+**Owner:** Jamie McKaye
+**Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
+
+## Legend
+
+State: ✅ green / 🟡 partial / 🔴 broken / ❓ untested / ⏸ deferred-to-post-launch
+Criticality: **P0** revenue/auth/data-integrity / **P1** core UX / **P2** admin/ops / **P3** nice-to-have
+
+## How to use this
+
+`/sweep` slash command picks the next P0 ❓ row and runs the standard audit template (smoke / functional / edge / RLS / mobile / Sentry). Update the row's State + Last audited + Notes. Open findings → file in `audit/findings/`.
+
+## Summary
+
+- **Total rows:** 132
+- **P0 rows:** 58 (8 ✅, 6 🟡, 2 🔴, 42 ❓)
+- **Sentry events 7d:** TBD (refresh weekly)
+- **Last full sweep:** never
+
+## Known launch blockers (tracked separately in `audit/00-launch-readiness.md`)
+
+- Google OAuth verification (consent screen) — **2-6 week lead time**
+- Sentry source maps upload
+- Source Supabase decommission
+- Apple OAuth provider config
+- CSP allow-list `api.pwnedpasswords.com`
+- Stripe Checkout branding
+
+## Auth & Onboarding
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Email signup | src/pages/Signup.tsx → onboarding-setup fn | P0 | 🟡 | 2026-05-08 | onboarding RPC bug-trio fixed today; needs re-verification |
+| Email + password sign-in | src/pages/Login.tsx | P0 | ❓ | — | core path; needs basic smoke |
+| Google OAuth | src/pages/Login.tsx → supabase.auth | P0 | ✅ | 2026-05-08 | Phase 7 Step 3.8 confirmed |
+| Apple OAuth | src/pages/Login.tsx | P0 | 🔴 | 2026-05-08 | provider not configured at dest Supabase |
+| Password reset request | src/pages/ForgotPassword.tsx | P0 | ❓ | — | |
+| Password reset complete | src/pages/ResetPassword.tsx | P0 | ❓ | — | needs CSP fix for pwnedpasswords.com first |
+| Email verification | src/pages/VerifyEmail.tsx | P0 | ❓ | — | gate before app access |
+| Onboarding wizard | src/pages/Onboarding.tsx → onboarding-setup → complete_onboarding RPC | P0 | 🟡 | 2026-05-08 | RPC fixed; pending Jamie's browser re-test |
+| Accept invite (staff/parent) | src/pages/AcceptInvite.tsx → invite-accept fn | P0 | ❓ | — | also exercises invite-get fn |
+| Profile ensure on first login | supabase/functions/profile-ensure | P0 | ❓ | — | runs on every login; verify idempotency |
+| Account delete (GDPR) | supabase/functions/account-delete | P1 | ❓ | — | irreversible; test on throwaway account |
+| GDPR data export | supabase/functions/gdpr-export | P1 | ❓ | — | also see gdpr-delete fn |
+| GDPR full delete | supabase/functions/gdpr-delete | P1 | ❓ | — | distinct from account-delete |
+
+## Dashboard & navigation
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Owner/admin dashboard | src/pages/Dashboard.tsx | P1 | ❓ | — | KPI tiles, today panel |
+| Marketing root redirect | src/components/shared/AuthRedirect.tsx | P1 | ❓ | — | / behaviour for logged-out vs logged-in |
+| External marketing redirects | src/config/routes.ts (38 paths) | P2 | ❓ | — | redirect to lessonloop.net |
+| 404 page | src/pages/NotFound.tsx | P2 | ❓ | — | |
+| Help page | src/pages/Help.tsx | P3 | ❓ | — | |
+| Settings (org config) | src/pages/Settings.tsx | P1 | ❓ | — | wide surface; many sub-tabs |
+
+## Calendar & Lessons
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Calendar page (drag-drop) | src/pages/CalendarPage.tsx | P0 | ❓ | — | core scheduling UX |
+| Recurring lesson template create | src/pages/RecurringTemplateDetail.tsx | P0 | ❓ | — | |
+| Recurring run detail / exceptions | src/pages/RecurringRunDetail.tsx | P0 | ❓ | — | |
+| Single lesson CRUD | src/pages/CalendarPage.tsx | P0 | ❓ | — | |
+| Make-up lesson dashboard | src/pages/MakeUpDashboard.tsx | P1 | ❓ | — | |
+| Make-up offer notification | supabase/functions/notify-makeup-offer | P1 | ❓ | — | |
+| Make-up match notification | supabase/functions/notify-makeup-match | P1 | ❓ | — | |
+| Daily register | src/pages/DailyRegister.tsx | P1 | ❓ | — | teacher daily view |
+| Batch attendance | src/pages/BatchAttendance.tsx | P1 | ❓ | — | |
+| Continuation flow (term rollover) | src/pages/Continuation.tsx + create-continuation-run + bulk-process-continuation | P0 | ❓ | — | term-end critical path |
+| Continuation respond (parent) | supabase/functions/continuation-respond | P0 | ❓ | — | |
+| Term adjustment processor | supabase/functions/process-term-adjustment | P1 | ❓ | — | |
+| Lesson notes explorer | src/pages/NotesExplorer.tsx | P2 | ❓ | — | |
+| Notes notification | supabase/functions/send-notes-notification | P2 | ❓ | — | |
+
+## Students & Guardians
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Students list / CRUD | src/pages/Students.tsx | P0 | ❓ | — | |
+| Student detail | src/pages/StudentDetail.tsx | P0 | ❓ | — | |
+| CSV import (mapping step) | src/pages/StudentsImport.tsx → csv-import-mapping fn | P1 | ❓ | — | Gemini AI column mapping |
+| CSV import (execute) | supabase/functions/csv-import-execute | P1 | ❓ | — | bulk insert; verify RLS + dedupe |
+| Guardian batch invite | supabase/functions/batch-invite-guardians | P1 | ❓ | — | bulk send to all family heads |
+| Family/guardian linking | src/pages/Students.tsx panels | P1 | ❓ | — | |
+| Streak notification | supabase/functions/streak-notification | P3 | ❓ | — | |
+
+## Teachers & Payroll
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Teachers list / CRUD | src/pages/Teachers.tsx | P0 | ❓ | — | |
+| Locations | src/pages/Locations.tsx | P1 | ❓ | — | rooms, pricing |
+| Payroll report | src/pages/reports/Payroll.tsx | P1 | ❓ | — | |
+| Teacher performance report | src/pages/reports/TeacherPerformance.tsx | P2 | ❓ | — | |
+
+## Invoicing & Payments
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Invoices list | src/pages/Invoices.tsx | P0 | ❓ | — | |
+| Invoice detail / line edit | src/pages/InvoiceDetail.tsx | P0 | ❓ | — | |
+| Invoice PDF generation | supabase/functions/generate-invoice-pdf | P0 | ❓ | — | |
+| Send invoice email (parent) | supabase/functions/send-invoice-email | P0 | ❓ | — | Resend |
+| Send invoice email (internal copy) | supabase/functions/send-invoice-email-internal | P1 | ❓ | — | |
+| Stripe checkout (one-off) | supabase/functions/stripe-create-checkout | P0 | ❓ | — | branding TODO |
+| Stripe payment intent (custom) | supabase/functions/stripe-create-payment-intent | P0 | ❓ | — | |
+| Stripe customer portal | supabase/functions/stripe-customer-portal | P1 | ❓ | — | |
+| Stripe webhook (events) | supabase/functions/stripe-webhook | P0 | ✅ | 2026-05-08 | Phase 6/7 webhook delivery confirmed |
+| Stripe verify session | supabase/functions/stripe-verify-session | P0 | ❓ | — | post-checkout return |
+| List payment methods | supabase/functions/stripe-list-payment-methods | P1 | ❓ | — | |
+| Detach payment method | supabase/functions/stripe-detach-payment-method | P1 | ❓ | — | |
+| Update auto-pay preferences | supabase/functions/stripe-update-payment-preferences | P0 | ❓ | — | |
+| Backfill default PM (admin) | supabase/functions/admin-backfill-default-pm | P2 | ❓ | — | |
+| Process refund | supabase/functions/stripe-process-refund | P0 | ❓ | — | |
+| Refund notification | supabase/functions/send-refund-notification | P1 | ❓ | — | |
+| Receipt email | supabase/functions/send-payment-receipt | P1 | ❓ | — | |
+| Auto-pay run (installment) | supabase/functions/stripe-auto-pay-installment | P0 | ❓ | — | cron-driven |
+| Auto-pay alert | supabase/functions/send-auto-pay-alert | P1 | ❓ | — | |
+| Auto-pay failure notification | supabase/functions/send-auto-pay-failure-notification | P0 | ❓ | — | |
+| Dispute notification | supabase/functions/send-dispute-notification | P1 | ❓ | — | Stripe dispute webhook fan-out |
+| Recurring billing run create | supabase/functions/create-billing-run | P0 | ❓ | — | |
+| Recurring billing alert | supabase/functions/send-recurring-billing-alert | P1 | ❓ | — | |
+
+## Subscriptions & Trial
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Tier/subscription checkout | supabase/functions/stripe-subscription-checkout | P0 | ❓ | — | self-serve upgrade |
+| Billing history | supabase/functions/stripe-billing-history | P1 | ❓ | — | |
+| Stripe Connect onboard | supabase/functions/stripe-connect-onboard | P1 | ❓ | — | per-org Connect flow |
+| Stripe Connect status check | supabase/functions/stripe-connect-status | P1 | ❓ | — | |
+| Trial banner / countdown | cross-cutting in app shell | P1 | ❓ | — | |
+| Tier-gated feature access | cross-cutting helpers | P0 | ❓ | — | verify Haiku/Sonnet routing for LoopAssist + feature gates |
+
+## Integrations
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Google Calendar OAuth | calendar-oauth-{start,callback} | P0 | ✅ | 2026-05-07 | Phase 6 T3.3 fixed verify_jwt + maxResults |
+| Calendar disconnect | calendar-disconnect | P1 | ❓ | — | |
+| Calendar busy fetch (now) | calendar-fetch-busy | P1 | ❓ | — | |
+| Calendar lesson sync (write back) | calendar-sync-lesson | P0 | ✅ | 2026-05-07 | idempotency fixed (commit 9c72ca3) |
+| iCal feed (read-only export) | calendar-ical-feed | P1 | ❓ | — | tokenised URL |
+| Zoom OAuth start | zoom-oauth-start | P0 | 🟡 | 2026-05-07 | Phase 6 T3.2 server-side validated |
+| Zoom OAuth callback | zoom-oauth-callback + src/pages/ZoomOAuthCallback.tsx | P0 | 🟡 | 2026-05-07 | E2E pending Phase 7 6.B |
+| Zoom lesson sync | zoom-sync-lesson | P0 | 🟡 | 2026-05-07 | idempotency preemptively fixed |
+| Xero OAuth start | xero-oauth-start | P0 | ✅ | 2026-05-07 | Phase 6 T3.1 verified |
+| Xero OAuth callback | xero-oauth-callback | P0 | ✅ | 2026-05-07 | |
+| Xero invoice sync | xero-sync-invoice | P0 | ✅ | 2026-05-07 | schema drift fix (commit 2c4b410) |
+| Xero payment sync | xero-sync-payment | P0 | ✅ | 2026-05-07 | NOT NULL drift fix (commit 9c72ca3) |
+| Xero disconnect | xero-disconnect | P1 | ❓ | — | |
+
+## AI
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| LoopAssist chat (staff) | looopassist-chat | P0 | ❓ | — | Anthropic Claude; tier routing Haiku/Sonnet |
+| LoopAssist execute (tool calls) | looopassist-execute | P0 | ❓ | — | side-effecting tool calls; verify confirm gate |
+| Parent LoopAssist chat | parent-loopassist-chat | P1 | ❓ | — | |
+| CSV import column mapping | csv-import-mapping | P1 | ❓ | — | Gemini |
+| Marketing chat | marketing-chat | P2 | ⏸ | — | marketing site separate stack — out of cutover |
+
+## Messaging
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Messages inbox (staff) | src/pages/Messages.tsx | P1 | ❓ | — | |
+| Send single message | supabase/functions/send-message | P0 | ❓ | — | |
+| Send bulk message | supabase/functions/send-bulk-message | P0 | ❓ | — | rate-limit + batching |
+| Send parent message | supabase/functions/send-parent-message | P1 | ❓ | — | |
+| Send parent enquiry (public form) | supabase/functions/send-parent-enquiry | P1 | ❓ | — | |
+| Send contact message (marketing) | supabase/functions/send-contact-message | P2 | ❓ | — | |
+| Internal message notify | supabase/functions/notify-internal-message | P1 | ❓ | — | |
+| Mark messages read | supabase/functions/mark-messages-read | P2 | ❓ | — | |
+| Push notification | supabase/functions/send-push | P2 | ⏸ | — | post-launch |
+
+## Leads / Booking / Waitlist
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Leads list | src/pages/Leads.tsx | P1 | ❓ | — | |
+| Lead detail | src/pages/LeadDetail.tsx | P1 | ❓ | — | |
+| Public booking page | src/pages/public/BookingPage.tsx | P1 | ❓ | — | /book/:slug |
+| Booking get slots | supabase/functions/booking-get-slots | P1 | ❓ | — | |
+| Booking submit | supabase/functions/booking-submit | P1 | ❓ | — | |
+| Enrolment waitlist | src/pages/EnrolmentWaitlistPage.tsx | P1 | ❓ | — | |
+| Send enrolment offer | supabase/functions/send-enrolment-offer | P1 | ❓ | — | |
+| Waitlist respond | supabase/functions/waitlist-respond | P1 | ❓ | — | parent action |
+| Send cancellation notification | supabase/functions/send-cancellation-notification | P1 | ❓ | — | |
+| Send invite email (staff/parent) | supabase/functions/send-invite-email | P0 | ❓ | — | account creation path |
+| Invite get (token lookup) | supabase/functions/invite-get | P0 | ❓ | — | |
+| Invite accept | supabase/functions/invite-accept | P0 | ❓ | — | |
+
+## Practice & Resources
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Practice tracker (staff) | src/pages/Practice.tsx | P2 | ❓ | — | |
+| Resources library | src/pages/Resources.tsx | P2 | ❓ | — | file uploads to Supabase Storage |
+
+## Reports
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Reports index | src/pages/Reports.tsx | P2 | ❓ | — | |
+| Revenue | src/pages/reports/Revenue.tsx | P1 | ❓ | — | |
+| Outstanding | src/pages/reports/Outstanding.tsx | P1 | ❓ | — | |
+| Lessons delivered | src/pages/reports/LessonsDelivered.tsx | P2 | ❓ | — | |
+| Cancellations | src/pages/reports/Cancellations.tsx | P2 | ❓ | — | |
+| Utilisation | src/pages/reports/Utilisation.tsx | P2 | ❓ | — | |
+| Attendance report | src/pages/reports/AttendanceReport.tsx | P2 | ❓ | — | |
+
+## Parent portal
+
+| Feature | Source | Criticality | State | Last audited | Notes |
+|---|---|---|---|---|---|
+| Portal home | src/pages/portal/PortalHome.tsx | P1 | ✅ | (Area-2 audit) | Batches 2A-2F closed |
+| Portal schedule | src/pages/portal/PortalSchedule.tsx | P1 | ✅ | (Area-2 audit) | |
+| Portal practice | src/pages/portal/PortalPractice.tsx | P2 | ✅ | (Area-2 audit) | |
+| Portal resources | src/pages/portal/PortalResources.tsx | P2 | ✅ | (Area-2 audit) | |
+| Portal invoices & pay | src/pages/portal/PortalInvoices.tsx | P0 | ✅ | (Area-2 audit) | |
+| Portal messages | src/pages/portal/PortalMessages.tsx | P1 | ✅ | (Area-2 audit) | |
+| Portal profile | src/pages/portal/PortalProfile.tsx | P2 | ✅ | (Area-2 audit) | |
+| Portal continuation | src/pages/portal/PortalContinuation.tsx | P0 | ❓ | — | Batch 2G remains |
+| Public continuation respond | /respond/continuation route | P0 | ❓ | — | tokenised URL no-auth path |
+
+## Cron / lifecycle jobs
+
+| Cron | Source fn | Schedule | Criticality | State | Last verified |
+|---|---|---|---|---|---|
+| Trial reminder 7-day | trial-reminder-7day | daily 09:00 (assumed) | P1 | ❓ | — |
+| Trial reminder 3-day | trial-reminder-3day | daily 09:00 (assumed) | P1 | ❓ | — |
+| Trial reminder 1-day | trial-reminder-1day | daily 09:00 (assumed) | P1 | ❓ | — |
+| Trial expired | trial-expired | daily | P0 | ❓ | — |
+| Trial winback | trial-winback | weekly | P2 | ❓ | — |
+| Recurring billing scheduler | recurring-billing-scheduler | daily 04:00 UTC | P0 | ❓ | — |
+| Invoice overdue check | invoice-overdue-check | daily 05:30 UTC | P0 | ❓ | — |
+| Installment overdue check | installment-overdue-check | daily 06:00 UTC | P0 | ❓ | — |
+| Installment upcoming reminder | installment-upcoming-reminder | daily 08:00 UTC | P1 | ❓ | — |
+| Auto-pay upcoming reminder | auto-pay-upcoming-reminder | daily 08:00 UTC | P1 | ❓ | — |
+| Auto-pay final reminder | auto-pay-final-reminder | daily 08:00 UTC | P0 | ❓ | — |
+| Stripe auto-pay installment | stripe-auto-pay-installment | daily 09:00 UTC | P0 | ❓ | — |
+| Send lesson reminders | send-lesson-reminders | hourly | P1 | ❓ | — |
+| Calendar refresh busy | calendar-refresh-busy | every 15 min | P1 | ❓ | — |
+| Overdue reminders | overdue-reminders | daily 09:00 UTC | P1 | ❓ | — |
+| Credit expiry | credit-expiry | daily 02:00 UTC | P0 | ❓ | — |
+| Credit expiry warning | credit-expiry-warning | daily 08:00 UTC | P1 | ❓ | — |
+| iCal expiry reminder | ical-expiry-reminder | daily | P2 | ❓ | — |
+| Enrolment offer expiry | enrolment-offer-expiry | hourly | P1 | ❓ | — |
+| Waitlist expiry | waitlist-expiry | daily | P1 | ❓ | — |
+| Cleanup orphaned resources | cleanup-orphaned-resources | daily 03:00 UTC | P2 | ❓ | — |
+| Cleanup webhook retention | cleanup-webhook-retention | daily 03:30 UTC | P2 | ❓ | — |
+| Cleanup invoice PDF orphans | cleanup-invoice-pdf-orphans | daily 03:45 UTC | P2 | ❓ | — |
+| Cron health watchdog | cron-health-watchdog | daily 09:30 UTC | P0 | ❓ | — |
+
+## Mobile (Capacitor)
+
+| Feature | Platform | Criticality | State | Notes |
+|---|---|---|---|---|
+| iOS native build | iOS | P0 | 🟡 | v1.2 in App Store review |
+| Android native build | Android | P0 | ❓ | AAB built for Play Store |
+| Capacitor OAuth in-app browser | both | P1 | ❓ | wrapper present; needs device E2E |
+| Push notifications | both | P1 | ⏸ | deferred post-launch |
+| Deep link handling (post-OAuth return) | both | P1 | ❓ | |
+
+## Cross-cutting / platform
+
+| Concern | Criticality | State | Notes |
+|---|---|---|---|
+| RLS coverage | P0 | ✅ | per Mega Audit + Phase 6 |
+| Sentry capture (browser) | P1 | ✅ | wired 2026-05-08; source maps still missing |
+| Sentry capture (edge functions) | P1 | ❓ | spot-check selected fns |
+| Cookie consent banner | P1 | 🔴 | flagged in claude.md remaining items |
+| Anthropic sub-processor disclosure | P1 | 🔴 | flagged in claude.md remaining items |
+| Cloudflare WAF rules | P1 | ❓ | not configured for app.lessonloop.net |
+| Rate limiting on auth endpoints | P0 | ❓ | verify Supabase auth defaults |
+| CSP allow-list (pwnedpasswords) | P0 | 🔴 | known launch blocker |
+| Stripe Checkout branding | P1 | 🔴 | known launch blocker |
+| Realtime subscriptions reconnect | P1 | ❓ | sleep/wake on mobile devices |
+| Storage bucket policies | P0 | ❓ | resources, invoice PDFs, avatars |
+| Source Supabase decommission | P0 | 🔴 | known launch blocker |
+
+## Demo / dev / migration utilities (non-launch)
+
+| Feature | Source | Criticality | State | Notes |
+|---|---|---|---|---|
+| Seed demo agency | seed-demo-agency | P3 | ⏸ | dev-only |
+| Seed demo solo | seed-demo-solo | P3 | ⏸ | dev-only |
+| Seed demo data | seed-demo-data | P3 | ⏸ | dev-only |
+| Seed E2E data | seed-e2e-data | P3 | ⏸ | test-only |
+| Migration dump | migration-dump | P3 | ⏸ | one-off cutover tool |
