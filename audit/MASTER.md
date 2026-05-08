@@ -13,10 +13,16 @@ Criticality: **P0** revenue/auth/data-integrity / **P1** core UX / **P2** admin/
 
 `/sweep` slash command picks the next P0 ❓ row and runs the standard audit template (smoke / functional / edge / RLS / mobile / Sentry). Update the row's State + Last audited + Notes. Open findings → file in `audit/findings/`.
 
+## ⚠️ Reset 2026-05-08
+
+Per launch-week directive: every row that was previously ✅ from migration validation has been reset to ❓ and must be re-audited freshly under the `/sweep` framework. Migration-era validation was structural (does the function exist? does it parse?), not behavioural (does the customer journey work?). Pre-launch we need fresh end-to-end behavioural verification on everything.
+
+The previous ✅ flags are now in the row's "Notes" column for context — useful as "the structural plumbing was verified" but no longer counted as launch-ready.
+
 ## Summary
 
 - **Total rows:** 132
-- **P0 rows:** 58 (8 ✅, 6 🟡, 2 🔴, 42 ❓)
+- **P0 rows:** 58 (0 ✅ launch-verified, 6 🟡, 4 🔴, 48 ❓)
 - **Sentry events 7d:** TBD (refresh weekly)
 - **Last full sweep:** never
 
@@ -33,14 +39,14 @@ Criticality: **P0** revenue/auth/data-integrity / **P1** core UX / **P2** admin/
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Email signup | src/pages/Signup.tsx → onboarding-setup fn | P0 | 🟡 | 2026-05-08 | onboarding RPC bug-trio fixed today; needs re-verification |
+| Email signup → onboarding wizard end-to-end | src/pages/Signup.tsx → onboarding-setup → complete_onboarding RPC | P0 | 🟡 | 2026-05-08 | RPC 3-bug chain fixed (commit 19d8efc); AuthContext async-callback hang fixed (62a9282); needs fresh signup-to-dashboard browser test |
 | Email + password sign-in | src/pages/Login.tsx | P0 | ❓ | — | core path; needs basic smoke |
-| Google OAuth | src/pages/Login.tsx → supabase.auth | P0 | ✅ | 2026-05-08 | Phase 7 Step 3.8 confirmed |
-| Apple OAuth | src/pages/Login.tsx | P0 | 🔴 | 2026-05-08 | provider not configured at dest Supabase |
+| Google OAuth | src/pages/Login.tsx → supabase.auth | P0 | ⏸ | 2026-05-08 | UI button hidden via VITE_SOCIAL_AUTH_GOOGLE flag; OAuth client in Google verification (2-6 wk lead). Re-enable + audit when verification approves. |
+| Apple OAuth | src/pages/Login.tsx | P0 | ⏸ | 2026-05-08 | UI button hidden via VITE_SOCIAL_AUTH_APPLE flag; provider not configured at dest Supabase. Re-enable post-config. |
 | Password reset request | src/pages/ForgotPassword.tsx | P0 | ❓ | — | |
 | Password reset complete | src/pages/ResetPassword.tsx | P0 | ❓ | — | needs CSP fix for pwnedpasswords.com first |
 | Email verification | src/pages/VerifyEmail.tsx | P0 | ❓ | — | gate before app access |
-| Onboarding wizard | src/pages/Onboarding.tsx → onboarding-setup → complete_onboarding RPC | P0 | 🟡 | 2026-05-08 | RPC fixed; pending Jamie's browser re-test |
+| Onboarding wizard | src/pages/Onboarding.tsx → onboarding-setup → complete_onboarding RPC | P0 | 🟡 | 2026-05-08 | covered by "Email signup → onboarding wizard end-to-end" row above |
 | Accept invite (staff/parent) | src/pages/AcceptInvite.tsx → invite-accept fn | P0 | ❓ | — | also exercises invite-get fn |
 | Profile ensure on first login | supabase/functions/profile-ensure | P0 | ❓ | — | runs on every login; verify idempotency |
 | Account delete (GDPR) | supabase/functions/account-delete | P1 | ❓ | — | irreversible; test on throwaway account |
@@ -110,7 +116,7 @@ Criticality: **P0** revenue/auth/data-integrity / **P1** core UX / **P2** admin/
 | Stripe checkout (one-off) | supabase/functions/stripe-create-checkout | P0 | ❓ | — | branding TODO |
 | Stripe payment intent (custom) | supabase/functions/stripe-create-payment-intent | P0 | ❓ | — | |
 | Stripe customer portal | supabase/functions/stripe-customer-portal | P1 | ❓ | — | |
-| Stripe webhook (events) | supabase/functions/stripe-webhook | P0 | ✅ | 2026-05-08 | Phase 6/7 webhook delivery confirmed |
+| Stripe webhook (events) | supabase/functions/stripe-webhook | P0 | ❓ | — | (was ✅ Phase 6/7 — structural-only; needs fresh end-to-end customer-purchase test) |
 | Stripe verify session | supabase/functions/stripe-verify-session | P0 | ❓ | — | post-checkout return |
 | List payment methods | supabase/functions/stripe-list-payment-methods | P1 | ❓ | — | |
 | Detach payment method | supabase/functions/stripe-detach-payment-method | P1 | ❓ | — | |
@@ -141,18 +147,18 @@ Criticality: **P0** revenue/auth/data-integrity / **P1** core UX / **P2** admin/
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Google Calendar OAuth | calendar-oauth-{start,callback} | P0 | ✅ | 2026-05-07 | Phase 6 T3.3 fixed verify_jwt + maxResults |
+| Google Calendar OAuth | calendar-oauth-{start,callback} | P0 | ❓ | — | (was ✅ Phase 6 T3.3 — verify_jwt + maxResults bug fixes; needs fresh OAuth round-trip from a new test org) |
 | Calendar disconnect | calendar-disconnect | P1 | ❓ | — | |
 | Calendar busy fetch (now) | calendar-fetch-busy | P1 | ❓ | — | |
-| Calendar lesson sync (write back) | calendar-sync-lesson | P0 | ✅ | 2026-05-07 | idempotency fixed (commit 9c72ca3) |
+| Calendar lesson sync (write back) | calendar-sync-lesson | P0 | ❓ | — | (was ✅ — idempotency fixed in 9c72ca3; needs fresh sync of a real lesson + verify single Google event) |
 | iCal feed (read-only export) | calendar-ical-feed | P1 | ❓ | — | tokenised URL |
-| Zoom OAuth start | zoom-oauth-start | P0 | 🟡 | 2026-05-07 | Phase 6 T3.2 server-side validated |
-| Zoom OAuth callback | zoom-oauth-callback + src/pages/ZoomOAuthCallback.tsx | P0 | 🟡 | 2026-05-07 | E2E pending Phase 7 6.B |
-| Zoom lesson sync | zoom-sync-lesson | P0 | 🟡 | 2026-05-07 | idempotency preemptively fixed |
-| Xero OAuth start | xero-oauth-start | P0 | ✅ | 2026-05-07 | Phase 6 T3.1 verified |
-| Xero OAuth callback | xero-oauth-callback | P0 | ✅ | 2026-05-07 | |
-| Xero invoice sync | xero-sync-invoice | P0 | ✅ | 2026-05-07 | schema drift fix (commit 2c4b410) |
-| Xero payment sync | xero-sync-payment | P0 | ✅ | 2026-05-07 | NOT NULL drift fix (commit 9c72ca3) |
+| Zoom OAuth start | zoom-oauth-start | P0 | 🟡 | 2026-05-07 | Phase 6 T3.2 server-side validated only — needs fresh full E2E |
+| Zoom OAuth callback | zoom-oauth-callback + src/pages/ZoomOAuthCallback.tsx | P0 | 🟡 | 2026-05-07 | E2E pending — fresh test of the React-mediated flow |
+| Zoom lesson sync | zoom-sync-lesson | P0 | 🟡 | 2026-05-07 | idempotency preemptively fixed; full E2E pending |
+| Xero OAuth start | xero-oauth-start | P0 | ❓ | — | (was ✅ Phase 6 T3.1 — needs fresh OAuth from a new test org) |
+| Xero OAuth callback | xero-oauth-callback | P0 | ❓ | — | (was ✅) |
+| Xero invoice sync | xero-sync-invoice | P0 | ❓ | — | (was ✅ — schema drift fix 2c4b410 + FK fix 025a423; fresh sync of a brand-new invoice end-to-end pending) |
+| Xero payment sync | xero-sync-payment | P0 | ❓ | — | (was ✅ — NOT NULL drift fix 9c72ca3; fresh end-to-end payment sync pending) |
 | Xero disconnect | xero-disconnect | P1 | ❓ | — | |
 
 ## AI
@@ -219,13 +225,13 @@ Criticality: **P0** revenue/auth/data-integrity / **P1** core UX / **P2** admin/
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Portal home | src/pages/portal/PortalHome.tsx | P1 | ✅ | (Area-2 audit) | Batches 2A-2F closed |
-| Portal schedule | src/pages/portal/PortalSchedule.tsx | P1 | ✅ | (Area-2 audit) | |
-| Portal practice | src/pages/portal/PortalPractice.tsx | P2 | ✅ | (Area-2 audit) | |
-| Portal resources | src/pages/portal/PortalResources.tsx | P2 | ✅ | (Area-2 audit) | |
-| Portal invoices & pay | src/pages/portal/PortalInvoices.tsx | P0 | ✅ | (Area-2 audit) | |
-| Portal messages | src/pages/portal/PortalMessages.tsx | P1 | ✅ | (Area-2 audit) | |
-| Portal profile | src/pages/portal/PortalProfile.tsx | P2 | ✅ | (Area-2 audit) | |
+| Portal home | src/pages/portal/PortalHome.tsx | P1 | ❓ | — | (Area-2 Batch 2A-2F shipped pre-cutover — needs fresh re-audit on the migrated/destination state) |
+| Portal schedule | src/pages/portal/PortalSchedule.tsx | P1 | ❓ | — | (Area-2 — fresh re-audit pending) |
+| Portal practice | src/pages/portal/PortalPractice.tsx | P2 | ❓ | — | (Area-2 — fresh re-audit pending) |
+| Portal resources | src/pages/portal/PortalResources.tsx | P2 | ❓ | — | (Area-2 — fresh re-audit pending; Storage bucket policies in particular) |
+| Portal invoices & pay | src/pages/portal/PortalInvoices.tsx | P0 | ❓ | — | (Area-2 — fresh re-audit pending; pay flow exercises Stripe webhook chain) |
+| Portal messages | src/pages/portal/PortalMessages.tsx | P1 | ❓ | — | (Area-2 — fresh re-audit pending) |
+| Portal profile | src/pages/portal/PortalProfile.tsx | P2 | ❓ | — | (Area-2 — fresh re-audit pending) |
 | Portal continuation | src/pages/portal/PortalContinuation.tsx | P0 | ❓ | — | Batch 2G remains |
 | Public continuation respond | /respond/continuation route | P0 | ❓ | — | tokenised URL no-auth path |
 
@@ -272,8 +278,8 @@ Criticality: **P0** revenue/auth/data-integrity / **P1** core UX / **P2** admin/
 
 | Concern | Criticality | State | Notes |
 |---|---|---|---|
-| RLS coverage | P0 | ✅ | per Mega Audit + Phase 6 |
-| Sentry capture (browser) | P1 | ✅ | wired 2026-05-08; source maps still missing |
+| RLS coverage | P0 | 🟡 | per Mega Audit + Phase 6 — broadly verified; per-feature RLS spot-checks happen during each /sweep run (especially parent ↔ staff data isolation, cross-org isolation) |
+| Sentry capture (browser) | P1 | 🟡 | DSN wired 2026-05-08; first real test is the AuthContext timeout fix landing today; source maps still missing |
 | Sentry capture (edge functions) | P1 | ❓ | spot-check selected fns |
 | Cookie consent banner | P1 | 🔴 | flagged in claude.md remaining items |
 | Anthropic sub-processor disclosure | P1 | 🔴 | flagged in claude.md remaining items |
