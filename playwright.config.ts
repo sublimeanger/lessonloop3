@@ -36,6 +36,12 @@ const proxy = parseProxy();
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // Suite-start sweep of stale e2e_* rows across the e2e org. See
+  // tests/e2e/global-setup.ts for the rationale (8th-session anti-
+  // pattern: 2715 stale students wedged a baseline run; per-test
+  // cleanupByPrefix doesn't catch worker-crash leaks). Idempotent +
+  // soft-fails on auth issues.
+  globalSetup: './tests/e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
