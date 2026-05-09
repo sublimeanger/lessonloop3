@@ -615,16 +615,15 @@ test.describe('§26.10 — Parent compose new thread', () => {
 // the UI: parent clicks Continue / token-URL clicks Confirm Continuing
 // / invalid-token error toast / already-submitted message.
 //
-// Production caveat: continuation-respond has verify_jwt=true (default)
-// in config.toml, but the frontend uses publishable keys (sb_publishable_*)
-// not legacy JWT anon keys. Calls from a fully-unauthenticated browser
-// hit UNAUTHORIZED_INVALID_JWT_FORMAT at the gateway. The §26.13 tests
-// therefore navigate with the parent's storage state (mirroring the
-// realistic case where a parent clicks the email link from a device
-// already signed in to the portal). A fully-anonymous email-link click
-// from a fresh device is currently broken and needs verify_jwt=false
-// added for this function (the function already does manual auth on
-// the portal path; the token path uses adminClient with no auth).
+// continuation-respond was deployed with verify_jwt=false on
+// 2026-05-09 (commit fixing the unauth gateway rejection — the
+// function already does its own manual auth on both paths). The
+// §26.13 happy-path test below uses a fresh browser.newContext()
+// (no storageState) to exercise the realistic email-link flow:
+// fully anonymous user clicks a link, no Supabase session in
+// localStorage. The other §26.13 tests reuse the parent storage
+// state because they exercise the same TokenResponse component but
+// don't need to assert the fully-anon path twice.
 
 test.describe('§26.12 / §26.13 — Continuation response', () => {
   const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
@@ -818,11 +817,10 @@ test.describe('§26.12 / §26.13 — Continuation response', () => {
       guardianId: E2E_PARENT_GUARDIAN_ID,
     });
 
-    // Parent storage state: /respond/continuation is auth:'public', but
-    // we navigate with an active session so the supabase-js client sends
-    // a JWT (parent's access token), not just the publishable key. See
-    // the production caveat at the top of this describe block.
-    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    // Fully-anonymous context — the realistic email-link flow.
+    // continuation-respond has verify_jwt=false so the gateway lets
+    // the publishable-key Authorization header through to the function.
+    const ctx = await browser.newContext();
     const page = await ctx.newPage();
     try {
       await page.goto(`/respond/continuation?token=${seed.responseToken}`);
