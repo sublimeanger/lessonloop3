@@ -14,7 +14,8 @@
 - `2bf0aea` — dual-mode webhook signature verification
 - `e36e486` — §24 Stripe — 10 real tests (was 11 fixmes)
 - `7dcd024` — fix(test-infra): seedInvoice silently lost status transitions
-- `<§13/§14 commit>` — 22 real tests across §13 + §14
+- d7bc927 — §13/§14 Invoices — 13 fixmes → 0, 22 real tests
+  (handover hygiene in 8f37886)
 - Live Stripe webhook subscription patched (we_1TUlSHAzPfYm94ux4mOfF72i),
   18 events configured (was 6) — closes the P0 production gap previously
   flagged in the §24 progress notes. No commit (Stripe Dashboard config).
@@ -35,15 +36,15 @@ Read this whole file before doing anything. Your context starts cold;
 this is the only mind-share between sessions. Specifically:
 
 - Don't trust raw test counters. Track **real catalog coverage**, not
-  spec count. Catalog overall ~37% (was 25% three sessions ago).
+  spec count. Catalog overall ~38% (was 25% four sessions ago).
 - Don't use `test.fixme()` as a placeholder — see [Anti-patterns](#anti-patterns).
 - The catalog at `tests/e2e/master/PLAYWRIGHT_MASTER_CATALOG.md` is the
   source of truth for "what should be tested". Treat each section as a
   contract.
-- §24 Stripe / §13 Invoices / §14 Invoice detail / §26.4 makeup respond /
-  §26.7 practice / §26.10 compose / §26.12-13 continuation / §8.5
-  recurring edit / §17.4 streak milestone — **DONE**. Next priorities
-  in [Next session](#next-session).
+- §24 Stripe (incl. §24.12 true-replay) / §13 Invoices / §14 Invoice
+  detail / §26.4 makeup respond / §26.7 practice / §26.10 compose /
+  §26.12-13 continuation / §8.5 recurring edit / §17.4 streak
+  milestone — **DONE**. Next priorities in [Next session](#next-session).
 - **J24-A infra is live in production.** 14 stripe-* edge fns + the
   webhook now route through `_shared/stripe-client.ts` with org-scoped
   test/live key dispatch. The e2e org has `stripe_test_mode=true`. Do
@@ -266,19 +267,21 @@ npx playwright install chromium
 
 ### 4. Verify setup
 
-This single command should land in the ~390s passed range:
+This single command should land in the ~395 passed range:
 
 ```bash
 ./node_modules/.bin/playwright test --project=master --workers=4
 ```
 
-Expected output (current 2026-05-09 baseline, post-fixes):
-- **~392 passed** (varies ±5 with transient seed flakes)
+Expected output (current 2026-05-09 baseline, post §24.12 true-replay):
+- **~395 passed** (varies ±5 with transient seed flakes)
 - **1-5 failed** — always includes `§5.4` email-verification flake;
-  occasionally `§22.2` timezone (cross-file race with §24), `§13` stats
-  (occasional), or `§17.4 streak progression (×2)` if the supabaseInsert
-  to students returns undefined under load (pure infra flake, unrelated
-  to streak math)
+  sometimes `§22.2` timezone (cross-file race with §24), `§13` stats
+  (occasional), `05-rbac` Settings degradation (in the 13-brittle
+  JWT-stale group), `§17.4 streak progression (×2)` (supabaseInsert
+  infra flake, unrelated to streak math), or `§20.1` continuation-
+  respond (very occasional curl/spawnSync ETIMEDOUT — when it fires it
+  cascades to ~2 dependent serial tests shown as "did not run")
 - **~152 skipped** (intentional)
 - ~3.5-5 min wall-clock at 4 workers
 
@@ -346,9 +349,12 @@ test or delete the line.
 After those, remaining 27 sections are mostly gap-fillers + per-page
 smoke.
 
-### §24 progress (this session)
+<a id="24-progress"></a>
+### §24 progress (3rd + 4th session — landed)
 
-Implemented (commits `b7900ab` → `e36e486` on `main`, all pushed):
+Implemented (commits `b7900ab` → `e36e486` for the J24-A infra in 3rd
+session, then `499d54b` for §24.12 true-replay in 4th session, all
+pushed to `main`):
 
 **Infrastructure (J24-A):**
 - Migration `20260517100000_org_stripe_test_mode_flag.sql`: adds
@@ -395,7 +401,7 @@ Implemented (commits `b7900ab` → `e36e486` on `main`, all pushed):
 - §24.9 Stripe Connect onboarding (multi-step OAuth flow).
 - §24.11 Verify session post-checkout (subscription-checkout return URL).
 
-**Two latent issues found and FIXED this session:**
+**Two latent issues found and FIXED in the 3rd session:**
 1. ~~`update_invoice_status` RPC doesn't exist; `seedInvoice` silently
    no-op'd status transitions.~~ Fixed in `7dcd024`: replaced with
    `patchInvoiceStatus` in `tests/e2e/supabase-admin.ts` — direct
@@ -415,8 +421,6 @@ stripe-process-refund is 5/hr. Tests reset `rate_limits` rows for known
 e2e users in `beforeAll` (see `resetE2ERateLimits` in
 `stripe-test-helpers.ts`). If you debug-rerun and start hitting 429,
 that helper unsticks you.
-
-### How to do a section properly
 
 ### How to do a section properly
 
@@ -457,7 +461,7 @@ a `test.fixme()`. Not a comment. A passing test.
 
 ## Anti-patterns
 
-Things I did wrong this session — don't repeat them:
+Things prior sessions did wrong — don't repeat them:
 
 ### ❌ Don't use `test.fixme()` as a placeholder
 
@@ -522,9 +526,9 @@ JWT injection (the next planned fix — see [Known issues](#known-issues)).
 
 ### The 13 brittle test failures (long-run JWT stale)
 
-When running the full master suite (~9 min, 537 tests, 4 workers),
-the same 13 tests flake. They pass individually. They fail in the full
-batch.
+When running the full master suite (~3.5-4.5 min, ~553 tests at 4
+workers), up to ~13 tests can flake. They pass individually. They flake
+in the full batch.
 
 **Root cause:** Playwright loads `storageState` at browser context creation,
 but contexts persist across tests within a worker. The JWT in localStorage
@@ -570,8 +574,12 @@ shared modules now route through `_shared/stripe-client.ts`. Webhook
 is dual-mode. Test webhook endpoint `we_1TUwZhBAjFOLYDS3QGslhpbj` is
 configured. See [§24 progress](#24-progress) for the full change set.
 
-**Live webhook subscription gap (P0)** — see §24 progress. The live
-endpoint is missing 12 events the handler expects. Fix before launch.
+### ~~Live webhook subscription gap~~ — DONE 2026-05-08
+
+Live endpoint `we_1TUlSHAzPfYm94ux4mOfF72i` patched in 3rd session via
+Stripe API to subscribe to the full 18-event superset (was 6). See
+[§24 progress](#24-progress) "Two latent issues found and FIXED" for
+detail and the post-launch verification ask.
 
 ### Resend SMTP
 
