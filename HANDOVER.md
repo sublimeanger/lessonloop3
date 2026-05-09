@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after 6th-session §16 + §10.7 + §15.4 + audit hygiene) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-09 (after 6th-session §16 + §10.7 + §15.4 + §20 + audit hygiene) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -125,6 +125,23 @@
   invoices, Stripe webhook). 7 parent-portal rows tagged
   [PROMOTABLE 🟡→🟢] for Jamie's review pass. Header bumped to
   2026-05-09.
+- 35631ad — test(e2e): §20 Continuation 6 new tests for the
+  run-creation backend (Lauren-paramount per §3.1). §20.4
+  create-continuation-run happy path (seed terms + active student +
+  recurring lesson + parent guardian → run row in draft + 1
+  pending response with lesson_summary), §20.4 RBAC parent JWT
+  → 403, §20.4 validation missing fields → 400, §20.5 process_deadline
+  assumed_continuing=true (pending → assumed_continuing) +
+  assumed_continuing=false (pending → no_response), §20.7
+  bulk-process-continuation confirmed flow (extends recurrence,
+  materialises lessons via `materialise_continuation_lessons` RPC,
+  marks response is_processed, flips run to completed). Switched the
+  baseYear hash for term-overlap avoidance from a deterministic
+  testId-based hash with %50 buckets to Math.random() across a
+  500-year window — old scheme caused parallel-test collisions on
+  the check_term_overlap trigger. Withdrawal-flow + delete-run
+  paths still deferred. Status vs v2 launch scope: launch-in-scope
+  (term-end critical per §3.1).
 - 10ca3ad — test(e2e): §26.10 reply on existing thread (3 tests:
   happy path with thread_id+subject "Re: …" derivation, 404 on
   missing parent_message_id, 403 cross-tenant) + §26.11
@@ -189,11 +206,12 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~50% (was 47% before 6th session — +14 real tests across §16, §10.7, §15.4).**
+**Catalog completeness: ~52% (was 47% before 6th session — +20 real tests across §16, §10.7, §15.4, §20).**
 
 Current baseline (end of 6th session, full-suite run):
-- **430 passed** (was 418 prior; +12 net from the +14 new tests minus
-  some test.fixme deletions that previously counted as skipped).
+- **440 passed** (was 418 prior; +22 net including +6 §20 continuation
+  tests on top of +14 from §16/§10.7/§15.4, less small offsets from
+  removed test.fixme placeholders).
 - **1-5 failed**: always includes the documented §5.4 email-verification
   flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
   to streak math, the supabaseInsert call to students returns undefined),
@@ -234,7 +252,7 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~146 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices, +3 §8.6+§8.8.9-10 cancel/credit, +2 §17.5 cron, +3 §26.10 reply, +1 §26.11 prefs, +1 §15.4 outstanding, +1 §11.4 unlinked teacher, +5 §16.3 staff send-message (s6), +5 §10.7 csv-import-execute (s6), +4 §15.4 reports data-correctness (s6) |
+| Genuinely behavioural tests (full journeys) | ~152 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices, +3 §8.6+§8.8.9-10 cancel/credit, +2 §17.5 cron, +3 §26.10 reply, +1 §26.11 prefs, +1 §15.4 outstanding, +1 §11.4 unlinked teacher, +5 §16.3 staff send-message (s6), +5 §10.7 csv-import-execute (s6), +4 §15.4 reports data-correctness (s6), +6 §20 continuation run-creation backend (s6) |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
@@ -456,63 +474,58 @@ test or delete the line.
 | §15 Reports | 5 + 9 smoke | ~50% | §15.4.7 Outstanding + §15.4 (LessonsDelivered, Cancellations, Attendance, Revenue) done; Payroll / Utilisation / TeacherPerformance deferred to s7 |
 | §16 Messages | 5 + smoke | ~50% | §16.3 staff-side send-message contract done; bulk + threads + internal still UI-driven |
 | §17 Practice | 5 + cron | ~75% | mature |
-| §20 Continuation | 3 | ~50% | DEFERRED AGAIN, ~6-8 hours — must be the dedicated focus of session 7 |
+| §20 Continuation | 9 | ~85% | run-creation backend covered (create / process_deadline / bulk-process confirmed); withdrawal-flow + delete-run still pending |
 | §24 Stripe (incl. §24.12 true-replay) | 12 | ~70% | mature; §24.4/6/8/9/11 deferred — Stripe CLI / OAuth / mobile |
 | §8 Lesson CRUD | 9 | ~65% | §8.5 recurring + §8.6 cancel + §8.8.9-10 auto-credit done |
 | §11 Teachers | 1 + RBAC | ~30% | §11.4.1 unlinked-teacher contract done; invite/archive deferred |
 | §26 Parent portal | 30+ | ~95% | essentially complete; only §26.8 Resources + §26.9.2-3 installments remain |
 | §32 Security trigger guards | 9 | ~80% | mature |
 
-Catalog overall: **~50%** (was 25% six sessions ago).
+Catalog overall: **~52%** (was 25% six sessions ago).
 
 ### Priority order — 7th session pickup
 
-**Item 1 below is non-negotiable. It has been deferred TWICE
-(sessions 4 + 5 + 6). Every additional defer pushes Lauren's term-end
-critical path closer.**
+§20 Continuation was the previously-deferred item but landed in
+session 6 as a side-quest (commit 35631ad — 6 tests covering the
+run-creation backend including create / process_deadline /
+bulk-process confirmed). What remains in §20 is lower-stakes:
+withdrawal-flow via process-term-adjustment, delete-run preview/
+warn paths. Treat as a P2 follow-up, not a session-7 priority.
 
-1. **§20 Continuation (term rollover) — DEDICATED SESSION**
-   (~6-8 hours). Needs term boundaries + continuation_run +
-   continuation_responses seeded. The §26.12-13 tests already
-   cover the parent-response side (a5dec8b + 65bde4e fix); what's
-   missing is the run-creation backend (`create-continuation-run`
-   edge fn) and `bulk-process-continuation`. Lauren has flagged
-   continuation as "very important" + term-end critical per
-   LESSONLOOP_V2_PLAN.md §3.1.
-
-   **Do this BEFORE picking up smaller items.** If you're tempted
-   to start §22/§27 first because they're shorter, resist —
-   continuation has lost three sessions to that exact reasoning.
-
-2. **§22 Settings tabs** — currently 5 tests covering basic load
+1. **§22 Settings tabs** — currently 5 tests covering basic load
    + timezone + VAT. 24 tabs total; many are launch-hidden per v2
    plan. Test only launch-visible (organisation, payments, billing,
    reschedule policies, term continuation, locations, instruments).
    ~3-4h for full sweep.
 
-3. **§27 Email & notifications** — notification_preferences are
+2. **§27 Email & notifications** — notification_preferences are
    seeded and queryable (§26.11 lands the upsert path). Value-add:
    assert a `send-templated-email` edge fn (or equivalent) HONORS
    the preference flag — i.e. when `email_invoice_reminders=false`,
    the reminder fn doesn't send. ~1-2h.
 
-4. **§15.4 remaining 3 reports** — Payroll (needs teacher pay rate
+3. **§15.4 remaining 3 reports** — Payroll (needs teacher pay rate
    on org's owner teacher), Utilisation (needs room capacity +
    closure_dates seeds), TeacherPerformance (FeatureGate-protected
    at TeacherPerformance.tsx:101 — may need to enable
    `teacher_performance` for the e2e org). ~1-2h each.
 
-5. **§26.9 payment-plan installments** (§26.9.2 pay one installment,
+4. **§26.9 payment-plan installments** (§26.9.2 pay one installment,
    §26.9.3 pay all remaining). Needs invoice_installments seed
    chain. ~2-3h.
 
+5. **THE 13-BRITTLE JWT-STALE FIX** — pseudo-code in
+   [Known issues](#known-issues). ~30 min for the beforeEach JWT
+   injection hook. Flake count creeping (3 fails this run was the
+   JWT-stale group again: §5.4 + §5.5 + 06-dashboard stat cards).
+   Worth fixing once before the next round of session-7+ work.
+
 **If quiet (only after items 1-5 ship):**
 
-6. **THE 13-BRITTLE JWT-STALE FIX** — pseudo-code in
-   [Known issues](#known-issues). ~30 min for the beforeEach JWT
-   injection hook. Flake count is creeping (1-3 → 1-5 sessions);
-   each future session pays ~15 min in "is this flake real?"
-   friction. Worth fixing once.
+6. **§20 follow-ups** — withdrawal-flow via bulk-process-continuation
+   process_type='withdrawals' (chains through process-term-adjustment
+   + cleanup_withdrawal_credits — meaningful complexity), delete-run
+   preview/warn paths.
 
 7. **§8 remaining cases** (§8.8.3 conflict-detection blocks save,
    §8.8.12 closure-date warning banner, §8.8.14 weekly recurrence
@@ -767,6 +780,32 @@ similar uuid). Also a good idea to wrap supabaseInsert in
 `if (!row?.id) throw new Error(...)` so future seed failures
 surface immediately.
 
+### ❌ Don't use deterministic hash for term `baseYear` in §20 seeds
+
+§20 continuation tests need 2 non-overlapping terms in the e2e org.
+The `check_term_overlap` trigger rejects any insert that intersects
+an existing term's date range. The original §20.1 seed used a
+testId-string hash mod 50 to pick a far-future baseYear (2400-2449
+window) — this gave only 50 buckets, and two tests starting in the
+same ms with similar testId fragments hashed to identical years.
+First run of §20 in 6th session: 3 of 6 tests failed with "Term dates
+overlap with an existing term" because parallel/serial workers
+collided AND a partial seed leaked from a half-cleaned-up earlier
+run. Switched to `Math.random() * 500` for baseYear (2400-2899)
+plus a one-off SQL sweep of stale `e2e_*` term rows. If you ever
+see `code=P0001 message="Term dates overlap with an existing term"`
+during seed, sweep stale e2e_ terms first:
+
+```sql
+DELETE FROM term_continuation_responses
+  WHERE org_id='25b57950-...' AND run_id IN (...);
+DELETE FROM term_continuation_runs
+  WHERE org_id='25b57950-...' AND current_term_id IN (
+    SELECT id FROM terms WHERE org_id='25b57950-...' AND name LIKE 'e2e_%');
+DELETE FROM terms
+  WHERE org_id='25b57950-...' AND name LIKE 'e2e_%';
+```
+
 ### ❌ Don't forget the trg_cleanup_attendance_on_cancel order
 
 When seeding a cancelled lesson + attendance_records together: PATCH
@@ -978,6 +1017,8 @@ the same shape.
 | `§15.4` describe | `midLastMonth()` | Returns Date set to the 15th of the previous calendar month, UTC. Safe seed time for any "last month" report without timezone edge cases. |
 | `§15.4` describe | inline `execSync` curl PATCH for lesson status | seedLesson supports `status` directly but defaults to 'scheduled'. PATCH to 'completed' / 'cancelled' via service-role goes through the audit trigger but no transition guard. Use inline curl rather than rolling a new helper — only 4 lines. |
 | `§16.3` cross-org test | inline service-role insert into `organisations` (name + created_by required, all other cols default) + `guardians` (org_id + full_name required) | Lightweight throwaway-org pattern for cross-tenant 403 tests where the recipient must exist in a different org. Cleanup is two `supabaseDelete` calls (guardian first, then org). |
+| `§20.4` describe | `seedTermsStudentAndRecurringLesson({testId})` | Seeds the full chain create-continuation-run needs: 2 non-overlapping terms (far-future to bypass check_term_overlap) + active student + student_guardians link to e2e parent + recurrence_rules + lesson with recurrence_id + lesson_participants. Returns IDs + cleanup callable. Uses `Math.random() * 500` for baseYear (NOT a deterministic hash — that caused parallel-test collisions in initial runs). |
+| `§20.5` describe | `seedRunWithPendingResponse({testId, assumedContinuing})` | Lighter seed for process_deadline tests — terms + student + run (status='sent', deadline yesterday) + 1 pending response. Skips the recurrence/lesson chain since process_deadline only operates on response.response field. |
 
 ---
 
