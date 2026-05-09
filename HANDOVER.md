@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after §15.4 Outstanding data correctness) by Claude Opus 4.7 (1M context, 5th session)
+**Last updated:** 2026-05-09 (after §11.4 unlinked teacher) by Claude Opus 4.7 (1M context, 5th session)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -58,6 +58,14 @@
   cron's idempotence on already-clean rows. Status vs v2 launch
   scope: launch-in-scope (Practice tracking + streaks per §3.1)
   but cron behaviour isn't first-day critical.
+- _next_ — test(e2e): §11.4.1 unlinked teacher contract (1 test).
+  Verifies that inserting a `teachers` row without user_id leaves
+  the row in the unlinked state — no auto-created org_memberships
+  row, no `invites` row keyed on the email, but the
+  audit_teachers_changes trigger does fire (audit_log row lands).
+  Documents that §11.4.9 protect_teacher_user_link is already
+  covered by §32.7 in the master baseline. Status vs v2 launch
+  scope: launch-in-scope (Teachers per §3.1).
 - 6205880 — test(e2e): §15.4.7 Outstanding report data correctness
   (1 test). Seed a sent invoice with due_date +5 days, render
   /reports/outstanding as owner, assert the invoice_number text
@@ -115,12 +123,12 @@ this is the only mind-share between sessions. Specifically:
   source of truth for "what should be tested". Treat each section as a
   contract.
 - §24 Stripe (incl. §24.12 true-replay) / §13 Invoices / §14 Invoice
-  detail / §15.4.7 Outstanding data / §26.4 makeup respond / §26.6
-  schedule / §26.7 practice / §26.9 invoices+pay drawer / §26.10
-  compose+reply / §26.11 profile prefs / §26.12-13 continuation /
-  §8.5 recurring edit / §8.6 cancel + §8.8.9-10 auto-credit / §17.4
-  streak milestone / §17.5.5-6 cron — **DONE**. Next priorities in
-  [Next session](#next-session).
+  detail / §15.4.7 Outstanding data / §11.4.1 unlinked teacher /
+  §26.4 makeup respond / §26.6 schedule / §26.7 practice / §26.9
+  invoices+pay drawer / §26.10 compose+reply / §26.11 profile prefs
+  / §26.12-13 continuation / §8.5 recurring edit / §8.6 cancel +
+  §8.8.9-10 auto-credit / §17.4 streak milestone / §17.5.5-6 cron
+  — **DONE**. Next priorities in [Next session](#next-session).
 - **J24-A infra is live in production.** 14 stripe-* edge fns + the
   webhook now route through `_shared/stripe-client.ts` with org-scoped
   test/live key dispatch. The e2e org has `stripe_test_mode=true`. Do
@@ -135,15 +143,15 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~46% (was 46%, +1 §15.4.7 data-correctness this session — first non-smoke test for any of the 8 reports).**
+**Catalog completeness: ~47% (was 46%, +1 §11.4.1 unlinked teacher this session).**
 
 Current baseline (end of session):
-- **421 passed** (was 420 at end of prior bump; +1 from §15.4.7
-  Outstanding). Single failure this run: §5.4 email verification —
-  the documented permanent flake. All other historically-intermittent
-  flakes (13-brittle JWT-stale group, §22/§24 cross-file race,
-  §13 stats, §20.1 ETIMEDOUT, §17.4 streak progression seed) all
-  passed this run.
+- **418 passed** (was 421 prior; +1 from §11.4.1 but a long-suite
+  run this time hit the documented brittle-JWT-stale flakes —
+  §26.6.7 + 06-dashboard stat cards joined §5.4 in the failure list,
+  cascading 2 §26.6 tests in serial mode to "did not run"). The
+  earlier 421-pass baseline this session shows these all settle on
+  shorter wall-clocks.
 - **1-5 failed**: always includes the documented §5.4 email-verification
   flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
   to streak math, the supabaseInsert call to students returns undefined),
@@ -181,7 +189,7 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~131 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices, +3 §8.6+§8.8.9-10 cancel/credit, +2 §17.5 cron, +3 §26.10 reply, +1 §26.11 prefs, +1 §15.4 outstanding |
+| Genuinely behavioural tests (full journeys) | ~132 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices, +3 §8.6+§8.8.9-10 cancel/credit, +2 §17.5 cron, +3 §26.10 reply, +1 §26.11 prefs, +1 §15.4 outstanding, +1 §11.4 unlinked teacher |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
