@@ -47,7 +47,7 @@
   §26.6.1's lesson seed times so runs <30min apart land in
   different 30-min slots. Status vs v2 launch scope:
   launch-critical (Stripe Connect / parent payment per §3.1).
-- _next_ — test(e2e): §8.6 cancel flow + §8.8.9 attendance
+- c8b6c4e — test(e2e): §8.6 cancel flow + §8.8.9 attendance
   cleanup trigger + §8.8.10a/b auto_issue_credit_on_absence
   (3 tests; Lauren-paramount make-up flow per
   LESSONLOOP_V2_PLAN.md §3.1). 8.8.9 verifies that
