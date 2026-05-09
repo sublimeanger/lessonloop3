@@ -150,12 +150,50 @@ without currency-error boundary").
 
 ## Setup
 
-### 1. Required env vars in `~/.claude/settings.json`
+### Token inventory — what you have, where it lives, what it unlocks
 
-The `env` block must include these keys. **Values are not in this file
-(GitHub push protection blocks them).** Copy values from the existing
-account's `~/.claude/settings.json` directly, or fetch fresh from each
-service dashboard.
+Every Claude session starts with `~/.claude/settings.json` already
+loaded into the environment. **Don't ask the user for tokens before
+checking what's already there** — read settings.json first. If a
+token is rejected, refresh it (links below) and rotate in place.
+
+| Token | Lives in | Plane | What it unlocks | Refresh URL |
+|---|---|---|---|---|
+| `SUPABASE_ACCESS_TOKEN` (sbp_*) | `~/.claude/settings.json` env | Management API (`api.supabase.com`) | Project ops, secrets read/write, edge fn deploys | https://supabase.com/dashboard/account/tokens |
+| `E2E_SUPABASE_SERVICE_ROLE_KEY` (sb_secret_* or eyJ JWT) | `.env.test` | Database / PostgREST (`*.supabase.co/rest/v1`) | RLS bypass, table CRUD, RPC. Used heavily by `tests/e2e/supabase-admin.ts`. | Supabase Dashboard → Settings → API → service_role |
+| `E2E_SUPABASE_ANON_KEY` | `.env.test` | Database / PostgREST | Anon-equivalent for parent JWT minting in tests | Supabase Dashboard → Settings → API → publishable / anon |
+| `STRIPE_SECRET_KEY` (sk_live_*) | `~/.claude/settings.json` env | Stripe API live mode | Live Stripe ops via Stripe MCP | https://dashboard.stripe.com/apikeys |
+| `STRIPE_TEST_SECRET_KEY` (sk_test_*) | `~/.claude/settings.json` env + duplicated as `E2E_STRIPE_TEST_SECRET` in `.env.test` | Stripe API test mode | Test-mode payments, refunds, customers used by §24 + §13/§14 | https://dashboard.stripe.com/test/apikeys |
+| `STRIPE_TEST_WEBHOOK_SECRET` (whsec_*) | `~/.claude/settings.json` env + duplicated as `E2E_STRIPE_TEST_WEBHOOK_SECRET` in `.env.test` + Supabase Edge Function secret | n/a — used to HMAC-sign webhook payloads | True-replay idempotency tests for §24.12 + the dual-mode webhook handler verification | https://dashboard.stripe.com/test/webhooks → endpoint `we_1TUwZhBAjFOLYDS3QGslhpbj` (only shown at create time; ours: confirmed 2026-05-09 by signing a `ping` event and getting HTTP 200 from the webhook) |
+| `STRIPE_WEBHOOK_SECRET` (whsec_*) | Supabase Edge Function secret | n/a — live mode equivalent | Verifying live-mode events. Not in claude settings; production-only. | Stripe Dashboard live → endpoint `we_1TUlSHAzPfYm94ux4mOfF72i` |
+| `NETLIFY_AUTH_TOKEN` (nfp_*) | `~/.claude/settings.json` env | Netlify API | Deploys, env-var management, project config | https://app.netlify.com/user/applications#personal-access-tokens |
+| `CLOUDFLARE_API_TOKEN` (cfut_*) | `~/.claude/settings.json` env | Cloudflare API | DNS, Workers KV/R2 | https://dash.cloudflare.com/profile/api-tokens (Zone:DNS:Edit + Account:Workers KV/R2) |
+| `SENTRY_AUTH_TOKEN` (sntryu_*) | `~/.claude/settings.json` env | Sentry API | Source map upload, release creation | https://lessonloop.sentry.io/settings/account/api/auth-tokens/ (`project:write`, `project:releases`) |
+| `CONTEXT7_API_KEY` (ctx7sk-*) | `~/.claude/settings.json` env | Context7 docs MCP | Library doc lookup | https://context7.com/dashboard |
+
+**Plane gotcha (learned the hard way 2026-05-09):** Supabase has two
+auth planes that don't cross over:
+
+- `sbp_*` PAT → `api.supabase.com` (Management API: secrets, deploys,
+  config). This is what you need to read or write Edge Function secrets.
+- `sb_secret_*` (or legacy JWT `service_role`) → `*.supabase.co/rest/v1`
+  (PostgREST: tables, RPC). Test suite uses this.
+
+A `sb_secret_*` value will return `JWT could not be decoded` against
+the Management API regardless of authority — they're different planes.
+If `SUPABASE_ACCESS_TOKEN` returns 401, the PAT is expired/revoked;
+issue a fresh one at the dashboard URL above.
+
+**Edge Function secrets — readability quirk:** Supabase's Management
+API at `GET /v1/projects/{ref}/secrets` returns
+`[{name, value, updated_at}]` — but `value` is a SHA-256 hex digest,
+NOT the plaintext. Plaintext is genuinely write-only after creation.
+If you need a secret value that isn't already in your env, you must
+either (a) get it from the user, (b) re-issue/rotate the upstream
+(Stripe, Sentry etc.) and capture at create time, or (c) re-run a
+flow that returns it (Stripe webhook create returns `secret`, rotate
+returns the new one). Then write it back via
+`POST /v1/projects/{ref}/secrets` with body `[{name, value}]`.
 
 ```json
 {
@@ -166,6 +204,7 @@ service dashboard.
     "CLOUDFLARE_API_TOKEN": "<cfut_...>",
     "STRIPE_SECRET_KEY": "<sk_live_...>",
     "STRIPE_TEST_SECRET_KEY": "<sk_test_...>",
+    "STRIPE_TEST_WEBHOOK_SECRET": "<whsec_...>",
     "CONTEXT7_API_KEY": "<ctx7sk-...>",
     "SENTRY_AUTH_TOKEN": "<sntryu_...>",
     "SENTRY_ORG": "lessonloop",
@@ -174,21 +213,6 @@ service dashboard.
   }
 }
 ```
-
-Where to fetch each value:
-
-| Var | Source |
-|---|---|
-| `NETLIFY_AUTH_TOKEN` | https://app.netlify.com/user/applications#personal-access-tokens |
-| `SUPABASE_ACCESS_TOKEN` | https://supabase.com/dashboard/account/tokens |
-| `CLOUDFLARE_API_TOKEN` | https://dash.cloudflare.com/profile/api-tokens (needs Zone:DNS:Edit + Account:Workers KV/R2) |
-| `STRIPE_SECRET_KEY` | https://dashboard.stripe.com/apikeys (live) |
-| `STRIPE_TEST_SECRET_KEY` | https://dashboard.stripe.com/test/apikeys |
-| `CONTEXT7_API_KEY` | https://context7.com/dashboard |
-| `SENTRY_AUTH_TOKEN` | https://lessonloop.sentry.io/settings/account/api/auth-tokens/ (scopes: `project:write`, `project:releases`) |
-
-Verify the Stripe keys belong to the LessonLoop account (the user can
-confirm by checking the dashboard).
 
 ### 2. `.env.test` for the test suite
 
