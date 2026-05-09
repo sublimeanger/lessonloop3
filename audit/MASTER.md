@@ -1,6 +1,6 @@
 # LessonLoop production-readiness — MASTER tracker
 
-**Last updated:** 2026-05-09 (after 6th-session E2E hygiene pass — §16 / §10.7 / §15.4 + parent portal cluster)
+**Last updated:** 2026-05-09 (after 7th-session — §22 Settings launch-visible mutations + §27 prefs/dedup + JWT-injection fixture)
 **Owner:** Jamie McKaye
 **Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
 
@@ -65,7 +65,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | External marketing redirects | src/config/routes.ts (38 paths) | P2 | 🟡 | 2026-05-08 | static redirect map to lessonloop.net; structural ok |
 | 404 page | src/pages/NotFound.tsx | P2 | 🟡 | 2026-05-08 | structural |
 | Help page | src/pages/Help.tsx | P3 | 🟡 | 2026-05-08 | static content |
-| Settings (org config) | src/pages/Settings.tsx | P1 | 🟡 | 2026-05-08 | wide surface; many sub-tabs (org info, calendar, accounting, messaging, billing); each tab uses RLS-scoped queries via dedicated hooks. Defer to E2E browser test for full per-tab confidence |
+| Settings (org config) | src/pages/Settings.tsx | P1 | 🟡 | 2026-05-09 | wide surface; many sub-tabs (org info, calendar, accounting, messaging, billing); each tab uses RLS-scoped queries via dedicated hooks. [E2E real per 4c34bf0]: §22.2 schedule_hours valid+invalid trigger / parent_reschedule_policy 3-value PATCH / §22.20 continuation 3-field atomic / §22.4 invites INSERT / §22.9 music custom-instrument CRUD. All 21 launch-visible per-tab smoke loads pass |
 
 ## Calendar & Lessons
 
@@ -127,7 +127,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Backfill default PM (admin) | supabase/functions/admin-backfill-default-pm | P2 | 🟡 | 2026-05-08 | cron-auth via x-cron-secret (operator-triggered, not scheduled); RPC `backfill_guardian_default_pm_set` with idempotency check at write time |
 | Process refund | supabase/functions/stripe-process-refund | P0 | 🟡 | 2026-05-08 | JWT auth + rate limit; structural ok; pending E2E refund test |
 | Refund notification | supabase/functions/send-refund-notification | P1 | 🟡 | 2026-05-08 | service-role-only invoke (`Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}` exact match); RESEND_API_KEY required |
-| Receipt email | supabase/functions/send-payment-receipt | P1 | 🟡 | 2026-05-08 | service-role-only via `.includes(serviceKey)` (slightly weaker than `===` but still gated); RESEND_API_KEY required; called from stripe-webhook payment_intent.succeeded handler |
+| Receipt email | supabase/functions/send-payment-receipt | P1 | 🟡 | 2026-05-09 | service-role-only via `.includes(serviceKey)` (slightly weaker than `===` but still gated); RESEND_API_KEY required; called from stripe-webhook payment_intent.succeeded handler. [E2E real per 1fca3c2]: §27 RBAC auth gate (anon→401, no-auth→401), §27.2 prefs-honoring DB-shape (upsert+SELECT round-trip + absent-row default-on), §27 dedup unique partial idx_message_log_payment_receipt_dedup. Live fn-invocation with prefs=false deferred — service-role key in .env.test drifted post-2026-05-08 migration |
 | Auto-pay run (installment) | supabase/functions/stripe-auto-pay-installment | P0 | 🟡 | 2026-05-08 | cron-auth via x-cron-secret; daily 09:00 UTC; verified firing in cron sweep |
 | Auto-pay alert | supabase/functions/send-auto-pay-alert | P1 | 🟡 | 2026-05-08 | service-role-only invoke; 6h dedup keyed on org_id via message_log; RESEND_API_KEY required |
 | Auto-pay failure notification | supabase/functions/send-auto-pay-failure-notification | P0 | 🟡 | 2026-05-08 | service-role-only invoke; structural ok |
