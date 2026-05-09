@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after §11.4 unlinked teacher) by Claude Opus 4.7 (1M context, 5th session)
+**Last updated:** 2026-05-09 (after 6th-session §16 + §10.7 + §15.4 + audit hygiene) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -79,6 +79,52 @@
   verifying §15.4 affected §26.6.6 admin_locked when the org
   table was under concurrent load. Status vs v2 launch scope:
   launch-in-scope (Reports per §3.1).
+- da619ca — test(e2e): §16 staff-side messages (5 tests) +
+  send-message 400-on-missing-fields fix. Covers happy path
+  (owner→guardian, send_email=false, recipient resolved server-side
+  from guardians table), missing-fields validation (NEW: returns
+  400, was 500 — the original `throw` fell into the outer catch
+  and masked the validation error as a generic server crash),
+  oversized subject + body (≤500/≤10000 limits), parent JWT 403
+  at the membership role check (parent has org_memberships row
+  with role='parent', allowlist is owner/admin/teacher), cross-org
+  recipient 403 (creates throwaway organisation + guardian for the
+  test, asserts the guardian.org_id !== data.org_id check fires).
+  Edge fn fix deployed as send-message v18 to xmrhmxizpslhtkibqyfy.
+  Finding doc: audit/findings/2026-05-09-send-message-missing-fields-500.md.
+  Status vs v2 launch scope: launch-in-scope (Messages per §3.1).
+- a482407 — test(e2e): §10.7 CSV import (5 tests, Lauren-critical
+  for bulk onboarding ~250 students at launch). Drives
+  csv-import-execute edge fn directly (no file-upload UI fixture).
+  Tests: dry-run with 5 valid rows → preview.studentsToCreate=5;
+  execute 3 valid rows → studentsCreated=3 + importBatchId, then
+  undo_student_import RPC reverses (SOFT-deletes via deleted_at —
+  confirmed via pg_get_functiondef inspection, NOT hard delete);
+  malformed row (invalid email) → row 2 in validation.errors;
+  CSV-internal duplicate emails → second row flagged as
+  duplicate_csv with duplicateOf=1; missing first_name → row
+  marked invalid with /Missing first_name/. Resets csv-import
+  rate limit (10/10min per user) at beforeAll. Status vs v2
+  launch scope: launch-in-scope (Students CSV import per §3.1).
+- 3095a15 — test(e2e): §15.4 data correctness for 4 of the 7
+  remaining reports (LessonsDelivered, Cancellations, Attendance,
+  Revenue). Mirrors §15.4.7 Outstanding pattern: seed minimum
+  data, render report as owner, assert specific identifier visible.
+  Schema gotcha: attendance_records.recorded_by is NOT NULL with
+  no default — every insert must pass a uuid (use getOwnerUserId).
+  For Cancellations: PATCH lesson to cancelled FIRST, then insert
+  attendance — trg_cleanup_attendance_on_cancel fires on lesson
+  UPDATE not on attendance INSERT, so the right order survives the
+  trigger. Deferred to session 7 (need more involved seeds):
+  Payroll (teacher pay rate setup), Utilisation (room capacity +
+  closure_dates), Teacher Performance (FeatureGate-protected at
+  TeacherPerformance.tsx:101). Status vs v2 launch scope:
+  launch-in-scope (Reports per §3.1).
+- (audit hygiene commit) — docs(audit): MASTER.md row updates for
+  sections touched + 4 mature clusters (parent portal, practice,
+  invoices, Stripe webhook). 7 parent-portal rows tagged
+  [PROMOTABLE 🟡→🟢] for Jamie's review pass. Header bumped to
+  2026-05-09.
 - 10ca3ad — test(e2e): §26.10 reply on existing thread (3 tests:
   happy path with thread_id+subject "Re: …" derivation, 404 on
   missing parent_message_id, 403 cross-tenant) + §26.11
@@ -143,15 +189,11 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~47% (was 46%, +1 §11.4.1 unlinked teacher this session).**
+**Catalog completeness: ~50% (was 47% before 6th session — +14 real tests across §16, §10.7, §15.4).**
 
-Current baseline (end of session):
-- **418 passed** (was 421 prior; +1 from §11.4.1 but a long-suite
-  run this time hit the documented brittle-JWT-stale flakes —
-  §26.6.7 + 06-dashboard stat cards joined §5.4 in the failure list,
-  cascading 2 §26.6 tests in serial mode to "did not run"). The
-  earlier 421-pass baseline this session shows these all settle on
-  shorter wall-clocks.
+Current baseline (end of 6th session, full-suite run):
+- **430 passed** (was 418 prior; +12 net from the +14 new tests minus
+  some test.fixme deletions that previously counted as skipped).
 - **1-5 failed**: always includes the documented §5.4 email-verification
   flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
   to streak math, the supabaseInsert call to students returns undefined),
@@ -160,8 +202,11 @@ Current baseline (end of session):
   13-brittle JWT-stale group), §20.1 continuation-respond (very
   occasional curl/spawnSync ETIMEDOUT transient — when it fires, it
   can cascade to 2 dependent serial tests shown as "did not run").
-- **152 skipped**.
-- ~3.5-4.5 min wall-clock at 4 workers.
+- **136 skipped** (was 152 — the 6th-session work removed 16
+  `test.fixme()` placeholders across §10.7 + §16 by replacing
+  with real tests).
+- **3.6 min wall-clock at 4 workers** (5 cascading "did not run"
+  on this run, all from the §5.4 / RBAC settings flake group).
 
 **Known intermittent flake — §22/§24 cross-file race:** §22 settings
 mutations (timezone + VAT toggle) modify org config that §24 invoice
@@ -189,7 +234,7 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~132 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices, +3 §8.6+§8.8.9-10 cancel/credit, +2 §17.5 cron, +3 §26.10 reply, +1 §26.11 prefs, +1 §15.4 outstanding, +1 §11.4 unlinked teacher |
+| Genuinely behavioural tests (full journeys) | ~146 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices, +3 §8.6+§8.8.9-10 cancel/credit, +2 §17.5 cron, +3 §26.10 reply, +1 §26.11 prefs, +1 §15.4 outstanding, +1 §11.4 unlinked teacher, +5 §16.3 staff send-message (s6), +5 §10.7 csv-import-execute (s6), +4 §15.4 reports data-correctness (s6) |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
@@ -401,68 +446,106 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
-### What's done at end of 5th session
+### What's done at end of 6th session
 
 | Section | Real tests | Coverage | Notes |
 |---|---:|---:|---|
+| §10 Students (incl. §10.7 CSV import) | 7 | ~60% | §10.7 5 tests via csv-import-execute (Lauren-critical) done |
 | §13 Invoices | 10 | ~70% | mature |
 | §14 Invoice detail | 12 | ~75% | mature |
+| §15 Reports | 5 + 9 smoke | ~50% | §15.4.7 Outstanding + §15.4 (LessonsDelivered, Cancellations, Attendance, Revenue) done; Payroll / Utilisation / TeacherPerformance deferred to s7 |
+| §16 Messages | 5 + smoke | ~50% | §16.3 staff-side send-message contract done; bulk + threads + internal still UI-driven |
+| §17 Practice | 5 + cron | ~75% | mature |
+| §20 Continuation | 3 | ~50% | DEFERRED AGAIN, ~6-8 hours — must be the dedicated focus of session 7 |
 | §24 Stripe (incl. §24.12 true-replay) | 12 | ~70% | mature; §24.4/6/8/9/11 deferred — Stripe CLI / OAuth / mobile |
 | §8 Lesson CRUD | 9 | ~65% | §8.5 recurring + §8.6 cancel + §8.8.9-10 auto-credit done |
 | §11 Teachers | 1 + RBAC | ~30% | §11.4.1 unlinked-teacher contract done; invite/archive deferred |
-| §15 Reports | 1 + 9 smoke | ~25% | §15.4.7 Outstanding data correctness done; 7 reports still smoke-only |
-| §17 Practice | 5 + cron | ~75% | §17.4 streaks + §17.5.5-6 cron done |
-| §20 Continuation | 3 | ~50% | DEFERRED, ~6-8 hours |
 | §26 Parent portal | 30+ | ~95% | essentially complete; only §26.8 Resources + §26.9.2-3 installments remain |
 | §32 Security trigger guards | 9 | ~80% | mature |
 
-Catalog overall: **~47%** (was 25% five sessions ago).
+Catalog overall: **~50%** (was 25% six sessions ago).
 
-### Priority order — 6th session pickup
+### Priority order — 7th session pickup
 
-1. **§16 Messages (staff-side) — UNTOUCHED** (5 fixmes, 4 schema-only
-   tests, no real send-message backend coverage). Highest value
-   gap-filler now that §26 is done. The pattern is exactly what
-   §26.10 reply did but as the staff role: validate `send-message`
-   edge fn happy path + 400 missing fields + 400 oversized + 403
-   non-staff caller + 403 cross-org recipient. Body limits per the
-   fn source: subject ≤500 chars, body ≤10000 chars. ~1-2h.
-2. **§10 Students CSV import (§10.7) — UNTOUCHED** (5 catalog cases,
-   no tests). Lauren-critical for onboarding — she'll bulk-import
-   her 250 students at launch. Drive `csv-import-execute` edge fn
-   directly (dryRun + execute paths). Match by mapping shape; assert
-   counts; cleanup via `undo_student_import` RPC. ~2-3h.
-3. **§15.4 data correctness for the other 7 reports** —
-   Revenue, Payroll, Lessons delivered, Cancellations, Attendance,
-   Utilisation, Teacher performance. Pattern is established in
-   §15.4.7 Outstanding (commit `6205880`) — seed minimal data,
-   render report as owner, assert specific row visible. Each one is
-   ~30 min once you've got the pattern. ~3-4h for all 7, but they're
-   independent so any subset is shippable.
-4. **§8 remaining cases** (§8.8.3 conflict-detection blocks save,
-   §8.8.12 closure-date warning banner, §8.8.14 weekly recurrence
-   count). All UI-driven; brittle. Defer unless quiet.
+**Item 1 below is non-negotiable. It has been deferred TWICE
+(sessions 4 + 5 + 6). Every additional defer pushes Lauren's term-end
+critical path closer.**
+
+1. **§20 Continuation (term rollover) — DEDICATED SESSION**
+   (~6-8 hours). Needs term boundaries + continuation_run +
+   continuation_responses seeded. The §26.12-13 tests already
+   cover the parent-response side (a5dec8b + 65bde4e fix); what's
+   missing is the run-creation backend (`create-continuation-run`
+   edge fn) and `bulk-process-continuation`. Lauren has flagged
+   continuation as "very important" + term-end critical per
+   LESSONLOOP_V2_PLAN.md §3.1.
+
+   **Do this BEFORE picking up smaller items.** If you're tempted
+   to start §22/§27 first because they're shorter, resist —
+   continuation has lost three sessions to that exact reasoning.
+
+2. **§22 Settings tabs** — currently 5 tests covering basic load
+   + timezone + VAT. 24 tabs total; many are launch-hidden per v2
+   plan. Test only launch-visible (organisation, payments, billing,
+   reschedule policies, term continuation, locations, instruments).
+   ~3-4h for full sweep.
+
+3. **§27 Email & notifications** — notification_preferences are
+   seeded and queryable (§26.11 lands the upsert path). Value-add:
+   assert a `send-templated-email` edge fn (or equivalent) HONORS
+   the preference flag — i.e. when `email_invoice_reminders=false`,
+   the reminder fn doesn't send. ~1-2h.
+
+4. **§15.4 remaining 3 reports** — Payroll (needs teacher pay rate
+   on org's owner teacher), Utilisation (needs room capacity +
+   closure_dates seeds), TeacherPerformance (FeatureGate-protected
+   at TeacherPerformance.tsx:101 — may need to enable
+   `teacher_performance` for the e2e org). ~1-2h each.
+
 5. **§26.9 payment-plan installments** (§26.9.2 pay one installment,
    §26.9.3 pay all remaining). Needs invoice_installments seed
-   path; payment-plan invoice is its own setup chain. ~2-3h.
-6. **§20 Continuation (term rollover)** — STILL DEFERRED. Needs
-   term boundaries + continuation_run + response rows seeded.
-   ~6-8 hours. The §26.12-13 tests already cover the response
-   side; what's missing is the run-creation backend.
-7. **§22 Settings tabs** — currently 5 tests covering basic load
-   + timezone + VAT. 24 tabs total; many are launch-hidden per v2
-   plan. Test only the launch-visible ones (organisation, payments,
-   billing, reschedule policies, term continuation, locations,
-   instruments). ~3-4h for full sweep.
-8. **§27 Email & notifications** — notification_preferences
-   are now seeded and queryable (§26.11 lands the upsert path).
-   Real value-add: assert a `send-templated-email` edge fn (or
-   equivalent) HONORS the preference flag — i.e. when
-   `email_invoice_reminders=false`, the reminder fn doesn't
-   send. ~1-2h.
-9. **§9 Daily register** — §9.3.4 check_attendance_not_future
-   is already covered in §32.7. The other §9 cases are UI-heavy
-   (Mark Present, reason picker, Mark Day Complete locks). Defer.
+   chain. ~2-3h.
+
+**If quiet (only after items 1-5 ship):**
+
+6. **THE 13-BRITTLE JWT-STALE FIX** — pseudo-code in
+   [Known issues](#known-issues). ~30 min for the beforeEach JWT
+   injection hook. Flake count is creeping (1-3 → 1-5 sessions);
+   each future session pays ~15 min in "is this flake real?"
+   friction. Worth fixing once.
+
+7. **§8 remaining cases** (§8.8.3 conflict-detection blocks save,
+   §8.8.12 closure-date warning banner, §8.8.14 weekly recurrence
+   count). All UI-driven; brittle.
+
+8. **§9 Daily register** — §9.3.4 check_attendance_not_future
+   is already covered in §32.7. The other §9 cases are UI-heavy.
+
+### Audit/MASTER.md hygiene status (end of 6th session)
+
+Updated rows:
+- §16 Send single message (with finding link)
+- §10.7 CSV import (execute) — tagged PROMOTABLE
+- §15 Revenue / Outstanding / Lessons delivered / Cancellations /
+  Attendance — Outstanding tagged PROMOTABLE
+- §26 Parent portal cluster: 7 of 9 rows tagged PROMOTABLE
+- §17 Practice tracker (staff) + Portal practice
+- §13 Invoices list / §14 Invoice detail
+- §24 Stripe webhook (with §24.12 true-replay reference)
+- 2 cron rows: reset_stale_streaks + complete_expired_assignments
+- Header bumped to 2026-05-09
+
+Still stale 🟡 (target session 7 hygiene):
+- §11 Teachers (only §11.4.1 covered; rows still 🟡)
+- §20 Continuation (will be flipped after session 7's dedicated work)
+- §22 Settings, §27 Email/notifications (no real coverage yet)
+- §15 Utilisation / Payroll / TeacherPerformance (deferred to s7)
+- All cron rows other than the 2 above
+- §32 security trigger guards rows (mature but not yet tagged)
+
+**~25 of ~180 rows now have E2E real proof appended.** Promotion
+🟡→🟢 is deferred to a focused Jamie review pass once a critical
+mass of PROMOTABLE tags accumulates.
 
 ### Gaps that are explicitly NOT priorities
 
@@ -663,6 +746,35 @@ user, not the org owner), the SELECT returns an empty array even
 though the row exists. Use a service-role curl helper instead —
 see `selectServiceRole` in `§26.11` describe.
 
+### ❌ Don't `require()` in spec files — they're ESM
+
+Caught me writing `const { execSync } = require('node:child_process')`
+inside helpers in `10-students.spec.ts` (6th session). Playwright runs
+spec files as native ESM under tsx — `require` is undefined and the
+test fails with `ReferenceError: require is not defined` BEFORE any
+assertions run. Lift the imports to the top of the file (`import
+{ execSync } from 'node:child_process'`).
+
+### ❌ Don't forget `attendance_records.recorded_by` (NOT NULL, no default)
+
+Caught me on the §15.4 Cancellations + Attendance tests (6th session).
+First runs failed with the page rendering empty-state because my
+inserts were silently rejected. The fn's `supabaseInsert` returns
+null on error but doesn't throw — the test continues, then asserts
+on absent text and times out 15s later. **Lesson:** for any
+attendance_records insert, pass `recorded_by: getOwnerUserId()` (or
+similar uuid). Also a good idea to wrap supabaseInsert in
+`if (!row?.id) throw new Error(...)` so future seed failures
+surface immediately.
+
+### ❌ Don't forget the trg_cleanup_attendance_on_cancel order
+
+When seeding a cancelled lesson + attendance_records together: PATCH
+the lesson to `status=cancelled` FIRST, then INSERT the attendance
+row. The cleanup trigger fires on the lesson UPDATE → cancelled
+transition, not on subsequent attendance inserts. Reverse the order
+and the trigger nukes your seed before you can assert on it.
+
 ### ❌ Don't forget the `E2E_PARENT_GUARDIAN_ID` constant in new describes
 
 Each top-level `test.describe` block in `26-parent-portal.spec.ts`
@@ -855,6 +967,17 @@ the same shape.
 | `§8.6` describe | `patchRows(table, filter, body)` | Generic service-role PATCH used by `patchPolicyEligibility` and the §8.8.9 lesson-cancel via direct curl. |
 | `§17.5` describe | `callRpcAsServiceRole(fnName)` | POST to `/rest/v1/rpc/<name>` with empty body via service-role key. The cron functions (`reset_stale_streaks`, `complete_expired_assignments`) aren't SECURITY DEFINER and aren't callable by anon/auth, so the RPC has to come from service-role. |
 | `§15.4` describe | (re-uses `createTestInvoice` + `patchInvoiceStatus`) | Pattern for report data-correctness: seed minimal data, render report as owner, assert specific row visible. Generalisable to the other 7 reports — just match the page's data flow. |
+
+### Inline helpers worth knowing about (6th session)
+
+| Where | Helper | Pattern it solves |
+|---|---|---|
+| `§16.3` describe | `signInForToken(email, password)` + `invokeEdgeFn(fn, token, body)` | Inline copies of the §24 helpers; cover staff-side edge-fn calls (e.g. send-message). Don't import across spec files — copy them. |
+| `§10.7` describe | `signInForToken` + `invokeEdgeFn` (same pattern) | Same shape but with longer `timeout: 60_000` + `maxBuffer: 8MB` for csv-import-execute, which can return larger payloads on big batches. |
+| `§10.7` describe | `row(overrides)` + `MAPPINGS` | Build a csv-import payload row with all `ImportRow` fields defaulted to empty string; mappings object is just truthy (the fn doesn't deeply validate field shape). |
+| `§15.4` describe | `midLastMonth()` | Returns Date set to the 15th of the previous calendar month, UTC. Safe seed time for any "last month" report without timezone edge cases. |
+| `§15.4` describe | inline `execSync` curl PATCH for lesson status | seedLesson supports `status` directly but defaults to 'scheduled'. PATCH to 'completed' / 'cancelled' via service-role goes through the audit trigger but no transition guard. Use inline curl rather than rolling a new helper — only 4 lines. |
+| `§16.3` cross-org test | inline service-role insert into `organisations` (name + created_by required, all other cols default) + `guardians` (org_id + full_name required) | Lightweight throwaway-org pattern for cross-tenant 403 tests where the recipient must exist in a different org. Cleanup is two `supabaseDelete` calls (guardian first, then org). |
 
 ---
 
