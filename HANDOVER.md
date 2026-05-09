@@ -58,7 +58,7 @@
   cron's idempotence on already-clean rows. Status vs v2 launch
   scope: launch-in-scope (Practice tracking + streaks per §3.1)
   but cron behaviour isn't first-day critical.
-- _next_ — test(e2e): §26.10 reply on existing thread (3 tests:
+- 10ca3ad — test(e2e): §26.10 reply on existing thread (3 tests:
   happy path with thread_id+subject "Re: …" derivation, 404 on
   missing parent_message_id, 403 cross-tenant) + §26.11
   PortalProfile notification preferences (1 test: toggle switch
