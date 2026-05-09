@@ -19,7 +19,7 @@
   18 events configured (was 6) — closes the P0 production gap previously
   flagged in the §24 progress notes. No commit (Stripe Dashboard config).
 - 0f91088 — §26.10 parent compose thread (5 tests)
-- `<this commit>` — §26.12/§26.13 continuation response (4 tests)
+- a5dec8b — §26.12/§26.13 continuation response (4 tests)
 
 ---
 
