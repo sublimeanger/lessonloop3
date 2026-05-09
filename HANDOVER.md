@@ -58,7 +58,7 @@
   cron's idempotence on already-clean rows. Status vs v2 launch
   scope: launch-in-scope (Practice tracking + streaks per §3.1)
   but cron behaviour isn't first-day critical.
-- _next_ — test(e2e): §11.4.1 unlinked teacher contract (1 test).
+- 6a0bbab — test(e2e): §11.4.1 unlinked teacher contract (1 test).
   Verifies that inserting a `teachers` row without user_id leaves
   the row in the unlinked state — no auto-created org_memberships
   row, no `invites` row keyed on the email, but the
