@@ -491,6 +491,7 @@ test.describe('§26.4 — Make-up offer respond', () => {
 
 test.describe('§26.10 — Parent compose new thread', () => {
   const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
+  const E2E_PARENT_GUARDIAN_ID = '44821141-05be-4475-ad1f-a9532943a355';
   const SUPABASE_URL = process.env.E2E_SUPABASE_URL!;
   const ANON = process.env.E2E_SUPABASE_ANON_KEY!;
   const PARENT_EMAIL = process.env.E2E_PARENT_EMAIL!;
@@ -621,6 +622,315 @@ test.describe('§26.10 — Parent compose new thread', () => {
     });
     expect(res.status).toBe(403);
     expect(JSON.stringify(res.body)).toMatch(/[Nn]ot a parent in this organisation/);
+  });
+
+  // ── Reply on existing thread ──────────────────────────────────────
+  // Catalog §26.10 specifies "reply on existing thread" alongside
+  // compose. The fn distinguishes by `parent_message_id`: when set,
+  // it's a reply (looks up the original, derives subject "Re: …",
+  // sets thread_id from original.thread_id || original.id, and
+  // routes the new message back to the original sender). These three
+  // tests exercise the happy path + the two rejection branches in
+  // index.ts:127-137 (msg not found, parent not allowed to reply).
+
+  /** Seed a staff→parent message_log row that a parent reply test can
+   *  point parent_message_id at. Returns the row id + a cleanup
+   *  callable. recipient_id is a real guardian id so the fn's
+   *  permission check passes. */
+  function seedStaffMessageToParent(opts: {
+    testId: string;
+    recipientGuardianId: string;
+    recipientEmail: string;
+    senderUserId: string;
+  }): { id: string; subject: string; cleanup: () => void } {
+    const subject = `${opts.testId} from staff`;
+    const row = supabaseInsert('message_log', {
+      org_id: E2E_ORG_ID,
+      channel: 'email',
+      message_type: 'staff_to_parent',
+      subject,
+      body: `${opts.testId} body — original message from staff`,
+      sender_user_id: opts.senderUserId,
+      recipient_type: 'guardian',
+      recipient_id: opts.recipientGuardianId,
+      recipient_email: opts.recipientEmail,
+      status: 'sent',
+    });
+    if (!row?.id) throw new Error(`seedStaffMessage failed: ${JSON.stringify(row)}`);
+    return {
+      id: row.id,
+      subject,
+      cleanup: () => {
+        // Delete replies that point at this message first (cascade
+        // protection — parent_message_id has no ON DELETE CASCADE).
+        supabaseDelete('message_log', `parent_message_id=eq.${row.id}`);
+        supabaseDelete('message_log', `id=eq.${row.id}`);
+      },
+    };
+  }
+
+  test('reply happy path: parent replies to staff thread → reply row with thread_id + subject "Re: …"', async () => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    // Owner is the staff sender; resolve their user id + email so the
+    // seed row passes the recipient_email NOT NULL constraint and the
+    // fn can route the reply back to the owner via sender_user_id.
+    const ownerUserId = getOwnerUserId();
+    const E2E_PARENT_EMAIL_VAL = process.env.E2E_PARENT_EMAIL!;
+    const seed = seedStaffMessageToParent({
+      testId,
+      recipientGuardianId: E2E_PARENT_GUARDIAN_ID,
+      recipientEmail: E2E_PARENT_EMAIL_VAL,
+      senderUserId: ownerUserId,
+    });
+
+    try {
+      const token = getParentToken();
+      const replyBody = `${testId} — parent reply body, please confirm.`;
+      const res = callEdgeFn('send-parent-message', token, {
+        org_id: E2E_ORG_ID,
+        parent_message_id: seed.id,
+        body: replyBody,
+        // Subject is intentionally omitted — the fn derives "Re: <orig>".
+      });
+      if (res.status !== 200) {
+        throw new Error(
+          `reply send-parent-message ${res.status}: ${JSON.stringify(res.body).slice(0, 300)}`,
+        );
+      }
+
+      // The reply lands as a new message_log row with parent_message_id
+      // pointing at the seed and thread_id = seed.id (since seed.thread_id
+      // was NULL, the fn falls back to original.id at index.ts:139).
+      const replies = supabaseSelect(
+        'message_log',
+        `org_id=eq.${E2E_ORG_ID}&parent_message_id=eq.${seed.id}` +
+          `&select=id,subject,body,thread_id,parent_message_id,message_type,sender_user_id,recipient_id`,
+      );
+      expect(replies.length).toBe(1);
+      const reply = replies[0];
+
+      // Subject is "Re: <original>" (fn dedupes if already starts with "Re:").
+      expect(reply.subject).toBe(`Re: ${seed.subject}`);
+      // thread_id falls back to original.id when original.thread_id is NULL.
+      expect(reply.thread_id).toBe(seed.id);
+      // parent_message_id is the seed.
+      expect(reply.parent_message_id).toBe(seed.id);
+      // message_type is 'parent_reply' for the reply path.
+      expect(reply.message_type).toBe('parent_reply');
+      // Body unchanged from what we sent (server-side trim preserves
+      // the testId substring even if HTML-escape rewraps).
+      expect(reply.body).toContain(testId);
+      // Routes back to the original sender (the owner staff user).
+      expect(reply.recipient_id).toBe(ownerUserId);
+    } finally {
+      seed.cleanup();
+    }
+  });
+
+  test('reply 404: parent_message_id pointing at a non-existent row → 404', async () => {
+    const token = getParentToken();
+    // Syntactically-valid UUID that doesn't exist. The fn's lookup at
+    // index.ts:120-128 returns msgError; handler returns 404.
+    const fakeMsgId = '00000000-0000-4000-9000-000000000abc';
+    const res = callEdgeFn('send-parent-message', token, {
+      org_id: E2E_ORG_ID,
+      parent_message_id: fakeMsgId,
+      body: 'reply to a ghost message',
+    });
+    expect(res.status).toBe(404);
+    expect(JSON.stringify(res.body)).toMatch(/[Oo]riginal message not found/);
+  });
+
+  test('reply cross-tenant: parent2 cannot reply to a thread addressed to parent1 → 403', async () => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const ownerUserId = getOwnerUserId();
+    const E2E_PARENT_EMAIL_VAL = process.env.E2E_PARENT_EMAIL!;
+    // Original message is addressed to parent1's guardian.
+    const seed = seedStaffMessageToParent({
+      testId,
+      recipientGuardianId: E2E_PARENT_GUARDIAN_ID,
+      recipientEmail: E2E_PARENT_EMAIL_VAL,
+      senderUserId: ownerUserId,
+    });
+
+    try {
+      // Sign in as parent2 instead of parent1, then try to reply.
+      const PARENT2_EMAIL = process.env.E2E_PARENT2_EMAIL!;
+      const PARENT2_PASSWORD = process.env.E2E_PARENT2_PASSWORD!;
+      const tmp = `/tmp/sb-26-10-p2-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+      fs.writeFileSync(tmp, JSON.stringify({ email: PARENT2_EMAIL, password: PARENT2_PASSWORD }));
+      let parent2Token: string;
+      try {
+        const out = execSync(
+          `curl -s -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" ` +
+            `-H "apikey: ${ANON}" -H "Content-Type: application/json" -d @${tmp}`,
+          { encoding: 'utf-8', timeout: 15_000 },
+        );
+        const session = JSON.parse(out);
+        parent2Token = session.access_token;
+        if (!parent2Token) throw new Error(`Parent2 sign-in failed: ${out.slice(0, 200)}`);
+      } finally {
+        try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+      }
+
+      const res = callEdgeFn('send-parent-message', parent2Token, {
+        org_id: E2E_ORG_ID,
+        parent_message_id: seed.id,
+        body: `${testId} parent2 attempt`,
+      });
+
+      // Two possible rejection statuses:
+      //   - 403 from "You cannot reply to this message" (the recipient
+      //     check — parent2 isn't the recipient and isn't the sender).
+      //   - 403 from "Not a parent in this organisation" if parent2
+      //     happens to have no guardian record in the e2e org. Either
+      //     is a legitimate cross-tenant rejection.
+      expect(res.status).toBe(403);
+      const txt = JSON.stringify(res.body);
+      expect(txt).toMatch(/cannot reply to this message|[Nn]ot a parent in this organisation/);
+
+      // Either way, no reply row was inserted.
+      const replies = supabaseSelect(
+        'message_log',
+        `org_id=eq.${E2E_ORG_ID}&parent_message_id=eq.${seed.id}&select=id`,
+      );
+      expect(replies.length).toBe(0);
+    } finally {
+      seed.cleanup();
+    }
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// §26.11 — PortalProfile (notification preferences)
+// ────────────────────────────────────────────────────────────────────
+//
+// PortalProfile lets parents edit name/phone, manage saved payment
+// methods, and toggle 5 email notification preferences:
+// email_lesson_reminders, email_invoice_reminders,
+// email_payment_receipts, email_makeup_offers, email_marketing.
+//
+// The Save button calls supabase.from('notification_preferences').
+// upsert({ user_id, org_id, ...prefs }, onConflict: 'org_id,user_id').
+// This test exercises the upsert path: toggle a switch, click Save,
+// assert the DB row reflects the change. We restore the prefs in a
+// finally to keep the e2e parent's state idempotent across runs.
+
+test.describe('§26.11 — PortalProfile notification preferences', () => {
+  const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
+  const E2E_PARENT_USER_ID = '85628488-f47f-4178-84f0-3425aad6e75e';
+
+  /** Service-role SELECT against notification_preferences. Default
+   *  supabaseSelect uses the owner JWT, but `Users can view own
+   *  notification preferences` RLS only lets the row's user_id select
+   *  it — owner sees nothing. We need service-role to inspect the
+   *  parent's row from the test harness. */
+  function selectServiceRole(table: string, query: string): any[] {
+    const url = process.env.E2E_SUPABASE_URL!;
+    const key = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+    if (!key) throw new Error('E2E_SUPABASE_SERVICE_ROLE_KEY required');
+    const result = execSync(
+      `curl -s "${url}/rest/v1/${table}?${query}" ` +
+        `-H "apikey: ${key}" -H "Authorization: Bearer ${key}"`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    try { return JSON.parse(result); } catch { return []; }
+  }
+
+  test('toggle "Make-up lesson offers" + Save → notification_preferences row persists the new value', async ({
+    browser,
+  }) => {
+    // Capture pre-state so we can restore deterministically. The
+    // upsert keys on (org_id, user_id), so checking the existing row
+    // is the right shape.
+    const before = selectServiceRole(
+      'notification_preferences',
+      `org_id=eq.${E2E_ORG_ID}&user_id=eq.${E2E_PARENT_USER_ID}` +
+        `&select=email_makeup_offers,email_lesson_reminders`,
+    );
+    const startedFromExisting = before.length > 0;
+    const initialMakeup =
+      before[0]?.email_makeup_offers === undefined ? true : before[0].email_makeup_offers;
+
+    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    const page = await ctx.newPage();
+    try {
+      await goTo(page, '/portal/profile');
+      await assertNoErrorBoundary(page);
+
+      // The notification preferences card has 5 Switch components, each
+      // labeled by the prefLabels copy. "Make-up lesson offers" is one
+      // of the 5; pick that toggle by its visible label and click the
+      // adjacent Switch button (Radix Switch renders as
+      // role="switch").
+      const makeupRow = page
+        .locator('div')
+        .filter({ has: page.getByText('Make-up lesson offers') })
+        .filter({ has: page.locator('[role="switch"]') })
+        .last();
+      const switchEl = makeupRow.locator('[role="switch"]').first();
+      await expect(switchEl).toBeVisible({ timeout: 15_000 });
+
+      // Click toggles the value. State is "checked" before/after — read
+      // the data-state attribute to confirm the toggle landed.
+      const stateBefore = await switchEl.getAttribute('data-state');
+      await switchEl.click();
+      const stateAfter = await switchEl.getAttribute('data-state');
+      expect(stateAfter).not.toBe(stateBefore);
+
+      // Save button only enabled when prefsDirty; the toggle should
+      // have set the dirty flag.
+      const saveBtn = page.locator('button:has-text("Save Preferences")').first();
+      await expect(saveBtn).toBeEnabled({ timeout: 5_000 });
+      await saveBtn.click();
+
+      // Poll the DB for the new value. The upsert lands as one row
+      // matching (org_id, user_id); the toggled bool flips. Read
+      // via service-role — RLS hides the parent's row from owner.
+      await expect
+        .poll(
+          () => {
+            const rows = selectServiceRole(
+              'notification_preferences',
+              `org_id=eq.${E2E_ORG_ID}&user_id=eq.${E2E_PARENT_USER_ID}` +
+                `&select=email_makeup_offers`,
+            );
+            return rows[0]?.email_makeup_offers;
+          },
+          { timeout: 10_000, intervals: [500, 1000, 2000] },
+        )
+        .toBe(!initialMakeup);
+    } finally {
+      await ctx.close();
+      // Restore: if we toggled an existing row, flip back. If we
+      // created a new row (no prior prefs), the row was created with
+      // all defaults true; resetting email_makeup_offers to its
+      // initial true is correct either way.
+      if (startedFromExisting) {
+        const url = process.env.E2E_SUPABASE_URL!;
+        const key = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+        const tmp = `/tmp/sb-26-11-restore-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+        fs.writeFileSync(tmp, JSON.stringify({ email_makeup_offers: initialMakeup }));
+        try {
+          execSync(
+            `curl -s -X PATCH "${url}/rest/v1/notification_preferences?` +
+              `org_id=eq.${E2E_ORG_ID}&user_id=eq.${E2E_PARENT_USER_ID}" ` +
+              `-H "apikey: ${key}" -H "Authorization: Bearer ${key}" ` +
+              `-H "Content-Type: application/json" -H "Prefer: return=minimal" -d @${tmp}`,
+            { encoding: 'utf-8', timeout: 15_000 },
+          );
+        } finally {
+          try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+        }
+      } else {
+        // No prior prefs row — drop the newly-created row so the next
+        // run starts from the same blank slate.
+        supabaseDelete(
+          'notification_preferences',
+          `org_id=eq.${E2E_ORG_ID}&user_id=eq.${E2E_PARENT_USER_ID}`,
+        );
+      }
+    }
   });
 });
 
