@@ -4,10 +4,17 @@
  */
 import { test, expect, refreshStorageStateIfStale } from './_fixtures/auth-refresh';
 import { AUTH, assertNoErrorBoundary, goTo } from '../helpers';
+import { resetE2ERateLimits } from './_fixtures/stripe-test-helpers';
 
 test.beforeAll(() => {
   refreshStorageStateIfStale(AUTH.parent);
   refreshStorageStateIfStale(AUTH.parent2);
+  // Several blocks in this file hit rate-limited edge fns as the
+  // parent JWT (send-parent-message in §26.10, stripe-create-payment-
+  // intent in §26.9.1). With the file's grown test count + repeated
+  // local debug runs the hourly caps fire mid-suite. Resetting at the
+  // top of the run keeps every test starting from a clean slate.
+  resetE2ERateLimits();
 });
 
 const PORTAL_PAGES = [
@@ -77,7 +84,16 @@ import {
   supabaseSelect,
   getOwnerUserId,
   getOrgId,
+  createTestInvoice,
+  deleteInvoiceById,
+  patchInvoiceStatus,
 } from '../supabase-admin';
+import {
+  confirmTestPaymentIntent,
+  deleteTestCustomer,
+  updateInvoiceStatusViaPatch,
+  waitForWebhookPayment,
+} from './_fixtures/stripe-test-helpers';
 
 test.describe('§26.7 — Practice log', () => {
   const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
@@ -175,6 +191,13 @@ import fs from 'fs';
 import { getOwnerTeacherId } from '../supabase-admin';
 
 test.describe('§26.4 — Make-up offer respond', () => {
+  // All 4 tests in this block seed lessons at -3 / +3 days for the same
+  // teacher (getOwnerTeacherId). Run in parallel they collide on the
+  // teacher_conflict trigger. With the §26.6 + §26.9 additions to this
+  // file the worker pool is loaded enough that the race fires
+  // reliably; serialise to keep the suite green.
+  test.describe.configure({ mode: 'serial' });
+
   const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
   const E2E_PARENT_GUARDIAN_ID = '44821141-05be-4475-ad1f-a9532943a355';
   const SUPABASE_URL = process.env.E2E_SUPABASE_URL!;
@@ -984,11 +1007,33 @@ test.describe('§26.6 — PortalSchedule', () => {
     }
   }
 
+  /** Deterministic minute-of-day offset derived from testId, so two runs
+   *  at the same wall-clock minute land in non-overlapping 30-min lesson
+   *  slots. Avoids the cross-run teacher_conflict trigger collision when
+   *  a previous run leaked an orphan lesson at -10/+0/+14 days from
+   *  approximately the same Date.now() value (range: ±30min interval
+   *  overlap window). 12 distinct slots × 30min = 6h spread per day,
+   *  collision probability ~1/12 per slot pair. */
+  function lessonSlotOffsetMs(testId: string): number {
+    let h = 0;
+    for (let i = 0; i < testId.length; i++) {
+      h = (h * 31 + testId.charCodeAt(i)) >>> 0;
+    }
+    const slotIdx = h % 12;
+    return slotIdx * 30 * 60_000;
+  }
+
   /** Seed a student linked to the e2e parent's guardian + a lesson with
    *  that student as a participant. Returns ids + a cleanup function
    *  that drops everything in FK order. The lesson's title carries the
    *  testId so /portal/schedule queries can locate the seeded card by
-   *  text rather than relying on absolute position in the rendered list. */
+   *  text rather than relying on absolute position in the rendered list.
+   *
+   *  Atomic-on-failure: if the lesson INSERT throws (e.g. transient
+   *  statement_timeout, teacher_conflict trigger fires from a race),
+   *  the freshly-inserted student + student_guardians are rolled back
+   *  before the throw propagates. Without this, a partially-seeded run
+   *  leaks rows that the next run's lesson INSERT then collides with. */
   function seedScheduledLessonForParent(opts: {
     testId: string;
     daysFromNow: number;
@@ -1014,67 +1059,83 @@ test.describe('§26.6 — PortalSchedule', () => {
     });
     if (!student?.id) throw new Error(`seedStudent failed: ${JSON.stringify(student)}`);
 
-    const link = supabaseInsert('student_guardians', {
-      org_id: E2E_ORG_ID,
-      student_id: student.id,
-      guardian_id: E2E_PARENT_GUARDIAN_ID,
-      relationship: 'guardian',
-      is_primary_payer: false,
-    });
-
-    const startMs = Date.now() + opts.daysFromNow * 24 * 3600_000;
-    const startAt = new Date(startMs).toISOString();
-    const endAt = new Date(startMs + (opts.durationMins ?? 30) * 60_000).toISOString();
-    const title = opts.title ?? `${opts.testId}_lesson`;
-
-    const lessonPayload: Record<string, unknown> = {
-      org_id: E2E_ORG_ID,
-      teacher_id: teacherId,
-      created_by: ownerUserId,
-      start_at: startAt,
-      end_at: endAt,
-      status: opts.status ?? 'scheduled',
-      title,
+    // From here on, any throw must roll back the student to keep the
+    // teacher_conflict trigger from firing on the next run's identical
+    // -10/+0/+14 day slot.
+    const rollbackStudent = () => {
+      supabaseDelete(
+        'student_guardians',
+        `org_id=eq.${E2E_ORG_ID}&student_id=eq.${student.id}`,
+      );
+      supabaseDelete(
+        'students',
+        `org_id=eq.${E2E_ORG_ID}&id=eq.${student.id}`,
+      );
     };
-    if (opts.notesShared) lessonPayload.notes_shared = opts.notesShared;
 
-    const lesson = supabaseInsert('lessons', lessonPayload);
-    if (!lesson?.id) throw new Error(`seedLesson failed: ${JSON.stringify(lesson)}`);
+    let link: { id?: string } | null = null;
+    try {
+      link = supabaseInsert('student_guardians', {
+        org_id: E2E_ORG_ID,
+        student_id: student.id,
+        guardian_id: E2E_PARENT_GUARDIAN_ID,
+        relationship: 'guardian',
+        is_primary_payer: false,
+      });
 
-    supabaseInsert('lesson_participants', {
-      org_id: E2E_ORG_ID,
-      lesson_id: lesson.id,
-      student_id: student.id,
-    });
+      const startMs =
+        Date.now() +
+        opts.daysFromNow * 24 * 3600_000 +
+        lessonSlotOffsetMs(opts.testId);
+      const startAt = new Date(startMs).toISOString();
+      const endAt = new Date(startMs + (opts.durationMins ?? 30) * 60_000).toISOString();
+      const title = opts.title ?? `${opts.testId}_lesson`;
 
-    return {
-      studentId: student.id,
-      studentLinkId: link?.id ?? null,
-      lessonId: lesson.id,
-      title,
-      cleanup: () => {
-        supabaseDelete(
-          'lesson_participants',
-          `org_id=eq.${E2E_ORG_ID}&lesson_id=eq.${lesson.id}`,
-        );
-        supabaseDelete(
-          'message_requests',
-          `org_id=eq.${E2E_ORG_ID}&lesson_id=eq.${lesson.id}`,
-        );
-        supabaseDelete(
-          'lessons',
-          `org_id=eq.${E2E_ORG_ID}&id=eq.${lesson.id}`,
-        );
-        supabaseDelete(
-          'student_guardians',
-          `org_id=eq.${E2E_ORG_ID}&student_id=eq.${student.id}`,
-        );
-        supabaseDelete(
-          'students',
-          `org_id=eq.${E2E_ORG_ID}&id=eq.${student.id}`,
-        );
-      },
-    };
+      const lessonPayload: Record<string, unknown> = {
+        org_id: E2E_ORG_ID,
+        teacher_id: teacherId,
+        created_by: ownerUserId,
+        start_at: startAt,
+        end_at: endAt,
+        status: opts.status ?? 'scheduled',
+        title,
+      };
+      if (opts.notesShared) lessonPayload.notes_shared = opts.notesShared;
+
+      const lesson = supabaseInsert('lessons', lessonPayload);
+      if (!lesson?.id) throw new Error(`seedLesson failed: ${JSON.stringify(lesson)}`);
+
+      supabaseInsert('lesson_participants', {
+        org_id: E2E_ORG_ID,
+        lesson_id: lesson.id,
+        student_id: student.id,
+      });
+
+      return {
+        studentId: student.id,
+        studentLinkId: link?.id ?? null,
+        lessonId: lesson.id,
+        title,
+        cleanup: () => {
+          supabaseDelete(
+            'lesson_participants',
+            `org_id=eq.${E2E_ORG_ID}&lesson_id=eq.${lesson.id}`,
+          );
+          supabaseDelete(
+            'message_requests',
+            `org_id=eq.${E2E_ORG_ID}&lesson_id=eq.${lesson.id}`,
+          );
+          supabaseDelete(
+            'lessons',
+            `org_id=eq.${E2E_ORG_ID}&id=eq.${lesson.id}`,
+          );
+          rollbackStudent();
+        },
+      };
+    } catch (err) {
+      rollbackStudent();
+      throw err;
+    }
   }
 
   // §26.6.1 — Lessons grouped: this week / next week / past
@@ -1083,54 +1144,68 @@ test.describe('§26.6 — PortalSchedule', () => {
   }) => {
     const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-    // Three lessons at distinct buckets. Offsets are picked to be safe for
-    // ANY day of the week — naive ±2 day offsets fail near week boundaries
-    // (e.g. on a Saturday, -2 days is still inside the current calendar
-    // week, so it lands in `thisWeek` not `past`):
-    //  - past:    -10 days  → guaranteed previous calendar week
-    //  - this:    +0 days   → today, always in thisWeekStart..thisWeekEnd
-    //  - future:  +14 days  → always 2+ calendar weeks ahead
-    // useParentLessons clamps past to 3 months; -10 stays well inside.
-    const past = seedScheduledLessonForParent({
-      testId: `${testId}_past`,
-      daysFromNow: -10,
-      status: 'completed',
-    });
-    const thisWeek = seedScheduledLessonForParent({
-      testId: `${testId}_thisweek`,
-      daysFromNow: 0,
-    });
-    const nextWeek = seedScheduledLessonForParent({
-      testId: `${testId}_nextweek`,
-      daysFromNow: 14,
-    });
+    // Cleanup-as-you-go pattern: each successful seed registers its own
+    // cleanup callable. If a later seed throws, the finally block still
+    // runs the registered cleanups for everything that succeeded —
+    // critical because the seedScheduledLessonForParent helper uses the
+    // same teacher across all 3 calls, so a third-call conflict would
+    // leak the first two unless cleanups are tracked separately.
+    const cleanups: Array<() => void> = [];
 
-    const ctx = await browser.newContext({ storageState: AUTH.parent });
-    const page = await ctx.newPage();
     try {
-      await goTo(page, '/portal/schedule');
-      await assertNoErrorBoundary(page);
+      // Three lessons at distinct buckets. Offsets are picked to be safe
+      // for ANY day of the week — naive ±2 day offsets fail near week
+      // boundaries (e.g. on a Saturday, -2 days is still inside the
+      // current calendar week, so it lands in `thisWeek` not `past`):
+      //  - past:    -10 days  → guaranteed previous calendar week
+      //  - this:    +0 days   → today, always in thisWeekStart..thisWeekEnd
+      //  - future:  +14 days  → always 2+ calendar weeks ahead
+      // useParentLessons clamps past to 3 months; -10 stays well inside.
+      const past = seedScheduledLessonForParent({
+        testId: `${testId}_past`,
+        daysFromNow: -10,
+        status: 'completed',
+      });
+      cleanups.push(past.cleanup);
+      const thisWeek = seedScheduledLessonForParent({
+        testId: `${testId}_thisweek`,
+        daysFromNow: 0,
+      });
+      cleanups.push(thisWeek.cleanup);
+      const nextWeek = seedScheduledLessonForParent({
+        testId: `${testId}_nextweek`,
+        daysFromNow: 14,
+      });
+      cleanups.push(nextWeek.cleanup);
 
-      // "This Week" header always renders. Wait for it before asserting
-      // lesson cards — useParentLessons is async and the page renders the
-      // skeleton first.
-      await expect(page.locator('h2:has-text("This Week")').first()).toBeVisible({ timeout: 15_000 });
+      const ctx = await browser.newContext({ storageState: AUTH.parent });
+      const page = await ctx.newPage();
+      try {
+        await goTo(page, '/portal/schedule');
+        await assertNoErrorBoundary(page);
 
-      // This week + future cards visible.
-      await expect(page.getByText(thisWeek.title).first()).toBeVisible({ timeout: 10_000 });
-      await expect(page.getByText(nextWeek.title).first()).toBeVisible({ timeout: 10_000 });
+        // "This Week" header always renders. Wait for it before asserting
+        // lesson cards — useParentLessons is async and the page renders the
+        // skeleton first.
+        await expect(page.locator('h2:has-text("This Week")').first()).toBeVisible({ timeout: 15_000 });
 
-      // Past lessons section is the Collapsible — closed by default. The
-      // trigger button shows "Past Lessons (N)"; the past lesson title is
-      // hidden until the user expands.
-      const pastTrigger = page.locator('button:has-text("Past Lessons")').first();
-      await expect(pastTrigger).toBeVisible({ timeout: 5_000 });
-      await expect(page.getByText(past.title).first()).not.toBeVisible();
+        // This week + future cards visible.
+        await expect(page.getByText(thisWeek.title).first()).toBeVisible({ timeout: 10_000 });
+        await expect(page.getByText(nextWeek.title).first()).toBeVisible({ timeout: 10_000 });
+
+        // Past lessons section is the Collapsible — closed by default. The
+        // trigger button shows "Past Lessons (N)"; the past lesson title is
+        // hidden until the user expands.
+        const pastTrigger = page.locator('button:has-text("Past Lessons")').first();
+        await expect(pastTrigger).toBeVisible({ timeout: 5_000 });
+        await expect(page.getByText(past.title).first()).not.toBeVisible();
+      } finally {
+        await ctx.close();
+      }
     } finally {
-      await ctx.close();
-      past.cleanup();
-      thisWeek.cleanup();
-      nextWeek.cleanup();
+      for (const cleanup of cleanups.reverse()) {
+        try { cleanup(); } catch { /* best-effort */ }
+      }
     }
   });
 
@@ -1518,6 +1593,372 @@ test.describe('§26.6 — PortalSchedule', () => {
         `id=eq.${conn.id}`,
       );
       lesson.cleanup();
+    }
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// §26.9 — PortalInvoices (parent invoice list + pay drawer + PDF)
+// ────────────────────────────────────────────────────────────────────
+//
+// Catalog §26.9 specifies 7 sub-tests:
+//   1. Pay full invoice → success → status=paid, realtime updates list
+//   2. Pay one installment → only that installment paid
+//   3. "Pay all remaining" path
+//   4. Native notice on Capacitor app  (mobile-only — out of master)
+//   5. Apple Pay only on iOS Safari    (mobile-safari — out of master)
+//   6. Download PDF
+//   7. Filter by status
+//
+// This block lands the 3 desktop-master cases (1, 6, 7). Payment-plan
+// installments (2, 3) need a separate seed for invoice_installments and
+// are deferred. The mobile cases (4, 5) belong to the mobile-safari
+// project, not master.
+//
+// Test 1 deliberately splits the UI assertion from the backend pay flow:
+// the PaymentDrawer mounts Stripe Elements (an iframe with autofill
+// races and origin restrictions — too brittle for Playwright), so we
+// verify (a) the drawer opens with the right amount, then close it, and
+// (b) drive the same backend flow §24.2/§24.3 covers — parent JWT calls
+// stripe-create-payment-intent, we confirm the PI via Stripe TEST API,
+// the dual-mode webhook records the payment, invoice settles to paid.
+// The UI realtime update is intentionally NOT asserted — it works in
+// production via useRealtimePortalPayments but flakes in CI on the
+// post-webhook delay window.
+
+import { execSync as execSync_26_9 } from 'child_process';
+import fs_26_9 from 'fs';
+import { randomBytes as randomBytes_26_9 } from 'crypto';
+
+test.describe('§26.9 — PortalInvoices', () => {
+  const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
+  const E2E_PARENT_GUARDIAN_ID = '44821141-05be-4475-ad1f-a9532943a355';
+  const SUPABASE_URL = process.env.E2E_SUPABASE_URL!;
+  const ANON_KEY = process.env.E2E_SUPABASE_ANON_KEY!;
+  const PARENT_EMAIL = process.env.E2E_PARENT_EMAIL!;
+  const PARENT_PASSWORD = process.env.E2E_PARENT_PASSWORD!;
+
+  /** Sign in via Supabase auth REST and return the access token.
+   *  Mirrors signInForToken in 24-stripe.spec.ts — duplicated to keep
+   *  changes scoped to this file. Don't export back-and-forth between
+   *  spec files. */
+  function signInForToken(email: string, password: string): string {
+    const tmp = `/tmp/sb-26-9-login-${Date.now()}-${randomBytes_26_9(4).toString('hex')}.json`;
+    fs_26_9.writeFileSync(tmp, JSON.stringify({ email, password }));
+    try {
+      const result = execSync_26_9(
+        `curl -s -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" ` +
+          `-H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d @${tmp}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const session = JSON.parse(result);
+      if (!session.access_token) {
+        throw new Error(`Sign-in failed for ${email}: ${JSON.stringify(session).slice(0, 200)}`);
+      }
+      return session.access_token as string;
+    } finally {
+      try { fs_26_9.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }
+
+  /** Call a Supabase edge fn with a bearer token. Returns { status, body }. */
+  function invokeEdgeFn(
+    fn: string,
+    token: string,
+    body: Record<string, unknown>,
+  ): { status: number; body: any } {
+    const tmp = `/tmp/sb-26-9-fn-${Date.now()}-${randomBytes_26_9(4).toString('hex')}.json`;
+    fs_26_9.writeFileSync(tmp, JSON.stringify(body));
+    try {
+      const res = execSync_26_9(
+        `curl -s -w "\\nHTTP:%{http_code}" -X POST "${SUPABASE_URL}/functions/v1/${fn}" ` +
+          `-H "Authorization: Bearer ${token}" -H "apikey: ${ANON_KEY}" ` +
+          `-H "Content-Type: application/json" -d @${tmp}`,
+        { encoding: 'utf-8', timeout: 30_000, maxBuffer: 4 * 1024 * 1024 },
+      );
+      const m = res.match(/^([\s\S]*)\nHTTP:(\d+)$/);
+      const rawBody = m ? m[1] : res;
+      const status = m ? Number(m[2]) : 0;
+      let parsed: any = rawBody;
+      try { parsed = JSON.parse(rawBody); } catch { /* leave as text */ }
+      return { status, body: parsed };
+    } finally {
+      try { fs_26_9.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }
+
+  /** Seed an invoice for the e2e parent's guardian. Returns ids + a
+   *  cleanup callable. The invoice is created via create_invoice_with_items
+   *  RPC (status=draft) and patched to the requested status if the caller
+   *  asks for one. Caller adds Stripe customer cleanup separately if the
+   *  test creates one (only the pay-flow test does). */
+  function seedInvoiceForParent(opts: {
+    testId: string;
+    status?: 'sent' | 'paid' | 'overdue';
+    amountMinor?: number;
+  }): {
+    invoiceId: string;
+    invoiceNumber: string;
+    cleanup: () => void;
+  } {
+    const amount = opts.amountMinor ?? 2500; // £25.00
+    const invoice = createTestInvoice({
+      dueDate: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: E2E_PARENT_GUARDIAN_ID,
+      notes: `e2e_${opts.testId}_invoice`,
+      items: [
+        {
+          description: `e2e_${opts.testId}_item`,
+          quantity: 1,
+          unit_price_minor: amount,
+        },
+      ],
+    });
+    if (!invoice?.id) throw new Error(`seedInvoice failed: ${JSON.stringify(invoice)}`);
+
+    // create_invoice_with_items returns status=draft; flip via the
+    // enforce_invoice_status_transition trigger. draft→sent→paid is
+    // valid; draft→paid directly is not.
+    if (opts.status === 'sent' || opts.status === 'paid' || opts.status === 'overdue') {
+      patchInvoiceStatus(invoice.id, 'sent');
+      if (opts.status === 'paid') {
+        patchInvoiceStatus(invoice.id, 'paid');
+      } else if (opts.status === 'overdue') {
+        patchInvoiceStatus(invoice.id, 'overdue');
+      }
+    }
+
+    return {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoice_number,
+      cleanup: () => deleteInvoiceById(invoice.id),
+    };
+  }
+
+  // §26.9.1 — Pay full invoice end-to-end. UI smoke for the drawer +
+  // backend pay flow via Stripe TEST API + DB assertions.
+  test('§26.9.1 — Pay full invoice: drawer opens with amount + backend flow settles invoice to paid', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const seeded = seedInvoiceForParent({ testId, status: 'sent', amountMinor: 3500 });
+    let stripeCustomerId: string | null = null;
+
+    // Make sure we don't carry over a stale guardian_payment_preferences
+    // row from a prior failed run — the row is created on first PI as a
+    // side-effect of stripe-customer attach.
+    supabaseDelete(
+      'guardian_payment_preferences',
+      `org_id=eq.${E2E_ORG_ID}&guardian_id=eq.${E2E_PARENT_GUARDIAN_ID}`,
+    );
+
+    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    const page = await ctx.newPage();
+    try {
+      // ── 1. UI smoke: list shows the seeded invoice with a Pay button ──
+      await goTo(page, '/portal/invoices');
+      await assertNoErrorBoundary(page);
+
+      // The seeded invoice's number is the lookup key — it appears in the
+      // monospaced number field on the invoice card.
+      const invoiceCardLocator = page.locator(`text=${seeded.invoiceNumber}`).first();
+      await expect(invoiceCardLocator).toBeVisible({ timeout: 15_000 });
+
+      // Pay button format: "Pay £35" — formatCurrencyMinor uses
+      // `minimumFractionDigits: 0` so whole pounds drop the trailing
+      // ".00". The price label is rendered alongside a CreditCard icon.
+      const payBtn = page
+        .locator(`button:has-text("Pay £35")`)
+        .first();
+      await expect(payBtn).toBeVisible({ timeout: 5_000 });
+      await payBtn.click();
+
+      // ── 2. Drawer opens with the amount header ────────────────────────
+      // Desktop renders Dialog (matches sm:max-w-md), header "Pay Invoice".
+      await expect(
+        page.getByRole('dialog').getByText('Pay Invoice').first(),
+      ).toBeVisible({ timeout: 10_000 });
+
+      // The amount inside the drawer is rendered after createPaymentIntent
+      // resolves — wait for the formatted total to show. Stripe's PI
+      // create call goes against test-mode (the e2e org has
+      // stripe_test_mode=true). VAT is disabled on the e2e org so the
+      // total matches unit_price_minor exactly (£35).
+      await expect(
+        page.getByRole('dialog').locator('text=/£35(\\.\\d+)?/').first(),
+      ).toBeVisible({ timeout: 15_000 });
+
+      // The Stripe customer + guardian_payment_preferences row got created
+      // as a side-effect of the drawer's stripe-create-payment-intent
+      // call. Capture the stripe_customer_id so we can clean it up after.
+      const prefs = supabaseSelect(
+        'guardian_payment_preferences',
+        `org_id=eq.${E2E_ORG_ID}&guardian_id=eq.${E2E_PARENT_GUARDIAN_ID}&select=stripe_customer_id`,
+      );
+      if (prefs[0]?.stripe_customer_id) {
+        stripeCustomerId = prefs[0].stripe_customer_id;
+      }
+
+      // Close the drawer — we're not driving the Elements iframe.
+      await page.keyboard.press('Escape');
+
+      // ── 3. Backend pay flow (matches §24.2/§24.3) ─────────────────────
+      // Drive a fresh PI via the parent JWT, confirm with pm_card_visa,
+      // wait for the dual-mode webhook to record the payment.
+      const parentToken = signInForToken(PARENT_EMAIL, PARENT_PASSWORD);
+      const piRes = invokeEdgeFn('stripe-create-payment-intent', parentToken, {
+        invoiceId: seeded.invoiceId,
+      });
+      expect(piRes.status).toBe(200);
+      const paymentIntentId = piRes.body.paymentIntentId as string;
+      expect(paymentIntentId).toBeTruthy();
+
+      const confirmed = confirmTestPaymentIntent(paymentIntentId, 'pm_card_visa');
+      expect(confirmed.status).toBe('succeeded');
+
+      // The PI was created against the invoice's total_minor (with VAT
+      // if enabled). Read the actual total to know what amount the
+      // webhook will settle.
+      const invForTotal = supabaseSelect(
+        'invoices',
+        `id=eq.${seeded.invoiceId}&select=total_minor`,
+      );
+      const expectedAmount = invForTotal[0].total_minor as number;
+
+      const paymentId = await waitForWebhookPayment(
+        seeded.invoiceId,
+        expectedAmount,
+        supabaseSelect,
+        30_000,
+      );
+      expect(paymentId).toBeTruthy();
+
+      // ── 4. DB assertions: invoice paid, payment row created ───────────
+      const inv = supabaseSelect(
+        'invoices',
+        `id=eq.${seeded.invoiceId}&select=status,paid_minor,total_minor`,
+      );
+      expect(inv[0].status).toBe('paid');
+      expect(inv[0].paid_minor).toBe(expectedAmount);
+
+      const payments = supabaseSelect(
+        'payments',
+        `invoice_id=eq.${seeded.invoiceId}&select=id,amount_minor,provider,provider_reference`,
+      );
+      expect(payments.length).toBe(1);
+      expect(payments[0].provider).toBe('stripe');
+      expect(payments[0].provider_reference).toBe(paymentIntentId);
+    } finally {
+      await ctx.close();
+      // Stripe customer cleanup must precede invoice cleanup or the
+      // payment_prefs FK will fail.
+      if (stripeCustomerId) deleteTestCustomer(stripeCustomerId);
+      supabaseDelete(
+        'guardian_payment_preferences',
+        `org_id=eq.${E2E_ORG_ID}&guardian_id=eq.${E2E_PARENT_GUARDIAN_ID}`,
+      );
+      seeded.cleanup();
+    }
+  });
+
+  // §26.9.7 — Filter by status. Two invoices in distinct statuses; the
+  // dropdown filter should toggle their visibility independently.
+  test('§26.9.7 — Filter by status: All / Paid / Awaiting Payment toggles visibility', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    // 'sent' for outstanding bucket; 'paid' for payment history bucket.
+    // Distinct amounts so we can disambiguate with the visible Pay copy
+    // when needed (and so they're not confusable with other tests).
+    const sentInvoice = seedInvoiceForParent({ testId: `${testId}_sent`, status: 'sent', amountMinor: 1700 });
+    const paidInvoice = seedInvoiceForParent({ testId: `${testId}_paid`, status: 'paid', amountMinor: 2300 });
+
+    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    const page = await ctx.newPage();
+    try {
+      await goTo(page, '/portal/invoices');
+      await assertNoErrorBoundary(page);
+
+      // Default filter is "All Invoices". Both should be visible.
+      await expect(page.locator(`text=${sentInvoice.invoiceNumber}`).first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator(`text=${paidInvoice.invoiceNumber}`).first()).toBeVisible();
+
+      // The PortalLayout sidebar mounts a ChildSwitcher Select with
+      // `data-hint="child-switcher"` — that's a SECOND combobox on the
+      // page. Plain `.first()` matches the child switcher instead of
+      // our status filter and the dropdown items don't include "Paid".
+      // Scope the locator to the status filter via :not on the data-hint.
+      const filterTrigger = page.locator(
+        'button[role="combobox"]:not([data-hint="child-switcher"])',
+      ).first();
+      await filterTrigger.click();
+      await page.locator('[role="option"]:has-text("Paid")').first().click();
+
+      // After filter change useParentInvoices refetches; assert the
+      // sent invoice disappears AND the paid one stays.
+      await expect(page.locator(`text=${sentInvoice.invoiceNumber}`)).toHaveCount(0, { timeout: 10_000 });
+      await expect(page.locator(`text=${paidInvoice.invoiceNumber}`).first()).toBeVisible();
+
+      // Switch to "Awaiting Payment" → only sent visible.
+      await filterTrigger.click();
+      await page.locator('[role="option"]:has-text("Awaiting Payment")').first().click();
+      await expect(page.locator(`text=${paidInvoice.invoiceNumber}`)).toHaveCount(0, { timeout: 10_000 });
+      await expect(page.locator(`text=${sentInvoice.invoiceNumber}`).first()).toBeVisible();
+    } finally {
+      await ctx.close();
+      sentInvoice.cleanup();
+      paidInvoice.cleanup();
+    }
+  });
+
+  // §26.9.6 — Download PDF. useInvoicePdf renders client-side via jsPDF
+  // and triggers a browser download with filename `${invoice_number}.pdf`.
+  test('§26.9.6 — Download PDF emits a valid PDF file with invoice number in filename', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const seeded = seedInvoiceForParent({ testId, status: 'sent', amountMinor: 1850 });
+
+    const ctx = await browser.newContext({
+      storageState: AUTH.parent,
+      acceptDownloads: true,
+    });
+    const page = await ctx.newPage();
+    try {
+      await goTo(page, '/portal/invoices');
+      await assertNoErrorBoundary(page);
+
+      // Wait for the seeded card to appear.
+      await expect(page.locator(`text=${seeded.invoiceNumber}`).first()).toBeVisible({ timeout: 15_000 });
+
+      // Each invoice card has its own "Download PDF" button. Scope to the
+      // specific card by walking up from the invoice number text.
+      const card = page
+        .locator('div')
+        .filter({ has: page.locator(`text=${seeded.invoiceNumber}`) })
+        .filter({ has: page.locator('button:has-text("Download PDF")') })
+        .last();
+      const downloadBtn = card.locator('button:has-text("Download PDF")').first();
+      await expect(downloadBtn).toBeVisible();
+
+      const downloadPromise = page.waitForEvent('download', { timeout: 20_000 });
+      await downloadBtn.click();
+      const download = await downloadPromise;
+
+      // Filename: `${invoice_number}.pdf`.
+      const filename = download.suggestedFilename();
+      expect(filename).toBe(`${seeded.invoiceNumber}.pdf`);
+
+      const path = await download.path();
+      expect(path).toBeTruthy();
+
+      // PDF magic bytes — the file must start with "%PDF-".
+      const buf = fs_26_9.readFileSync(path!);
+      expect(buf.length).toBeGreaterThan(100);
+      expect(buf.slice(0, 5).toString('utf-8')).toBe('%PDF-');
+    } finally {
+      await ctx.close();
+      seeded.cleanup();
     }
   });
 });

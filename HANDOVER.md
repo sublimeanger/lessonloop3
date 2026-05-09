@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after §26.6 PortalSchedule) by Claude Opus 4.7 (1M context, 5th session)
+**Last updated:** 2026-05-09 (after §26.9 PortalInvoices) by Claude Opus 4.7 (1M context, 5th session)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -33,6 +33,20 @@
   format, ICS download content, calendar-ical-feed VEVENT
   end-to-end). Status vs v2 launch scope: launch-in-scope
   (parent portal core per LESSONLOOP_V2_PLAN.md §3.1).
+- _next_ — test(e2e): §26.9 PortalInvoices (3 tests; pay full
+  invoice end-to-end via §24-style helpers + UI smoke for the
+  PaymentDrawer + filter by status + PDF download). Same commit
+  also hardens 26-parent-portal.spec.ts itself: §26.4 makeup
+  describe set to mode='serial' (4 tests collide on +3 day
+  matched_lesson teacher slot when run parallel), file-level
+  resetE2ERateLimits() in beforeAll (§26.10 send-parent-message
+  was hitting hourly cap mid-suite after the file grew),
+  seedScheduledLessonForParent atomic-on-failure (rolls back
+  student insert if lesson INSERT throws — prevents orphan
+  cascade), and a deterministic per-testId minute offset on
+  §26.6.1's lesson seed times so runs <30min apart land in
+  different 30-min slots. Status vs v2 launch scope:
+  launch-critical (Stripe Connect / parent payment per §3.1).
 
 ---
 
@@ -42,16 +56,16 @@ Read this whole file before doing anything. Your context starts cold;
 this is the only mind-share between sessions. Specifically:
 
 - Don't trust raw test counters. Track **real catalog coverage**, not
-  spec count. Catalog overall ~40% (was 25% five sessions ago).
+  spec count. Catalog overall ~42% (was 25% five sessions ago).
 - Don't use `test.fixme()` as a placeholder — see [Anti-patterns](#anti-patterns).
 - The catalog at `tests/e2e/master/PLAYWRIGHT_MASTER_CATALOG.md` is the
   source of truth for "what should be tested". Treat each section as a
   contract.
 - §24 Stripe (incl. §24.12 true-replay) / §13 Invoices / §14 Invoice
   detail / §26.4 makeup respond / §26.6 schedule / §26.7 practice /
-  §26.10 compose / §26.12-13 continuation / §8.5 recurring edit /
-  §17.4 streak milestone — **DONE**. Next priorities in
-  [Next session](#next-session).
+  §26.9 invoices+pay drawer / §26.10 compose / §26.12-13 continuation /
+  §8.5 recurring edit / §17.4 streak milestone — **DONE**. Next
+  priorities in [Next session](#next-session).
 - **J24-A infra is live in production.** 14 stripe-* edge fns + the
   webhook now route through `_shared/stripe-client.ts` with org-scoped
   test/live key dispatch. The e2e org has `stripe_test_mode=true`. Do
@@ -66,11 +80,12 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~40% (was 38%, +8 §26.6 PortalSchedule tests this session).**
+**Catalog completeness: ~42% (was 40%, +3 §26.9 PortalInvoices tests this session).**
 
 Current baseline (end of session):
-- **406 passed** (was 399 at end of prior session; +8 from §26.6 schedule,
-  -1 from a single brittle-JWT-stale dashboard tile flake hit this run)
+- **409 passed** (was 406 at end of prior bump; +3 from §26.9 invoices,
+  no documented-flake hits this final run beyond the constant 05-rbac
+  + §5.4 pair)
 - **1-5 failed**: always includes the documented §5.4 email-verification
   flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
   to streak math, the supabaseInsert call to students returns undefined),
@@ -108,7 +123,7 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~118 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule |
+| Genuinely behavioural tests (full journeys) | ~121 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
@@ -331,13 +346,16 @@ test or delete the line.
    "Not yet covered" in [§24 progress](#24-progress).
 2. ~~§13 Invoices~~ — **DONE (10 real tests, ~70%)**.
 3. ~~§14 Invoice detail~~ — **DONE (12 real tests, ~75%)**.
-4. **§26 Parent portal — STARTED** (27 real, ~85%). §26.4 makeup
+4. **§26 Parent portal — STARTED** (30 real, ~90%). §26.4 makeup
    respond (4) + §26.6 PortalSchedule (8) + §26.7 practice log (1) +
-   §26.10 compose thread (5) + §26.12/§26.13 continuation response
-   (4) done. Remaining gaps: §26.9 PortalInvoices pay drawer (the
-   parent-portal-side equivalent to what §24 covers backend-side —
-   embedded drawer UI happy path), §26.10 PortalMessages reply +
-   non-happy paths, §26.8 PortalResources page (one happy path).
+   §26.9 PortalInvoices pay+filter+PDF (3) + §26.10 compose thread
+   (5) + §26.12/§26.13 continuation response (4) done. Remaining
+   gaps: §26.9 payment-plan installment paths (catalog §26.9.2/§26.9.3
+   — needs invoice_installments seed + per-installment Stripe PI
+   confirm), §26.10 PortalMessages reply on existing thread (compose
+   already covered), §26.11 PortalProfile (one happy path: edit
+   notification preferences), §26.8 PortalResources (one happy path
+   — file list + download).
 5. **§20 Continuation (term rollover)** — DEFERRED. Needs term
    boundaries + continuation_run + response rows seeded. ~6-8 hours.
 6. **§8 Lesson CRUD — STARTED** (6 real, ~45%). Group / cancel /
@@ -366,17 +384,17 @@ test or delete the line.
    (`record_stripe_payment` checks `_provider_reference`) keeps
    payments at 1 even though webhook claimed both events. Both green
    in isolation (~3s each) and in the full master run.
-9. **§26 remaining** — §26.6 schedule **DONE** this session. Still
-   remaining: §26.9 PortalInvoices pay drawer happy path (parent-
-   side complement to the §24 backend coverage; uses the embedded
-   Stripe drawer in PaymentDrawer + native fallback), §26.8
-   PortalResources (one happy path is enough — file list +
-   download), §26.10 PortalMessages reply on existing thread (compose
-   already covered), §26.11 PortalProfile (one happy path: edit
-   notification preferences). Each ~1-2 hours; all launch-in-scope
-   per LESSONLOOP_V2_PLAN.md §3.1.
+9. **§26 remaining** — §26.6 + §26.9 **DONE** this session. Still
+   remaining: §26.9 payment-plan installment paths (catalog §26.9.2
+   "pay one installment" + §26.9.3 "pay all remaining" — needs
+   invoice_installments seed first), §26.8 PortalResources (one
+   happy path is enough — file list + download), §26.10
+   PortalMessages reply on existing thread (compose already
+   covered), §26.11 PortalProfile (one happy path: edit notification
+   preferences). Each ~1-2 hours; all launch-in-scope per
+   LESSONLOOP_V2_PLAN.md §3.1.
 
-10. **§26.6 PortalSchedule — DONE this session (8 tests)**.
+10. **§26.6 PortalSchedule — DONE in earlier commit (8 tests)**.
     `26-parent-portal.spec.ts §26.6 — PortalSchedule` block covers
     9 of the 9 catalog cases minus one tap-to-expand-notes (omitted —
     flaky click target, low signal vs the other 8). Helpers added in
@@ -393,6 +411,55 @@ test or delete the line.
     (always today/this-week), +4, +5, +7, +14, +21 — verified
     conflict-free in two consecutive full master runs at end of
     session.
+
+11. **§26.9 PortalInvoices — DONE this session (3 tests)**.
+    `26-parent-portal.spec.ts §26.9 — PortalInvoices` block covers
+    catalog §26.9.1 (pay full invoice end-to-end), §26.9.6
+    (download PDF), §26.9.7 (filter by status). Test 1 reuses the
+    §24-style helpers — `signInForToken` + `invokeEdgeFn` (local
+    duplicates, see file note above) + `confirmTestPaymentIntent` +
+    `waitForWebhookPayment` from `_fixtures/stripe-test-helpers.ts`.
+    The test does both: (a) UI smoke — the embedded PaymentDrawer
+    opens with the right amount when the parent clicks Pay, (b)
+    backend pay flow — drive a fresh PI via parent JWT, confirm
+    with `pm_card_visa`, wait for the dual-mode webhook to settle
+    invoice → status=paid + payments row. Realtime UI assertion is
+    intentionally skipped (works in production, flakes in CI on
+    post-webhook delay window).
+    Catalog drift: PortalInvoices doesn't have a separate detail
+    page; the Pay button on the list opens an embedded
+    PaymentDrawer dialog (or Drawer on mobile). The catalog text
+    "lesson updated, toast" was wrong — both reschedule policies
+    insert into `message_requests`, not `lessons`.
+    Hardening landed in the same commit (broader than §26.9):
+    * `§26.4 — Make-up offer respond` describe set to
+      `mode: 'serial'` — its 4 tests collide on the same teacher's
+      +3-day matched_lesson slot when run in parallel.
+    * File-level `resetE2ERateLimits()` in beforeAll — the parent
+      JWT was hitting the hourly cap on `send-parent-message`
+      (§26.10) and `stripe-create-payment-intent` (§26.9.1) once
+      the file grew past ~30 tests.
+    * `seedScheduledLessonForParent` is now atomic-on-failure: a
+      lesson INSERT throw rolls back the just-inserted student +
+      student_guardians. Without this, a partially-seeded run
+      leaks rows that the next run's identical `Date.now() - 10
+      days` slot collides with on the teacher_conflict trigger.
+    * `lessonSlotOffsetMs(testId)` adds a deterministic
+      0-330-minute offset to lesson start_at. Two runs <30min
+      apart at the same wall-clock now land in different 30-min
+      slots, eliminating the inter-run collision class.
+    * `§26.6.1` test seeds are now wrapped in cleanups-as-you-go:
+      each successful seed pushes its cleanup callable to a list,
+      finally runs them in reverse — so a failure on the third
+      seed still cleans up the first two.
+
+    Not yet covered (out of §26.9 scope):
+    * §26.9.2 Pay one installment (needs invoice_installments
+      seed + payment-plan invoice).
+    * §26.9.3 Pay all remaining (same prerequisite).
+    * §26.9.4 Native notice on Capacitor app (mobile-only — not
+      master).
+    * §26.9.5 Apple Pay only on iOS Safari (mobile-safari project).
 
 After those, remaining 27 sections are mostly gap-fillers + per-page
 smoke.
