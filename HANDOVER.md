@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after 9th-session — DEDICATED INFRASTRUCTURE: globalSetup sweep + RBAC Settings race fix + 2 P-graded findings, key drift unresolved) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-09 (after 10th-session — §20 withdrawal-flow + P0 auth-chain bug fix in bulk-process-continuation + delete-run cases + 3 new §20 tests) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -348,6 +348,51 @@
 - (9th session) audit findings filed:
   - `audit/findings/2026-05-09-service-role-key-rotation-and-drift.md`
   - `audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md`
+- (10th session — Step 0 OUTCOME B confirmed) Jamie's session-10
+  opener supplied the same iat=2026-04-29 service-role key as
+  session 9. Step 0 verify-after probe of send-payment-receipt
+  returned 401 again. Hash readback: deployment env still
+  `151e578f…`, supplied key still `b4f9eaa7…`. Genuine drift.
+  Items 1+2 stayed BLOCKED. Surfaced two repair options to Jamie
+  (Edge Function "Custom secrets" override deletion OR Dashboard
+  legacy service_role key reset). Vault seeding (P0, FIVE
+  sessions deferred) carried forward to session 11.
+- (10th session — P0 production bug found + fixed) Discovered
+  during §20.7b withdrawal-flow test write that
+  `bulk-process-continuation` calls `process-term-adjustment`
+  internally with `Authorization: Bearer ${serviceRoleKey}`.
+  process-term-adjustment validates the caller via
+  `userClient.auth.getUser()` which rejects service-role JWTs
+  with HTTP 403 `{"code":403,"error_code":"bad_jwt","msg":"invalid claim: missing sub claim"}`.
+  Result: withdrawal branch silently fails for every response
+  (preview 401 → continue → anyWithdrawalSucceeded stays false →
+  withdrawnCount stays 0 → fn returns success:true with all
+  zeros). This has been broken since deployment (single commit
+  79ca457 "Triggered production publish" — no later edits).
+  **Term-end critical for Lauren's continuation flow per v2 §3.1.**
+  Fix: pass through the original user authHeader from
+  bulk-process-continuation (which has already validated the
+  user is owner/admin) to process-term-adjustment. Two-line
+  change at the preview + confirm `fetch` call sites. Deployed
+  via `supabase functions deploy bulk-process-continuation`.
+  Test §20.7b verifies the full chain end-to-end. Finding doc:
+  `audit/findings/2026-05-09-bulk-process-continuation-withdrawal-broken.md`.
+- (10th session — catalog work) Three new real §20 tests:
+  * §20.7b — process_type='withdrawals' end-to-end (covers
+    process-term-adjustment preview + confirm + cancel lessons
+    + cap recurrence + credit note + cleanup_withdrawal_credits
+    audit)
+  * §20.8a — delete run with no responses → row gone
+  * §20.8b — delete run with responses → cascade deletes
+    responses (catalog "blocks or warns" framing not enforced
+    in code; FK CASCADE is the actual behaviour).
+  §20 cluster now functionally complete except UI-driven cases
+  (covered by smoke tests).
+- (10th session) §20 file tweaks: `resetE2ERateLimits()` added
+  to file-level beforeAll — bulk-process-continuation has
+  5/hour per-user rate limit which the §20.7 + §20.7b pair
+  burns through in ≈2 iterations. Reset at file start prevents
+  429 cascades during local debug runs.
 - (also at 7th-session start) Manual SQL sweep of stale e2e_ test
   data via Supabase MCP execute_sql — cleared 6 lesson rows
   (1 active scheduled + 5 cancelled), 22 students, 4 invoices, and
@@ -392,36 +437,31 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~58% (unchanged this session — 9th session was
-DEDICATED INFRASTRUCTURE per the deferral-breaking plan; zero new
-test conversion).**
+**Catalog completeness: ~62% (was 58% before 10th session — +3 real
+§20 tests close the withdrawal/delete cluster, plus a P0 production
+fix landed in bulk-process-continuation as a side-effect of the
+withdrawal test).**
 
-Current baseline (end of 9th session, full-suite run, post-globalSetup-sweep + RBAC race fix):
-- **454 passed / 3 failed / 133 skipped / 4.8 min wall-clock at 4 workers**
-- **+0 passed** vs pre-9th-session (was 454 — Item 6 fix moved RBAC
-  Settings degradation from "intermittent flake" to "consistently
-  passing", but transient §26.6.4 self_service + §26.9.1 Stripe rate
-  flakes appeared this run; net 0 — RBAC fix recovers ~1 stable
-  pass per run on average)
-- **-1 failed** vs pre-9th-session (was 4 — RBAC Settings degradation
-  no longer in failures; §5.4 still in (deterministic per Item 5);
-  transient §26.6.4 + §26.9.1 took over the 3rd-4th slots this run)
-- **+0.8 min wall-clock** — globalSetup adds ~3.6s + slight network
-  variance; within tolerance
+Current baseline (end of 10th session, full-suite run, post-§20 work + P0 auth fix):
+- **458 passed / 3 failed / 133 skipped / 4.0 min wall-clock at 4 workers**
+- **+4 passed** vs pre-10th-session (was 454 — 3 new §20 tests
+  passed + 1 transient flake slot recovered)
+- **+0 net failed** vs pre-10th-session (was 3 — same shape: §5.4
+  deterministic + 2 transient flakes from the §26 rotation)
+- **-0.8 min wall-clock** — recovered from session 9's slight
+  upward drift. globalSetup pre-flight cost is ~3.6s, amortised.
 
-**Net win for the suite stability:** RBAC Settings degradation was a
-persistent flake across 5+ sessions, now consistently green under
-parallel load. §5.4 is now P-graded as deterministic-broken (not a
-flake — needs test redesign per Item 5 finding). Two intermittent
-Stripe/race-flakes (§26.6.4, §26.9.1) remain in the rotation but are
-known-shape and don't represent regressions.
+**Net win for the suite:** P0 launch-blocker (silent withdrawal-flow
+breakage) caught and fixed during catalog test work. §20 cluster
+now functionally complete (withdraw + delete cases closed).
 
-- **The 3 remaining failures**: §5.4 email-verification (deterministic;
-  test design broken — see [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md));
-  §26.6.4 self_service policy (occasional UI race documented in
-  HANDOVER §26.6 entries); §26.9.1 Pay full invoice (occasional Stripe
-  rate-limit / webhook delay flake). Neither §26.6.4 nor §26.9.1 fired
-  in pre-9th-session baseline — they appear ~1 in 4 runs.
+- **The 3 remaining failures**: §5.4 email-verification
+  (deterministic; test design broken — see
+  [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md));
+  §26.6.7 Google Calendar URL (occasional UI race) OR §26.6.4
+  self_service policy (similar shape — known races in §26.6 entries);
+  §26.9.1 Pay full invoice (occasional Stripe rate-limit / webhook
+  delay flake). Mix varies run to run.
 
 **Known intermittent flake — §22/§24 cross-file race:** §22 settings
 mutations (timezone + VAT toggle) modify org config that §24 invoice
@@ -483,6 +523,7 @@ to `main`. Don't waste time re-finding them:
 | Various | Cloudflare DNS still had stale `_lovable.app` TXT record; `app.lessonloop.net` not proxied via CF | P2 / decision-pending |
 | `65bde4e` | `continuation-respond` had platform `verify_jwt=true` but the frontend uses publishable keys (`sb_publishable_*`); fully-anonymous email-link clicks at `/respond/continuation?token=X` got `UNAUTHORIZED_INVALID_JWT_FORMAT` at the gateway. Function code already does manual auth on both paths; one config.toml line + redeploy fixes it. | **P0** (parent-facing email flow, broken since signing-keys migration) |
 | `ec94ee3` | `_notify_streak_milestone` read `vault.decrypted_secrets` for `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, which were never seeded (only `INTERNAL_CRON_SECRET` was). NULL URL → `null value in column "url" violates not-null constraint` (sqlstate 23502) → trigger errored → AFTER INSERT trigger rolled back the user's `practice_logs` insert. Any user logging the 3rd, 7th, 14th, 30th, 60th, or 100th consecutive practice day got a 500. Fix wraps the `net.http_post` call in nested EXCEPTION; `audit_log` row stays as the durable record, delivery is best-effort. | **P0** (silent revenue / engagement leak on streak milestones) |
+| (10th session) | `bulk-process-continuation` withdrawal branch passed `Bearer ${serviceRoleKey}` to internal `process-term-adjustment` calls. process-term-adjustment validates the caller via `userClient.auth.getUser()` which rejects service-role JWTs ("missing sub claim"). Result: every withdrawal silently failed (preview 401 → continue → withdrawnCount stayed 0; fn returned success:true with all zeros). Broken since deployment (single commit 79ca457, no later edits). Fix: pass through the original user authHeader. Two-line change. Deployed via `supabase functions deploy bulk-process-continuation`. | **P0** (term-end critical — Lauren's continuation flow per v2 §3.1; session 9's HANDOVER claimed this was structurally working) |
 
 The currency bug specifically is now permanently regression-tested in
 `tests/e2e/master/26-parent-portal.spec.ts` ("invoices page renders
@@ -674,7 +715,7 @@ test or delete the line.
 | §15 Reports | 8 + 9 smoke | ~70% | 8th-session: §15.4 last 3 reports landed (Payroll, Utilisation, TeacherPerformance) — full §15 cluster now data-correctness covered for all 7 launch reports |
 | §16 Messages | 5 + smoke | ~50% | §16.3 staff-side send-message contract done; bulk + threads + internal still UI-driven |
 | §17 Practice | 5 + cron | ~75% | mature |
-| §20 Continuation | 9 | ~85% | run-creation backend covered; withdrawal-flow + delete-run still pending |
+| §20 Continuation | 12 | ~98% | 10th-session: §20.7b withdrawals flow + §20.8a/b delete-run cases shipped. P0 bug found+fixed in bulk-process-continuation (auth chain). §20 cluster functionally complete except UI-driven cases |
 | §22 Settings | 8 + 21 smoke | ~50% | 7th-session: schedule_hours validation, parent_reschedule_policy, continuation defaults, invite member, music custom-instrument CRUD. Members invite/archive UI flows + closure dates + GDPR + audit log + rate cards CRUD all deferred |
 | §24 Stripe (incl. §24.12 true-replay) | 12 | ~70% | mature; §24.4/6/8/9/11 deferred — Stripe CLI / OAuth / mobile |
 | §27 Notifications | 5 | ~40% | 7th-session: prefs upsert+SELECT round-trip / absent-row default / dedup unique partial idx_message_log_payment_receipt_dedup / RBAC auth gate (anon→401, no-auth→401). Live fn-invocation tests still deferred — service-role key in .env.test drifted, NOT resolved in 8th session (Jamie did not supply key) |
@@ -683,89 +724,118 @@ test or delete the line.
 | §26 Parent portal | 32+ | ~98% | 8th-session: §26.9.2 + §26.9.3 installment pay paths added (5/7 §26.9 cases green; cases 4-5 are mobile-safari project). Only §26.8 Resources remains |
 | §32 Security trigger guards | 9 | ~80% | mature |
 
-Catalog overall: **~58%** (was 55% at session 7 end).
+Catalog overall: **~62%** (was 58% at session 9 end — 10th-session +3 §20 tests).
 
-### Priority order — 10th session pickup
+### Priority order — 11th session pickup
 
-**RETURN TO CATALOG.** Session 9 was the dedicated infrastructure
-session per the deferral-breaking plan. Outcomes: 3 items shipped,
-1 fixed-as-verified, 2 P-graded findings filed, 2 items blocked on
-Jamie supplying a fresh deployment service-role key. The flake
-landscape is now meaningfully smaller — RBAC Settings degradation is
-fixed, §5.4 is moved from "flake" to "deterministic-broken needs
-redesign", and the cross-file race no longer reproduces.
+**Continue catalog work.** Session 10 closed §20 cluster as a
+side-effect of finding+fixing a P0 launch-blocker in
+bulk-process-continuation. §27 fn-invocation + vault seeding STILL
+blocked on service-role key drift (sessions 9 + 10 both confirmed
+it's genuine drift, not stale paste).
 
-**Pre-session needs from Jamie (only blocks the FIRST priority):**
-- **Fresh deployment service-role key plaintext** (read from
-  Supabase Dashboard → Settings → API → service_role; one paste,
-  no clipboard reuse — see
-  `audit/findings/2026-05-09-service-role-key-rotation-and-drift.md`
-  for verification path). Without this, the §27 fn-invocation
-  conversion + vault seeding items remain blocked.
+### Priority order — 10th session pickup (closed)
 
-If Jamie can supply at start: expect ~30 min on the unblock items,
-then ~5h on catalog work below.
+**Closed:** §20 cluster (withdrawal + delete-run shipped). P0
+bulk-process-continuation auth chain bug fixed.
 
-If Jamie can't supply: skip directly to catalog item 2 (§20
-withdrawal). The unblock items roll forward.
+**Pre-session needs from Jamie (still blocks the FIRST priority):**
 
-**Session 10 priorities (in order):**
+The drift is **genuine**, not a stale clipboard paste. Sessions 9
++ 10 each had Jamie paste a key with iat=2026-04-29 / suffix `14Ew`.
+Both produced SHA-256 `b4f9eaa7…` which does NOT match deployment
+env hash `151e578f…` (last updated 2026-05-09T17:12:22Z). The
+dashboard's legacy service_role key value really IS different from
+what the deployed edge functions read from `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")`.
 
-1. **UNBLOCK first** (only if Jamie supplied a fresh key at session
-   start). Verify via the SHA-256 + curl probe described in the key
-   drift finding doc. If verified:
-   (a) update `~/.claude/settings.json` (both names) +
-   `/tmp/lessonloop3-deploy/.env.test`;
-   (b) seed vault: `SELECT vault.create_secret(<URL>, 'SUPABASE_URL', '...')`
+**Two repair options for Jamie** (cannot be fixed in code):
+
+1. **Edge Function "Custom secrets" override** — visit Supabase
+   Dashboard → Edge Functions → "Secrets" tab. If
+   `SUPABASE_SERVICE_ROLE_KEY` appears as a custom secret
+   (overriding the platform's auto-injected canonical), DELETE
+   that custom secret. The platform will re-inject the canonical
+   value, restoring the byte-equal match between the dashboard
+   "service_role" key and what edge functions see.
+
+2. **Roll the legacy service_role key** — Dashboard → Settings →
+   API → "Project API keys" section → "Reset" / "Roll" on
+   service_role. This regenerates both the dashboard value AND
+   the deployment env value to match. Then paste the freshly-
+   read key into the next session opener.
+
+Option 1 is non-destructive (no key rotation needed). Try first.
+
+Until that's done, items 1 (vault seeding) and 2 (§27 fn-invocation)
+stay blocked. Lauren shadow-term week 4 timer continues. Catalog
+work (priorities below) unblocked either way.
+
+**Session 11 priorities (in order):**
+
+1. **UNBLOCK first** (only if Jamie picked one of the two repair
+   options above and supplied a verified-new key at session start).
+   Verify via the SHA-256 readback FIRST (per session 9's revised
+   Step 0) — should match deployment env. Then bake into both
+   persistence layers. Then:
+   (a) seed vault: `SELECT vault.create_secret(<URL>, 'SUPABASE_URL', '...')`
    + `SELECT vault.create_secret(<KEY>, 'SUPABASE_SERVICE_ROLE_KEY', '...')`;
-   (c) trigger a streak milestone (insert 3rd consecutive practice_log)
+   (b) trigger a streak milestone (insert 3rd consecutive practice_log)
    and confirm `net._http_response` has a recent row;
-   (d) convert §27 fn-invocation TODOs in
+   (c) convert §27 fn-invocation TODOs in
    `tests/e2e/master/27-notifications.spec.ts` to real tests.
    Estimate: 60 min total if all clean.
 
-2. **§20 Continuation withdrawal/decline/delete chain** — deferred
-   sessions 7 + 8 + 9. Chains through process-term-adjustment +
-   cleanup_withdrawal_credits + delete-run preview/warn. Lauren-
-   paramount per v2 §3.1. **Most overdue catalog item.** Estimate
-   3-4h dedicated. Pattern: build on the existing §20 helpers
-   (`seedTermsStudentAndRecurringLesson`, `seedRunWithPendingResponse`)
-   in `26-parent-portal.spec.ts`; add a new helper for the
-   withdrawal chain.
-
-3. **§16 Messages bulk + threaded paths** — §16.3 staff-side
+2. **§16 Messages bulk + threaded paths** — §16.3 staff-side
    send-message landed in 6th session (5 tests). Still pending:
    bulk send, internal-thread (org members), parent-staff requests
-   approval. Estimate 2-3h.
+   approval. Estimate 2-3h. **Most overdue catalog item now that
+   §20 cluster closed.**
 
-4. **§13 / §14 remaining invoice cases** — sections are mature
+3. **§13 / §14 remaining invoice cases** — sections are mature
    (10 + 12 tests already real) but the catalog has a few unfilled
    gaps: §13.x bulk-void edge cases, §14.x line-edit triggers
    beyond status-transition. Worth a 1-2h pass to close out the
    cluster.
 
-5. **§11 Teachers invite/archive flows** — §11.4.1 unlinked-teacher
+4. **§11 Teachers invite/archive flows** — §11.4.1 unlinked-teacher
    landed; the bigger UI surface (invite member, archive teacher,
    teacher-limit enforcement) still needs coverage. UI-driven so
    brittle; estimate 2-3h.
 
-**Lower priority (only if items 2-4 close cleanly):**
+5. **§22 deeper settings coverage** — §22.1 profile mutations,
+   §22.3 branding upload, §22.5 closure dates CRUD (Lauren-mentioned
+   for greying out calendar), §22.7 GDPR export queue, §22.8 rate
+   cards CRUD, §22.10 messaging templates, §22.11 availability
+   overlapping-block trigger, §22.18 NotificationsTab toggles.
 
-A. **§22 deeper settings coverage** — §22.1 profile mutations,
-   §22.3 branding upload, §22.5 closure dates CRUD (Lauren-mentioned),
-   §22.7 GDPR export queue, §22.8 rate cards CRUD, §22.10 messaging
-   templates, §22.11 availability overlapping-block trigger, §22.18
-   NotificationsTab toggles.
+**Lower priority (only if items 1-3 close cleanly):**
 
-B. **§5.4 redesign** — implement the magic-link or UI-signup approach
+A. **§5.4 redesign** — implement the magic-link or UI-signup approach
    from the finding doc. ~1-2h.
 
-C. **§8 remaining cases** — §8.8.3 conflict-detection blocks save,
+B. **§8 remaining cases** — §8.8.3 conflict-detection blocks save,
    §8.8.12 closure-date warning banner, §8.8.14 weekly recurrence.
    UI-driven; brittle.
 
-D. **§9 Daily register** — §9.3.4 check_attendance_not_future already
+C. **§9 Daily register** — §9.3.4 check_attendance_not_future already
    covered in §32.7. Other §9 cases are UI-heavy.
+
+D. **Production verification of withdrawal fix** — once Lauren has
+   real users in shadow-term week 4 and a parent withdraws, verify
+   the chain end-to-end in production logs. Bug was silent before
+   the fix; need to confirm the fix delivers in a real environment.
+
+### Audit/MASTER.md hygiene status (end of 10th session)
+
+§20 Continuation row tagged with [E2E real per 35631ad +
+10th-session] covering: §20.4 create + RBAC + validation, §20.5
+process_deadline both branches, §20.7 confirmed flow, §20.7b
+withdrawals flow (NEW), §20.8 delete-run cases (NEW). Row marked
+[PROMOTABLE 🟡→🟢]. Header bumped to 10th-session reference.
+
+Estimated ~33 of ~180 rows now have E2E real proof appended (was
+~32 at session 8 end; session 9 was infra-focused, no audit
+promotions).
 
 ### Audit/MASTER.md hygiene status (end of 9th session)
 
