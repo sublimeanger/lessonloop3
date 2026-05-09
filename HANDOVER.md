@@ -47,10 +47,10 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~34% (was 33%, +4 §26.12/§26.13 tests this session).**
+**Catalog completeness: ~36% (was 33%, +4 §26.12/§26.13 + 2 §8.5 tests this session).**
 
 Current baseline (end of session):
-- **389 passed** (was 385 at session start; +4)
+- **391 passed** (was 385 at session start; +6 net)
 - **1-5 failed**: always includes the documented §5.4 email-verification
   flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
   to streak math, the supabaseInsert call to students returns undefined),
@@ -257,14 +257,20 @@ test or delete the line.
    non-happy paths, §26.5 messages tab.
 5. **§20 Continuation (term rollover)** — DEFERRED. Needs term
    boundaries + continuation_run + response rows seeded. ~6-8 hours.
-6. **§8 Lesson CRUD — STARTED** (4 real, ~30%). Group / cancel /
-   edit duration done; recurring edit dialog (§8.5: "all" /
-   "this+following" / "this only") + student-side cancellation
-   credit issuance left as TODO (need recurrence_rules +
-   lesson_recurrence_overrides setup).
-7. **§17.4 streak milestone** — pg_net trigger fails on service-role
-   inserts; either disable trigger temporarily or assert audit_log
-   only, leaving the network call to monitoring. ~1-2 hours.
+6. **§8 Lesson CRUD — STARTED** (6 real, ~45%). Group / cancel /
+   edit duration / recurring edit (this_only + this_and_future) done.
+   Catalog mentions an "all" mode for §8.5 but RecurringActionDialog
+   only exposes the two production modes — that's catalog drift.
+   Student-side cancel → make_up_credits trigger left as TODO (needs
+   attendance_records insert path).
+7. **§17.4 streak milestone — BLOCKED by production bug.** vault is
+   missing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` secrets, so
+   `_notify_streak_milestone` errors with sqlstate 23502 on the 3rd
+   consecutive practice_log insert; rolls back the user's INSERT.
+   Spawned a task for the fix (seed vault OR wrap pg_net call in
+   defensive EXCEPTION block). Test description is in
+   17-practice.spec.ts comment block — turns into a real test once
+   the bug ships.
 8. **§24.12 webhook true-replay idempotency** — needs
    E2E_STRIPE_TEST_WEBHOOK_SECRET copied locally from Supabase secrets;
    postWebhookEvent helper already written. ~2 hours.
