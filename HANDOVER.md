@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-08 (late evening) by Claude Opus 4.7 (1M context, 2nd session)
+**Last updated:** 2026-05-09 (early) by Claude Opus 4.7 (1M context, 3rd session)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -18,6 +18,8 @@
 - Live Stripe webhook subscription patched (we_1TUlSHAzPfYm94ux4mOfF72i),
   18 events configured (was 6) — closes the P0 production gap previously
   flagged in the §24 progress notes. No commit (Stripe Dashboard config).
+- 0f91088 — §26.10 parent compose thread (5 tests)
+- `<this commit>` — §26.12/§26.13 continuation response (4 tests)
 
 ---
 
@@ -45,16 +47,16 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~30% (was 25-30%, +10 real §24 tests this session).**
+**Catalog completeness: ~34% (was 33%, +4 §26.12/§26.13 tests this session).**
 
 Current baseline (end of session):
-- **372 passed** (was 312 at session start; +60 net)
-- **1-3 failed**: always includes the documented §5.4 email-verification
-  flake. Sometimes also: Owner Dashboard LoopAssist visibility (JWT-stale)
-  and the §22/§24 mutations race (see flake notes below).
-- **165 skipped** (was 212; this session converted 47 fixmes to real
-  tests across §24, §13, §14, §26, §8).
-- ~3.3-4.4 min wall-clock at 4 workers.
+- **389 passed** (was 385 at session start; +4)
+- **1-5 failed**: always includes the documented §5.4 email-verification
+  flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
+  to streak math, the supabaseInsert call to students returns undefined),
+  §22.2 timezone (cross-file race with §24), §13 stats (occasional).
+- **153 skipped** (unchanged).
+- ~3.5-4.5 min wall-clock at 4 workers.
 
 **Known intermittent flake — §22/§24 cross-file race:** §22 settings
 mutations (timezone + VAT toggle) modify org config that §24 invoice
@@ -248,12 +250,11 @@ test or delete the line.
 1. ~~§24 Stripe payments~~ — **DONE (10/17 catalog items real, ~60%)**.
 2. ~~§13 Invoices~~ — **DONE (10 real tests, ~70%)**.
 3. ~~§14 Invoice detail~~ — **DONE (12 real tests, ~75%)**.
-4. **§26 Parent portal — STARTED** (15 real, ~55%). §26.7 practice
-   log + §26.4 makeup respond (accept / decline / cross-tenant
-   reject / re-respond reject) + §26.10 compose thread (happy path
-   / 3 validations / cross-tenant 403) done; remaining gaps:
-   §26.12/§26.13 continuation response (authed + public token).
-   Needs small seed-data prep (active continuation run).
+4. **§26 Parent portal — STARTED** (19 real, ~70%). §26.4 makeup
+   respond (4) + §26.7 practice log (1) + §26.10 compose thread (5) +
+   §26.12/§26.13 continuation response (4) done. Remaining gaps:
+   §26.6 schedule, §26.8 invoice detail / pay drawer, §26.11 chats
+   non-happy paths, §26.5 messages tab.
 5. **§20 Continuation (term rollover)** — DEFERRED. Needs term
    boundaries + continuation_run + response rows seeded. ~6-8 hours.
 6. **§8 Lesson CRUD — STARTED** (4 real, ~30%). Group / cancel /
@@ -261,6 +262,30 @@ test or delete the line.
    "this+following" / "this only") + student-side cancellation
    credit issuance left as TODO (need recurrence_rules +
    lesson_recurrence_overrides setup).
+7. **§17.4 streak milestone** — pg_net trigger fails on service-role
+   inserts; either disable trigger temporarily or assert audit_log
+   only, leaving the network call to monitoring. ~1-2 hours.
+8. **§24.12 webhook true-replay idempotency** — needs
+   E2E_STRIPE_TEST_WEBHOOK_SECRET copied locally from Supabase secrets;
+   postWebhookEvent helper already written. ~2 hours.
+
+**Production bug found this session (continuation-respond):**
+The unauthenticated `/respond/continuation?token=X` flow is broken in
+production. `continuation-respond` has `verify_jwt=true` (no entry in
+config.toml), but the frontend uses publishable keys (`sb_publishable_*`)
+which fail the gateway's JWT-format check with
+`UNAUTHORIZED_INVALID_JWT_FORMAT`. Parents clicking the email link from
+a fresh device (no session) get a 401. **Fix:** add
+```toml
+[functions.continuation-respond]
+verify_jwt = false
+```
+to `supabase/config.toml` and redeploy. The function already does
+manual auth (token path → adminClient with no JWT needed; portal path
+→ checks Authorization Bearer + getUser()). Pattern matches every
+other user-facing fn. Tests in §26.13 currently navigate with the
+parent's storage state (mirroring "logged-in user clicks email link"),
+which works today; the fully-anonymous flow requires the deploy fix.
 
 After those 5 sections, the remaining 27 are gap-fillers and per-page smoke.
 

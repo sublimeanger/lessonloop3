@@ -601,9 +601,316 @@ test.describe('§26.10 — Parent compose new thread', () => {
   });
 });
 
-// Other §26 fixmes left for next session — most are UI-heavy (drawer
-// confirmations, Stripe Elements iframe, native app NativePaymentNotice)
-// or rely on data the e2e seed doesn't currently provide (multi-child
-// parent for child filter, active continuation run).
-// Backend-driven gap-fillers remaining: §26.12/§26.13 continuation
-// response (authed + public token).
+// ────────────────────────────────────────────────────────────────────
+// §26.12 / §26.13 — Continuation response (authed portal + public token)
+// ────────────────────────────────────────────────────────────────────
+//
+// PortalContinuation handles two routes:
+//   /portal/continuation        — authed parent UI (PortalContinuationList)
+//   /respond/continuation?token — public/email-link UI (TokenResponse)
+// Both call the continuation-respond edge fn:
+//   - portal: { run_id, student_id, response } with parent JWT
+//   - token:  { token, response } with anon bearer
+// Edge-fn behaviour is covered backend-side in §20. Tests below drive
+// the UI: parent clicks Continue / token-URL clicks Confirm Continuing
+// / invalid-token error toast / already-submitted message.
+//
+// Production caveat: continuation-respond has verify_jwt=true (default)
+// in config.toml, but the frontend uses publishable keys (sb_publishable_*)
+// not legacy JWT anon keys. Calls from a fully-unauthenticated browser
+// hit UNAUTHORIZED_INVALID_JWT_FORMAT at the gateway. The §26.13 tests
+// therefore navigate with the parent's storage state (mirroring the
+// realistic case where a parent clicks the email link from a device
+// already signed in to the portal). A fully-anonymous email-link click
+// from a fresh device is currently broken and needs verify_jwt=false
+// added for this function (the function already does manual auth on
+// the portal path; the token path uses adminClient with no auth).
+
+test.describe('§26.12 / §26.13 — Continuation response', () => {
+  const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
+  const E2E_PARENT_GUARDIAN_ID = '44821141-05be-4475-ad1f-a9532943a355';
+
+  // Each test seeds a current-term + next-term pair and a continuation
+  // run referencing them. Parallel inserts of overlapping date ranges
+  // would race against the check_term_overlap trigger, so we serialise
+  // within this block. Outside this block, §26 stays parallel.
+  test.describe.configure({ mode: 'serial' });
+
+  /** Seed a continuation run + response row. The far-future term ranges
+   *  (year 2400+) avoid colliding with any existing terms in the e2e org;
+   *  unique base year per testId keeps parallel test runs on different
+   *  files isolated. */
+  function seedContinuationRunAndResponse(opts: {
+    testId: string;
+    studentId: string;
+    guardianId: string;
+    deadlineDaysFromNow?: number;
+    initialResponse?: 'pending' | 'continuing' | 'withdrawing';
+  }): { runId: string; responseId: string; responseToken: string } {
+    const deadline = new Date(
+      Date.now() + (opts.deadlineDaysFromNow ?? 14) * 24 * 3600_000,
+    )
+      .toISOString()
+      .slice(0, 10);
+
+    const ownerUserId = getOwnerUserId();
+    const baseYear =
+      2400 +
+      (Math.abs(
+        opts.testId.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 0),
+      ) %
+        50);
+    const currentTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${opts.testId}_current`,
+      start_date: `${baseYear}-01-01`,
+      end_date: `${baseYear}-04-01`,
+      created_by: ownerUserId,
+    });
+    const nextTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${opts.testId}_next`,
+      start_date: `${baseYear}-04-02`,
+      end_date: `${baseYear}-07-01`,
+      created_by: ownerUserId,
+    });
+    if (!currentTerm?.id || !nextTerm?.id) {
+      throw new Error(`seedTerms failed: ${JSON.stringify({ currentTerm, nextTerm })}`);
+    }
+
+    const run = supabaseInsert('term_continuation_runs', {
+      org_id: E2E_ORG_ID,
+      current_term_id: currentTerm.id,
+      next_term_id: nextTerm.id,
+      notice_deadline: deadline,
+      reminder_schedule: [7, 3, 1],
+      assumed_continuing: false,
+      status: 'sent',
+      created_by: ownerUserId,
+    });
+    if (!run?.id) throw new Error(`seedRun failed: ${JSON.stringify(run)}`);
+
+    const responseToken = `e2e_token_${randomBytes(16).toString('hex')}`;
+    const response = supabaseInsert('term_continuation_responses', {
+      org_id: E2E_ORG_ID,
+      run_id: run.id,
+      student_id: opts.studentId,
+      guardian_id: opts.guardianId,
+      response: opts.initialResponse ?? 'pending',
+      response_token: responseToken,
+    });
+    if (!response?.id) throw new Error(`seedResponse failed: ${JSON.stringify(response)}`);
+
+    return { runId: run.id, responseId: response.id, responseToken };
+  }
+
+  /** Seed a fresh student linked to the e2e parent's guardian. Returns
+   *  the student row + a cleanup callable that drops everything. */
+  function seedStudentForParent(testId: string): { studentId: string; firstName: string } {
+    const firstName = `${testId}_student`;
+    const student = supabaseInsert('students', {
+      org_id: E2E_ORG_ID,
+      first_name: firstName,
+      last_name: testId,
+      status: 'active',
+    });
+    if (!student?.id) throw new Error(`seedStudent failed: ${JSON.stringify(student)}`);
+
+    supabaseInsert('student_guardians', {
+      org_id: E2E_ORG_ID,
+      student_id: student.id,
+      guardian_id: E2E_PARENT_GUARDIAN_ID,
+      relationship: 'guardian',
+      is_primary_payer: true,
+    });
+
+    return { studentId: student.id, firstName };
+  }
+
+  function cleanup(
+    seed: { runId: string; responseId: string },
+    testId: string,
+    studentId: string,
+  ) {
+    supabaseDelete('term_continuation_responses', `id=eq.${seed.responseId}`);
+    supabaseDelete('term_continuation_runs', `id=eq.${seed.runId}`);
+    supabaseDelete(
+      'terms',
+      `org_id=eq.${E2E_ORG_ID}&name=like.${encodeURIComponent(`${testId}%`)}`,
+    );
+    supabaseDelete(
+      'student_guardians',
+      `org_id=eq.${E2E_ORG_ID}&student_id=eq.${studentId}`,
+    );
+    supabaseDelete('students', `org_id=eq.${E2E_ORG_ID}&id=eq.${studentId}`);
+  }
+
+  test('§26.12 — authed parent /portal/continuation: Continue card updates response', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const { studentId, firstName } = seedStudentForParent(testId);
+    const seed = seedContinuationRunAndResponse({
+      testId,
+      studentId,
+      guardianId: E2E_PARENT_GUARDIAN_ID,
+    });
+
+    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    const page = await ctx.newPage();
+    try {
+      await goTo(page, '/portal/continuation');
+      await assertNoErrorBoundary(page);
+
+      // The card has the student name as its title. Wait for it to render —
+      // useParentContinuationPending fetches via the parent's JWT.
+      const studentLine = page.locator(`text=${firstName} ${testId}`).first();
+      await expect(studentLine).toBeVisible({ timeout: 15_000 });
+
+      // Locate Continue button inside that card. Using ancestor pivot keeps
+      // us scoped if the parent has multiple pending responses.
+      const card = page
+        .locator('div')
+        .filter({ has: page.locator(`text=${firstName} ${testId}`) })
+        .filter({ has: page.locator('button:has-text("Continue")') })
+        .last();
+      const continueBtn = card.locator('button:has-text("Continue")').first();
+      await expect(continueBtn).toBeVisible();
+      await continueBtn.click();
+
+      // Mutation completes async. Poll the DB rather than relying on UI
+      // toast text (toast copy varies by org settings).
+      await expect
+        .poll(
+          () => {
+            const after = supabaseSelect(
+              'term_continuation_responses',
+              `id=eq.${seed.responseId}&select=response`,
+            );
+            return after?.[0]?.response;
+          },
+          { timeout: 15_000, intervals: [500, 1000, 2000] },
+        )
+        .toBe('continuing');
+
+      const after = supabaseSelect(
+        'term_continuation_responses',
+        `id=eq.${seed.responseId}&select=response,response_at,response_method`,
+      );
+      expect(after[0].response).toBe('continuing');
+      expect(after[0].response_at).not.toBeNull();
+      // Portal path → response_method='portal' (the edge fn hardcodes it).
+      expect(['portal', 'authenticated']).toContain(after[0].response_method);
+    } finally {
+      await ctx.close();
+      cleanup(seed, testId, studentId);
+    }
+  });
+
+  test('§26.13 — /respond/continuation?token: Confirm Continuing updates response', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const { studentId } = seedStudentForParent(testId);
+    const seed = seedContinuationRunAndResponse({
+      testId,
+      studentId,
+      guardianId: E2E_PARENT_GUARDIAN_ID,
+    });
+
+    // Parent storage state: /respond/continuation is auth:'public', but
+    // we navigate with an active session so the supabase-js client sends
+    // a JWT (parent's access token), not just the publishable key. See
+    // the production caveat at the top of this describe block.
+    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(`/respond/continuation?token=${seed.responseToken}`);
+
+      const continueBtn = page.locator('button:has-text("Confirm Continuing")');
+      await expect(continueBtn).toBeVisible({ timeout: 15_000 });
+      await continueBtn.click();
+
+      // Success card replaces the buttons.
+      await expect(
+        page.getByRole('heading', { name: 'Response Recorded' }),
+      ).toBeVisible({ timeout: 15_000 });
+
+      const after = supabaseSelect(
+        'term_continuation_responses',
+        `id=eq.${seed.responseId}&select=response,response_method`,
+      );
+      expect(after[0].response).toBe('continuing');
+      expect(after[0].response_method).toBe('email_link');
+    } finally {
+      await ctx.close();
+      cleanup(seed, testId, studentId);
+    }
+  });
+
+  test('§26.13 — invalid token surfaces error toast on submit', async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    const page = await ctx.newPage();
+    try {
+      const fakeToken = `definitely_not_a_real_token_${Date.now()}`;
+      await page.goto(`/respond/continuation?token=${fakeToken}`);
+
+      const continueBtn = page.locator('button:has-text("Confirm Continuing")');
+      await expect(continueBtn).toBeVisible({ timeout: 15_000 });
+      await continueBtn.click();
+
+      // Toast surfaces with the error. Match either the destructive variant
+      // shape or the explicit "Invalid or expired" message — supabase-js
+      // versions differ on whether they propagate the body to err.message.
+      const toast = page
+        .locator('[data-radix-collection-item]')
+        .or(page.locator('[role="status"]'))
+        .or(page.getByText(/Invalid or expired|Failed to submit response|Error/i));
+      await expect(toast.first()).toBeVisible({ timeout: 10_000 });
+
+      // The page MUST NOT show the success state.
+      await expect(page.locator('text=Response Recorded')).not.toBeVisible();
+    } finally {
+      await ctx.close();
+    }
+  });
+
+  test('§26.13 — already-submitted token shows current-status message', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const { studentId } = seedStudentForParent(testId);
+    const seed = seedContinuationRunAndResponse({
+      testId,
+      studentId,
+      guardianId: E2E_PARENT_GUARDIAN_ID,
+      initialResponse: 'continuing',
+    });
+
+    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    const page = await ctx.newPage();
+    try {
+      await page.goto(`/respond/continuation?token=${seed.responseToken}`);
+
+      const continueBtn = page.locator('button:has-text("Confirm Continuing")');
+      await expect(continueBtn).toBeVisible({ timeout: 15_000 });
+      await continueBtn.click();
+
+      // The fn returns { already_responded: true }. The component flips to
+      // the success-card layout with "Already Responded" as the heading.
+      await expect(
+        page.getByRole('heading', { name: 'Already Responded' }),
+      ).toBeVisible({ timeout: 10_000 });
+
+      // DB unchanged: still 'continuing', no clobber.
+      const after = supabaseSelect(
+        'term_continuation_responses',
+        `id=eq.${seed.responseId}&select=response`,
+      );
+      expect(after[0].response).toBe('continuing');
+    } finally {
+      await ctx.close();
+      cleanup(seed, testId, studentId);
+    }
+  });
+});
