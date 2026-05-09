@@ -285,14 +285,20 @@ Deno.serve(async (req: Request) => {
           if (!lesson.recurrence_id) continue;
 
           try {
-            // Preview — call process-term-adjustment internally
+            // Preview — call process-term-adjustment internally.
+            // Pass through the original user JWT (authHeader) — NOT
+            // serviceRoleKey. process-term-adjustment validates the
+            // caller via supabase.auth.getUser() which rejects
+            // service-role JWTs ("missing sub claim"). bulk-process
+            // already verified the user is owner/admin above; passing
+            // their JWT through is the authorised channel.
             const previewResp = await fetch(
               `${supabaseUrl}/functions/v1/process-term-adjustment`,
               {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${serviceRoleKey}`,
+                  Authorization: authHeader,
                   apikey: supabaseAnonKey,
                 },
                 body: JSON.stringify({
@@ -322,14 +328,14 @@ Deno.serve(async (req: Request) => {
               continue;
             }
 
-            // Confirm
+            // Confirm — same authHeader pass-through (see preview above).
             const confirmResp = await fetch(
               `${supabaseUrl}/functions/v1/process-term-adjustment`,
               {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${serviceRoleKey}`,
+                  Authorization: authHeader,
                   apikey: supabaseAnonKey,
                 },
                 body: JSON.stringify({
