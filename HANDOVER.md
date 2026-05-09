@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after 6th-session §16 + §10.7 + §15.4 + §20 + audit hygiene) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-09 (after 7th-session JWT-injection + §22 + §27 + audit hygiene) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -169,6 +169,76 @@
   from 12-slot deterministic-by-testId to 24-slot Math.random()
   per call — stops retries from re-hitting the same orphan
   collision slot if a previous run was killed mid-cleanup.
+- e08482a — test(e2e): post-goto JWT injection to defuse long-run
+  staleness (priority 1 of 7th session). Augments
+  _fixtures/auth-refresh.ts with a `page` fixture wrapper that, on
+  the FIRST page.goto in a test, re-reads the (possibly newly-
+  refreshed) storage state file and overwrites the running
+  browser's localStorage with the latest token. Pairs with the
+  pre-existing `storageState` override that refreshes the file on
+  disk before context creation — together they cover both layers
+  (file-on-disk + in-memory localStorage). STORAGE_KEY now derived
+  from E2E_SUPABASE_URL rather than hardcoded to project ref.
+  IMPORTANT: spot-check on 05-rbac + 06-dashboard still showed the
+  same 2 documented persistent flakes (§5.4 email_not_confirmed —
+  Supabase auth quirk for fresh throwaway users; RBAC Settings
+  degradation — UI render race waiting for Profile content). The
+  fix landed clean and is benign-additive but the 2 visible flakes
+  are NOT actually JWT-stale — they have different root causes.
+  Conservative additive change should help genuine staleness in
+  long parallel runs without masking other failures.
+- 4c34bf0 — test(e2e): §22 Settings — 8 new real tests for
+  launch-visible mutations (priority 2). Direct REST-driven coverage
+  for the four §22 mutation surfaces v2 plan §3.1/§3.2 lists as
+  launch-in-scope: §22.2 schedule_hours validation (2 — valid range
+  persists / end ≤ start rejected by validate_schedule_hours trigger
+  with expected error message; org row stays atomic on failure),
+  §22.2 parent_reschedule_policy (3 — one per supported value
+  admin_locked / request_only / self_service; restored in finally so
+  parallel §26.6 portal tests don't leak across), §22.20 Continuation
+  defaults (1 — 3-field atomic notice_weeks + assumed_continuing +
+  reminder_days), §22.4 Invite member (1 — INSERT into invites via
+  owner JWT, asserts role + 7d expires_at default + token populated),
+  §22.9 Music custom-instrument CRUD (1 — INSERT is_custom=true →
+  UPDATE category → DELETE; assert org_id scoping). Two new inline
+  helpers: patchOrgViaOwnerJwt(body) for fire-and-forget mutations,
+  patchOrgWithBody(body) when test needs to assert response body
+  (trigger error messages). Status: launch-in-scope. File-level run:
+  39 passed / 11 skipped / 24s.
+- 1fca3c2 — test(e2e): §27 Notifications — 5 new real tests for
+  pref/dedup contracts (priority 3). DB-layer + auth-gate coverage
+  for the email-sending path's pref-honoring contract.
+  IMPORTANT pivot story: the original plan was to POST
+  send-payment-receipt with prefs=false → assert {opted out} +
+  zero message_log rows. That hit a 401 wall — the function's
+  inline `authHeader.includes(supabaseServiceKey)` check requires
+  byte-equal substring match against `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")`,
+  and `E2E_SUPABASE_SERVICE_ROLE_KEY` in .env.test (a legacy JWT
+  iat=2026-04-29) doesn't match the deployed function's env value
+  post 2026-05-08 migration. Deployment env value is SHA-256-hashed
+  by Management API readback (no plaintext recovery without
+  rotation). Pivoted to DB-layer contract tests that prove what the
+  fn depends on: §27.2 prefs upsert + fn-shape SELECT round-trip
+  (2 tests — prefs=false survives, absent-row returns 0); §27 dedup
+  unique partial idx_message_log_payment_receipt_dedup (1 test —
+  inserting 2nd row with same payment_id+message_type='payment_receipt'
+  fails 23505); §27 RBAC auth gate (2 tests — anon→401, no-auth→401;
+  these are independent of the env-drift). Inline helpers:
+  selectNotifPrefServiceRole, insertMessageLogRaw (captures status +
+  body for 23505 assertion), upsertParentNotifPref,
+  deleteParentNotifPref. Status: launch-in-scope. File-level run:
+  14 passed / 1 skipped / 4.2s.
+- 6f2c09b — docs(audit): MASTER.md hygiene — §22 Settings + §27
+  Receipt email rows tagged with [E2E real per <sha>], header
+  bumped to 2026-05-09 7th-session reference. Estimated ~28 of
+  ~180 rows now have E2E real proof appended (was ~25).
+- (also at 7th-session start) Manual SQL sweep of stale e2e_ test
+  data via Supabase MCP execute_sql — cleared 6 lesson rows
+  (1 active scheduled + 5 cancelled), 22 students, 4 invoices, and
+  0 active term_continuation_runs that had leaked from prior runs.
+  The active `e2e_1778331036121_ugj2_gcal` lesson on 2026-05-23
+  was blocking new seeds via the teacher_conflict trigger. No
+  commit (DB ops only).
 
 ---
 
@@ -206,25 +276,31 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~52% (was 47% before 6th session — +20 real tests across §16, §10.7, §15.4, §20).**
+**Catalog completeness: ~55% (was 52% before 7th session — +13 real tests
+across §22 Settings (8) + §27 Notifications (5), plus the JWT-injection
+fixture which is test-infra not catalog).**
 
-Current baseline (end of 6th session, full-suite run):
-- **440 passed** (was 418 prior; +22 net including +6 §20 continuation
-  tests on top of +14 from §16/§10.7/§15.4, less small offsets from
-  removed test.fixme placeholders).
-- **1-5 failed**: always includes the documented §5.4 email-verification
-  flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
-  to streak math, the supabaseInsert call to students returns undefined),
-  §22.2 timezone (cross-file race with §24), §13 stats (occasional),
-  05-rbac Settings degradation + 06-dashboard stat cards (in the
-  13-brittle JWT-stale group), §20.1 continuation-respond (very
-  occasional curl/spawnSync ETIMEDOUT transient — when it fires, it
-  can cascade to 2 dependent serial tests shown as "did not run").
-- **136 skipped** (was 152 — the 6th-session work removed 16
-  `test.fixme()` placeholders across §10.7 + §16 by replacing
-  with real tests).
-- **3.6 min wall-clock at 4 workers** (5 cascading "did not run"
-  on this run, all from the §5.4 / RBAC settings flake group).
+Current baseline (end of 7th session, full-suite run, post-stale-data sweep + JWT fix + new tests):
+- **454 passed / 2 failed / 132 skipped / 3.8 min wall-clock at 4 workers**
+- **+27 passed** vs pre-7th-session (was 427)
+- **-11 failed** vs pre-7th-session (was 13)
+- **-4 skipped** vs pre-7th-session (was 136 — 5 fixmes replaced with
+  real tests in §22 + §27, less +1 from the §27 placeholder test.fixme
+  for the deferred fn-invocation tests being converted to TODO comments)
+- **-40 min wall-clock** vs pre-7th-session (was 44.5 min — the outlier
+  was one or more workers wedged on §13/§14 SQL ops for ~39 min,
+  contributing factors: stale e2e_1778331036121_ugj2_gcal lesson
+  blocking seeds via teacher_conflict trigger; possibly other transient
+  load. Cleared at session start; baseline returned to documented
+  3.5-5 min range.)
+- **The 2 remaining failures are the documented persistent flakes**:
+  §5.4 email-verification (Supabase email_not_confirmed on fresh
+  throwaway user); RBAC Settings degradation (UI render race on
+  Profile tab content). **Neither is actually JWT-stale.** Treat as
+  known-bad until separate root-cause sessions address each. The
+  "13 brittle JWT-stale group" framing in earlier HANDOVERs is now
+  considered DOUBTFUL — see the [Known issues](#known-issues) section
+  for the updated story.
 
 **Known intermittent flake — §22/§24 cross-file race:** §22 settings
 mutations (timezone + VAT toggle) modify org config that §24 invoice
@@ -304,9 +380,10 @@ session — don't fix inline during a catalog session.
 
 | Item | Severity | Notes |
 |---|---|---|
-| **Streak milestone notifications never deliver.** `ec94ee3` made `_notify_streak_milestone` defensive — vault/queue failures now log a `RAISE WARNING` instead of rolling back the user's `practice_logs` insert. But the underlying cause is not fixed: `vault.decrypted_secrets` has only `INTERNAL_CRON_SECRET` seeded; `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are still missing, so the trigger reads NULL and skips the `net.http_post` call entirely. The audit_log row commits as the durable record (which is what §17.4 asserts and why the test passes), but no push notification reaches the user on the 3rd / 7th / 14th / 30th / 60th / 100th consecutive day. | **Launch-blocking for Practice feature delivery** by Lauren's shadow-term week 4 (when streak push notifications would be expected to fire). Needs a separate session: `vault.create_secret('SUPABASE_URL', '...')` + `vault.create_secret('SUPABASE_SERVICE_ROLE_KEY', '...')`. The service-role value can be read from `E2E_SUPABASE_SERVICE_ROLE_KEY` in `.env.test` but **must not be committed**; apply via `execute_sql` directly or a hand-rolled gitignored migration. |
-| §22/§24 cross-file race | P2 | Documented under "Reality check"; needs `playwright.config.ts` change to give §22 + §24 their own throwaway orgs |
-| 13 brittle JWT-stale test failures | P2 | Documented under "Known issues"; needs `beforeEach` JWT injection hook |
+| **Streak milestone notifications never deliver.** `ec94ee3` made `_notify_streak_milestone` defensive — vault/queue failures now log a `RAISE WARNING` instead of rolling back the user's `practice_logs` insert. But the underlying cause is not fixed: `vault.decrypted_secrets` has only `INTERNAL_CRON_SECRET` seeded; `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are still missing, so the trigger reads NULL and skips the `net.http_post` call entirely. The audit_log row commits as the durable record (which is what §17.4 asserts and why the test passes), but no push notification reaches the user on the 3rd / 7th / 14th / 30th / 60th / 100th consecutive day. **STATUS: still unfixed end of session 7. Shadow-term week 4 timer is running — needs to be addressed before Lauren tests practice notifs.** | **Launch-blocking for Practice feature delivery** by Lauren's shadow-term week 4 (when streak push notifications would be expected to fire). Needs a separate session: `vault.create_secret('SUPABASE_URL', '...')` + `vault.create_secret('SUPABASE_SERVICE_ROLE_KEY', '...')`. The service-role value can be read from `E2E_SUPABASE_SERVICE_ROLE_KEY` in `.env.test` but **must not be committed**; apply via `execute_sql` directly or a hand-rolled gitignored migration. **Note: the `E2E_SUPABASE_SERVICE_ROLE_KEY` value in .env.test may itself be drifted from current — see "Edge function service-role key drift" item below.** |
+| **Edge function service-role key drift (NEW 2026-05-09)** | **P1** | The `E2E_SUPABASE_SERVICE_ROLE_KEY` legacy JWT in .env.test (iat=2026-04-29) does NOT byte-equal what the deployed edge functions' `SUPABASE_SERVICE_ROLE_KEY` env var has post 2026-05-08 migration. Edge fns that gate on `authHeader.includes(serviceKey)` (send-payment-receipt, likely send-refund-notification + send-auto-pay-alert) reject test invocations with 401. **PostgREST direct-table calls still work** with the legacy JWT — only edge-fn-fronted invocations are blocked. Symptom for tests: 401 on POST to `/functions/v1/send-*`. Fix: read the deployment env value (Management API returns SHA-256 only — needs Supabase Dashboard manual read OR a key rotation). Risk of rotation: every cron + webhook env using the same key would need updating, so do it once with a coordinated update. **§27 Notifications fn-invocation tests deferred until this is fixed.** |
+| **JWT-stale "13 brittle" theory looks doubtful (NEW 2026-05-09)** | **P2** | 7th-session investigation showed the 2 visible persistent flakes (§5.4 + RBAC Settings degradation) have specific non-JWT root causes: §5.4 hits Supabase's `email_not_confirmed` rejection on freshly-created throwaway users; RBAC Settings is a UI render race waiting for Profile-tab text. The `e08482a` JWT-injection fixture landed clean and is benign-additive but does NOT make these 2 disappear. Recommend: drop the "JWT-stale" framing in HANDOVER, treat the 2 as separate known-bad bugs needing root-cause work. The 13-count itself is no longer reliably observed — recent baselines show a different mix. |
+| §22/§24 cross-file race | P2 | Documented under "Reality check"; needs `playwright.config.ts` change to give §22 + §24 their own throwaway orgs. 7th-session §22 work used `mode: 'serial'` within describes + restore-in-finally, which suppressed self-collision; the cross-file race remains theoretically possible. |
 
 ---
 
@@ -464,101 +541,133 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
-### What's done at end of 6th session
+### What's done at end of 7th session
 
 | Section | Real tests | Coverage | Notes |
 |---|---:|---:|---|
 | §10 Students (incl. §10.7 CSV import) | 7 | ~60% | §10.7 5 tests via csv-import-execute (Lauren-critical) done |
 | §13 Invoices | 10 | ~70% | mature |
 | §14 Invoice detail | 12 | ~75% | mature |
-| §15 Reports | 5 + 9 smoke | ~50% | §15.4.7 Outstanding + §15.4 (LessonsDelivered, Cancellations, Attendance, Revenue) done; Payroll / Utilisation / TeacherPerformance deferred to s7 |
+| §15 Reports | 5 + 9 smoke | ~50% | §15.4.7 Outstanding + §15.4 (LessonsDelivered, Cancellations, Attendance, Revenue) done; Payroll / Utilisation / TeacherPerformance still pending |
 | §16 Messages | 5 + smoke | ~50% | §16.3 staff-side send-message contract done; bulk + threads + internal still UI-driven |
 | §17 Practice | 5 + cron | ~75% | mature |
-| §20 Continuation | 9 | ~85% | run-creation backend covered (create / process_deadline / bulk-process confirmed); withdrawal-flow + delete-run still pending |
+| §20 Continuation | 9 | ~85% | run-creation backend covered; withdrawal-flow + delete-run still pending |
+| §22 Settings | 8 + 21 smoke | ~50% | 7th-session: schedule_hours validation, parent_reschedule_policy, continuation defaults, invite member, music custom-instrument CRUD. Members invite/archive UI flows + closure dates + GDPR + audit log + rate cards CRUD all deferred |
 | §24 Stripe (incl. §24.12 true-replay) | 12 | ~70% | mature; §24.4/6/8/9/11 deferred — Stripe CLI / OAuth / mobile |
+| §27 Notifications | 5 | ~40% | 7th-session: prefs upsert+SELECT round-trip / absent-row default / dedup unique partial idx_message_log_payment_receipt_dedup / RBAC auth gate (anon→401, no-auth→401). Live fn-invocation tests deferred — service-role key in .env.test drifted |
 | §8 Lesson CRUD | 9 | ~65% | §8.5 recurring + §8.6 cancel + §8.8.9-10 auto-credit done |
 | §11 Teachers | 1 + RBAC | ~30% | §11.4.1 unlinked-teacher contract done; invite/archive deferred |
 | §26 Parent portal | 30+ | ~95% | essentially complete; only §26.8 Resources + §26.9.2-3 installments remain |
 | §32 Security trigger guards | 9 | ~80% | mature |
 
-Catalog overall: **~52%** (was 25% six sessions ago).
+Catalog overall: **~55%** (was 52% at session 6 end).
 
-### Priority order — 7th session pickup
+### Priority order — 8th session pickup
 
-§20 Continuation was the previously-deferred item but landed in
-session 6 as a side-quest (commit 35631ad — 6 tests covering the
-run-creation backend including create / process_deadline /
-bulk-process confirmed). What remains in §20 is lower-stakes:
-withdrawal-flow via process-term-adjustment, delete-run preview/
-warn paths. Treat as a P2 follow-up, not a session-7 priority.
+7th session shipped JWT-injection fixture (e08482a) + §22 Settings
+8 new tests (4c34bf0) + §27 Notifications 5 new tests (1fca3c2).
+Important framing for session 8:
 
-1. **§22 Settings tabs** — currently 5 tests covering basic load
-   + timezone + VAT. 24 tabs total; many are launch-hidden per v2
-   plan. Test only launch-visible (organisation, payments, billing,
-   reschedule policies, term continuation, locations, instruments).
-   ~3-4h for full sweep.
+**JWT-stale fix landed but the documented "13 brittle" group is
+NOT actually JWT-stale.** Spot-check after the fix still showed
+§5.4 + RBAC Settings degradation flaking with their original
+signatures (Supabase email_not_confirmed quirk on fresh throwaway
+user; Profile-tab UI render race). The fix is benign-additive and
+should help any genuine staleness, but session 8 should NOT expect
+the 2 documented persistent flakes to disappear. Treat them as
+known-bad until someone fixes the actual root causes (separate
+session per cause). The HANDOVER's prior "13 brittle JWT-stale
+group" framing is now considered DOUBTFUL — flag for Jamie review.
 
-2. **§27 Email & notifications** — notification_preferences are
-   seeded and queryable (§26.11 lands the upsert path). Value-add:
-   assert a `send-templated-email` edge fn (or equivalent) HONORS
-   the preference flag — i.e. when `email_invoice_reminders=false`,
-   the reminder fn doesn't send. ~1-2h.
+**§27 live fn-invocation deferred — service-role key drift.** The
+edge function send-payment-receipt rejects the legacy JWT in
+.env.test with 401. Fixing this needs either:
+(a) Jamie reads the deployment env value (Management API returns
+SHA-256 hash only — no plaintext) and pastes into .env.test, OR
+(b) Rotate the service-role key (which would require updating
+.env.test AND every deployed cron / webhook env that uses
+SUPABASE_SERVICE_ROLE_KEY — risky on a live system).
+Until that's resolved, §27 fn-invocation TODOs remain commented
+in 27-notifications.spec.ts. The DB-shape contract tests landed
+as substitute. **Surface this to Jamie before session 8 starts.**
 
-3. **§15.4 remaining 3 reports** — Payroll (needs teacher pay rate
+1. **§15.4 remaining 3 reports** — Payroll (needs teacher pay rate
    on org's owner teacher), Utilisation (needs room capacity +
    closure_dates seeds), TeacherPerformance (FeatureGate-protected
    at TeacherPerformance.tsx:101 — may need to enable
-   `teacher_performance` for the e2e org). ~1-2h each.
+   `teacher_performance` for the e2e org). Pattern is identical to
+   the 4 already shipped (commits 6205880 + 3095a15). ~1-2h each.
 
-4. **§26.9 payment-plan installments** (§26.9.2 pay one installment,
+2. **§26.9 payment-plan installments** (§26.9.2 pay one installment,
    §26.9.3 pay all remaining). Needs invoice_installments seed
    chain. ~2-3h.
 
-5. **THE 13-BRITTLE JWT-STALE FIX** — pseudo-code in
-   [Known issues](#known-issues). ~30 min for the beforeEach JWT
-   injection hook. Flake count creeping (3 fails this run was the
-   JWT-stale group again: §5.4 + §5.5 + 06-dashboard stat cards).
-   Worth fixing once before the next round of session-7+ work.
+3. **§22 deeper settings coverage** — what's still missing per
+   v2 launch-visible: §22.1 profile mutations (email change /
+   password update), §22.3 branding (logo upload), §22.5 closure
+   dates CRUD (Lauren-mentioned for greying out calendar), §22.7
+   GDPR export queue, §22.8 rate cards CRUD (drives invoice line
+   item prices), §22.10 messaging templates, §22.11 availability
+   overlapping-block trigger error, §22.18 NotificationsTab
+   toggles. ~2-3h for the high-value subset.
 
-**If quiet (only after items 1-5 ship):**
-
-6. **§20 follow-ups** — withdrawal-flow via bulk-process-continuation
+4. **§20 follow-ups** — withdrawal-flow via bulk-process-continuation
    process_type='withdrawals' (chains through process-term-adjustment
    + cleanup_withdrawal_credits — meaningful complexity), delete-run
-   preview/warn paths.
+   preview/warn paths. ~3-4h.
 
-7. **§8 remaining cases** (§8.8.3 conflict-detection blocks save,
+**If quiet (only after items 1-4 ship):**
+
+5. **§8 remaining cases** (§8.8.3 conflict-detection blocks save,
    §8.8.12 closure-date warning banner, §8.8.14 weekly recurrence
    count). All UI-driven; brittle.
 
-8. **§9 Daily register** — §9.3.4 check_attendance_not_future
+6. **§9 Daily register** — §9.3.4 check_attendance_not_future
    is already covered in §32.7. The other §9 cases are UI-heavy.
 
-### Audit/MASTER.md hygiene status (end of 6th session)
+7. **§11 Teachers invite/archive flows.**
 
-Updated rows:
-- §16 Send single message (with finding link)
-- §10.7 CSV import (execute) — tagged PROMOTABLE
-- §15 Revenue / Outstanding / Lessons delivered / Cancellations /
-  Attendance — Outstanding tagged PROMOTABLE
-- §26 Parent portal cluster: 7 of 9 rows tagged PROMOTABLE
-- §17 Practice tracker (staff) + Portal practice
-- §13 Invoices list / §14 Invoice detail
-- §24 Stripe webhook (with §24.12 true-replay reference)
-- 2 cron rows: reset_stale_streaks + complete_expired_assignments
-- Header bumped to 2026-05-09
+**Cross-cutting concerns (not catalog work):**
 
-Still stale 🟡 (target session 7 hygiene):
+- **§27 service-role key refresh** — the blocker described above.
+  Once Jamie unblocks, the §27 TODO comments in
+  27-notifications.spec.ts can be promoted to real fn-invocation
+  tests in ~30 min using the helpers already in the file
+  (`callSendPaymentReceipt`, `upsertParentNotifPref`,
+  `selectMessageLogServiceRole`, `insertPaymentServiceRole` are all
+  in place from 7th session).
+
+- **§22/§24 cross-file race** — needs `playwright.config.ts` change
+  to give §22 + §24 their own throwaway orgs. Did NOT bite during
+  7th-session §22 work (the 8 new tests use `mode: 'serial'` within
+  their describes + restore in finally), but remains a P2 from the
+  prior session list.
+
+### Audit/MASTER.md hygiene status (end of 7th session)
+
+Updated rows in 7th session (commit 6f2c09b):
+- §22 Settings (org config) — added [E2E real per 4c34bf0]:
+  schedule_hours valid+invalid trigger / parent_reschedule_policy
+  3-value PATCH / continuation 3-field atomic / invites INSERT /
+  music custom-instrument CRUD
+- §27 Receipt email (send-payment-receipt) — added [E2E real per
+  1fca3c2]: RBAC auth gate + prefs-honoring DB-shape + dedup unique
+  partial idx_message_log_payment_receipt_dedup. Documents that
+  live fn-invocation is deferred pending key refresh.
+- Header bumped to 7th-session reference.
+
+Still stale 🟡 (target session 8 hygiene):
 - §11 Teachers (only §11.4.1 covered; rows still 🟡)
-- §20 Continuation (will be flipped after session 7's dedicated work)
-- §22 Settings, §27 Email/notifications (no real coverage yet)
-- §15 Utilisation / Payroll / TeacherPerformance (deferred to s7)
-- All cron rows other than the 2 above
+- §20 Continuation (will be flipped after session 8's withdrawal
+  work or earlier if Jamie does a review pass)
+- §15 Utilisation / Payroll / TeacherPerformance (deferred again)
+- All cron rows other than the 2 already tagged
 - §32 security trigger guards rows (mature but not yet tagged)
+- §22 deeper coverage rows when more s8 work lands
 
-**~25 of ~180 rows now have E2E real proof appended.** Promotion
-🟡→🟢 is deferred to a focused Jamie review pass once a critical
-mass of PROMOTABLE tags accumulates.
+**~28 of ~180 rows now have E2E real proof appended** (was ~25 at
+session 6 end). Promotion 🟡→🟢 still deferred to a focused Jamie
+review pass once a critical mass of PROMOTABLE tags accumulates.
 
 ### Gaps that are explicitly NOT priorities
 
@@ -806,6 +915,49 @@ DELETE FROM terms
   WHERE org_id='25b57950-...' AND name LIKE 'e2e_%';
 ```
 
+### ❌ Don't assume the documented "13 brittle" failures are JWT-stale
+
+7th-session investigation showed the 2 visible persistent flakes
+(§5.4 email-verification gate; RBAC Settings degradation) are NOT
+JWT-stale. They have specific signatures:
+- §5.4: `signInAndWriteStorageState failed: email_not_confirmed` —
+  Supabase auth quirk where a freshly-created throwaway user with
+  `emailConfirmed: false` is rejected at sign-in. Independent of
+  JWT freshness.
+- RBAC Settings degradation: the `hasProfile` text-visibility
+  assertion times out at 5s — UI render race waiting for Profile
+  tab content. The teacher-role's resolvedTab logic kicks
+  organisation→profile correctly, but the page may take longer to
+  paint than the 2s `waitForTimeout`.
+
+The JWT-injection fixture landed in e08482a is benign-additive and
+should help any genuine staleness in long parallel runs, but
+session-8+ work should NOT assume these 2 will disappear after the
+fix. They need separate root-cause work — flagged for Jamie review
+in the [Open production-relevant items](#open-production-relevant-items)
+table.
+
+### ❌ Don't trust .env.test E2E_SUPABASE_SERVICE_ROLE_KEY for fn invocation
+
+Several edge functions (send-payment-receipt, send-refund-notification,
+send-auto-pay-alert, send-templated-email if it exists) require
+`Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}` byte-equal to the
+deployed function's env value. Post 2026-05-08 migration, the legacy
+JWT in .env.test (iat=2026-04-29) does NOT match the deployment's env
+— the function returns 401.
+
+For PostgREST direct calls (`*.supabase.co/rest/v1/<table>`) the
+legacy JWT still works (the test suite's supabase-admin.ts factories
+all work fine). The mismatch is specifically at the edge function
+auth gate.
+
+**Workaround**: until Jamie refreshes .env.test (Management API
+returns SHA-256 only — no plaintext recovery without rotation), use
+DB-shape contract tests instead of fn-invocation. The §27
+notifications spec demonstrates the pattern: prefs upsert + SELECT
+round-trip + UNIQUE partial index assertion + RBAC auth-gate
+negative tests.
+
 ### ❌ Don't forget the trg_cleanup_attendance_on_cancel order
 
 When seeding a cancelled lesson + attendance_records together: PATCH
@@ -1019,6 +1171,19 @@ the same shape.
 | `§16.3` cross-org test | inline service-role insert into `organisations` (name + created_by required, all other cols default) + `guardians` (org_id + full_name required) | Lightweight throwaway-org pattern for cross-tenant 403 tests where the recipient must exist in a different org. Cleanup is two `supabaseDelete` calls (guardian first, then org). |
 | `§20.4` describe | `seedTermsStudentAndRecurringLesson({testId})` | Seeds the full chain create-continuation-run needs: 2 non-overlapping terms (far-future to bypass check_term_overlap) + active student + student_guardians link to e2e parent + recurrence_rules + lesson with recurrence_id + lesson_participants. Returns IDs + cleanup callable. Uses `Math.random() * 500` for baseYear (NOT a deterministic hash — that caused parallel-test collisions in initial runs). |
 | `§20.5` describe | `seedRunWithPendingResponse({testId, assumedContinuing})` | Lighter seed for process_deadline tests — terms + student + run (status='sent', deadline yesterday) + 1 pending response. Skips the recurrence/lesson chain since process_deadline only operates on response.response field. |
+
+### Inline helpers worth knowing about (7th session)
+
+| Where | Helper | Pattern it solves |
+|---|---|---|
+| `_fixtures/auth-refresh.ts` | `injectFreshSessionFromFile(page, storagePath)` + `page` fixture override | Wraps `page.goto` so the FIRST navigation re-reads the storage state file and overwrites the running browser's localStorage with the latest token. Pairs with the existing `storageState` override (which refreshes the file on disk). STORAGE_KEY now derived from E2E_SUPABASE_URL. |
+| `§22.2` describe | `patchOrgViaOwnerJwt(body)` | Service-role-via-owner-JWT PATCH on `organisations`, parses status code from curl `-w "%{http_code}"`. Use for fire-and-forget mutations (timezone, parent_reschedule_policy, continuation defaults). |
+| `§22.2` describe | `patchOrgWithBody(body)` | Variant that captures BOTH status and response body — needed when the test asserts on a trigger error message (e.g. validate_schedule_hours's 'schedule_end_hour must be greater than schedule_start_hour' text). |
+| `§27` describe | `callSendPaymentReceipt(payload, {auth})` | service-role / anon / no-auth invocation of send-payment-receipt with body capture for assertion. Currently used only for RBAC negative tests; the {auth:'service'} path is blocked by .env.test key drift (see anti-patterns). |
+| `§27` describe | `selectNotifPrefServiceRole(query)` + `selectMessageLogServiceRole(query)` | Service-role-via-curl SELECT for tables RLS-scoped away from the owner JWT. Use any time you need to assert on a row whose RLS gates non-owner user_id (notification_preferences and parent-related message_log rows are the common case). |
+| `§27` describe | `insertMessageLogRaw(payload)` | Captures `{status, body}` from a service-role POST so tests can assert on 23505 unique-violation responses (e.g. dedup index test). Companion to `supabaseInsert` which swallows errors. |
+| `§27` describe | `upsertParentNotifPref(orgId, userId, prefs)` + `deleteParentNotifPref(orgId, userId)` | Service-role POST with `Prefer: resolution=merge-duplicates` for upsert; DELETE for cleanup. Use to flip `email_payment_receipts` / `email_invoice_reminders` etc. for testing pref-honoring contracts. |
+| `§27` describe | `insertPaymentServiceRole(payload)` | Service-role POST to `payments` table with `Prefer: return=representation` + error-throwing wrapper. Used by §27 dedup test to seed a payment that both the message_log dedup index test and a future fn-invocation test depend on. |
 
 ---
 
