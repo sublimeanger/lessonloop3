@@ -22,7 +22,7 @@
 - a5dec8b — §26.12/§26.13 continuation response (4 tests)
 - 4796f9a — §8.5 recurring lesson edit (2 tests)
 - 65bde4e — fix(edge): continuation-respond verify_jwt=false (unauth flow)
-- `<this>` — fix(db): _notify_streak_milestone defensive + §17.4 test (1 test)
+- ec94ee3 — fix(db): _notify_streak_milestone defensive + §17.4 test (1 test)
 
 ---
 
