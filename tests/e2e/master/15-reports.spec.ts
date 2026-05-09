@@ -2,6 +2,7 @@
  * 15 — Reports (8 reports)
  * Maps to: PLAYWRIGHT_MASTER_CATALOG.md §15
  */
+import { execSync } from 'node:child_process';
 import { test, expect, refreshStorageStateIfStale } from './_fixtures/auth-refresh';
 import { AUTH, assertNoErrorBoundary, goTo } from '../helpers';
 import {
@@ -369,6 +370,227 @@ test.describe('§15.4 — Report data correctness (LessonsDelivered, Cancellatio
       ).toBeVisible({ timeout: 20_000 });
     } finally {
       deleteInvoiceById(invoice.id);
+    }
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// §15.4 — Data correctness for the remaining 3 reports
+// ────────────────────────────────────────────────────────────────────
+//
+// 8th-session pickup. Same pattern as the 4 already shipped: seed
+// minimum data the report's hook will pick up, render the report as
+// owner, assert a specific identifier (teacher display_name, unique
+// room name) appears in the rendered table.
+//
+// Payroll + TeacherPerformance both default to last month, group by
+// teacher_id, and require a lesson with a teacher_id in range.
+// Payroll filters to status='completed'; TeacherPerformance picks up
+// every status (cancelled vs completed feeds different counters but
+// the teacher row renders either way).
+//
+// Utilisation defaults to last month, requires `rooms` to exist
+// (org-scoped EmptyState if zero) AND requires lessons with a
+// non-null room_id and status != 'cancelled' to populate the
+// per-room booked time. Seed a unique room + lesson in that room
+// last month; assert the unique room name appears in the Room
+// Details table. Cleanup deletes lesson + room (lesson first to
+// avoid FK cascade noise).
+//
+// TeacherPerformance is FeatureGate-protected at TeacherPerformance.tsx:101
+// — the e2e org is on plan 'academy' (verified via execute_sql on
+// 2026-05-09), which includes 'teacher_performance', so the gate
+// passes for the owner JWT.
+
+test.describe('§15.4 — Report data correctness (Payroll, Utilisation, TeacherPerformance)', () => {
+  test.use({ storageState: AUTH.owner });
+
+  const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
+  // Seed an existing location_id from the e2e org. rooms.location_id
+  // is NOT NULL, so we need a real location to seed a room into.
+  // The e2e org has one persistent location ("Main Studio"); use it.
+  const E2E_LOCATION_ID = 'ffb68f5f-b5dd-4497-8187-a4290ec61dcc';
+
+  /** Returns a Date set to the 15th of the previous calendar month (UTC). */
+  function midLastMonth(): Date {
+    const d = new Date();
+    d.setUTCMonth(d.getUTCMonth() - 1, 15);
+    d.setUTCHours(11, 0, 0, 0);
+    return d;
+  }
+
+  test('§15.4 — Payroll: seeded completed lesson last month → owner teacher row appears', async ({
+    page,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const teacherId = getOwnerTeacherId();
+    const userId = getOwnerUserId();
+
+    const { supabaseSelect } = await import('../supabase-admin');
+    const teacherRow = supabaseSelect(
+      'teachers',
+      `id=eq.${teacherId}&select=display_name`,
+    );
+    if (teacherRow.length !== 1 || !teacherRow[0].display_name) {
+      throw new Error(`Failed to resolve owner teacher display_name: ${JSON.stringify(teacherRow)}`);
+    }
+    const teacherName: string = teacherRow[0].display_name;
+
+    const { studentId } = seedStudent({ testId, withGuardian: false });
+    const { lessonId } = seedLesson({
+      testId,
+      teacherId,
+      createdBy: userId,
+      studentIds: [studentId],
+      startAt: midLastMonth().toISOString(),
+    });
+
+    // Flip lesson to completed via service-role PATCH — usePayroll
+    // filters on .eq('status', 'completed') only.
+    const url = process.env.E2E_SUPABASE_URL!;
+    const key = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+    execSync(
+      `curl -s -X PATCH "${url}/rest/v1/lessons?id=eq.${lessonId}" ` +
+        `-H "apikey: ${key}" -H "Authorization: Bearer ${key}" ` +
+        `-H "Content-Type: application/json" -H "Prefer: return=minimal" ` +
+        `-d '{"status":"completed"}'`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+
+    try {
+      await goTo(page, '/reports/payroll');
+      await assertNoErrorBoundary(page);
+
+      // PayrollTeacherList renders a Collapsible per teacher with the
+      // display_name as a TeacherLink. Other tests/runs may also have
+      // completed lessons last month, so assert "name appears" not
+      // "count = 1".
+      await expect(
+        page.getByText(teacherName).first(),
+      ).toBeVisible({ timeout: 15_000 });
+    } finally {
+      supabaseDelete('lesson_participants', `lesson_id=eq.${lessonId}`);
+      supabaseDelete('lessons', `id=eq.${lessonId}`);
+      supabaseDelete('students', `id=eq.${studentId}`);
+    }
+  });
+
+  test('§15.4 — Utilisation: seeded room + lesson in that room last month → unique room name appears', async ({
+    page,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const teacherId = getOwnerTeacherId();
+    const userId = getOwnerUserId();
+
+    const uniqueRoomName = `${testId}_UtilRoom`;
+    const room = supabaseInsert('rooms', {
+      org_id: E2E_ORG_ID,
+      location_id: E2E_LOCATION_ID,
+      name: uniqueRoomName,
+      capacity: 1,
+    });
+    if (!room?.id) {
+      throw new Error(`rooms insert failed: ${JSON.stringify(room)}`);
+    }
+
+    const { studentId } = seedStudent({ testId, withGuardian: false });
+    const { lessonId } = seedLesson({
+      testId,
+      teacherId,
+      createdBy: userId,
+      studentIds: [studentId],
+      startAt: midLastMonth().toISOString(),
+    });
+
+    // Patch the lesson to attach our seeded room. seedLesson doesn't
+    // accept a room_id; PATCH after insert via service-role. The
+    // utilisation hook filters .neq('status', 'cancelled') so the
+    // default 'scheduled' status is fine — no need to flip.
+    const url = process.env.E2E_SUPABASE_URL!;
+    const key = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+    execSync(
+      `curl -s -X PATCH "${url}/rest/v1/lessons?id=eq.${lessonId}" ` +
+        `-H "apikey: ${key}" -H "Authorization: Bearer ${key}" ` +
+        `-H "Content-Type: application/json" -H "Prefer: return=minimal" ` +
+        `-d '{"room_id":"${room.id}"}'`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+
+    try {
+      await goTo(page, '/reports/utilisation');
+      await assertNoErrorBoundary(page);
+
+      // The Room Details table renders one row per room. Our unique
+      // name guarantees the row we own. With pagination at 10/page,
+      // a uniquely-named row is on page 1 (only the e2e org's
+      // baseline "Room A" + ~recent test rooms exist).
+      await expect(
+        page.getByText(uniqueRoomName).first(),
+      ).toBeVisible({ timeout: 15_000 });
+    } finally {
+      supabaseDelete('lesson_participants', `lesson_id=eq.${lessonId}`);
+      supabaseDelete('lessons', `id=eq.${lessonId}`);
+      supabaseDelete('students', `id=eq.${studentId}`);
+      supabaseDelete('rooms', `id=eq.${room.id}`);
+    }
+  });
+
+  test('§15.4 — TeacherPerformance: seeded completed lesson last month → owner teacher appears in comparison table', async ({
+    page,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const teacherId = getOwnerTeacherId();
+    const userId = getOwnerUserId();
+
+    const { supabaseSelect } = await import('../supabase-admin');
+    const teacherRow = supabaseSelect(
+      'teachers',
+      `id=eq.${teacherId}&select=display_name`,
+    );
+    if (teacherRow.length !== 1 || !teacherRow[0].display_name) {
+      throw new Error(`Failed to resolve owner teacher display_name: ${JSON.stringify(teacherRow)}`);
+    }
+    const teacherName: string = teacherRow[0].display_name;
+
+    const { studentId } = seedStudent({ testId, withGuardian: false });
+    const { lessonId } = seedLesson({
+      testId,
+      teacherId,
+      createdBy: userId,
+      studentIds: [studentId],
+      startAt: midLastMonth().toISOString(),
+    });
+
+    // Flip to completed so it counts toward total + completed in the
+    // performance aggregation. The hook accepts every status (cancelled
+    // contributes to cancellation_rate), but completed lessons surface
+    // the teacher with a non-zero hours figure which makes the row
+    // more visible in the "no data found" empty-state check.
+    const url = process.env.E2E_SUPABASE_URL!;
+    const key = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+    execSync(
+      `curl -s -X PATCH "${url}/rest/v1/lessons?id=eq.${lessonId}" ` +
+        `-H "apikey: ${key}" -H "Authorization: Bearer ${key}" ` +
+        `-H "Content-Type: application/json" -H "Prefer: return=minimal" ` +
+        `-d '{"status":"completed"}'`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+
+    try {
+      await goTo(page, '/reports/teacher-performance');
+      await assertNoErrorBoundary(page);
+
+      // FeatureGate is satisfied (org plan = academy). The teacher
+      // comparison table renders display_name in the first column.
+      // Other tests' lessons may also bring teachers into range —
+      // assert "name appears" not "count = 1".
+      await expect(
+        page.getByText(teacherName).first(),
+      ).toBeVisible({ timeout: 20_000 });
+    } finally {
+      supabaseDelete('lesson_participants', `lesson_id=eq.${lessonId}`);
+      supabaseDelete('lessons', `id=eq.${lessonId}`);
+      supabaseDelete('students', `id=eq.${studentId}`);
     }
   });
 });
