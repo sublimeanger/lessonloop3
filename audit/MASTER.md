@@ -1,6 +1,6 @@
 # LessonLoop production-readiness — MASTER tracker
 
-**Last updated:** 2026-05-09 (after 10th-session — §20 withdrawal-flow tested + P0 auth-chain bug fixed in bulk-process-continuation)
+**Last updated:** 2026-05-10 (after 11th-session — §16 cluster +7 tests + send-bulk-message getUser fix + drift saga closed as phantom)
 **Owner:** Jamie McKaye
 **Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
 
@@ -178,7 +178,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Messages inbox (staff) | src/pages/Messages.tsx | P1 | 🟡 | 2026-05-09 | structural; data via RLS-scoped queries; basic page-load smoke covered |
+| Messages inbox (staff) | src/pages/Messages.tsx | P1 | 🟡 | 2026-05-10 | data via RLS-scoped queries. [E2E real per da619ca + 11th-session]: §16.3 staff-side send-message (5 tests covering happy path / validation / size limits / parent JWT 403 / cross-org 403) + §16.3 send-bulk-message in-app (3 tests: happy + parent 403 + validation) + §16.4 internal compose (insert + read tracking) + §16.5 internal thread reply (parent_message_id chain) + §16.10 mark-messages-read parent-side (happy + cross-guardian 403). Plus a P1 fix landed in send-bulk-message (getUser(token) pattern — was rejecting legacy JWTs). [PROMOTABLE 🟡→🟢] |
 | Send single message | supabase/functions/send-message | P0 | 🟡 | 2026-05-09 | JWT auth + rate limit; [E2E real per da619ca — §16.3 5 tests: happy path with DB-resolved recipient, missing-fields 400 (was 500 — fix landed), oversized 400, parent JWT 403, cross-org 403]. See finding 2026-05-09-send-message-missing-fields-500.md. [PROMOTABLE 🟡→🟢] |
 | Send bulk message | supabase/functions/send-bulk-message | P0 | 🟡 | 2026-05-08 | JWT auth + rate limit + batching; structural ok |
 | Send parent message | supabase/functions/send-parent-message | P1 | 🟡 | 2026-05-08 | JWT auth + rate limit; structural ok |

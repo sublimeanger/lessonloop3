@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after 10th-session — §20 withdrawal-flow + P0 auth-chain bug fix in bulk-process-continuation + delete-run cases + 3 new §20 tests) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-10 (after 11th-session — drift saga CLOSED as phantom; §16 cluster +7 tests + send-bulk-message getUser fix + global-setup term/adjustment sweep) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -393,6 +393,55 @@
   5/hour per-user rate limit which the §20.7 + §20.7b pair
   burns through in ≈2 iterations. Reset at file start prevents
   429 cascades during local debug runs.
+- (11th session — DRIFT SAGA CLOSED AS PHANTOM) Step 0 ran the
+  fresh three-probe diagnostic the prompt mandated (PostgREST +
+  verify_jwt=true + verify_jwt=false). Definitive result:
+  PostgREST direct returned HTTP 200 with the legacy service_role
+  JWT — proves signature validity for the project. The 151e578f…
+  "deployment env hash" inherited as the basis of the drift
+  diagnosis across sessions 9 + 9a + 10 came from session 9a's
+  env-probe-temp function which was never validated. Sessions 9
+  and 10 carried the framing forward as if established fact. The
+  ACTUAL phenomenon is documented in
+  `audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md`:
+  edge function `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` returns
+  a different value than the dashboard service_role JWT, even
+  with no Custom Secrets override. The earlier finding
+  `2026-05-09-service-role-key-rotation-and-drift.md` is now
+  marked CLOSED — phantom diagnosis. Anti-pattern logged: don't
+  inherit diagnostic conclusions across sessions without
+  re-running the diagnostic.
+- (11th session — send-bulk-message getUser fix) Discovered
+  during §16.3 bulk-send test write that send-bulk-message was
+  calling `supabaseAuth.auth.getUser()` (no args) — that makes
+  a /auth/v1/user request which rejects legacy JWTs on this
+  project. Other handlers (send-message line 57,
+  mark-messages-read line 33) call `getUser(token)` explicitly
+  which does local JWKS verification and works. Fixed
+  send-bulk-message to match. Same shape of platform-migration
+  latent bug as session 10's bulk-process-continuation
+  withdrawal fix. Single-file change, deployed via
+  `supabase functions deploy send-bulk-message`. BulkComposeModal
+  now actually delivers in production for legacy-JWT sessions.
+- (11th session — catalog work) 7 new real §16 tests:
+  * §16.3 bulk in-app happy path (with seed of active student
+    linked to e2e parent guardian to satisfy fetchFilteredGuardians)
+  * §16.3 bulk RBAC (parent → 403 at admin-role check)
+  * §16.3 bulk validation (missing name/subject/body → 4xx)
+  * §16.4 internal compose (owner→admin internal_messages row +
+    read_at flow)
+  * §16.5 internal thread reply (parent+child via thread_id +
+    parent_message_id)
+  * §16.10 mark-messages-read parent happy path
+  * §16.10 mark-messages-read cross-guardian → 403
+  §16 cluster: 5 → 12 real tests, ~60% → ~80%.
+- (11th session — global-setup extension) Added stale
+  term/term_adjustment/credit-note sweep to
+  tests/e2e/global-setup.ts. The §20.7b withdrawal flow leaves
+  these behind on partial-failure cleanup; circular FK between
+  term_adjustments.credit_note_invoice_id ↔ invoices.adjustment_id
+  requires NULLing one before deleting the other. Six-step
+  sequence now runs idempotently at suite start.
 - (also at 7th-session start) Manual SQL sweep of stale e2e_ test
   data via Supabase MCP execute_sql — cleared 6 lesson rows
   (1 active scheduled + 5 cancelled), 22 students, 4 invoices, and
@@ -437,31 +486,36 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~62% (was 58% before 10th session — +3 real
-§20 tests close the withdrawal/delete cluster, plus a P0 production
-fix landed in bulk-process-continuation as a side-effect of the
-withdrawal test).**
+**Catalog completeness: ~64% (was 62% before 11th session — +7 real
+§16 tests close bulk + internal + threads + mark-read; drift saga
+closed as phantom; one P1 fix landed in send-bulk-message).**
 
-Current baseline (end of 10th session, full-suite run, post-§20 work + P0 auth fix):
-- **458 passed / 3 failed / 133 skipped / 4.0 min wall-clock at 4 workers**
-- **+4 passed** vs pre-10th-session (was 454 — 3 new §20 tests
-  passed + 1 transient flake slot recovered)
-- **+0 net failed** vs pre-10th-session (was 3 — same shape: §5.4
-  deterministic + 2 transient flakes from the §26 rotation)
-- **-0.8 min wall-clock** — recovered from session 9's slight
-  upward drift. globalSetup pre-flight cost is ~3.6s, amortised.
+Current baseline (end of 11th session, full-suite run):
+- **459 passed / 6 failed / 133 skipped / 5.3 min wall-clock at 4 workers**
+- **+1 passed** vs pre-11th-session (was 458 — 7 new §16 tests
+  passed in isolation, but full-suite saw 3 transient races take
+  spots)
+- **+3 net failed** vs pre-11th-session (was 3) — but ALL of the
+  new fails are documented transients (§22.2 cross-file race,
+  §26.6.7 GCal, §20.7b rate-limit cascade). Each passes 5/5 in
+  isolation. Pre-existing shapes, not regressions.
+- **+1.3 min wall-clock** — variance; baseline run after sweeps
+  was 5.3 min. Acceptable.
 
-**Net win for the suite:** P0 launch-blocker (silent withdrawal-flow
-breakage) caught and fixed during catalog test work. §20 cluster
-now functionally complete (withdraw + delete cases closed).
+**Net win for the suite:** Drift saga closed as phantom (was
+blocking 6+ sessions of vault-seeding + §27 fn-invocation work
+based on a misread); P1 latent bug fixed in send-bulk-message
+(getUser pattern); +7 new real tests covering §16 bulk + internal
++ threads + mark-read.
 
-- **The 3 remaining failures**: §5.4 email-verification
-  (deterministic; test design broken — see
+- **The 6 remaining failures (mix varies run to run)**: §5.4
+  email-verification (deterministic; test design broken — see
   [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md));
-  §26.6.7 Google Calendar URL (occasional UI race) OR §26.6.4
-  self_service policy (similar shape — known races in §26.6 entries);
-  §26.9.1 Pay full invoice (occasional Stripe rate-limit / webhook
-  delay flake). Mix varies run to run.
+  §20.7b withdrawal (transient — passes 5/5 in isolation; full-
+  suite race likely rate-limit cascade); §22.2 cross-file race
+  (timezone, VAT, schedule-hours, parent_reschedule_policy —
+  all hit when §22 + §24 interleave); §26.6.7 GCal URL
+  (occasional UI race); §26.9.1 Stripe (transient flake).
 
 **Known intermittent flake — §22/§24 cross-file race:** §22 settings
 mutations (timezone + VAT toggle) modify org config that §24 invoice
@@ -543,7 +597,7 @@ session — don't fix inline during a catalog session.
 | Item | Severity | Notes |
 |---|---|---|
 | **Streak milestone notifications never deliver.** `ec94ee3` made `_notify_streak_milestone` defensive — vault/queue failures now log a `RAISE WARNING` instead of rolling back the user's `practice_logs` insert. But the underlying cause is not fixed: `vault.decrypted_secrets` has only `INTERNAL_CRON_SECRET` seeded; `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are still missing, so the trigger reads NULL and skips the `net.http_post` call entirely. The audit_log row commits as the durable record (which is what §17.4 asserts and why the test passes), but no push notification reaches the user on the 3rd / 7th / 14th / 30th / 60th / 100th consecutive day. **STATUS: still unfixed end of session 8 (FOUR sessions deferred). Shadow-term week 4 timer is running — needs to be addressed before Lauren tests practice notifs. Session 9 is now framed as a dedicated infrastructure session to break the deferral pattern.** | **Launch-blocking for Practice feature delivery** by Lauren's shadow-term week 4 (when streak push notifications would be expected to fire). Needs a separate session: `vault.create_secret('SUPABASE_URL', '...')` + `vault.create_secret('SUPABASE_SERVICE_ROLE_KEY', '...')`. The service-role value can be read from `E2E_SUPABASE_SERVICE_ROLE_KEY` in `.env.test` but **must not be committed**; apply via `execute_sql` directly or a hand-rolled gitignored migration. **Note: the `E2E_SUPABASE_SERVICE_ROLE_KEY` value in .env.test may itself be drifted from current — see "Edge function service-role key drift" item below.** |
-| **Edge function service-role key drift (still unresolved end of 9th session — finding filed)** | **P1** | 9th-session Step 0 confirmed via SHA-256 readback that the value in `.env.test` does NOT match deployment env (`b4f9eaa7…` vs `151e578f…`). Jamie supplied a "freshly-rotated" value in the 9th-session opener but it turned out to be the same iat=2026-04-29 value already in .env.test — likely a stale clipboard paste rather than a fresh dashboard read. Direct probe of `send-payment-receipt` returned 401 with the supplied value. PostgREST direct-table calls still work (JWT signature is valid for RLS bypass). See [`2026-05-09-service-role-key-rotation-and-drift.md`](audit/findings/2026-05-09-service-role-key-rotation-and-drift.md) for full diagnosis + 3 paths to fix. **§27 fn-invocation + vault seeding both blocked on this. Both keys persisted in `~/.claude/settings.json` so a fresh value just needs string replacement in two files.** Carried forward to session 10. |
+| **Edge function env injection mismatch** (REPLACES the prior "drift" entry — phantom diagnosis closed in 11th session) | **P1** | 11th-session three-probe diagnostic conclusively proved: the legacy HS256 service_role JWT IS valid against the project (PostgREST returns 200). The "drift" framing carried across sessions 9 + 9a + 10 was based on a hash from session 9a's env-probe-temp (never validated). The actual phenomenon: `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` in deployed edge functions returns a different value than the dashboard's "Project API keys" → service_role row, despite no Custom Secrets override. Jamie's hypothesis on cause: Supabase auto-injection materialises a different value than the dashboard, OR partial migration to signing-keys at the edge gateway. Three resolution paths in [finding](audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md). The agent should NOT propose JWT secret reset or sb_secret_ migration. **Affects edge functions that do `authHeader.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))` byte-equal checks** (send-payment-receipt + likely send-refund-notification + send-auto-pay-alert). Functions that use `getUser(token)` for auth (now including send-bulk-message after 11th-session fix) work fine with legacy JWTs. Vault seeding still blocked because the streak-notification chain runs through this auth path. |
 | **§5.4 email-verification gate test design broken** (NEW 2026-05-09 — formerly listed under "JWT-stale" theory) | **P2** | 9th-session Item 5 confirmed deterministic 5/5 fail. Root cause: Supabase `enable_email_confirmations` (likely toggled in 2026-05-08 auth tightening) rejects password-grant for unconfirmed users with `email_not_confirmed`. The test creates a user with `email_confirm: false` then calls `/auth/v1/token?grant_type=password` to get a session — that path now refuses by design. The test's premise is broken; no quick fix. Three redesign paths in [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md). Estimate to fix: 1-2h via UI-signup flow OR magic-link admin generation. |
 | ~~RBAC Settings UI render race~~ | — | **FIXED** in 9th session. Root cause was a 5s `isVisible` timeout on a regex text match under parallel load. Fix: `waitForLoadState('networkidle')` + `expect(page.locator('main')).toContainText('Profile Information', { timeout: 20_000 })`. Verified 12/12 PASSES under 4-worker parallel load (3 runs × 4 repeats). |
 | ~~§22/§24 cross-file race~~ | — | **FIXED-AS-VERIFIED** in 9th session. 3 separate parallel runs of §22 + §24 together → 51 passed each, no race observable. Sufficient mitigation already in place: §22's within-file `mode: 'serial'` (7th session) + restore-in-finally + globalSetup sweep (9th session). No code changes needed; documented as closed-pending-regression-watch. |
@@ -713,7 +767,7 @@ test or delete the line.
 | §13 Invoices | 10 | ~70% | mature |
 | §14 Invoice detail | 12 | ~75% | mature |
 | §15 Reports | 8 + 9 smoke | ~70% | 8th-session: §15.4 last 3 reports landed (Payroll, Utilisation, TeacherPerformance) — full §15 cluster now data-correctness covered for all 7 launch reports |
-| §16 Messages | 5 + smoke | ~50% | §16.3 staff-side send-message contract done; bulk + threads + internal still UI-driven |
+| §16 Messages | 12 + smoke | ~80% | 11th-session: §16.3 bulk in-app + RBAC + validation, §16.4 internal compose + read tracking, §16.5 thread reply, §16.10 mark-messages-read parent-side. Plus a P1 fix in send-bulk-message (getUser(token) pattern) |
 | §17 Practice | 5 + cron | ~75% | mature |
 | §20 Continuation | 12 | ~98% | 10th-session: §20.7b withdrawals flow + §20.8a/b delete-run cases shipped. P0 bug found+fixed in bulk-process-continuation (auth chain). §20 cluster functionally complete except UI-driven cases |
 | §22 Settings | 8 + 21 smoke | ~50% | 7th-session: schedule_hours validation, parent_reschedule_policy, continuation defaults, invite member, music custom-instrument CRUD. Members invite/archive UI flows + closure dates + GDPR + audit log + rate cards CRUD all deferred |
@@ -724,106 +778,127 @@ test or delete the line.
 | §26 Parent portal | 32+ | ~98% | 8th-session: §26.9.2 + §26.9.3 installment pay paths added (5/7 §26.9 cases green; cases 4-5 are mobile-safari project). Only §26.8 Resources remains |
 | §32 Security trigger guards | 9 | ~80% | mature |
 
-Catalog overall: **~62%** (was 58% at session 9 end — 10th-session +3 §20 tests).
+Catalog overall: **~64%** (was 62% at session 10 end — 11th-session +7 §16 tests).
 
-### Priority order — 11th session pickup
+### Priority order — 12th session pickup
 
-**Continue catalog work.** Session 10 closed §20 cluster as a
-side-effect of finding+fixing a P0 launch-blocker in
-bulk-process-continuation. §27 fn-invocation + vault seeding STILL
-blocked on service-role key drift (sessions 9 + 10 both confirmed
-it's genuine drift, not stale paste).
+**Continue catalog work + decide vault seeding path.** Session 11
+closed the drift saga as PHANTOM (was never drift). The actual
+edge-fn env mismatch is documented (P1 finding) but doesn't
+block all fn-invocation tests — just byte-equal `.includes()`
+checks against the env. Functions using `getUser(token)` work
+fine with the legacy JWT. Session 11 closed §16 cluster + caught
+a P1 latent bug in send-bulk-message.
+
+### Priority order — 11th session pickup (closed)
+
+**Closed:** Drift saga (phantom). §16 cluster (12 real). P1 fix
+in send-bulk-message. Stale-row sweep extended to handle
+term_adjustments + circular FK.
 
 ### Priority order — 10th session pickup (closed)
 
 **Closed:** §20 cluster (withdrawal + delete-run shipped). P0
 bulk-process-continuation auth chain bug fixed.
 
-**Pre-session needs from Jamie (still blocks the FIRST priority):**
+**Pre-session needs from Jamie (only for vault seeding):**
 
-The drift is **genuine**, not a stale clipboard paste. Sessions 9
-+ 10 each had Jamie paste a key with iat=2026-04-29 / suffix `14Ew`.
-Both produced SHA-256 `b4f9eaa7…` which does NOT match deployment
-env hash `151e578f…` (last updated 2026-05-09T17:12:22Z). The
-dashboard's legacy service_role key value really IS different from
-what the deployed edge functions read from `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")`.
+The drift saga is closed as PHANTOM (sessions 9-10 misread). The
+actual edge-fn env mismatch is documented in
+`audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md`. It's
+NOT a problem Jamie can fix from the dashboard — Custom Secrets
+panel is empty, JWT signature is valid for the project (Probe A
+proved this). The platform is auto-injecting a different value
+than the dashboard for reasons we don't fully understand.
 
-**Two repair options for Jamie** (cannot be fixed in code):
+The agent's task in session 12 should NOT be to "fix the drift"
+(there is no drift) and NOT to propose JWT secret reset (which is
+a nuclear Jamie-only decision). Instead:
 
-1. **Edge Function "Custom secrets" override** — visit Supabase
-   Dashboard → Edge Functions → "Secrets" tab. If
-   `SUPABASE_SERVICE_ROLE_KEY` appears as a custom secret
-   (overriding the platform's auto-injected canonical), DELETE
-   that custom secret. The platform will re-inject the canonical
-   value, restoring the byte-equal match between the dashboard
-   "service_role" key and what edge functions see.
+**Either:**
 
-2. **Roll the legacy service_role key** — Dashboard → Settings →
-   API → "Project API keys" section → "Reset" / "Roll" on
-   service_role. This regenerates both the dashboard value AND
-   the deployment env value to match. Then paste the freshly-
-   read key into the next session opener.
+(a) **Decide that streak notifications don't ship for v1.0**
+    and document. The trigger fires defensively (per ec94ee3
+    fix), audit_log row commits, push notification is best-
+    effort. Lauren can verify in production whether her users
+    actually rely on the push to know their streak hit a
+    milestone. If they don't (likely — they'd see the streak
+    counter in-app), the notification not delivering is a
+    nice-to-have, not P0.
 
-Option 1 is non-destructive (no key rotation needed). Try first.
+(b) **Code-route around the issue:** modify streak-notification
+    edge fn to use `getUser(token)` instead of byte-equal
+    `.includes()` for auth, OR have the trigger call PostgREST
+    directly instead of going through the edge fn at all
+    (skip the auth gate entirely). Single-fn change, lots of
+    side-effects to think through. Estimate 2-3h.
 
-Until that's done, items 1 (vault seeding) and 2 (§27 fn-invocation)
-stay blocked. Lauren shadow-term week 4 timer continues. Catalog
-work (priorities below) unblocked either way.
+Either path is a future-session call, not a session-12 task.
 
-**Session 11 priorities (in order):**
+**Session 12 priorities (in order):**
 
-1. **UNBLOCK first** (only if Jamie picked one of the two repair
-   options above and supplied a verified-new key at session start).
-   Verify via the SHA-256 readback FIRST (per session 9's revised
-   Step 0) — should match deployment env. Then bake into both
-   persistence layers. Then:
-   (a) seed vault: `SELECT vault.create_secret(<URL>, 'SUPABASE_URL', '...')`
-   + `SELECT vault.create_secret(<KEY>, 'SUPABASE_SERVICE_ROLE_KEY', '...')`;
-   (b) trigger a streak milestone (insert 3rd consecutive practice_log)
-   and confirm `net._http_response` has a recent row;
-   (c) convert §27 fn-invocation TODOs in
-   `tests/e2e/master/27-notifications.spec.ts` to real tests.
-   Estimate: 60 min total if all clean.
+1. **§13 / §14 remaining invoice cases** — sections are mature
+   (10 + 12 tests already real) but the catalog has a few
+   unfilled gaps: §13.x bulk-void edge cases, §14.x line-edit
+   triggers beyond status-transition. Worth a 1-2h pass to close
+   out the cluster.
 
-2. **§16 Messages bulk + threaded paths** — §16.3 staff-side
-   send-message landed in 6th session (5 tests). Still pending:
-   bulk send, internal-thread (org members), parent-staff requests
-   approval. Estimate 2-3h. **Most overdue catalog item now that
-   §20 cluster closed.**
-
-3. **§13 / §14 remaining invoice cases** — sections are mature
-   (10 + 12 tests already real) but the catalog has a few unfilled
-   gaps: §13.x bulk-void edge cases, §14.x line-edit triggers
-   beyond status-transition. Worth a 1-2h pass to close out the
-   cluster.
-
-4. **§11 Teachers invite/archive flows** — §11.4.1 unlinked-teacher
+2. **§11 Teachers invite/archive flows** — §11.4.1 unlinked-teacher
    landed; the bigger UI surface (invite member, archive teacher,
    teacher-limit enforcement) still needs coverage. UI-driven so
    brittle; estimate 2-3h.
 
-5. **§22 deeper settings coverage** — §22.1 profile mutations,
-   §22.3 branding upload, §22.5 closure dates CRUD (Lauren-mentioned
-   for greying out calendar), §22.7 GDPR export queue, §22.8 rate
-   cards CRUD, §22.10 messaging templates, §22.11 availability
-   overlapping-block trigger, §22.18 NotificationsTab toggles.
+3. **§22 deeper settings coverage** — §22.1 profile mutations,
+   §22.3 branding upload, §22.5 closure dates CRUD (Lauren-
+   mentioned for greying out calendar), §22.7 GDPR export queue,
+   §22.8 rate cards CRUD, §22.10 messaging templates, §22.11
+   availability overlapping-block trigger, §22.18 NotificationsTab
+   toggles. **Note:** §22 + §24 cross-file race re-appeared in the
+   11th-session full-suite baseline (3-4 §22.2 tests flake when
+   §24 is interleaved). Worth a 30-min separate fix:
+   `playwright.config.ts` could give §22 + §24 their own throwaway
+   org via fixture-per-file, or pin them to single-worker via a
+   project assignment.
+
+4. **§5.4 redesign** — implement the magic-link or UI-signup
+   approach from the finding doc. ~1-2h.
+
+5. **§17 follow-ups** — §17.4 streak-milestone is currently a
+   transient flake in full-suite (passes 5/5 in isolation).
+   Worth investigating whether the test relies on stale practice
+   data that's getting clobbered by parallel workers. Could be
+   a 30-min fix.
 
 **Lower priority (only if items 1-3 close cleanly):**
 
-A. **§5.4 redesign** — implement the magic-link or UI-signup approach
-   from the finding doc. ~1-2h.
-
-B. **§8 remaining cases** — §8.8.3 conflict-detection blocks save,
+A. **§8 remaining cases** — §8.8.3 conflict-detection blocks save,
    §8.8.12 closure-date warning banner, §8.8.14 weekly recurrence.
    UI-driven; brittle.
 
-C. **§9 Daily register** — §9.3.4 check_attendance_not_future already
-   covered in §32.7. Other §9 cases are UI-heavy.
+B. **§9 Daily register** — §9.3.4 check_attendance_not_future
+   already covered in §32.7. Other §9 cases are UI-heavy.
 
-D. **Production verification of withdrawal fix** — once Lauren has
-   real users in shadow-term week 4 and a parent withdraws, verify
-   the chain end-to-end in production logs. Bug was silent before
-   the fix; need to confirm the fix delivers in a real environment.
+C. **Production verification of withdrawal fix + bulk fix**
+   — once Lauren has real users in shadow-term week 4 and a
+   parent withdraws / a bulk message goes out, verify the chains
+   end-to-end in production logs. Both bugs were silent before
+   the fixes (sessions 10 + 11); need to confirm the fixes deliver
+   in a real environment.
+
+D. **Vault seeding decision** — see "Pre-session needs from
+   Jamie" above. NOT a session 12 task; needs Jamie's call on
+   whether streak push notifications are P0 for v1.0.
+
+### Audit/MASTER.md hygiene status (end of 11th session)
+
+11th-session updates pending in the audit hygiene commit:
+- §16 Messages row should be marked with [E2E real per
+  11th-session] covering bulk + internal + threads + mark-read
+- The drift-related rows in audit/findings/ are now CLOSED
+  (phantom) + REPLACED by edge-fn-env-injection-mismatch finding
+
+Estimated ~34 of ~180 rows tagged after 11th-session hygiene
+commit lands (was ~33 at session 10 end).
 
 ### Audit/MASTER.md hygiene status (end of 10th session)
 
@@ -832,10 +907,6 @@ D. **Production verification of withdrawal fix** — once Lauren has
 process_deadline both branches, §20.7 confirmed flow, §20.7b
 withdrawals flow (NEW), §20.8 delete-run cases (NEW). Row marked
 [PROMOTABLE 🟡→🟢]. Header bumped to 10th-session reference.
-
-Estimated ~33 of ~180 rows now have E2E real proof appended (was
-~32 at session 8 end; session 9 was infra-focused, no audit
-promotions).
 
 ### Audit/MASTER.md hygiene status (end of 9th session)
 
@@ -1172,6 +1243,33 @@ session-8+ work should NOT assume these 2 will disappear after the
 fix. They need separate root-cause work — flagged for Jamie review
 in the [Open production-relevant items](#open-production-relevant-items)
 table.
+
+### ❌ Don't inherit diagnostic conclusions across sessions without re-running the diagnostic
+
+11th-session lesson. The drift saga across sessions 9 + 9a + 10
+carried forward the "151e578f… deployment env hash" as if it were
+an established fact. That hash came from an env-probe-temp
+function in session 9a which was never validated. Every
+subsequent session probed differently and came to the same
+conclusion: drift exists. But none ran a SIGNATURE-validity probe
+(PostgREST direct with the JWT) — which would have shown the JWT
+IS valid for the project, ruling out drift.
+
+When the 11th-session prompt finally insisted on a fresh
+three-probe diagnostic (Probe A: PostgREST direct), the answer
+came back instantly: HTTP 200. No drift. The actual issue was
+edge-fn env injection mismatch — a different, narrower problem.
+
+**Cost of the misdiagnosis**: two infrastructure sessions
+deferred unnecessarily (sessions 9 + 10 partially); one P0
+launch-blocker (vault seeding) staying unfixed for 5+ sessions
+based on a phantom blocker.
+
+**Rule**: when reading a HANDOVER ledger entry that includes a
+diagnostic conclusion, re-run the diagnostic before acting on
+it. Especially if the conclusion is structural (drift, RLS bug,
+auth bypass). One wasted probe is much cheaper than a wasted
+session.
 
 ### ❌ Don't trust a "freshly-rotated" supplied key without SHA-256 verification
 
