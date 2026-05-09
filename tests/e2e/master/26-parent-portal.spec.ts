@@ -1007,19 +1007,21 @@ test.describe('§26.6 — PortalSchedule', () => {
     }
   }
 
-  /** Deterministic minute-of-day offset derived from testId, so two runs
-   *  at the same wall-clock minute land in non-overlapping 30-min lesson
-   *  slots. Avoids the cross-run teacher_conflict trigger collision when
-   *  a previous run leaked an orphan lesson at -10/+0/+14 days from
+  /** Per-call random minute-of-day offset, so two runs at the same
+   *  wall-clock minute land in non-overlapping 30-min lesson slots.
+   *  Avoids the cross-run teacher_conflict trigger collision when a
+   *  previous run leaked an orphan lesson at -10/+0/+14 days from
    *  approximately the same Date.now() value (range: ±30min interval
-   *  overlap window). 12 distinct slots × 30min = 6h spread per day,
-   *  collision probability ~1/12 per slot pair. */
-  function lessonSlotOffsetMs(testId: string): number {
-    let h = 0;
-    for (let i = 0; i < testId.length; i++) {
-      h = (h * 31 + testId.charCodeAt(i)) >>> 0;
-    }
-    const slotIdx = h % 12;
+   *  overlap window).
+   *
+   *  24 slots × 30min = 12h spread per day, ~1/24 collision probability
+   *  per orphan. Math.random() (not testId hash) is intentional:
+   *  retries of a previously-collided test get a fresh slot rather
+   *  than re-hitting the same one. The 12h window keeps the +0-day
+   *  lesson within today's calendar day except in rare wrap cases
+   *  (which are still safely inside thisWeek). */
+  function lessonSlotOffsetMs(): number {
+    const slotIdx = Math.floor(Math.random() * 24);
     return slotIdx * 30 * 60_000;
   }
 
@@ -1086,7 +1088,7 @@ test.describe('§26.6 — PortalSchedule', () => {
       const startMs =
         Date.now() +
         opts.daysFromNow * 24 * 3600_000 +
-        lessonSlotOffsetMs(opts.testId);
+        lessonSlotOffsetMs();
       const startAt = new Date(startMs).toISOString();
       const endAt = new Date(startMs + (opts.durationMins ?? 30) * 60_000).toISOString();
       const title = opts.title ?? `${opts.testId}_lesson`;

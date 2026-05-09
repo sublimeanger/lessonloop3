@@ -183,8 +183,276 @@ test.describe('Lesson CRUD — DB-side assertions', () => {
 });
 
 // TODO §8.1-8.4 UI form tests — covered by workflows/crud-lessons.spec.ts
-// TODO §8.8.10 student-side cancel → auto_issue_credit_on_absence trigger
-//   creates make_up_credits row; needs attendance_records insert path.
+
+// ────────────────────────────────────────────────────────────────────
+// §8.6 — Cancel flow + §8.8.9-10 — auto-credit on absence
+// ────────────────────────────────────────────────────────────────────
+//
+// Two contracts at play here:
+//   1. `trg_cleanup_attendance_on_cancel` — AFTER UPDATE OF status on
+//      lessons WHEN new=cancelled AND old != cancelled → DELETE
+//      FROM attendance_records WHERE lesson_id = NEW.id.
+//      Test §8.8.9 below verifies the attendance row is cleaned up
+//      when an admin cancels a lesson that already has attendance.
+//   2. `auto_issue_credit_on_absence` (trigger on attendance_records) —
+//      fires when attendance_status IN (absent, cancelled_by_student,
+//      cancelled_by_teacher) AND make_up_policies has an `automatic`
+//      eligibility for the absence_reason_category. Computes credit
+//      value via fallback chain: invoice_items → student rate card →
+//      org default rate card → lesson_participants.rate_minor.
+//
+// The e2e org's make_up_policies seed only has `teacher_cancelled` set
+// to `automatic` — `sick`, `holiday`, etc. are `waitlist` / `not_eligible`.
+// To test the student-cancel positive path realistically, §8.8.10a
+// patches the `sick` policy to `automatic` for the duration of the
+// test, then restores. The negative path (§8.8.10b) uses `holiday`
+// which is `not_eligible` and never fires the trigger.
+//
+// Lauren-paramount: this is the make-up flow for students who miss
+// lessons. See LESSONLOOP_V2_PLAN.md §3.1 — promoted to launch-critical.
+
+import { execSync as execSync_810 } from 'child_process';
+import fs_810 from 'fs';
+import { randomBytes as randomBytes_810 } from 'crypto';
+
+test.describe('§8.6 / §8.8.9-10 — Cancel flow + auto-credit on absence', () => {
+  test.use({ storageState: AUTH.owner });
+
+  const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
+  const SUPABASE_URL = process.env.E2E_SUPABASE_URL!;
+  const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+
+  /** Service-role PATCH of arbitrary rows. Returns nothing — caller asserts
+   *  via supabaseSelect. The trigger validation runs even with service-role
+   *  by design (only RLS is bypassed). */
+  function patchRows(table: string, filter: string, body: Record<string, unknown>): void {
+    if (!SERVICE_KEY) throw new Error('E2E_SUPABASE_SERVICE_ROLE_KEY required');
+    const tmp = `/tmp/sb-810-patch-${Date.now()}-${randomBytes_810(4).toString('hex')}.json`;
+    fs_810.writeFileSync(tmp, JSON.stringify(body));
+    try {
+      execSync_810(
+        `curl -s -X PATCH "${SUPABASE_URL}/rest/v1/${table}?${filter}" ` +
+          `-H "apikey: ${SERVICE_KEY}" -H "Authorization: Bearer ${SERVICE_KEY}" ` +
+          `-H "Content-Type: application/json" -H "Prefer: return=minimal" -d @${tmp}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+    } finally {
+      try { fs_810.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }
+
+  /** Patch the eligibility on a make_up_policies row for a given absence
+   *  reason. Returns the previous value so the caller can restore in a
+   *  finally block. The org has one policy row per reason (unique
+   *  per (org_id, absence_reason)) so the PATCH is idempotent. */
+  function patchPolicyEligibility(
+    absenceReason: string,
+    eligibility: 'automatic' | 'waitlist' | 'admin_discretion' | 'not_eligible',
+  ): string {
+    const before = supabaseSelect(
+      'make_up_policies',
+      `org_id=eq.${E2E_ORG_ID}&absence_reason=eq.${absenceReason}&select=eligibility`,
+    );
+    const previous = before[0]?.eligibility ?? 'not_eligible';
+    patchRows(
+      'make_up_policies',
+      `org_id=eq.${E2E_ORG_ID}&absence_reason=eq.${absenceReason}`,
+      { eligibility },
+    );
+    return previous;
+  }
+
+  // §8.8.9 — Cancel a lesson that already has attendance recorded; the
+  // cleanup_attendance_on_cancel trigger should remove the attendance row.
+  test('§8.8.9 — cancel lesson with attendance → trg removes attendance_records', async () => {
+    const testId = `cancelclean_${Date.now()}`;
+    const teacherId = getOwnerTeacherId();
+    const userId = getOwnerUserId();
+
+    const { studentId } = seedStudent({ testId, withGuardian: false });
+    const { lessonId } = seedLesson({
+      testId,
+      teacherId,
+      createdBy: userId,
+      studentIds: [studentId],
+      // Past lesson so attendance is meaningful — present-day attendance
+      // on a future lesson would be blocked by check_attendance_not_future.
+      startAt: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(),
+      durationMins: 30,
+    });
+
+    try {
+      // Seed an attendance row in the same lesson (validate_attendance_participant
+      // checks the student is in lesson_participants — which seedLesson did).
+      const attendance = supabaseInsert('attendance_records', {
+        org_id: E2E_ORG_ID,
+        lesson_id: lessonId,
+        student_id: studentId,
+        attendance_status: 'present',
+        recorded_by: userId,
+      });
+      expect(attendance?.id).toBeTruthy();
+
+      // Pre-cancel: attendance row exists.
+      const before = supabaseSelect(
+        'attendance_records',
+        `lesson_id=eq.${lessonId}&select=id,attendance_status`,
+      );
+      expect(before.length).toBe(1);
+      expect(before[0].attendance_status).toBe('present');
+
+      // Cancel the lesson via service-role PATCH. The trigger
+      // `trg_cleanup_attendance_on_cancel` fires AFTER UPDATE OF status
+      // when new='cancelled' AND old != 'cancelled' → DELETE attendance.
+      patchRows('lessons', `id=eq.${lessonId}`, { status: 'cancelled' });
+
+      // Lesson now cancelled.
+      const lessonAfter = supabaseSelect('lessons', `id=eq.${lessonId}&select=status`);
+      expect(lessonAfter[0].status).toBe('cancelled');
+
+      // Attendance row deleted by trigger.
+      const after = supabaseSelect('attendance_records', `lesson_id=eq.${lessonId}&select=id`);
+      expect(after.length).toBe(0);
+    } finally {
+      // attendance_records was already cleaned by trigger but the call is
+      // idempotent. Order: child rows first, then parent.
+      supabaseDelete('attendance_records', `lesson_id=eq.${lessonId}`);
+      supabaseDelete('lesson_participants', `lesson_id=eq.${lessonId}`);
+      supabaseDelete('lessons', `id=eq.${lessonId}`);
+      supabaseDelete('students', `id=eq.${studentId}`);
+    }
+  });
+
+  // §8.8.10a — Student-side cancel with an automatic-eligible policy →
+  // auto_issue_credit_on_absence trigger creates a make_up_credits row.
+  test('§8.8.10a — cancelled_by_student + automatic policy → make_up_credits row issued', async () => {
+    const testId = `autocredit_${Date.now()}`;
+    const teacherId = getOwnerTeacherId();
+    const userId = getOwnerUserId();
+
+    // Patch the e2e org's `sick` policy to `automatic`. The default
+    // seed is `waitlist` (so a real Lauren sick-cancel goes to the
+    // waitlist instead of issuing a credit). This test verifies the
+    // trigger contract — not the org's chosen policy. Restore after.
+    const previousSickEligibility = patchPolicyEligibility('sick', 'automatic');
+
+    try {
+      const { studentId } = seedStudent({ testId, withGuardian: false });
+      const { lessonId } = seedLesson({
+        testId,
+        teacherId,
+        createdBy: userId,
+        studentIds: [studentId],
+        // Past so attendance is allowed by check_attendance_not_future.
+        startAt: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(),
+      });
+
+      try {
+        // Insert attendance with status=cancelled_by_student + reason=sick.
+        // The trigger looks up make_up_policies(org, 'sick'), sees
+        // eligibility='automatic' (just patched), and fires the auto-issue
+        // path. Credit value falls through invoice_items (none) → student
+        // rate card (none) → org default rate card ("Standard 30-min" at
+        // £35.00 = 3500 minor units).
+        const att = supabaseInsert('attendance_records', {
+          org_id: E2E_ORG_ID,
+          lesson_id: lessonId,
+          student_id: studentId,
+          attendance_status: 'cancelled_by_student',
+          absence_reason_category: 'sick',
+          recorded_by: userId,
+        });
+        expect(att?.id).toBeTruthy();
+
+        // Credit row created by trigger.
+        const credits = supabaseSelect(
+          'make_up_credits',
+          `student_id=eq.${studentId}&issued_for_lesson_id=eq.${lessonId}` +
+            `&select=id,credit_value_minor,notes,voided_at,redeemed_at`,
+        );
+        expect(credits.length).toBe(1);
+        expect(credits[0].voided_at).toBeNull();
+        expect(credits[0].redeemed_at).toBeNull();
+        // Default rate card is £35.00 → 3500 minor.
+        expect(credits[0].credit_value_minor).toBe(3500);
+        // The trigger writes "Auto-issued: <reason>" with underscores
+        // replaced by spaces. For 'sick' that's just "Auto-issued: sick".
+        expect(credits[0].notes).toMatch(/^Auto-issued:\s*sick/);
+
+        // Audit log entry written by the trigger (action='credit_issued',
+        // entity_type='make_up_credit', entity_id=new credit id).
+        const audit = supabaseSelect(
+          'audit_log',
+          `entity_type=eq.make_up_credit&entity_id=eq.${credits[0].id}` +
+            `&action=eq.credit_issued&select=action`,
+        );
+        expect(audit.length).toBe(1);
+
+        // Cleanup the credit before we drop the lesson — the FK from
+        // make_up_credits.issued_for_lesson_id would otherwise block.
+        supabaseDelete('make_up_credits', `id=eq.${credits[0].id}`);
+        supabaseDelete(
+          'audit_log',
+          `entity_type=eq.make_up_credit&entity_id=eq.${credits[0].id}`,
+        );
+      } finally {
+        supabaseDelete('attendance_records', `lesson_id=eq.${lessonId}`);
+        supabaseDelete('lesson_participants', `lesson_id=eq.${lessonId}`);
+        supabaseDelete('lessons', `id=eq.${lessonId}`);
+        supabaseDelete('students', `id=eq.${studentId}`);
+      }
+    } finally {
+      patchPolicyEligibility('sick', previousSickEligibility as 'automatic' | 'waitlist' | 'admin_discretion' | 'not_eligible');
+    }
+  });
+
+  // §8.8.10b — Negative: student cancels for a non-eligible reason →
+  // trigger short-circuits, no make_up_credits row created.
+  test('§8.8.10b — cancelled_by_student + not_eligible policy → no credit issued', async () => {
+    const testId = `nocredit_${Date.now()}`;
+    const teacherId = getOwnerTeacherId();
+    const userId = getOwnerUserId();
+
+    const { studentId } = seedStudent({ testId, withGuardian: false });
+    const { lessonId } = seedLesson({
+      testId,
+      teacherId,
+      createdBy: userId,
+      studentIds: [studentId],
+      startAt: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(),
+    });
+
+    try {
+      // 'holiday' is `not_eligible` in the e2e org's seed — no patch
+      // needed. The trigger should short-circuit at the policy lookup.
+      const att = supabaseInsert('attendance_records', {
+        org_id: E2E_ORG_ID,
+        lesson_id: lessonId,
+        student_id: studentId,
+        attendance_status: 'cancelled_by_student',
+        absence_reason_category: 'holiday',
+        recorded_by: userId,
+      });
+      expect(att?.id).toBeTruthy();
+
+      // Trigger short-circuits at the policy lookup (eligibility !=
+      // 'automatic') — no credit row created. That's the contract;
+      // no need to also assert on audit_log because the trigger only
+      // writes audit AFTER the credit insert (or on the cap/loop
+      // exception paths, neither of which we exercise here).
+      const credits = supabaseSelect(
+        'make_up_credits',
+        `student_id=eq.${studentId}&issued_for_lesson_id=eq.${lessonId}&select=id`,
+      );
+      expect(credits.length).toBe(0);
+    } finally {
+      supabaseDelete('attendance_records', `lesson_id=eq.${lessonId}`);
+      supabaseDelete('lesson_participants', `lesson_id=eq.${lessonId}`);
+      supabaseDelete('lessons', `id=eq.${lessonId}`);
+      supabaseDelete('students', `id=eq.${studentId}`);
+    }
+  });
+});
 
 // ────────────────────────────────────────────────────────────────────
 // §8.5 — Recurring lesson edit (this_only / this_and_future)

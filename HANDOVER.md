@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after §26.9 PortalInvoices) by Claude Opus 4.7 (1M context, 5th session)
+**Last updated:** 2026-05-09 (after §8.6 / §8.8.9-10 cancel + auto-credit) by Claude Opus 4.7 (1M context, 5th session)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -47,6 +47,22 @@
   §26.6.1's lesson seed times so runs <30min apart land in
   different 30-min slots. Status vs v2 launch scope:
   launch-critical (Stripe Connect / parent payment per §3.1).
+- _next_ — test(e2e): §8.6 cancel flow + §8.8.9 attendance
+  cleanup trigger + §8.8.10a/b auto_issue_credit_on_absence
+  (3 tests; Lauren-paramount make-up flow per
+  LESSONLOOP_V2_PLAN.md §3.1). 8.8.9 verifies that
+  trg_cleanup_attendance_on_cancel deletes attendance_records
+  when lesson goes from any status → cancelled. 8.8.10a patches
+  the e2e org's `sick` policy to `automatic` for the test (the
+  default seed is `waitlist`), inserts attendance with
+  cancelled_by_student + sick reason, asserts make_up_credits
+  row created with credit_value_minor=3500 (£35 from the org's
+  default rate card "Standard 30-min") + audit_log entry. 8.8.10b
+  uses `holiday` (not_eligible) and asserts no credit. Same
+  commit also widens lessonSlotOffsetMs in 26-parent-portal.spec
+  from 12-slot deterministic-by-testId to 24-slot Math.random()
+  per call — stops retries from re-hitting the same orphan
+  collision slot if a previous run was killed mid-cleanup.
 
 ---
 
@@ -56,7 +72,7 @@ Read this whole file before doing anything. Your context starts cold;
 this is the only mind-share between sessions. Specifically:
 
 - Don't trust raw test counters. Track **real catalog coverage**, not
-  spec count. Catalog overall ~42% (was 25% five sessions ago).
+  spec count. Catalog overall ~44% (was 25% five sessions ago).
 - Don't use `test.fixme()` as a placeholder — see [Anti-patterns](#anti-patterns).
 - The catalog at `tests/e2e/master/PLAYWRIGHT_MASTER_CATALOG.md` is the
   source of truth for "what should be tested". Treat each section as a
@@ -64,8 +80,9 @@ this is the only mind-share between sessions. Specifically:
 - §24 Stripe (incl. §24.12 true-replay) / §13 Invoices / §14 Invoice
   detail / §26.4 makeup respond / §26.6 schedule / §26.7 practice /
   §26.9 invoices+pay drawer / §26.10 compose / §26.12-13 continuation /
-  §8.5 recurring edit / §17.4 streak milestone — **DONE**. Next
-  priorities in [Next session](#next-session).
+  §8.5 recurring edit / §8.6 cancel + §8.8.9-10 auto-credit / §17.4
+  streak milestone — **DONE**. Next priorities in
+  [Next session](#next-session).
 - **J24-A infra is live in production.** 14 stripe-* edge fns + the
   webhook now route through `_shared/stripe-client.ts` with org-scoped
   test/live key dispatch. The e2e org has `stripe_test_mode=true`. Do
@@ -80,12 +97,13 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~42% (was 40%, +3 §26.9 PortalInvoices tests this session).**
+**Catalog completeness: ~44% (was 42%, +3 §8.6 cancel/auto-credit tests this session).**
 
 Current baseline (end of session):
-- **409 passed** (was 406 at end of prior bump; +3 from §26.9 invoices,
-  no documented-flake hits this final run beyond the constant 05-rbac
-  + §5.4 pair)
+- **413 passed** (was 409 at end of prior bump; +3 from §8.6/§8.8.9-10
+  auto-credit, +1 from a previously-flaky brittle-JWT test settling).
+  Single failure this run: §5.4 email verification — the documented
+  permanent flake.
 - **1-5 failed**: always includes the documented §5.4 email-verification
   flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
   to streak math, the supabaseInsert call to students returns undefined),
@@ -123,7 +141,7 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~121 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices |
+| Genuinely behavioural tests (full journeys) | ~124 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices, +3 §8.6+§8.8.9-10 cancel/credit |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
@@ -358,12 +376,16 @@ test or delete the line.
    — file list + download).
 5. **§20 Continuation (term rollover)** — DEFERRED. Needs term
    boundaries + continuation_run + response rows seeded. ~6-8 hours.
-6. **§8 Lesson CRUD — STARTED** (6 real, ~45%). Group / cancel /
-   edit duration / recurring edit (this_only + this_and_future) done.
-   Catalog mentions an "all" mode for §8.5 but RecurringActionDialog
-   only exposes the two production modes — that's catalog drift.
-   Student-side cancel → make_up_credits trigger left as TODO (needs
-   attendance_records insert path).
+6. **§8 Lesson CRUD — STARTED** (9 real, ~65%). Group / cancel
+   (basic) / edit duration / recurring edit (this_only +
+   this_and_future) + §8.8.9 attendance cleanup on cancel +
+   §8.8.10a/b auto_issue_credit_on_absence (positive + negative
+   policy) done. Catalog mentions an "all" mode for §8.5 but
+   RecurringActionDialog only exposes the two production modes —
+   that's catalog drift. Remaining: §8.8.3 conflict-detection
+   blocks save (UI), §8.8.12 closure-date warning banner (UI),
+   §8.8.13 Zoom mapping on online lesson (needs Zoom MCP / fixture),
+   §8.8.14 weekly recurrence count.
 7. ~~§17.4 streak milestone~~ — **FIXED + test landed**. Migration
    `20260518110000_notify_streak_milestone_defensive.sql` wraps the
    pg_net call in a nested EXCEPTION block; vault/queue failures now
