@@ -912,3 +912,612 @@ test.describe('§26.12 / §26.13 — Continuation response', () => {
     }
   });
 });
+
+// ────────────────────────────────────────────────────────────────────
+// §26.6 — PortalSchedule (grouping, reschedule policies, calendar export)
+// ────────────────────────────────────────────────────────────────────
+//
+// Catalog §26.6 specifies 9 sub-tests; this block covers the 7 that
+// are deterministic on a real backend (the 2 omitted are: tap-to-expand
+// notes — flaky on click target, and self-service slot picker happy
+// path — depends on teacher availability seeding which is its own
+// section). The self-service policy is still gated-tested at the UI
+// dialog open level.
+//
+// Reschedule UI shape per `resolveReschedulePolicy` in
+// `src/pages/portal/PortalSchedule.tsx`:
+//   admin_locked → no Reschedule / Request Change buttons
+//   request_only → "Request Change" → LessonChangeSheet → message_requests
+//   self_service → "Reschedule" → RescheduleSlotPicker dialog
+// Both populated paths write a `message_requests` row (lessons table is
+// not mutated client-side — admins approve via /admin/messages). The
+// catalog's "lesson updated, toast" wording is wrong.
+//
+// All 7 tests run serial because tests 4-5 mutate the org's
+// `parent_reschedule_policy` column and must restore it. A failed
+// restore would leak into other §26 tests within the same file.
+
+test.describe('§26.6 — PortalSchedule', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
+  const E2E_PARENT_GUARDIAN_ID = '44821141-05be-4475-ad1f-a9532943a355';
+
+  /** Service-role PATCH the org's parent_reschedule_policy. Returns the
+   *  previous value so the caller can restore it in a finally block.
+   *  Throws on failure — silent failure here corrupts subsequent tests. */
+  function patchOrgReschedulePolicy(
+    policy: 'self_service' | 'request_only' | 'admin_locked',
+  ): string {
+    const SUPABASE_URL = process.env.E2E_SUPABASE_URL!;
+    const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+    if (!SERVICE_KEY) {
+      throw new Error('patchOrgReschedulePolicy: E2E_SUPABASE_SERVICE_ROLE_KEY required');
+    }
+    const before = supabaseSelect(
+      'organisations',
+      `id=eq.${E2E_ORG_ID}&select=parent_reschedule_policy`,
+    );
+    const previous = before[0]?.parent_reschedule_policy ?? 'request_only';
+
+    const tmp = `/tmp/sb-patch-org-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+    fs.writeFileSync(tmp, JSON.stringify({ parent_reschedule_policy: policy }));
+    try {
+      const res = execSync(
+        `curl -s -w "\\nHTTP:%{http_code}" -X PATCH ` +
+          `"${SUPABASE_URL}/rest/v1/organisations?id=eq.${E2E_ORG_ID}" ` +
+          `-H "apikey: ${SERVICE_KEY}" ` +
+          `-H "Authorization: Bearer ${SERVICE_KEY}" ` +
+          `-H "Content-Type: application/json" ` +
+          `-H "Prefer: return=minimal" ` +
+          `-d @${tmp}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const m = res.match(/HTTP:(\d+)$/);
+      const status = m ? Number(m[1]) : 0;
+      if (status < 200 || status >= 300) {
+        throw new Error(`patchOrgReschedulePolicy(${policy}) failed: ${res}`);
+      }
+      return previous;
+    } finally {
+      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }
+
+  /** Seed a student linked to the e2e parent's guardian + a lesson with
+   *  that student as a participant. Returns ids + a cleanup function
+   *  that drops everything in FK order. The lesson's title carries the
+   *  testId so /portal/schedule queries can locate the seeded card by
+   *  text rather than relying on absolute position in the rendered list. */
+  function seedScheduledLessonForParent(opts: {
+    testId: string;
+    daysFromNow: number;
+    title?: string;
+    notesShared?: string;
+    durationMins?: number;
+    status?: 'scheduled' | 'completed' | 'cancelled';
+  }): {
+    studentId: string;
+    studentLinkId: string | null;
+    lessonId: string;
+    title: string;
+    cleanup: () => void;
+  } {
+    const ownerUserId = getOwnerUserId();
+    const teacherId = getOwnerTeacherId();
+
+    const student = supabaseInsert('students', {
+      org_id: E2E_ORG_ID,
+      first_name: `${opts.testId}_s`,
+      last_name: opts.testId,
+      status: 'active',
+    });
+    if (!student?.id) throw new Error(`seedStudent failed: ${JSON.stringify(student)}`);
+
+    const link = supabaseInsert('student_guardians', {
+      org_id: E2E_ORG_ID,
+      student_id: student.id,
+      guardian_id: E2E_PARENT_GUARDIAN_ID,
+      relationship: 'guardian',
+      is_primary_payer: false,
+    });
+
+    const startMs = Date.now() + opts.daysFromNow * 24 * 3600_000;
+    const startAt = new Date(startMs).toISOString();
+    const endAt = new Date(startMs + (opts.durationMins ?? 30) * 60_000).toISOString();
+    const title = opts.title ?? `${opts.testId}_lesson`;
+
+    const lessonPayload: Record<string, unknown> = {
+      org_id: E2E_ORG_ID,
+      teacher_id: teacherId,
+      created_by: ownerUserId,
+      start_at: startAt,
+      end_at: endAt,
+      status: opts.status ?? 'scheduled',
+      title,
+    };
+    if (opts.notesShared) lessonPayload.notes_shared = opts.notesShared;
+
+    const lesson = supabaseInsert('lessons', lessonPayload);
+    if (!lesson?.id) throw new Error(`seedLesson failed: ${JSON.stringify(lesson)}`);
+
+    supabaseInsert('lesson_participants', {
+      org_id: E2E_ORG_ID,
+      lesson_id: lesson.id,
+      student_id: student.id,
+    });
+
+    return {
+      studentId: student.id,
+      studentLinkId: link?.id ?? null,
+      lessonId: lesson.id,
+      title,
+      cleanup: () => {
+        supabaseDelete(
+          'lesson_participants',
+          `org_id=eq.${E2E_ORG_ID}&lesson_id=eq.${lesson.id}`,
+        );
+        supabaseDelete(
+          'message_requests',
+          `org_id=eq.${E2E_ORG_ID}&lesson_id=eq.${lesson.id}`,
+        );
+        supabaseDelete(
+          'lessons',
+          `org_id=eq.${E2E_ORG_ID}&id=eq.${lesson.id}`,
+        );
+        supabaseDelete(
+          'student_guardians',
+          `org_id=eq.${E2E_ORG_ID}&student_id=eq.${student.id}`,
+        );
+        supabaseDelete(
+          'students',
+          `org_id=eq.${E2E_ORG_ID}&id=eq.${student.id}`,
+        );
+      },
+    };
+  }
+
+  // §26.6.1 — Lessons grouped: this week / next week / past
+  test('§26.6.1 — lessons grouped by week with past collapsed by default', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    // Three lessons at distinct buckets. Offsets are picked to be safe for
+    // ANY day of the week — naive ±2 day offsets fail near week boundaries
+    // (e.g. on a Saturday, -2 days is still inside the current calendar
+    // week, so it lands in `thisWeek` not `past`):
+    //  - past:    -10 days  → guaranteed previous calendar week
+    //  - this:    +0 days   → today, always in thisWeekStart..thisWeekEnd
+    //  - future:  +14 days  → always 2+ calendar weeks ahead
+    // useParentLessons clamps past to 3 months; -10 stays well inside.
+    const past = seedScheduledLessonForParent({
+      testId: `${testId}_past`,
+      daysFromNow: -10,
+      status: 'completed',
+    });
+    const thisWeek = seedScheduledLessonForParent({
+      testId: `${testId}_thisweek`,
+      daysFromNow: 0,
+    });
+    const nextWeek = seedScheduledLessonForParent({
+      testId: `${testId}_nextweek`,
+      daysFromNow: 14,
+    });
+
+    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    const page = await ctx.newPage();
+    try {
+      await goTo(page, '/portal/schedule');
+      await assertNoErrorBoundary(page);
+
+      // "This Week" header always renders. Wait for it before asserting
+      // lesson cards — useParentLessons is async and the page renders the
+      // skeleton first.
+      await expect(page.locator('h2:has-text("This Week")').first()).toBeVisible({ timeout: 15_000 });
+
+      // This week + future cards visible.
+      await expect(page.getByText(thisWeek.title).first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(nextWeek.title).first()).toBeVisible({ timeout: 10_000 });
+
+      // Past lessons section is the Collapsible — closed by default. The
+      // trigger button shows "Past Lessons (N)"; the past lesson title is
+      // hidden until the user expands.
+      const pastTrigger = page.locator('button:has-text("Past Lessons")').first();
+      await expect(pastTrigger).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByText(past.title).first()).not.toBeVisible();
+    } finally {
+      await ctx.close();
+      past.cleanup();
+      thisWeek.cleanup();
+      nextWeek.cleanup();
+    }
+  });
+
+  // §26.6.2 — Past collapsible: hidden by default, click expands
+  test('§26.6.2 — past lessons collapsible: closed by default, click expands', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const past = seedScheduledLessonForParent({
+      testId,
+      daysFromNow: -10,
+      status: 'completed',
+    });
+
+    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    const page = await ctx.newPage();
+    try {
+      await goTo(page, '/portal/schedule');
+      await assertNoErrorBoundary(page);
+
+      // Wait for fetch + render. The "This Week" header renders even with
+      // zero this-week lessons — its "No lessons this week." copy serves
+      // as the readiness signal.
+      await expect(page.locator('h2:has-text("This Week")').first()).toBeVisible({ timeout: 15_000 });
+
+      const trigger = page.locator('button:has-text("Past Lessons")').first();
+      await expect(trigger).toBeVisible({ timeout: 5_000 });
+
+      // Closed: lesson title not visible.
+      await expect(page.getByText(past.title).first()).not.toBeVisible();
+
+      // Open the collapsible — ChevronDown rotates and content unhides.
+      await trigger.click();
+
+      // Expanded: lesson title visible.
+      await expect(page.getByText(past.title).first()).toBeVisible({ timeout: 5_000 });
+    } finally {
+      await ctx.close();
+      past.cleanup();
+    }
+  });
+
+  // §26.6.6 — admin_locked: no Reschedule / Request Change buttons
+  test('§26.6.6 — admin_locked policy hides Reschedule and Request Change', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const previous = patchOrgReschedulePolicy('admin_locked');
+    // Outer try guarantees we restore the policy even if seeding throws —
+    // a leaked admin_locked state would silently change every subsequent
+    // /portal/schedule test in this org.
+    try {
+      // +4 days: avoids the +3/-3 day slots §26.4 uses for its make-up
+      // offer missed/matched lessons (same teacher, parallel-running
+      // describe — the teacher_conflict trigger raises P0001 if our
+      // lesson lands within 30min of §26.4's matched_lesson).
+      const lesson = seedScheduledLessonForParent({ testId, daysFromNow: 4 });
+
+      const ctx = await browser.newContext({ storageState: AUTH.parent });
+      const page = await ctx.newPage();
+      try {
+        await goTo(page, '/portal/schedule');
+        await assertNoErrorBoundary(page);
+
+        // Wait for our seeded card to render. Once it's on the page the
+        // policy decision has already happened — `canReschedule=false`
+        // suppresses both the dropdown menu item and the desktop button.
+        await expect(page.getByText(lesson.title).first()).toBeVisible({ timeout: 15_000 });
+
+        // Desktop layout shows separate buttons. The "Add to Cal" dropdown
+        // remains (calendar export is policy-independent), but Reschedule
+        // / Request Change must NOT appear anywhere on the page.
+        await expect(page.locator('button:has-text("Reschedule")')).toHaveCount(0);
+        await expect(page.locator('button:has-text("Request Change")')).toHaveCount(0);
+
+        // Sanity: "Add to Cal" still rendered for the seeded lesson.
+        await expect(page.locator('button:has-text("Add to Cal")').first()).toBeVisible();
+      } finally {
+        await ctx.close();
+        lesson.cleanup();
+      }
+    } finally {
+      patchOrgReschedulePolicy(previous as 'self_service' | 'request_only' | 'admin_locked');
+    }
+  });
+
+  // §26.6.5 — request_only: opens LessonChangeSheet, submit creates message_requests row
+  test('§26.6.5 — request_only policy: Request Change → reschedule form → message_requests row', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const previous = patchOrgReschedulePolicy('request_only');
+    try {
+      const lesson = seedScheduledLessonForParent({ testId, daysFromNow: 5 });
+
+      const ctx = await browser.newContext({ storageState: AUTH.parent });
+      const page = await ctx.newPage();
+      try {
+        await goTo(page, '/portal/schedule');
+        await assertNoErrorBoundary(page);
+
+        await expect(page.getByText(lesson.title).first()).toBeVisible({ timeout: 15_000 });
+
+        // Desktop "Request Change" button — request_only policy renders this
+        // label (vs "Reschedule" for self_service). Click opens the
+        // LessonChangeSheet bottom drawer.
+        const requestBtn = page.locator('button:has-text("Request Change")').first();
+        await expect(requestBtn).toBeVisible();
+        await requestBtn.click();
+
+        // The sheet's menu view shows three buttons; pick "Request reschedule"
+        // to enter the reschedule form. Match on the bold heading copy
+        // ("Request reschedule") rather than the icon button so we don't pick
+        // up the calendar dropdown by accident.
+        const menuRescheduleBtn = page
+          .locator('button:has-text("Request reschedule")')
+          .first();
+        await expect(menuRescheduleBtn).toBeVisible({ timeout: 5_000 });
+        await menuRescheduleBtn.click();
+
+        // Reschedule form: textarea for "When would you prefer instead?".
+        const preferTextarea = page
+          .locator('textarea[placeholder*="Wednesday"]')
+          .first();
+        await expect(preferTextarea).toBeVisible({ timeout: 5_000 });
+        const preferText = `${testId}_prefers_thursday_same_time`;
+        await preferTextarea.fill(preferText);
+
+        // Submit. The mutation goes through `useCreateMessageRequest` →
+        // direct supabase.from('message_requests').insert.
+        const submitBtn = page.locator('button:has-text("Send Reschedule Request")').first();
+        await expect(submitBtn).toBeEnabled();
+        await submitBtn.click();
+
+        // Poll the DB rather than waiting on toast text — the toast string
+        // depends on the org's branded copy and is brittle. The
+        // request_type=reschedule + lesson_id pair uniquely identifies our
+        // request. The body field carries our textarea content.
+        await expect
+          .poll(
+            () => {
+              const rows = supabaseSelect(
+                'message_requests',
+                `org_id=eq.${E2E_ORG_ID}&lesson_id=eq.${lesson.lessonId}&request_type=eq.reschedule&select=id,subject,message,request_type`,
+              );
+              return rows.length;
+            },
+            { timeout: 15_000, intervals: [500, 1000, 2000] },
+          )
+          .toBeGreaterThanOrEqual(1);
+
+        const rows = supabaseSelect(
+          'message_requests',
+          `org_id=eq.${E2E_ORG_ID}&lesson_id=eq.${lesson.lessonId}&request_type=eq.reschedule&select=subject,message,guardian_id`,
+        );
+        expect(rows[0].guardian_id).toBe(E2E_PARENT_GUARDIAN_ID);
+        expect(rows[0].message).toContain(preferText);
+        // Subject is composed from lesson title + student names + date —
+        // assert the title shows up in it (the most stable component).
+        expect(rows[0].subject).toContain(lesson.title);
+      } finally {
+        await ctx.close();
+        lesson.cleanup();
+      }
+    } finally {
+      patchOrgReschedulePolicy(previous as 'self_service' | 'request_only' | 'admin_locked');
+    }
+  });
+
+  // §26.6.4 — self_service policy: Reschedule button opens RescheduleSlotPicker dialog.
+  // The full slot-pick happy path is brittle — depends on teacher
+  // availability seeding which is its own backend section. Here we
+  // assert the policy gates the right UI shape: button label is
+  // "Reschedule" (not "Request Change") and the click opens the
+  // dedicated dialog with title "Request Reschedule".
+  test('§26.6.4 — self_service policy: Reschedule button opens slot picker dialog', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const previous = patchOrgReschedulePolicy('self_service');
+    try {
+      const lesson = seedScheduledLessonForParent({ testId, daysFromNow: 7 });
+
+      const ctx = await browser.newContext({ storageState: AUTH.parent });
+      const page = await ctx.newPage();
+      try {
+        await goTo(page, '/portal/schedule');
+        await assertNoErrorBoundary(page);
+
+        await expect(page.getByText(lesson.title).first()).toBeVisible({ timeout: 15_000 });
+
+        // self_service renders "Reschedule" (vs "Request Change" for
+        // request_only). "Request Change" must NOT appear.
+        await expect(page.locator('button:has-text("Request Change")')).toHaveCount(0);
+
+        const rescheduleBtn = page.locator('button:has-text("Reschedule")').first();
+        await expect(rescheduleBtn).toBeVisible();
+        await rescheduleBtn.click();
+
+        // The dedicated Dialog opens with title "Request Reschedule" and
+        // mounts RescheduleSlotPicker. Assert the dialog header — that's
+        // the policy-gating contract; we don't try to actually pick a slot
+        // here (slot enumeration is its own section).
+        await expect(
+          page.getByRole('dialog').getByText('Request Reschedule').first(),
+        ).toBeVisible({ timeout: 10_000 });
+      } finally {
+        await ctx.close();
+        lesson.cleanup();
+      }
+    } finally {
+      patchOrgReschedulePolicy(previous as 'self_service' | 'request_only' | 'admin_locked');
+    }
+  });
+
+  // §26.6.7 — Add to Google Calendar: window.open URL formatted correctly
+  test('§26.6.7 — Add to Google Calendar opens correctly formatted URL', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    // Pick a far-future date so the lesson lands in a "Week of …" group
+    // with a single card — easier to scope the click target.
+    const lesson = seedScheduledLessonForParent({
+      testId,
+      daysFromNow: 14,
+      title: `${testId}_gcal`,
+    });
+
+    const ctx = await browser.newContext({ storageState: AUTH.parent });
+    const page = await ctx.newPage();
+    try {
+      await goTo(page, '/portal/schedule');
+      await assertNoErrorBoundary(page);
+
+      await expect(page.getByText(lesson.title).first()).toBeVisible({ timeout: 15_000 });
+
+      // PortalSchedule calls `window.open(generateGoogleCalendarUrl(...), '_blank', 'noopener,noreferrer')`.
+      // Stub window.open so we capture the URL without spawning a tab —
+      // page.context().on('page') flakes on noopener targets.
+      await page.evaluate(() => {
+        (window as unknown as { __opened: string[] }).__opened = [];
+        window.open = (url?: string | URL) => {
+          (window as unknown as { __opened: string[] }).__opened.push(String(url ?? ''));
+          return null;
+        };
+      });
+
+      // Open the "Add to Cal" dropdown for our seeded lesson and click
+      // Google Calendar. Multiple "Add to Cal" buttons may exist if the
+      // parent has other lessons; scope to the card containing our title.
+      const card = page
+        .locator('div')
+        .filter({ has: page.getByText(lesson.title).first() })
+        .filter({ has: page.locator('button:has-text("Add to Cal")') })
+        .last();
+      await card.locator('button:has-text("Add to Cal")').first().click();
+      await page.locator('[role="menuitem"]:has-text("Google Calendar")').first().click();
+
+      const opened = await page.evaluate(
+        () => (window as unknown as { __opened: string[] }).__opened ?? [],
+      );
+      expect(opened.length).toBeGreaterThanOrEqual(1);
+
+      const url = opened[0];
+      expect(url).toMatch(/^https:\/\/calendar\.google\.com\/calendar\/render\?/);
+      const parsed = new URL(url);
+      expect(parsed.searchParams.get('action')).toBe('TEMPLATE');
+      expect(parsed.searchParams.get('text')).toBe(lesson.title);
+      expect(parsed.searchParams.get('ctz')).toBe('Europe/London');
+      // dates is `start/end` in YYYYMMDDTHHMMSS local-timezone format.
+      const dates = parsed.searchParams.get('dates') || '';
+      expect(dates).toMatch(/^\d{8}T\d{6}\/\d{8}T\d{6}$/);
+    } finally {
+      await ctx.close();
+      lesson.cleanup();
+    }
+  });
+
+  // §26.6.8 — Download .ics: file content has correct VEVENT
+  test('§26.6.8 — Download .ics emits valid VEVENT with lesson title and times', async ({
+    browser,
+  }) => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const lesson = seedScheduledLessonForParent({
+      testId,
+      daysFromNow: 14,
+      title: `${testId}_ics`,
+    });
+
+    const ctx = await browser.newContext({
+      storageState: AUTH.parent,
+      acceptDownloads: true,
+    });
+    const page = await ctx.newPage();
+    try {
+      await goTo(page, '/portal/schedule');
+      await assertNoErrorBoundary(page);
+
+      await expect(page.getByText(lesson.title).first()).toBeVisible({ timeout: 15_000 });
+
+      const card = page
+        .locator('div')
+        .filter({ has: page.getByText(lesson.title).first() })
+        .filter({ has: page.locator('button:has-text("Add to Cal")') })
+        .last();
+      await card.locator('button:has-text("Add to Cal")').first().click();
+
+      // The dropdown item label includes "Apple / Outlook (.ics)".
+      const downloadPromise = page.waitForEvent('download', { timeout: 15_000 });
+      await page.locator('[role="menuitem"]:has-text(".ics")').first().click();
+      const download = await downloadPromise;
+
+      const path = await download.path();
+      expect(path).toBeTruthy();
+
+      const content = fs.readFileSync(path!, 'utf-8');
+      expect(content).toContain('BEGIN:VCALENDAR');
+      expect(content).toContain('BEGIN:VEVENT');
+      expect(content).toContain(`SUMMARY:${lesson.title}`);
+      expect(content).toContain('END:VEVENT');
+      expect(content).toContain('END:VCALENDAR');
+      // DTSTART/DTEND are TZID-prefixed local times, format YYYYMMDDTHHMMSS.
+      expect(content).toMatch(/DTSTART;TZID=Europe\/London:\d{8}T\d{6}/);
+      expect(content).toMatch(/DTEND;TZID=Europe\/London:\d{8}T\d{6}/);
+    } finally {
+      await ctx.close();
+      lesson.cleanup();
+    }
+  });
+
+  // §26.6.9 — iCal feed URL: backend serves valid VCALENDAR with the parent's lessons
+  test('§26.6.9 — iCal feed URL returns VEVENT for parent\'s children lessons', async () => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const lesson = seedScheduledLessonForParent({
+      testId,
+      daysFromNow: 21,
+      title: `${testId}_icalfeed`,
+    });
+
+    // Insert a calendar_connections row directly (provider='apple',
+    // guardian-scoped) so the calendar-ical-feed edge fn has a token
+    // it accepts. The frontend `generateParentICalUrl` does this same
+    // insert via supabase-js; doing it via service-role here keeps the
+    // test backend-only (no browser, no storageState dance).
+    const SUPABASE_URL = process.env.E2E_SUPABASE_URL!;
+    const E2E_PARENT_USER_ID = '85628488-f47f-4178-84f0-3425aad6e75e';
+    const icalToken = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 90 * 24 * 3600_000).toISOString();
+
+    const conn = supabaseInsert('calendar_connections', {
+      user_id: E2E_PARENT_USER_ID,
+      org_id: E2E_ORG_ID,
+      provider: 'apple',
+      guardian_id: E2E_PARENT_GUARDIAN_ID,
+      ical_token: icalToken,
+      ical_token_expires_at: expiresAt,
+      sync_enabled: true,
+      sync_status: 'active',
+    });
+    if (!conn?.id) throw new Error(`seed calendar_connections failed: ${JSON.stringify(conn)}`);
+
+    try {
+      // Fetch the feed. The fn validates the token, looks up the
+      // guardian's children's lessons, and emits VCALENDAR text.
+      const feed = execSync(
+        `curl -sS "${SUPABASE_URL}/functions/v1/calendar-ical-feed?token=${icalToken}"`,
+        { encoding: 'utf-8', timeout: 30_000 },
+      );
+
+      expect(feed).toContain('BEGIN:VCALENDAR');
+      expect(feed).toContain('END:VCALENDAR');
+      // PRODID identifies the LL feed (not the local calendarExport.ts —
+      // that one says "Calendar Export").
+      expect(feed).toContain('PRODID:-//LessonLoop//Calendar Feed//EN');
+
+      // Our seeded lesson is +21 days, inside the [-3mo, +6mo] window
+      // the fn fetches. Title appears in the SUMMARY line.
+      expect(feed).toContain(`SUMMARY:${lesson.title}`);
+      // UID is `${lessonId}@lessonloop.net`.
+      expect(feed).toContain(`UID:${lesson.lessonId}@lessonloop.net`);
+    } finally {
+      // Drop the connection row so the next run gets a fresh token.
+      supabaseDelete(
+        'calendar_connections',
+        `id=eq.${conn.id}`,
+      );
+      lesson.cleanup();
+    }
+  });
+});

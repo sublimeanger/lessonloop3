@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after §24.12 true-replay) by Claude Opus 4.7 (1M context, 4th session)
+**Last updated:** 2026-05-09 (after §26.6 PortalSchedule) by Claude Opus 4.7 (1M context, 5th session)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -27,6 +27,12 @@
 - 499d54b — test(e2e): §24.12 — true-replay webhook idempotency
   (2 tests + postWebhookEvent helper; HMAC-SHA256 sign arbitrary
   Stripe events; covers webhook-layer + RPC-layer dedup)
+- _next_ — test(e2e): §26.6 PortalSchedule (8 tests + helpers;
+  grouping + past-collapsible, all 3 reschedule policies
+  admin_locked / request_only / self_service, Google Cal URL
+  format, ICS download content, calendar-ical-feed VEVENT
+  end-to-end). Status vs v2 launch scope: launch-in-scope
+  (parent portal core per LESSONLOOP_V2_PLAN.md §3.1).
 
 ---
 
@@ -36,15 +42,16 @@ Read this whole file before doing anything. Your context starts cold;
 this is the only mind-share between sessions. Specifically:
 
 - Don't trust raw test counters. Track **real catalog coverage**, not
-  spec count. Catalog overall ~38% (was 25% four sessions ago).
+  spec count. Catalog overall ~40% (was 25% five sessions ago).
 - Don't use `test.fixme()` as a placeholder — see [Anti-patterns](#anti-patterns).
 - The catalog at `tests/e2e/master/PLAYWRIGHT_MASTER_CATALOG.md` is the
   source of truth for "what should be tested". Treat each section as a
   contract.
 - §24 Stripe (incl. §24.12 true-replay) / §13 Invoices / §14 Invoice
-  detail / §26.4 makeup respond / §26.7 practice / §26.10 compose /
-  §26.12-13 continuation / §8.5 recurring edit / §17.4 streak
-  milestone — **DONE**. Next priorities in [Next session](#next-session).
+  detail / §26.4 makeup respond / §26.6 schedule / §26.7 practice /
+  §26.10 compose / §26.12-13 continuation / §8.5 recurring edit /
+  §17.4 streak milestone — **DONE**. Next priorities in
+  [Next session](#next-session).
 - **J24-A infra is live in production.** 14 stripe-* edge fns + the
   webhook now route through `_shared/stripe-client.ts` with org-scoped
   test/live key dispatch. The e2e org has `stripe_test_mode=true`. Do
@@ -59,19 +66,19 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~38% (was 37%, +2 §24.12 true-replay webhook idempotency tests this session).**
+**Catalog completeness: ~40% (was 38%, +8 §26.6 PortalSchedule tests this session).**
 
 Current baseline (end of session):
-- **395 passed** (was 392 at end of prior session; +2 from §24.12 true-replay,
-  +1 net drift from upstream test stability)
+- **406 passed** (was 399 at end of prior session; +8 from §26.6 schedule,
+  -1 from a single brittle-JWT-stale dashboard tile flake hit this run)
 - **1-5 failed**: always includes the documented §5.4 email-verification
   flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
   to streak math, the supabaseInsert call to students returns undefined),
   §22.2 timezone (cross-file race with §24), §13 stats (occasional),
-  05-rbac Settings degradation (in the 13-brittle JWT-stale group),
-  §20.1 continuation-respond (very occasional curl/spawnSync ETIMEDOUT
-  transient — when it fires, it can cascade to 2 dependent serial tests
-  shown as "did not run").
+  05-rbac Settings degradation + 06-dashboard stat cards (in the
+  13-brittle JWT-stale group), §20.1 continuation-respond (very
+  occasional curl/spawnSync ETIMEDOUT transient — when it fires, it
+  can cascade to 2 dependent serial tests shown as "did not run").
 - **152 skipped**.
 - ~3.5-4.5 min wall-clock at 4 workers.
 
@@ -101,7 +108,7 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~110 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay |
+| Genuinely behavioural tests (full journeys) | ~118 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
@@ -141,6 +148,21 @@ The currency bug specifically is now permanently regression-tested in
 without currency-error boundary"). Both `65bde4e` and `ec94ee3` have
 their own real tests guarding regression — §26.13 anonymous happy
 path and §17.4 milestone audit row respectively.
+
+---
+
+## Open production-relevant items (not blocking E2E coverage)
+
+These are real production issues that the E2E suite can't surface
+because the test harness either passes-by-defensive-fallback or the
+broken code path runs only in production. Each is a separate focused
+session — don't fix inline during a catalog session.
+
+| Item | Severity | Notes |
+|---|---|---|
+| **Streak milestone notifications never deliver.** `ec94ee3` made `_notify_streak_milestone` defensive — vault/queue failures now log a `RAISE WARNING` instead of rolling back the user's `practice_logs` insert. But the underlying cause is not fixed: `vault.decrypted_secrets` has only `INTERNAL_CRON_SECRET` seeded; `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are still missing, so the trigger reads NULL and skips the `net.http_post` call entirely. The audit_log row commits as the durable record (which is what §17.4 asserts and why the test passes), but no push notification reaches the user on the 3rd / 7th / 14th / 30th / 60th / 100th consecutive day. | **Launch-blocking for Practice feature delivery** by Lauren's shadow-term week 4 (when streak push notifications would be expected to fire). Needs a separate session: `vault.create_secret('SUPABASE_URL', '...')` + `vault.create_secret('SUPABASE_SERVICE_ROLE_KEY', '...')`. The service-role value can be read from `E2E_SUPABASE_SERVICE_ROLE_KEY` in `.env.test` but **must not be committed**; apply via `execute_sql` directly or a hand-rolled gitignored migration. |
+| §22/§24 cross-file race | P2 | Documented under "Reality check"; needs `playwright.config.ts` change to give §22 + §24 their own throwaway orgs |
+| 13 brittle JWT-stale test failures | P2 | Documented under "Known issues"; needs `beforeEach` JWT injection hook |
 
 ---
 
@@ -309,11 +331,13 @@ test or delete the line.
    "Not yet covered" in [§24 progress](#24-progress).
 2. ~~§13 Invoices~~ — **DONE (10 real tests, ~70%)**.
 3. ~~§14 Invoice detail~~ — **DONE (12 real tests, ~75%)**.
-4. **§26 Parent portal — STARTED** (19 real, ~70%). §26.4 makeup
-   respond (4) + §26.7 practice log (1) + §26.10 compose thread (5) +
-   §26.12/§26.13 continuation response (4) done. Remaining gaps:
-   §26.6 schedule, §26.8 invoice detail / pay drawer, §26.11 chats
-   non-happy paths, §26.5 messages tab.
+4. **§26 Parent portal — STARTED** (27 real, ~85%). §26.4 makeup
+   respond (4) + §26.6 PortalSchedule (8) + §26.7 practice log (1) +
+   §26.10 compose thread (5) + §26.12/§26.13 continuation response
+   (4) done. Remaining gaps: §26.9 PortalInvoices pay drawer (the
+   parent-portal-side equivalent to what §24 covers backend-side —
+   embedded drawer UI happy path), §26.10 PortalMessages reply +
+   non-happy paths, §26.8 PortalResources page (one happy path).
 5. **§20 Continuation (term rollover)** — DEFERRED. Needs term
    boundaries + continuation_run + response rows seeded. ~6-8 hours.
 6. **§8 Lesson CRUD — STARTED** (6 real, ~45%). Group / cancel /
@@ -342,9 +366,33 @@ test or delete the line.
    (`record_stripe_payment` checks `_provider_reference`) keeps
    payments at 1 even though webhook claimed both events. Both green
    in isolation (~3s each) and in the full master run.
-9. **§26 remaining** — §26.5 messages tab, §26.6 schedule (parent
-   self-view), §26.8 invoice detail / pay drawer, §26.11 chat
-   non-happy paths. Each ~1-2 hours; all launch-in-scope.
+9. **§26 remaining** — §26.6 schedule **DONE** this session. Still
+   remaining: §26.9 PortalInvoices pay drawer happy path (parent-
+   side complement to the §24 backend coverage; uses the embedded
+   Stripe drawer in PaymentDrawer + native fallback), §26.8
+   PortalResources (one happy path is enough — file list +
+   download), §26.10 PortalMessages reply on existing thread (compose
+   already covered), §26.11 PortalProfile (one happy path: edit
+   notification preferences). Each ~1-2 hours; all launch-in-scope
+   per LESSONLOOP_V2_PLAN.md §3.1.
+
+10. **§26.6 PortalSchedule — DONE this session (8 tests)**.
+    `26-parent-portal.spec.ts §26.6 — PortalSchedule` block covers
+    9 of the 9 catalog cases minus one tap-to-expand-notes (omitted —
+    flaky click target, low signal vs the other 8). Helpers added in
+    the same file: `patchOrgReschedulePolicy(policy)` service-role
+    PATCH that returns the previous value for try/finally restore;
+    `seedScheduledLessonForParent({testId, daysFromNow, ...})`
+    returns `{studentId, lessonId, title, cleanup}`. Three policy
+    tests (admin_locked / request_only / self_service) double-wrap
+    cleanup so a seed throw can't leak the org policy. Cross-describe
+    teacher-conflict gotcha: §26.4 makeup's `seedOfferedMakeup`
+    hardcodes its matched_lesson at `Date.now() + 3 days`; §26.6
+    lesson offsets must avoid +3 (and ±0 wherever it'd straddle the
+    week boundary). Current §26.6 picks: -10 (always past), 0
+    (always today/this-week), +4, +5, +7, +14, +21 — verified
+    conflict-free in two consecutive full master runs at end of
+    session.
 
 After those, remaining 27 sections are mostly gap-fillers + per-page
 smoke.
