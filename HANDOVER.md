@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (early) by Claude Opus 4.7 (1M context, 3rd session)
+**Last updated:** 2026-05-09 (after fixes) by Claude Opus 4.7 (1M context, 3rd session)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -32,19 +32,24 @@ Read this whole file before doing anything. Your context starts cold;
 this is the only mind-share between sessions. Specifically:
 
 - Don't trust raw test counters. Track **real catalog coverage**, not
-  spec count. §24 went from 0 real tests (11 fixmes) → 10 real (60% of
-  catalog §24 items) this session. Catalog overall ~30% (was 25%).
+  spec count. Catalog overall ~37% (was 25% three sessions ago).
 - Don't use `test.fixme()` as a placeholder — see [Anti-patterns](#anti-patterns).
 - The catalog at `tests/e2e/master/PLAYWRIGHT_MASTER_CATALOG.md` is the
   source of truth for "what should be tested". Treat each section as a
   contract.
-- §24 Stripe payments — **DONE**. Next priority: §13/§14 Invoices.
-  See [Next session](#next-session).
+- §24 Stripe / §13 Invoices / §14 Invoice detail / §26.4 makeup respond /
+  §26.7 practice / §26.10 compose / §26.12-13 continuation / §8.5
+  recurring edit / §17.4 streak milestone — **DONE**. Next priorities
+  in [Next session](#next-session).
 - **J24-A infra is live in production.** 14 stripe-* edge fns + the
   webhook now route through `_shared/stripe-client.ts` with org-scoped
   test/live key dispatch. The e2e org has `stripe_test_mode=true`. Do
   NOT toggle that flag for any other org without testing — it would
   break that org's live payments instantly.
+- **Read `~/.claude/settings.json` env block before asking the user
+  for tokens.** Token inventory + auth-plane quirks are documented in
+  the [Setup](#setup) section. Sessions before this one wasted cycles
+  asking for things that were already there.
 
 ---
 
@@ -87,7 +92,7 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~101 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose |
+| Genuinely behavioural tests (full journeys) | ~108 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
@@ -119,10 +124,14 @@ to `main`. Don't waste time re-finding them:
 | Supabase config | `protect_subscription_fields` uses silent `NEW := OLD` coerce, NOT exception | n/a (working as designed; my initial test asserted wrong) |
 | Various | Storage `avatars` bucket had no size cap or mime allowlist (now 2MB + image-only) | P2 |
 | Various | Cloudflare DNS still had stale `_lovable.app` TXT record; `app.lessonloop.net` not proxied via CF | P2 / decision-pending |
+| `65bde4e` | `continuation-respond` had platform `verify_jwt=true` but the frontend uses publishable keys (`sb_publishable_*`); fully-anonymous email-link clicks at `/respond/continuation?token=X` got `UNAUTHORIZED_INVALID_JWT_FORMAT` at the gateway. Function code already does manual auth on both paths; one config.toml line + redeploy fixes it. | **P0** (parent-facing email flow, broken since signing-keys migration) |
+| `ec94ee3` | `_notify_streak_milestone` read `vault.decrypted_secrets` for `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, which were never seeded (only `INTERNAL_CRON_SECRET` was). NULL URL → `null value in column "url" violates not-null constraint` (sqlstate 23502) → trigger errored → AFTER INSERT trigger rolled back the user's `practice_logs` insert. Any user logging the 3rd, 7th, 14th, 30th, 60th, or 100th consecutive practice day got a 500. Fix wraps the `net.http_post` call in nested EXCEPTION; `audit_log` row stays as the durable record, delivery is best-effort. | **P0** (silent revenue / engagement leak on streak milestones) |
 
 The currency bug specifically is now permanently regression-tested in
 `tests/e2e/master/26-parent-portal.spec.ts` ("invoices page renders
-without currency-error boundary").
+without currency-error boundary"). Both `65bde4e` and `ec94ee3` have
+their own real tests guarding regression — §26.13 anonymous happy
+path and §17.4 milestone audit row respectively.
 
 ---
 
@@ -249,20 +258,26 @@ npx playwright install chromium
 
 ### 4. Verify setup
 
-This single command must land on `~312 passed`:
+This single command should land in the ~390s passed range:
 
 ```bash
 ./node_modules/.bin/playwright test --project=master --workers=4
 ```
 
-Expected output (current 2026-05-08 baseline):
-- **312 passed**
-- **13 failed** (same JWT-stale flakes — see [Known issues](#known-issues))
-- **212 skipped** (intentional fixmes — placeholders to be filled)
-- ~9 min wall-clock
+Expected output (current 2026-05-09 baseline, post-fixes):
+- **~392 passed** (varies ±5 with transient seed flakes)
+- **1-5 failed** — always includes `§5.4` email-verification flake;
+  occasionally `§22.2` timezone (cross-file race with §24), `§13` stats
+  (occasional), or `§17.4 streak progression (×2)` if the supabaseInsert
+  to students returns undefined under load (pure infra flake, unrelated
+  to streak math)
+- **~152 skipped** (intentional)
+- ~3.5-5 min wall-clock at 4 workers
 
-If you get fewer passing or different failures, something's wrong with
-your setup. Check `.env.test` first.
+If you see ~35 owner-side failures, the `has_completed_onboarding`
+flag has drifted on the e2e-owner profile — fix per
+[Known issues](#known-issues). If far fewer pass or you see auth
+failures, check `.env.test` and the storage states first.
 
 ---
 
@@ -299,29 +314,22 @@ test or delete the line.
    SUPABASE_SERVICE_ROLE_KEY so notifications don't actually deliver
    yet — that's a separate follow-up if push notifications matter
    pre-launch (audit_log row IS the durable record).
-8. **§24.12 webhook true-replay idempotency** — needs
-   E2E_STRIPE_TEST_WEBHOOK_SECRET copied locally from Supabase secrets;
-   postWebhookEvent helper already written. ~2 hours.
+8. **§24.12 webhook true-replay idempotency** — secret is now baked
+   in (`STRIPE_TEST_WEBHOOK_SECRET` in `~/.claude/settings.json` env,
+   `E2E_STRIPE_TEST_WEBHOOK_SECRET` in `.env.test`; validated by
+   signing a `ping` event and getting HTTP 200 from the webhook on
+   2026-05-09). HOWEVER: the `postWebhookEvent` helper claimed in
+   prior HANDOVER ledger does NOT exist — needs to be written
+   (~30 lines: HMAC-SHA256 of `{ts}.{body}`, header
+   `Stripe-Signature: t=<ts>,v1=<hex>`). Estimate: ~2-3 hours
+   total (helper + replay test asserting `payments` count stays
+   at 1 after re-posting the same event_id).
+9. **§26 remaining** — §26.5 messages tab, §26.6 schedule (parent
+   self-view), §26.8 invoice detail / pay drawer, §26.11 chat
+   non-happy paths. Each ~1-2 hours; all launch-in-scope.
 
-**Production bug found this session (continuation-respond):**
-The unauthenticated `/respond/continuation?token=X` flow is broken in
-production. `continuation-respond` has `verify_jwt=true` (no entry in
-config.toml), but the frontend uses publishable keys (`sb_publishable_*`)
-which fail the gateway's JWT-format check with
-`UNAUTHORIZED_INVALID_JWT_FORMAT`. Parents clicking the email link from
-a fresh device (no session) get a 401. **Fix:** add
-```toml
-[functions.continuation-respond]
-verify_jwt = false
-```
-to `supabase/config.toml` and redeploy. The function already does
-manual auth (token path → adminClient with no JWT needed; portal path
-→ checks Authorization Bearer + getUser()). Pattern matches every
-other user-facing fn. Tests in §26.13 currently navigate with the
-parent's storage state (mirroring "logged-in user clicks email link"),
-which works today; the fully-anonymous flow requires the deploy fix.
-
-After those 5 sections, the remaining 27 are gap-fillers and per-page smoke.
+After those, remaining 27 sections are mostly gap-fillers + per-page
+smoke.
 
 ### §24 progress (this session)
 
