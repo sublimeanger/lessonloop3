@@ -268,7 +268,34 @@ test.describe('§17.4 — Streak progression (trigger)', () => {
 });
 
 // §17.3 parent-side logging is already covered by §26.7 (parent portal).
-// §17.4 streak milestone notification (3/7/30-day push via
-// streak-notification edge fn) and §17.5 cron-based tests
-// (reset_stale_streaks, complete_expired_assignments) need time-travel
-// or scheduled triggers — left as TODO for the next session.
+//
+// §17.4 streak milestone (3/7/14/30/60/100-day) cannot be exercised
+// end-to-end today: production has a missing-vault-secret bug.
+// `_notify_streak_milestone` calls `net.http_post(url := (SELECT
+// decrypted_secret FROM vault.decrypted_secrets WHERE name =
+// 'SUPABASE_URL'))`, but `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
+// have never been seeded into the vault — only `INTERNAL_CRON_SECRET`
+// is present. The SELECT returns NULL, pg_net's `http_request_queue`
+// rejects the null URL with `null value in column "url" violates
+// not-null constraint` (sqlstate 23502), the trigger errors, and the
+// underlying `practice_logs` INSERT rolls back. Net effect: any user
+// who logs a 3rd, 7th, 14th, 30th, 60th, or 100th consecutive day
+// gets a 500 instead of a successful save.
+//
+// Two ways to fix:
+//   1. Seed the vault: `vault.create_secret('https://...supabase.co',
+//      'SUPABASE_URL')` + same for `SUPABASE_SERVICE_ROLE_KEY`. Migration
+//      drops in alongside `20260303180000_streak_milestone_webhook.sql`.
+//   2. Wrap the `net.http_post` call in a BEGIN/EXCEPTION/END so vault
+//      or queue failures don't roll back the user action; audit_log
+//      remains the durable record. Defensive against future pg_net
+//      outages too.
+//
+// Once one of those lands, the test below should pass without changes:
+//   – seed 3 consecutive days
+//   – assert current_streak=3
+//   – assert audit_log has one streak_milestone row with after->>'streak'='3'
+
+// §17.5 cron-based tests (reset_stale_streaks,
+// complete_expired_assignments) need time-travel or scheduled-trigger
+// fixtures — left as TODO alongside other cron work in §5/§7/§19.
