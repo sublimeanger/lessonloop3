@@ -33,7 +33,7 @@
   format, ICS download content, calendar-ical-feed VEVENT
   end-to-end). Status vs v2 launch scope: launch-in-scope
   (parent portal core per LESSONLOOP_V2_PLAN.md §3.1).
-- _next_ — test(e2e): §26.9 PortalInvoices (3 tests; pay full
+- 39c11d9 — test(e2e): §26.9 PortalInvoices (3 tests; pay full
   invoice end-to-end via §24-style helpers + UI smoke for the
   PaymentDrawer + filter by status + PDF download). Same commit
   also hardens 26-parent-portal.spec.ts itself: §26.4 makeup
