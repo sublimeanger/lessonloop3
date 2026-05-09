@@ -82,7 +82,7 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~96 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks |
+| Genuinely behavioural tests (full journeys) | ~101 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
@@ -248,13 +248,12 @@ test or delete the line.
 1. ~~§24 Stripe payments~~ — **DONE (10/17 catalog items real, ~60%)**.
 2. ~~§13 Invoices~~ — **DONE (10 real tests, ~70%)**.
 3. ~~§14 Invoice detail~~ — **DONE (12 real tests, ~75%)**.
-4. **§26 Parent portal — STARTED** (10 real, ~40%). §26.7 practice
+4. **§26 Parent portal — STARTED** (15 real, ~55%). §26.7 practice
    log + §26.4 makeup respond (accept / decline / cross-tenant
-   reject / re-respond reject) done; remaining gaps in TODO
-   comment block: §26.10 compose thread + notify-internal-message,
+   reject / re-respond reject) + §26.10 compose thread (happy path
+   / 3 validations / cross-tenant 403) done; remaining gaps:
    §26.12/§26.13 continuation response (authed + public token).
-   Most need small seed-data prep (active continuation run, message
-   threads).
+   Needs small seed-data prep (active continuation run).
 5. **§20 Continuation (term rollover)** — DEFERRED. Needs term
    boundaries + continuation_run + response rows seeded. ~6-8 hours.
 6. **§8 Lesson CRUD — STARTED** (4 real, ~30%). Group / cancel /

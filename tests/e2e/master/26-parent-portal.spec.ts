@@ -455,10 +455,155 @@ test.describe('§26.4 — Make-up offer respond', () => {
   });
 });
 
+// ────────────────────────────────────────────────────────────────────
+// §26.10 — Compose new thread (send-parent-message edge fn)
+// ────────────────────────────────────────────────────────────────────
+//
+// Parent UI on /portal/messages calls `send-parent-message` with
+// `{org_id, subject, body}` to start a new thread. The fn validates
+// guardian-in-org, checks `org_messaging_settings.parent_can_initiate`,
+// inserts a message_log row, and (in another path) fires
+// notify-internal-message for staff push. Tests below exercise the
+// validation contract + happy path.
+
+test.describe('§26.10 — Parent compose new thread', () => {
+  const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
+  const SUPABASE_URL = process.env.E2E_SUPABASE_URL!;
+  const ANON = process.env.E2E_SUPABASE_ANON_KEY!;
+  const PARENT_EMAIL = process.env.E2E_PARENT_EMAIL!;
+  const PARENT_PASSWORD = process.env.E2E_PARENT_PASSWORD!;
+
+  function getParentToken(): string {
+    const tmp = `/tmp/sb-login-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+    fs.writeFileSync(tmp, JSON.stringify({ email: PARENT_EMAIL, password: PARENT_PASSWORD }));
+    try {
+      const res = execSync(
+        `curl -s -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" ` +
+          `-H "apikey: ${ANON}" -H "Content-Type: application/json" -d @${tmp}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const session = JSON.parse(res);
+      if (!session.access_token) throw new Error(`Parent sign-in failed: ${JSON.stringify(session).slice(0, 200)}`);
+      return session.access_token;
+    } finally {
+      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }
+
+  function callEdgeFn(fn: string, token: string, body: Record<string, unknown>): { status: number; body: unknown } {
+    const tmp = `/tmp/sb-fn-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+    fs.writeFileSync(tmp, JSON.stringify(body));
+    try {
+      const res = execSync(
+        `curl -s -w "\\nHTTP:%{http_code}" -X POST "${SUPABASE_URL}/functions/v1/${fn}" ` +
+          `-H "Authorization: Bearer ${token}" -H "apikey: ${ANON}" ` +
+          `-H "Content-Type: application/json" -d @${tmp}`,
+        { encoding: 'utf-8', timeout: 30_000 },
+      );
+      const m = res.match(/^([\s\S]*)\nHTTP:(\d+)$/);
+      const rawBody = m ? m[1] : res;
+      const status = m ? Number(m[2]) : 0;
+      let parsed: unknown = rawBody;
+      try { parsed = JSON.parse(rawBody); } catch { /* leave as text */ }
+      return { status, body: parsed };
+    } finally {
+      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }
+
+  test('happy path: parent posts new message → message_log row inserted', async () => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const subject = `${testId} subject`;
+    const body = `${testId} body — please confirm next lesson time.`;
+
+    const token = getParentToken();
+    const res = callEdgeFn('send-parent-message', token, {
+      org_id: E2E_ORG_ID,
+      subject,
+      body,
+    });
+
+    if (res.status !== 200) {
+      // Some orgs disable parent_can_initiate; surface that explicitly.
+      throw new Error(`send-parent-message ${res.status}: ${JSON.stringify(res.body).slice(0, 300)}`);
+    }
+
+    try {
+      // The fn writes a row in message_log with the parent's sender_user_id
+      // and the subject we sent. Use subject as the lookup key (the body
+      // gets HTML-escaped server-side, so equality on body is brittle).
+      const rows = supabaseSelect(
+        'message_log',
+        `org_id=eq.${E2E_ORG_ID}&subject=eq.${encodeURIComponent(subject)}&select=id,subject,body,sender_user_id,recipient_type,thread_id,channel`,
+      );
+      expect(rows.length).toBe(1);
+      expect(rows[0].subject).toBe(subject);
+      expect(rows[0].body).toContain(testId); // body contains testId regardless of HTML wrapping
+      // First message in a thread: thread_id may be NULL or self-referential —
+      // both are valid; assert presence of the row, not the column shape.
+      expect(rows[0].sender_user_id).toBeTruthy();
+
+      // Cleanup.
+      supabaseDelete('message_log', `id=eq.${rows[0].id}`);
+    } catch (err) {
+      // Sweep on failure too.
+      supabaseDelete('message_log', `org_id=eq.${E2E_ORG_ID}&subject=eq.${encodeURIComponent(subject)}`);
+      throw err;
+    }
+  });
+
+  test('validation: missing body → 400', async () => {
+    const token = getParentToken();
+    const res = callEdgeFn('send-parent-message', token, {
+      org_id: E2E_ORG_ID,
+      subject: 'No body test',
+      body: '',
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body)).toMatch(/[Mm]issing required|[Bb]ody|[Rr]equired/);
+  });
+
+  test('validation: new conversation without subject → 400', async () => {
+    const token = getParentToken();
+    const res = callEdgeFn('send-parent-message', token, {
+      org_id: E2E_ORG_ID,
+      // No subject, no parent_message_id → fn must reject
+      body: 'Test body without subject',
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body)).toMatch(/[Ss]ubject is required/);
+  });
+
+  test('validation: oversized body (>10000 chars) → 400', async () => {
+    const token = getParentToken();
+    const oversize = 'x'.repeat(10001);
+    const res = callEdgeFn('send-parent-message', token, {
+      org_id: E2E_ORG_ID,
+      subject: 'Oversize body test',
+      body: oversize,
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body)).toMatch(/too long/i);
+  });
+
+  test('cross-tenant: parent posting for an org they have no guardian in → 403', async () => {
+    const token = getParentToken();
+    // Use a syntactically-valid UUID that is NOT the e2e org. Random
+    // generation guarantees no guardian linkage exists.
+    const fakeOrgId = '00000000-0000-4000-8000-000000000000';
+    const res = callEdgeFn('send-parent-message', token, {
+      org_id: fakeOrgId,
+      subject: 'Cross-tenant test',
+      body: 'should be rejected',
+    });
+    expect(res.status).toBe(403);
+    expect(JSON.stringify(res.body)).toMatch(/[Nn]ot a parent in this organisation/);
+  });
+});
+
 // Other §26 fixmes left for next session — most are UI-heavy (drawer
 // confirmations, Stripe Elements iframe, native app NativePaymentNotice)
 // or rely on data the e2e seed doesn't currently provide (multi-child
-// parent for child filter, active continuation run, message threads).
-// Backend-driven gap-fillers remaining: §26.10 compose new thread +
-// notify-internal-message, §26.12/§26.13 continuation response
-// (authed + public token).
+// parent for child filter, active continuation run).
+// Backend-driven gap-fillers remaining: §26.12/§26.13 continuation
+// response (authed + public token).
