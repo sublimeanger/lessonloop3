@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after §8.6 / §8.8.9-10 cancel + auto-credit) by Claude Opus 4.7 (1M context, 5th session)
+**Last updated:** 2026-05-09 (after §17.5 cron tests) by Claude Opus 4.7 (1M context, 5th session)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -47,6 +47,17 @@
   §26.6.1's lesson seed times so runs <30min apart land in
   different 30-min slots. Status vs v2 launch scope:
   launch-critical (Stripe Connect / parent payment per §3.1).
+- _next_ — test(e2e): §17.5.5 reset_stale_streaks + §17.5.6
+  complete_expired_assignments (2 tests). Both cron functions are
+  plain `BEGIN UPDATE … END;` plpgsql; we call them directly via
+  service-role RPC `/rest/v1/rpc/<name>` rather than time-travel
+  fixtures. Each test seeds two rows in distinct pre-states (stale
+  vs fresh streak; expired vs future-dated assignment + a NULL
+  end_date row), invokes the cron, and asserts only the matching
+  rows transitioned — proving both the WHERE predicate and the
+  cron's idempotence on already-clean rows. Status vs v2 launch
+  scope: launch-in-scope (Practice tracking + streaks per §3.1)
+  but cron behaviour isn't first-day critical.
 - c8b6c4e — test(e2e): §8.6 cancel flow + §8.8.9 attendance
   cleanup trigger + §8.8.10a/b auto_issue_credit_on_absence
   (3 tests; Lauren-paramount make-up flow per
@@ -72,7 +83,7 @@ Read this whole file before doing anything. Your context starts cold;
 this is the only mind-share between sessions. Specifically:
 
 - Don't trust raw test counters. Track **real catalog coverage**, not
-  spec count. Catalog overall ~44% (was 25% five sessions ago).
+  spec count. Catalog overall ~45% (was 25% five sessions ago).
 - Don't use `test.fixme()` as a placeholder — see [Anti-patterns](#anti-patterns).
 - The catalog at `tests/e2e/master/PLAYWRIGHT_MASTER_CATALOG.md` is the
   source of truth for "what should be tested". Treat each section as a
@@ -81,8 +92,8 @@ this is the only mind-share between sessions. Specifically:
   detail / §26.4 makeup respond / §26.6 schedule / §26.7 practice /
   §26.9 invoices+pay drawer / §26.10 compose / §26.12-13 continuation /
   §8.5 recurring edit / §8.6 cancel + §8.8.9-10 auto-credit / §17.4
-  streak milestone — **DONE**. Next priorities in
-  [Next session](#next-session).
+  streak milestone / §17.5.5-6 cron — **DONE**. Next priorities
+  in [Next session](#next-session).
 - **J24-A infra is live in production.** 14 stripe-* edge fns + the
   webhook now route through `_shared/stripe-client.ts` with org-scoped
   test/live key dispatch. The e2e org has `stripe_test_mode=true`. Do
@@ -97,13 +108,12 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~44% (was 42%, +3 §8.6 cancel/auto-credit tests this session).**
+**Catalog completeness: ~45% (was 44%, +2 §17.5 cron tests this session).**
 
 Current baseline (end of session):
-- **413 passed** (was 409 at end of prior bump; +3 from §8.6/§8.8.9-10
-  auto-credit, +1 from a previously-flaky brittle-JWT test settling).
-  Single failure this run: §5.4 email verification — the documented
-  permanent flake.
+- **415 passed** (was 413 at end of prior bump; +2 from §17.5.5-6
+  cron functions). Single failure this run: §5.4 email verification —
+  the documented permanent flake.
 - **1-5 failed**: always includes the documented §5.4 email-verification
   flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
   to streak math, the supabaseInsert call to students returns undefined),
@@ -141,7 +151,7 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~124 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices, +3 §8.6+§8.8.9-10 cancel/credit |
+| Genuinely behavioural tests (full journeys) | ~126 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay, +8 §26.6 schedule, +3 §26.9 invoices, +3 §8.6+§8.8.9-10 cancel/credit, +2 §17.5 cron |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |

@@ -353,6 +353,267 @@ test.describe('§17.4 — Streak milestone (audit + notification side-effect)', 
   });
 });
 
-// §17.5 cron-based tests (reset_stale_streaks,
-// complete_expired_assignments) need time-travel or scheduled-trigger
-// fixtures — left as TODO alongside other cron work in §5/§7/§19.
+// ────────────────────────────────────────────────────────────────────
+// §17.5.5 / §17.5.6 — Cron-based maintenance functions
+// ────────────────────────────────────────────────────────────────────
+//
+// Two daily cron jobs maintain practice state without time-travel
+// fixtures: we just call the SQL fn directly via service-role RPC,
+// having seeded the input rows in the desired pre-state.
+//
+// `reset_stale_streaks()`: bulk UPDATE on practice_streaks where
+//   current_streak > 0 AND last_practice_date < (today_local - 1).
+//   Sets current_streak=0, streak_started_at=NULL.
+//
+// `complete_expired_assignments()`: bulk UPDATE on practice_assignments
+//   where status='active' AND end_date IS NOT NULL AND end_date < CURRENT_DATE.
+//   Sets status='completed'.
+//
+// Both fns run in the daily cron under INTERNAL_CRON_SECRET-gated
+// endpoints (cron-runner edge fn), but the underlying SQL fns are
+// callable directly via PostgREST RPC with the service-role key —
+// which is the contract we want to test (the cron-runner just calls
+// them on a schedule). Each test seeds + asserts the specific row
+// it cares about, by row id, so concurrent cron runs against other
+// rows don't interfere.
+
+test.describe('§17.5.5 — reset_stale_streaks cron', () => {
+  test.use({ storageState: AUTH.owner });
+
+  /** Service-role RPC call returning {status, body}. The cron functions
+   *  return void; success is HTTP 200/204 with empty body. */
+  async function callRpcAsServiceRole(
+    fnName: string,
+  ): Promise<{ status: number; body: string }> {
+    const { execSync } = await import('child_process');
+    const url = process.env.E2E_SUPABASE_URL!;
+    const key = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+    if (!key) throw new Error('E2E_SUPABASE_SERVICE_ROLE_KEY required for cron RPC');
+    const res = execSync(
+      `curl -s -w "\\nHTTP:%{http_code}" -X POST "${url}/rest/v1/rpc/${fnName}" ` +
+        `-H "apikey: ${key}" -H "Authorization: Bearer ${key}" ` +
+        `-H "Content-Type: application/json" -d '{}'`,
+      { encoding: 'utf-8', timeout: 30_000 },
+    );
+    const m = res.match(/^([\s\S]*)\nHTTP:(\d+)$/);
+    return {
+      status: m ? Number(m[2]) : 0,
+      body: m ? m[1] : res,
+    };
+  }
+
+  test('§17.5.5 — stale streak (last_practice 3d ago) resets to 0; today-active streak preserved', async () => {
+    const { supabaseInsert, supabaseSelect, supabaseDelete } = await import('../supabase-admin');
+    const orgId = process.env.E2E_ORG_ID!;
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    // Two students with distinct streak states. Same org so both go
+    // through the same timezone (Europe/London) the cron uses.
+    const stale = supabaseInsert('students', {
+      org_id: orgId,
+      first_name: `${testId}_stale`,
+      last_name: testId,
+      status: 'active',
+    });
+    const fresh = supabaseInsert('students', {
+      org_id: orgId,
+      first_name: `${testId}_fresh`,
+      last_name: testId,
+      status: 'active',
+    });
+    if (!stale?.id || !fresh?.id) {
+      throw new Error(`seedStudents failed: ${JSON.stringify({ stale, fresh })}`);
+    }
+
+    // Today UTC — used for the fresh streak. The cron checks against
+    // today_local in the org's TZ; today UTC >= today_local - 1 in all
+    // realistic UTC↔London offsets, so the fresh row never matches the
+    // stale predicate even when run near midnight.
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    // 3 days back UTC — guaranteed before today_local - 1.
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 3600_000)
+      .toISOString()
+      .slice(0, 10);
+
+    const staleStreak = supabaseInsert('practice_streaks', {
+      org_id: orgId,
+      student_id: stale.id,
+      current_streak: 5,
+      longest_streak: 5,
+      last_practice_date: threeDaysAgo,
+      streak_started_at: new Date(Date.now() - 7 * 24 * 3600_000)
+        .toISOString()
+        .slice(0, 10),
+    });
+    const freshStreak = supabaseInsert('practice_streaks', {
+      org_id: orgId,
+      student_id: fresh.id,
+      current_streak: 4,
+      longest_streak: 4,
+      last_practice_date: todayUtc,
+      streak_started_at: new Date(Date.now() - 4 * 24 * 3600_000)
+        .toISOString()
+        .slice(0, 10),
+    });
+    if (!staleStreak?.id || !freshStreak?.id) {
+      throw new Error(`seedStreaks failed: ${JSON.stringify({ staleStreak, freshStreak })}`);
+    }
+
+    try {
+      // Trigger the cron function. Service-role required — the fn isn't
+      // SECURITY DEFINER but it's not callable by anon/authenticated.
+      const res = await callRpcAsServiceRole('reset_stale_streaks');
+      expect(res.status).toBeGreaterThanOrEqual(200);
+      expect(res.status).toBeLessThan(300);
+
+      // Stale row reset: current_streak=0, streak_started_at=NULL.
+      // longest_streak is preserved (the cron only zeroes the active
+      // counter, not the all-time best).
+      const staleAfter = supabaseSelect(
+        'practice_streaks',
+        `id=eq.${staleStreak.id}&select=current_streak,longest_streak,streak_started_at,last_practice_date`,
+      );
+      expect(staleAfter.length).toBe(1);
+      expect(staleAfter[0].current_streak).toBe(0);
+      expect(staleAfter[0].streak_started_at).toBeNull();
+      // longest_streak unchanged.
+      expect(staleAfter[0].longest_streak).toBe(5);
+      // last_practice_date unchanged (the cron only touches counters).
+      expect(staleAfter[0].last_practice_date).toBe(threeDaysAgo);
+
+      // Fresh row preserved: today's date is >= today_local - 1, so the
+      // WHERE clause didn't match this row.
+      const freshAfter = supabaseSelect(
+        'practice_streaks',
+        `id=eq.${freshStreak.id}&select=current_streak,streak_started_at`,
+      );
+      expect(freshAfter.length).toBe(1);
+      expect(freshAfter[0].current_streak).toBe(4);
+      expect(freshAfter[0].streak_started_at).not.toBeNull();
+    } finally {
+      supabaseDelete('practice_streaks', `id=eq.${staleStreak.id}`);
+      supabaseDelete('practice_streaks', `id=eq.${freshStreak.id}`);
+      supabaseDelete('students', `id=eq.${stale.id}`);
+      supabaseDelete('students', `id=eq.${fresh.id}`);
+    }
+  });
+});
+
+test.describe('§17.5.6 — complete_expired_assignments cron', () => {
+  test.use({ storageState: AUTH.owner });
+
+  async function callRpcAsServiceRole(
+    fnName: string,
+  ): Promise<{ status: number; body: string }> {
+    const { execSync } = await import('child_process');
+    const url = process.env.E2E_SUPABASE_URL!;
+    const key = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+    if (!key) throw new Error('E2E_SUPABASE_SERVICE_ROLE_KEY required for cron RPC');
+    const res = execSync(
+      `curl -s -w "\\nHTTP:%{http_code}" -X POST "${url}/rest/v1/rpc/${fnName}" ` +
+        `-H "apikey: ${key}" -H "Authorization: Bearer ${key}" ` +
+        `-H "Content-Type: application/json" -d '{}'`,
+      { encoding: 'utf-8', timeout: 30_000 },
+    );
+    const m = res.match(/^([\s\S]*)\nHTTP:(\d+)$/);
+    return {
+      status: m ? Number(m[2]) : 0,
+      body: m ? m[1] : res,
+    };
+  }
+
+  test('§17.5.6 — expired assignment flips active→completed; future-dated assignment preserved', async () => {
+    const { supabaseInsert, supabaseSelect, supabaseDelete, getOwnerUserId } = await import(
+      '../supabase-admin'
+    );
+    const orgId = process.env.E2E_ORG_ID!;
+    const ownerId = getOwnerUserId();
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    const student = supabaseInsert('students', {
+      org_id: orgId,
+      first_name: `${testId}_s`,
+      last_name: testId,
+      status: 'active',
+    });
+    if (!student?.id) throw new Error(`seedStudent failed: ${JSON.stringify(student)}`);
+
+    const yesterdayUtc = new Date(Date.now() - 1 * 24 * 3600_000)
+      .toISOString()
+      .slice(0, 10);
+    const tomorrowUtc = new Date(Date.now() + 1 * 24 * 3600_000)
+      .toISOString()
+      .slice(0, 10);
+
+    // Expired: status='active', end_date=yesterday → should flip to
+    // completed when the cron runs.
+    const expired = supabaseInsert('practice_assignments', {
+      org_id: orgId,
+      student_id: student.id,
+      teacher_user_id: ownerId,
+      title: `${testId}_expired`,
+      end_date: yesterdayUtc,
+      status: 'active',
+    });
+    // Future: status='active', end_date=tomorrow → preserved.
+    const future = supabaseInsert('practice_assignments', {
+      org_id: orgId,
+      student_id: student.id,
+      teacher_user_id: ownerId,
+      title: `${testId}_future`,
+      end_date: tomorrowUtc,
+      status: 'active',
+    });
+    // No-end-date: status='active', end_date=NULL → preserved (the cron
+    // requires end_date IS NOT NULL).
+    const noEnd = supabaseInsert('practice_assignments', {
+      org_id: orgId,
+      student_id: student.id,
+      teacher_user_id: ownerId,
+      title: `${testId}_noend`,
+      status: 'active',
+    });
+    if (!expired?.id || !future?.id || !noEnd?.id) {
+      throw new Error(
+        `seedAssignments failed: ${JSON.stringify({ expired, future, noEnd })}`,
+      );
+    }
+
+    try {
+      const res = await callRpcAsServiceRole('complete_expired_assignments');
+      expect(res.status).toBeGreaterThanOrEqual(200);
+      expect(res.status).toBeLessThan(300);
+
+      // Expired flipped to completed.
+      const expiredAfter = supabaseSelect(
+        'practice_assignments',
+        `id=eq.${expired.id}&select=status,end_date`,
+      );
+      expect(expiredAfter.length).toBe(1);
+      expect(expiredAfter[0].status).toBe('completed');
+      // end_date unchanged — only status moves.
+      expect(expiredAfter[0].end_date).toBe(yesterdayUtc);
+
+      // Future preserved.
+      const futureAfter = supabaseSelect(
+        'practice_assignments',
+        `id=eq.${future.id}&select=status`,
+      );
+      expect(futureAfter[0].status).toBe('active');
+
+      // No-end-date preserved (the cron predicate requires end_date IS
+      // NOT NULL — open-ended assignments stay active forever until
+      // the teacher manually completes them).
+      const noEndAfter = supabaseSelect(
+        'practice_assignments',
+        `id=eq.${noEnd.id}&select=status`,
+      );
+      expect(noEndAfter[0].status).toBe('active');
+    } finally {
+      supabaseDelete('practice_assignments', `id=eq.${expired.id}`);
+      supabaseDelete('practice_assignments', `id=eq.${future.id}`);
+      supabaseDelete('practice_assignments', `id=eq.${noEnd.id}`);
+      supabaseDelete('students', `id=eq.${student.id}`);
+    }
+  });
+});
