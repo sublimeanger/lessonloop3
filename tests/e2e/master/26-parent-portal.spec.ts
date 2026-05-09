@@ -1278,7 +1278,9 @@ test.describe('§26.6 — PortalSchedule', () => {
 
   /** Service-role PATCH the org's parent_reschedule_policy. Returns the
    *  previous value so the caller can restore it in a finally block.
-   *  Throws on failure — silent failure here corrupts subsequent tests. */
+   *  Retries once on 57014 statement_timeout — Supabase's PostgREST
+   *  occasionally returns this when the org table is under concurrent
+   *  load from other parallel tests; a 1s sleep + retry usually clears it. */
   function patchOrgReschedulePolicy(
     policy: 'self_service' | 'request_only' | 'admin_locked',
   ): string {
@@ -1293,28 +1295,39 @@ test.describe('§26.6 — PortalSchedule', () => {
     );
     const previous = before[0]?.parent_reschedule_policy ?? 'request_only';
 
-    const tmp = `/tmp/sb-patch-org-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
-    fs.writeFileSync(tmp, JSON.stringify({ parent_reschedule_policy: policy }));
-    try {
-      const res = execSync(
-        `curl -s -w "\\nHTTP:%{http_code}" -X PATCH ` +
-          `"${SUPABASE_URL}/rest/v1/organisations?id=eq.${E2E_ORG_ID}" ` +
-          `-H "apikey: ${SERVICE_KEY}" ` +
-          `-H "Authorization: Bearer ${SERVICE_KEY}" ` +
-          `-H "Content-Type: application/json" ` +
-          `-H "Prefer: return=minimal" ` +
-          `-d @${tmp}`,
-        { encoding: 'utf-8', timeout: 15_000 },
-      );
-      const m = res.match(/HTTP:(\d+)$/);
-      const status = m ? Number(m[1]) : 0;
-      if (status < 200 || status >= 300) {
-        throw new Error(`patchOrgReschedulePolicy(${policy}) failed: ${res}`);
+    function attemptPatch(): { ok: boolean; res: string } {
+      const tmp = `/tmp/sb-patch-org-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+      fs.writeFileSync(tmp, JSON.stringify({ parent_reschedule_policy: policy }));
+      try {
+        const res = execSync(
+          `curl -s -w "\\nHTTP:%{http_code}" -X PATCH ` +
+            `"${SUPABASE_URL}/rest/v1/organisations?id=eq.${E2E_ORG_ID}" ` +
+            `-H "apikey: ${SERVICE_KEY}" ` +
+            `-H "Authorization: Bearer ${SERVICE_KEY}" ` +
+            `-H "Content-Type: application/json" ` +
+            `-H "Prefer: return=minimal" ` +
+            `-d @${tmp}`,
+          { encoding: 'utf-8', timeout: 15_000 },
+        );
+        const m = res.match(/HTTP:(\d+)$/);
+        const status = m ? Number(m[1]) : 0;
+        return { ok: status >= 200 && status < 300, res };
+      } finally {
+        try { fs.unlinkSync(tmp); } catch { /* ignore */ }
       }
-      return previous;
-    } finally {
-      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
     }
+
+    let attempt = attemptPatch();
+    if (!attempt.ok && /57014|statement timeout/i.test(attempt.res)) {
+      // Brief backoff then one retry. PostgREST is usually responsive
+      // within a second once the contention clears.
+      execSync('sleep 1');
+      attempt = attemptPatch();
+    }
+    if (!attempt.ok) {
+      throw new Error(`patchOrgReschedulePolicy(${policy}) failed: ${attempt.res}`);
+    }
+    return previous;
   }
 
   /** Per-call random minute-of-day offset, so two runs at the same
