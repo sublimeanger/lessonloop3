@@ -44,8 +44,8 @@ Read HANDOVER.md in full before doing anything else. Especially:
   placeholder, don't trust the catalog's column names blindly,
   don't run trigger guard tests via service-role.
 
-Current commit on main: <PLACEHOLDER_LATEST_SHA> (after the §24.12 true-replay
-landing in 499d54b + 4th-session HANDOVER hygiene + this prompt).
+Current commit on main: df7279d (after the §24.12 true-replay landing
+in 499d54b + 4th-session HANDOVER hygiene + this prompt).
 
 Catalog state at this commit:
 - §24 Stripe: 12 real (~70%) — §24.12 true-replay landed this session
