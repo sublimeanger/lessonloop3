@@ -37,6 +37,7 @@ import {
   createTestCustomer,
   deleteTestCustomer,
   getTestPaymentIntent,
+  postWebhookEvent,
   resetE2ERateLimits,
   stripeApi,
   updateInvoiceStatusViaPatch,
@@ -134,7 +135,7 @@ test.beforeAll(() => {
 });
 
 // Track Stripe customer + payment_prefs we create so we can clean up.
-const trash: Array<{ kind: 'stripe-customer' | 'invoice' | 'payment-prefs'; id: string }> = [];
+const trash: Array<{ kind: 'stripe-customer' | 'invoice' | 'payment-prefs' | 'webhook-event'; id: string }> = [];
 
 test.afterEach(async () => {
   for (const item of trash.reverse()) {
@@ -148,6 +149,8 @@ test.afterEach(async () => {
           'guardian_payment_preferences',
           `org_id=eq.${E2E_ORG_ID}&guardian_id=eq.${E2E_PARENT_GUARDIAN_ID}`,
         );
+      } else if (item.kind === 'webhook-event') {
+        supabaseDelete('stripe_webhook_events', `event_id=eq.${item.id}`);
       }
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -514,17 +517,174 @@ test.describe('§24.12 — Webhook idempotency', () => {
     expect(payments.length).toBe(1);
     expect(payments[0].provider_reference).toBe(piId);
 
-    // True replay-style idempotency (re-posting the same signed event
-    // body to the webhook URL) is harder to drive from this spec — it
-    // would need access to the original event_id which Stripe doesn't
-    // expose to the API caller. The migration 20260502100000_webhook_
-    // dedup_two_phase enforces uniqueness on stripe_webhook_events.event_id
-    // at the SQL level; if Stripe redelivers the event (which it does
-    // on any non-2xx), the second handler call hits the dedup row and
-    // returns `{duplicate: true}` without re-running record_stripe_payment.
-    // Coverage of that path lives in the unit test for the webhook fn.
-    // For this E2E test, the public-facing assertion is "exactly one
-    // payment row per successful PI" — already verified above.
+    // True-replay coverage (signing our own event with a controlled
+    // event_id and re-posting it) is in the next two tests.
+  });
+
+  // True replay: we own the event_id, so we can post the EXACT same
+  // signed body twice and observe the dedup. Layer 1 — webhook claims
+  // the in-flight row, completes the handler, marks processed_at; the
+  // second post hits the existing-and-processed branch and short-circuits
+  // with {duplicate: true} (stripe-webhook index.ts:161-167). The
+  // payments table must still have exactly one row.
+  test('true replay: same event_id twice → webhook short-circuits, payments stays at 1', async () => {
+    const testId = generateTestId();
+    const amount = 4321;
+
+    const invoice = createTestInvoice({
+      dueDate: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: E2E_PARENT_GUARDIAN_ID,
+      notes: `e2e_${testId}_invoice`,
+      items: [{ description: `e2e_${testId}_item`, quantity: 1, unit_price_minor: amount }],
+    });
+    trash.push({ kind: 'invoice', id: invoice.id });
+    updateInvoiceStatusViaPatch(invoice.id, 'sent');
+
+    // Synthetic event_id + PI id — the webhook handler reads PI fields
+    // off the event payload (handlePaymentIntentSucceeded reads
+    // metadata.lessonloop_invoice_id, amount, id) and never calls
+    // Stripe to verify the PI exists. Use a clearly synthetic prefix
+    // so this can never collide with a real Stripe object.
+    const eventId = `evt_e2e_replay_${testId}`;
+    const piId = `pi_e2e_replay_${testId}`;
+    trash.push({ kind: 'webhook-event', id: eventId });
+
+    const inv = supabaseSelect('invoices', `id=eq.${invoice.id}&select=total_minor`);
+    const totalMinor = inv[0].total_minor as number;
+
+    const eventBody = {
+      id: eventId,
+      object: 'event',
+      api_version: '2023-10-16',
+      created: Math.floor(Date.now() / 1000),
+      type: 'payment_intent.succeeded',
+      livemode: false,
+      pending_webhooks: 0,
+      request: { id: null, idempotency_key: null },
+      data: {
+        object: {
+          id: piId,
+          object: 'payment_intent',
+          amount: totalMinor,
+          amount_received: totalMinor,
+          currency: 'gbp',
+          status: 'succeeded',
+          livemode: false,
+          metadata: {
+            lessonloop_invoice_id: invoice.id,
+            lessonloop_org_id: E2E_ORG_ID,
+          },
+        },
+      },
+    };
+
+    // Post #1 — fresh event, handler runs, payment row written.
+    const first = postWebhookEvent(eventBody);
+    expect(first.status).toBe(200);
+    expect(first.body).toMatchObject({ received: true });
+    expect(first.body.duplicate).toBeFalsy();
+
+    // Wait for the payment row (record_stripe_payment is synchronous
+    // inside the handler but the DB commit lands a tick later).
+    await waitForWebhookPayment(invoice.id, totalMinor, supabaseSelect, 15_000);
+
+    // Post #2 — same event_id, same body. Webhook hits the
+    // already-processed branch.
+    const second = postWebhookEvent(eventBody);
+    expect(second.status).toBe(200);
+    expect(second.body).toMatchObject({ received: true, duplicate: true });
+
+    // Public-facing invariant: still exactly one payment row.
+    const payments = supabaseSelect(
+      'payments',
+      `invoice_id=eq.${invoice.id}&select=id,amount_minor,provider,provider_reference`,
+    );
+    expect(payments.length).toBe(1);
+    expect(payments[0].amount_minor).toBe(totalMinor);
+    expect(payments[0].provider).toBe('stripe');
+    expect(payments[0].provider_reference).toBe(piId);
+  });
+
+  // Belt-and-braces: a different event_id but the SAME PI id is the
+  // pathological case where Stripe (rarely) reissues a fresh event for
+  // an underlying object that's already settled. Layer 1 (webhook
+  // dedup) doesn't catch it — different event_id → fresh claim row.
+  // Layer 2 (record_stripe_payment RPC) does — it dedups on
+  // _provider_reference (the PI id) and returns {duplicate: true}, so
+  // the payments table count still doesn't grow.
+  test('different event_id, same payment_intent_id → RPC dedup keeps payments at 1', async () => {
+    const testId = generateTestId();
+    const amount = 5678;
+
+    const invoice = createTestInvoice({
+      dueDate: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: E2E_PARENT_GUARDIAN_ID,
+      notes: `e2e_${testId}_invoice`,
+      items: [{ description: `e2e_${testId}_item`, quantity: 1, unit_price_minor: amount }],
+    });
+    trash.push({ kind: 'invoice', id: invoice.id });
+    updateInvoiceStatusViaPatch(invoice.id, 'sent');
+
+    const piId = `pi_e2e_replay_${testId}`;
+    const eventIdA = `evt_e2e_replayA_${testId}`;
+    const eventIdB = `evt_e2e_replayB_${testId}`;
+    trash.push({ kind: 'webhook-event', id: eventIdA });
+    trash.push({ kind: 'webhook-event', id: eventIdB });
+
+    const inv = supabaseSelect('invoices', `id=eq.${invoice.id}&select=total_minor`);
+    const totalMinor = inv[0].total_minor as number;
+
+    const buildEvent = (eventId: string) => ({
+      id: eventId,
+      object: 'event',
+      api_version: '2023-10-16',
+      created: Math.floor(Date.now() / 1000),
+      type: 'payment_intent.succeeded',
+      livemode: false,
+      pending_webhooks: 0,
+      request: { id: null, idempotency_key: null },
+      data: {
+        object: {
+          id: piId,
+          object: 'payment_intent',
+          amount: totalMinor,
+          amount_received: totalMinor,
+          currency: 'gbp',
+          status: 'succeeded',
+          livemode: false,
+          metadata: {
+            lessonloop_invoice_id: invoice.id,
+            lessonloop_org_id: E2E_ORG_ID,
+          },
+        },
+      },
+    });
+
+    // Post event A — payment row created.
+    const first = postWebhookEvent(buildEvent(eventIdA));
+    expect(first.status).toBe(200);
+    expect(first.body.duplicate).toBeFalsy();
+    await waitForWebhookPayment(invoice.id, totalMinor, supabaseSelect, 15_000);
+
+    // Post event B — same PI id. Webhook claims a new in-flight row
+    // (different event_id) and dispatches the handler, but the RPC
+    // sees the payment row already exists for this provider_reference
+    // and returns {duplicate: true}. Webhook returns {received: true}
+    // (no duplicate flag at the webhook layer because we did go through
+    // the handler — the dedup happened a layer deeper). stripe_webhook_events
+    // is RLS-locked to service-role so we can't observe both rows directly;
+    // the public-facing invariant below is what matters.
+    const second = postWebhookEvent(buildEvent(eventIdB));
+    expect(second.status).toBe(200);
+    expect(second.body).toMatchObject({ received: true });
+
+    // Public-facing invariant: still exactly one payment row.
+    const payments = supabaseSelect(
+      'payments',
+      `invoice_id=eq.${invoice.id}&select=id,provider_reference`,
+    );
+    expect(payments.length).toBe(1);
+    expect(payments[0].provider_reference).toBe(piId);
   });
 });
 

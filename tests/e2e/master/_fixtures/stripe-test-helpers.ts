@@ -16,7 +16,7 @@
  */
 import { execSync } from 'child_process';
 import fs from 'fs';
-import { randomBytes } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 
 const STRIPE_API = 'https://api.stripe.com/v1';
 
@@ -230,6 +230,60 @@ export function resetE2ERateLimits(): void {
       `-H "apikey: ${key}" -H "Authorization: Bearer ${key}" -H "Prefer: return=minimal"`,
     { encoding: 'utf-8', timeout: 10_000 },
   );
+}
+
+/**
+ * Sign + POST a synthetic Stripe event directly to the deployed
+ * stripe-webhook edge fn. Used by §24.12 true-replay idempotency tests
+ * where we need to control event_id and re-deliver the exact same payload
+ * — Stripe doesn't expose a "redeliver this event" API to API callers.
+ *
+ * Signature scheme matches Stripe's: HMAC-SHA256 of `{ts}.{body}` with
+ * the test webhook secret as key, header
+ * `Stripe-Signature: t=<ts>,v1=<hex>`. Webhook verifies via
+ * `constructEventAsync(body, sig, STRIPE_TEST_WEBHOOK_SECRET)` (test
+ * secret is tried first in the dual-mode handler, see stripe-webhook
+ * index.ts:71-81). Body bytes signed and POSTed must be byte-identical;
+ * we serialise once and reuse.
+ *
+ * Returns { status, body }. body is parsed JSON or raw text on
+ * non-JSON response. Caller is responsible for cleaning up
+ * `stripe_webhook_events` rows by event_id (TTL cron will eventually
+ * sweep, but explicit cleanup keeps the table small).
+ */
+export function postWebhookEvent(eventBody: Record<string, unknown>): { status: number; body: any } {
+  const secret = process.env.E2E_STRIPE_TEST_WEBHOOK_SECRET || process.env.STRIPE_TEST_WEBHOOK_SECRET;
+  if (!secret || !secret.startsWith('whsec_')) {
+    throw new Error(
+      `E2E_STRIPE_TEST_WEBHOOK_SECRET must be a whsec_... value (got ${secret?.slice(0, 6) || 'undefined'}…)`,
+    );
+  }
+  const url = process.env.E2E_SUPABASE_URL;
+  if (!url) throw new Error('E2E_SUPABASE_URL required for postWebhookEvent');
+
+  const body = JSON.stringify(eventBody);
+  const ts = Math.floor(Date.now() / 1000);
+  const sig = createHmac('sha256', secret).update(`${ts}.${body}`).digest('hex');
+  const stripeSignature = `t=${ts},v1=${sig}`;
+
+  const tmpFile = `/tmp/wh-event-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+  fs.writeFileSync(tmpFile, body);
+  try {
+    const result = execSync(
+      `curl -s -w "\\nHTTP:%{http_code}" -X POST "${url}/functions/v1/stripe-webhook" ` +
+        `-H "stripe-signature: ${stripeSignature}" ` +
+        `-H "Content-Type: application/json" -d @${tmpFile}`,
+      { encoding: 'utf-8', timeout: 30_000, maxBuffer: 4 * 1024 * 1024 },
+    );
+    const match = result.match(/^([\s\S]*)\nHTTP:(\d+)$/);
+    const rawBody = match ? match[1] : result;
+    const status = match ? Number(match[2]) : 0;
+    let parsed: any = rawBody;
+    try { parsed = JSON.parse(rawBody); } catch { /* leave as text */ }
+    return { status, body: parsed };
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+  }
 }
 
 /**
