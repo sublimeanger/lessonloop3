@@ -20,6 +20,7 @@
   flagged in the §24 progress notes. No commit (Stripe Dashboard config).
 - 0f91088 — §26.10 parent compose thread (5 tests)
 - a5dec8b — §26.12/§26.13 continuation response (4 tests)
+- 4796f9a — §8.5 recurring lesson edit (2 tests)
 
 ---
 
