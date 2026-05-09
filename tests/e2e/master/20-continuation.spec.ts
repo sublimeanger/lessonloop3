@@ -84,7 +84,11 @@ function seedContinuationRunAndResponse(opts: {
   // rejects any current/next term insert that intersects another term's
   // date range. Each test_id gets a unique base year so parallel tests
   // don't collide either.
-  const baseYear = 2400 + (Math.abs(opts.testId.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 0)) % 50);
+  // 500-year window gives <5% pairwise collision odds across the
+  // ~6 tests in this file even on identical-ms test starts. Combined
+  // with serial-mode within each describe + the SQL sweep run before
+  // session 6 picked up §20, this is enough headroom.
+  const baseYear = 2400 + Math.floor(Math.random() * 500);
   const currentTermStart = `${baseYear}-01-01`;
   const currentTermEnd = `${baseYear}-04-01`;
   const nextTermStart = `${baseYear}-04-02`;
@@ -294,5 +298,682 @@ test.describe('§20 — Response submission', () => {
     expect(res.status).toBeGreaterThanOrEqual(400);
     // Body should mention "not found" / "invalid" / "expired"
     expect(JSON.stringify(res.body)).toMatch(/not found|invalid|expired|token/i);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// §20.4 — create-continuation-run (the run-creation backend)
+// ────────────────────────────────────────────────────────────────────
+//
+// The catalog calls for "Create run with N students → N response rows"
+// but §20 was previously deferred because the create flow needs more
+// scaffolding than the response side: terms (non-overlapping, in
+// far-future to avoid the check_term_overlap trigger), an active
+// student linked to the e2e parent's guardian as primary_payer, a
+// recurrence_rules row, a lesson with recurrence_id set inside the
+// current term, and a lesson_participants link. Once that's seeded,
+// `action: "create"` produces:
+//   - one term_continuation_runs row with status='draft' (NOT 'sent';
+//     'sent' is reached via `action: "send"` after Resend dispatch)
+//   - one term_continuation_responses row per student with response='pending'
+//   - lesson_summary populated from recurrence_rules.days_of_week +
+//     rate_cards lookup
+//
+// We assert on the row count + the run status + the response's
+// pending state. The next test (§20.5) covers process_deadline.
+
+test.describe('§20.4 — create-continuation-run (run-creation backend)', () => {
+  // Force serial — each test seeds terms in the same e2e org, and
+  // check_term_overlap rejects intersecting date ranges. Far-future
+  // dates plus a per-test base year prevent collisions, but parallel
+  // workers can still race the (org_id, name) unique constraint.
+  test.describe.configure({ mode: 'serial' });
+
+  /** Seed terms + student + recurring lesson, but NOT a continuation
+   *  run — the test under exercise creates that. Returns IDs + cleanup. */
+  function seedTermsStudentAndRecurringLesson(opts: { testId: string }): {
+    currentTermId: string;
+    nextTermId: string;
+    studentId: string;
+    recurrenceId: string;
+    lessonId: string;
+    cleanup: () => void;
+  } {
+    const ownerUserId = getOwnerUserId();
+    // Same robust per-test baseYear scheme as seedContinuationRunAndResponse.
+    const baseYear = 2400 + Math.floor(Math.random() * 500);
+    const currentStart = `${baseYear}-01-01`;
+    const currentEnd = `${baseYear}-04-01`;
+    const nextStart = `${baseYear}-04-02`;
+    const nextEnd = `${baseYear}-07-01`;
+
+    const currentTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${opts.testId}_current`,
+      start_date: currentStart,
+      end_date: currentEnd,
+      created_by: ownerUserId,
+    });
+    const nextTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${opts.testId}_next`,
+      start_date: nextStart,
+      end_date: nextEnd,
+      created_by: ownerUserId,
+    });
+    if (!currentTerm?.id || !nextTerm?.id) {
+      throw new Error(`seedTerms failed: ${JSON.stringify({ currentTerm, nextTerm })}`);
+    }
+
+    // Active student linked to e2e parent's guardian (primary payer)
+    const student = supabaseInsert('students', {
+      org_id: E2E_ORG_ID,
+      first_name: `${opts.testId}_student`,
+      last_name: opts.testId,
+      status: 'active',
+    });
+    if (!student?.id) {
+      throw new Error(`seedStudent failed: ${JSON.stringify(student)}`);
+    }
+    supabaseInsert('student_guardians', {
+      org_id: E2E_ORG_ID,
+      student_id: student.id,
+      guardian_id: E2E_PARENT_GUARDIAN_ID,
+      relationship: 'guardian',
+      is_primary_payer: true,
+    });
+
+    // Recurrence rule: weekly Tuesdays, starting 2 weeks into current term.
+    // days_of_week is a smallint[]; 2 = Tuesday.
+    const recurrence = supabaseInsert('recurrence_rules', {
+      org_id: E2E_ORG_ID,
+      start_date: `${baseYear}-01-15`,
+      pattern_type: 'weekly',
+      days_of_week: [2],
+      interval_weeks: 1,
+    });
+    if (!recurrence?.id) {
+      throw new Error(`seedRecurrence failed: ${JSON.stringify(recurrence)}`);
+    }
+
+    // One lesson in current term with recurrence_id set. The create-run
+    // hook only needs ONE existing lesson per recurrence to count it as
+    // a continuing recurring engagement; it computes next-term lesson
+    // count from days_of_week + the next term's date range.
+    const lesson = supabaseInsert('lessons', {
+      org_id: E2E_ORG_ID,
+      start_at: `${baseYear}-01-15T10:00:00Z`,
+      end_at: `${baseYear}-01-15T10:30:00Z`,
+      title: `${opts.testId}_lesson`,
+      created_by: ownerUserId,
+      status: 'scheduled',
+      recurrence_id: recurrence.id,
+    });
+    if (!lesson?.id) {
+      throw new Error(`seedLesson failed: ${JSON.stringify(lesson)}`);
+    }
+    supabaseInsert('lesson_participants', {
+      org_id: E2E_ORG_ID,
+      lesson_id: lesson.id,
+      student_id: student.id,
+    });
+
+    return {
+      currentTermId: currentTerm.id,
+      nextTermId: nextTerm.id,
+      studentId: student.id,
+      recurrenceId: recurrence.id,
+      lessonId: lesson.id,
+      cleanup: () => {
+        // Order matters — child rows first.
+        supabaseDelete(
+          'term_continuation_responses',
+          `org_id=eq.${E2E_ORG_ID}&student_id=eq.${student.id}`,
+        );
+        supabaseDelete(
+          'term_continuation_runs',
+          `org_id=eq.${E2E_ORG_ID}&current_term_id=eq.${currentTerm.id}`,
+        );
+        supabaseDelete('lesson_participants', `lesson_id=eq.${lesson.id}`);
+        supabaseDelete('lessons', `id=eq.${lesson.id}`);
+        supabaseDelete('recurrence_rules', `id=eq.${recurrence.id}`);
+        supabaseDelete(
+          'student_guardians',
+          `org_id=eq.${E2E_ORG_ID}&student_id=eq.${student.id}`,
+        );
+        supabaseDelete('students', `id=eq.${student.id}`);
+        supabaseDelete(
+          'terms',
+          `org_id=eq.${E2E_ORG_ID}&id=in.(${currentTerm.id},${nextTerm.id})`,
+        );
+      },
+    };
+  }
+
+  test('§20.4 — action="create" happy path: 1 active student with recurring lesson → run + 1 response row created', async () => {
+    const testId = genTestId();
+    const seeded = seedTermsStudentAndRecurringLesson({ testId });
+    const ownerToken = signInForToken(
+      process.env.E2E_OWNER_EMAIL!,
+      process.env.E2E_OWNER_PASSWORD!,
+    );
+
+    try {
+      const noticeDeadline = new Date(Date.now() + 21 * 24 * 3600_000)
+        .toISOString()
+        .slice(0, 10);
+
+      const res = invokeFn(
+        'create-continuation-run',
+        {
+          action: 'create',
+          org_id: E2E_ORG_ID,
+          current_term_id: seeded.currentTermId,
+          next_term_id: seeded.nextTermId,
+          notice_deadline: noticeDeadline,
+          assumed_continuing: false,
+          reminder_schedule: [7, 3, 1],
+        },
+        ownerToken,
+      );
+      if (res.status !== 200) {
+        throw new Error(
+          `create-continuation-run create ${res.status}: ${JSON.stringify(res.body).slice(0, 400)}`,
+        );
+      }
+
+      // Response shape: { run_id, total_students, summary, preview, skipped_students }
+      expect(res.body?.run_id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(res.body?.total_students).toBe(1);
+      // Summary tallies 1 pending response.
+      expect(res.body?.summary?.total_students).toBe(1);
+      expect(res.body?.summary?.pending).toBe(1);
+      expect(res.body?.summary?.confirmed).toBe(0);
+
+      // DB invariants — the run row exists in draft status.
+      const runs = supabaseSelect(
+        'term_continuation_runs',
+        `id=eq.${res.body.run_id}&select=id,status,current_term_id,next_term_id,assumed_continuing`,
+      );
+      expect(runs.length).toBe(1);
+      expect(runs[0].status).toBe('draft');
+      expect(runs[0].assumed_continuing).toBe(false);
+      expect(runs[0].current_term_id).toBe(seeded.currentTermId);
+      expect(runs[0].next_term_id).toBe(seeded.nextTermId);
+
+      // Exactly one response row for our seeded student in pending state.
+      const responses = supabaseSelect(
+        'term_continuation_responses',
+        `run_id=eq.${res.body.run_id}&select=id,student_id,guardian_id,response,response_token,lesson_summary,next_term_fee_minor`,
+      );
+      expect(responses.length).toBe(1);
+      expect(responses[0].student_id).toBe(seeded.studentId);
+      expect(responses[0].guardian_id).toBe(E2E_PARENT_GUARDIAN_ID);
+      expect(responses[0].response).toBe('pending');
+      // response_token is generated server-side (uuid via DB default).
+      expect(responses[0].response_token).toBeTruthy();
+      // lesson_summary should contain at least one lesson entry derived
+      // from our recurrence_rules row.
+      expect(Array.isArray(responses[0].lesson_summary)).toBe(true);
+      expect(responses[0].lesson_summary.length).toBe(1);
+      expect(responses[0].lesson_summary[0].recurrence_id).toBe(seeded.recurrenceId);
+    } finally {
+      seeded.cleanup();
+    }
+  });
+
+  test('§20.4 — action="create" RBAC: parent JWT (role=parent) → 403', async () => {
+    const testId = genTestId();
+    const seeded = seedTermsStudentAndRecurringLesson({ testId });
+    try {
+      const parentToken = signInForToken(
+        process.env.E2E_PARENT_EMAIL!,
+        process.env.E2E_PARENT_PASSWORD!,
+      );
+      const res = invokeFn(
+        'create-continuation-run',
+        {
+          action: 'create',
+          org_id: E2E_ORG_ID,
+          current_term_id: seeded.currentTermId,
+          next_term_id: seeded.nextTermId,
+          notice_deadline: new Date(Date.now() + 14 * 24 * 3600_000)
+            .toISOString()
+            .slice(0, 10),
+        },
+        parentToken,
+      );
+      expect(res.status).toBe(403);
+      expect(JSON.stringify(res.body)).toMatch(/[Nn]ot authorised/);
+    } finally {
+      seeded.cleanup();
+    }
+  });
+
+  test('§20.4 — action="create" validation: missing current_term_id/next_term_id/notice_deadline → 400', async () => {
+    const ownerToken = signInForToken(
+      process.env.E2E_OWNER_EMAIL!,
+      process.env.E2E_OWNER_PASSWORD!,
+    );
+    const res = invokeFn(
+      'create-continuation-run',
+      { action: 'create', org_id: E2E_ORG_ID },
+      ownerToken,
+    );
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body)).toMatch(/required/i);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// §20.5 — process_deadline (auto-mark non-respondents)
+// ────────────────────────────────────────────────────────────────────
+//
+// When a run's notice_deadline passes, admin (or cron) calls
+// process_deadline. Pending responses are flipped to either:
+//   - assumed_continuing (when run.assumed_continuing=true)
+//   - no_response       (when run.assumed_continuing=false)
+// The run itself flips to status='deadline_passed' + deadline_passed_at.
+// Audit log row lands.
+//
+// We test both branches in run-scoped form (action="process_deadline"
+// with run_id). The cron-style path (process_deadline with no run_id +
+// service-role auth) is structurally similar but not exercised here —
+// the run-scoped path proves the same logic.
+
+test.describe('§20.5 — process_deadline', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  /** Seed run + 1 pending response, with run.assumed_continuing
+   *  controllable. The run starts at status='sent' so the
+   *  process_deadline status guard passes. */
+  function seedRunWithPendingResponse(opts: {
+    testId: string;
+    assumedContinuing: boolean;
+  }): {
+    runId: string;
+    responseId: string;
+    studentId: string;
+    cleanup: () => void;
+  } {
+    const ownerUserId = getOwnerUserId();
+    const baseYear = 2400 + Math.floor(Math.random() * 500);
+
+    const currentTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${opts.testId}_current`,
+      start_date: `${baseYear}-01-01`,
+      end_date: `${baseYear}-04-01`,
+      created_by: ownerUserId,
+    });
+    const nextTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${opts.testId}_next`,
+      start_date: `${baseYear}-04-02`,
+      end_date: `${baseYear}-07-01`,
+      created_by: ownerUserId,
+    });
+    if (!currentTerm?.id || !nextTerm?.id) {
+      throw new Error(`seedTerms failed: ${JSON.stringify({ currentTerm, nextTerm })}`);
+    }
+
+    const student = supabaseInsert('students', {
+      org_id: E2E_ORG_ID,
+      first_name: `${opts.testId}_student`,
+      last_name: opts.testId,
+      status: 'active',
+    });
+    if (!student?.id) throw new Error(`seedStudent failed: ${JSON.stringify(student)}`);
+
+    // Deadline already passed (yesterday) so the run is logically overdue.
+    const deadline = new Date(Date.now() - 24 * 3600_000).toISOString().slice(0, 10);
+
+    const run = supabaseInsert('term_continuation_runs', {
+      org_id: E2E_ORG_ID,
+      current_term_id: currentTerm.id,
+      next_term_id: nextTerm.id,
+      notice_deadline: deadline,
+      reminder_schedule: [7, 3, 1],
+      assumed_continuing: opts.assumedContinuing,
+      status: 'sent',
+      created_by: ownerUserId,
+    });
+    if (!run?.id) throw new Error(`seedRun failed: ${JSON.stringify(run)}`);
+
+    const response = supabaseInsert('term_continuation_responses', {
+      org_id: E2E_ORG_ID,
+      run_id: run.id,
+      student_id: student.id,
+      guardian_id: E2E_PARENT_GUARDIAN_ID,
+      response: 'pending',
+    });
+    if (!response?.id) throw new Error(`seedResponse failed: ${JSON.stringify(response)}`);
+
+    return {
+      runId: run.id,
+      responseId: response.id,
+      studentId: student.id,
+      cleanup: () => {
+        supabaseDelete('term_continuation_responses', `id=eq.${response.id}`);
+        supabaseDelete('term_continuation_runs', `id=eq.${run.id}`);
+        supabaseDelete('students', `id=eq.${student.id}`);
+        supabaseDelete(
+          'terms',
+          `org_id=eq.${E2E_ORG_ID}&id=in.(${currentTerm.id},${nextTerm.id})`,
+        );
+      },
+    };
+  }
+
+  test('§20.5a — process_deadline with assumed_continuing=true → pending flips to "assumed_continuing"', async () => {
+    const testId = genTestId();
+    const seeded = seedRunWithPendingResponse({ testId, assumedContinuing: true });
+    const ownerToken = signInForToken(
+      process.env.E2E_OWNER_EMAIL!,
+      process.env.E2E_OWNER_PASSWORD!,
+    );
+
+    try {
+      const res = invokeFn(
+        'create-continuation-run',
+        {
+          action: 'process_deadline',
+          org_id: E2E_ORG_ID,
+          run_id: seeded.runId,
+        },
+        ownerToken,
+      );
+      if (res.status !== 200) {
+        throw new Error(
+          `process_deadline ${res.status}: ${JSON.stringify(res.body).slice(0, 400)}`,
+        );
+      }
+
+      // Response row flipped.
+      const after = supabaseSelect(
+        'term_continuation_responses',
+        `id=eq.${seeded.responseId}&select=response,response_method,response_at`,
+      );
+      expect(after.length).toBe(1);
+      expect(after[0].response).toBe('assumed_continuing');
+      expect(after[0].response_method).toBe('auto_deadline');
+      expect(after[0].response_at).not.toBeNull();
+
+      // Run row flipped.
+      const runRows = supabaseSelect(
+        'term_continuation_runs',
+        `id=eq.${seeded.runId}&select=status,deadline_passed_at`,
+      );
+      expect(runRows[0].status).toBe('deadline_passed');
+      expect(runRows[0].deadline_passed_at).not.toBeNull();
+    } finally {
+      seeded.cleanup();
+    }
+  });
+
+  test('§20.5b — process_deadline with assumed_continuing=false → pending flips to "no_response"', async () => {
+    const testId = genTestId();
+    const seeded = seedRunWithPendingResponse({ testId, assumedContinuing: false });
+    const ownerToken = signInForToken(
+      process.env.E2E_OWNER_EMAIL!,
+      process.env.E2E_OWNER_PASSWORD!,
+    );
+
+    try {
+      const res = invokeFn(
+        'create-continuation-run',
+        {
+          action: 'process_deadline',
+          org_id: E2E_ORG_ID,
+          run_id: seeded.runId,
+        },
+        ownerToken,
+      );
+      if (res.status !== 200) {
+        throw new Error(
+          `process_deadline ${res.status}: ${JSON.stringify(res.body).slice(0, 400)}`,
+        );
+      }
+
+      const after = supabaseSelect(
+        'term_continuation_responses',
+        `id=eq.${seeded.responseId}&select=response,response_method`,
+      );
+      expect(after[0].response).toBe('no_response');
+      expect(after[0].response_method).toBe('auto_deadline');
+
+      const runRows = supabaseSelect(
+        'term_continuation_runs',
+        `id=eq.${seeded.runId}&select=status`,
+      );
+      expect(runRows[0].status).toBe('deadline_passed');
+    } finally {
+      seeded.cleanup();
+    }
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// §20.7 — bulk-process-continuation (confirmed → extend + materialise)
+// ────────────────────────────────────────────────────────────────────
+//
+// `bulk-process-continuation` is the server-side replacement for the
+// in-browser useBulkProcessContinuation loop (eliminates token
+// expiry + partial-process-on-tab-close risks). For a 'continuing' /
+// 'assumed_continuing' response, it:
+//   1. Extends recurrence_rules.end_date to next_term_end_date
+//   2. Calls materialise_continuation_lessons RPC to insert real lesson
+//      rows in the new date range
+//   3. Marks response.is_processed=true + processed_at=now
+//   4. If all responses processed → flips run.status='completed'
+//
+// We exercise the confirmed branch with one student. The 'withdrawing'
+// branch routes through process-term-adjustment + cleanup_withdrawal_credits
+// — separate complexity, deferred to a future session.
+
+test.describe('§20.7 — bulk-process-continuation (confirmed flow)', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  test('§20.7 — process_type="confirmed" extends recurrence + materialises lessons + marks response processed + run completed', async () => {
+    const testId = genTestId();
+    const ownerUserId = getOwnerUserId();
+    const baseYear = 2400 + Math.floor(Math.random() * 500);
+    const currentStart = `${baseYear}-01-01`;
+    const currentEnd = `${baseYear}-04-01`;
+    const nextStart = `${baseYear}-04-02`;
+    const nextEnd = `${baseYear}-04-30`; // 4 weeks of next term — small to keep materialisation fast
+
+    // Terms (non-overlapping, far-future to avoid existing-term collisions)
+    const currentTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${testId}_current`,
+      start_date: currentStart,
+      end_date: currentEnd,
+      created_by: ownerUserId,
+    });
+    const nextTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${testId}_next`,
+      start_date: nextStart,
+      end_date: nextEnd,
+      created_by: ownerUserId,
+    });
+    if (!currentTerm?.id || !nextTerm?.id) {
+      throw new Error(`seedTerms failed: ${JSON.stringify({ currentTerm, nextTerm })}`);
+    }
+
+    const student = supabaseInsert('students', {
+      org_id: E2E_ORG_ID,
+      first_name: `${testId}_student`,
+      last_name: testId,
+      status: 'active',
+    });
+    if (!student?.id) throw new Error(`seedStudent failed: ${JSON.stringify(student)}`);
+    supabaseInsert('student_guardians', {
+      org_id: E2E_ORG_ID,
+      student_id: student.id,
+      guardian_id: E2E_PARENT_GUARDIAN_ID,
+      relationship: 'guardian',
+      is_primary_payer: true,
+    });
+
+    // Recurrence ending at current term end — bulk-process check
+    // `rec.end_date < body.next_term_end_date` triggers extension only
+    // when end_date is set + is before next term end.
+    const recurrence = supabaseInsert('recurrence_rules', {
+      org_id: E2E_ORG_ID,
+      start_date: `${baseYear}-01-15`,
+      end_date: currentEnd,
+      pattern_type: 'weekly',
+      days_of_week: [3], // Wednesday
+      interval_weeks: 1,
+    });
+    if (!recurrence?.id) {
+      throw new Error(`seedRecurrence failed: ${JSON.stringify(recurrence)}`);
+    }
+
+    // One existing lesson in current term (not strictly needed for the
+    // bulk-process path, but mirrors real data shape).
+    const existingLesson = supabaseInsert('lessons', {
+      org_id: E2E_ORG_ID,
+      start_at: `${baseYear}-01-15T10:00:00Z`,
+      end_at: `${baseYear}-01-15T10:30:00Z`,
+      title: `${testId}_existing_lesson`,
+      created_by: ownerUserId,
+      status: 'scheduled',
+      recurrence_id: recurrence.id,
+    });
+    supabaseInsert('lesson_participants', {
+      org_id: E2E_ORG_ID,
+      lesson_id: existingLesson.id,
+      student_id: student.id,
+    });
+
+    // Continuation run + response with response='continuing' (skipping
+    // the email/parent-response chain — bulk-process operates on the
+    // already-decided response state). lesson_summary mirrors what
+    // create-continuation-run would have written.
+    const noticeDeadline = new Date(Date.now() + 7 * 24 * 3600_000)
+      .toISOString()
+      .slice(0, 10);
+    const run = supabaseInsert('term_continuation_runs', {
+      org_id: E2E_ORG_ID,
+      current_term_id: currentTerm.id,
+      next_term_id: nextTerm.id,
+      notice_deadline: noticeDeadline,
+      reminder_schedule: [7],
+      assumed_continuing: false,
+      status: 'sent',
+      created_by: ownerUserId,
+    });
+    if (!run?.id) throw new Error(`seedRun failed: ${JSON.stringify(run)}`);
+
+    const response = supabaseInsert('term_continuation_responses', {
+      org_id: E2E_ORG_ID,
+      run_id: run.id,
+      student_id: student.id,
+      guardian_id: E2E_PARENT_GUARDIAN_ID,
+      response: 'continuing',
+      response_at: new Date().toISOString(),
+      response_method: 'portal',
+      lesson_summary: [
+        {
+          recurrence_id: recurrence.id,
+          day: 'Wednesday',
+          time: '10:00',
+          teacher_id: null,
+          teacher_name: null,
+          duration_mins: 30,
+          rate_minor: 3000,
+          lessons_next_term: 4,
+        },
+      ],
+    });
+    if (!response?.id) throw new Error(`seedResponse failed: ${JSON.stringify(response)}`);
+
+    const ownerToken = signInForToken(
+      process.env.E2E_OWNER_EMAIL!,
+      process.env.E2E_OWNER_PASSWORD!,
+    );
+
+    try {
+      const res = invokeFn(
+        'bulk-process-continuation',
+        {
+          action: 'process',
+          org_id: E2E_ORG_ID,
+          run_id: run.id,
+          next_term_start_date: nextStart,
+          next_term_end_date: nextEnd,
+          process_type: 'confirmed',
+        },
+        ownerToken,
+      );
+      if (res.status !== 200) {
+        throw new Error(
+          `bulk-process-continuation ${res.status}: ${JSON.stringify(res.body).slice(0, 400)}`,
+        );
+      }
+
+      // Response shape: { processedCount, extendedCount, withdrawnCount,
+      // lessonsCreated, conflictWarnings }
+      expect(res.body?.processedCount).toBe(1);
+      expect(res.body?.extendedCount).toBe(1);
+      expect(res.body?.withdrawnCount).toBe(0);
+      // lessonsCreated should be > 0 — 4 Wednesdays in our 4-week next term.
+      expect(res.body?.lessonsCreated).toBeGreaterThan(0);
+
+      // Recurrence end_date extended to next_term_end_date.
+      const recAfter = supabaseSelect(
+        'recurrence_rules',
+        `id=eq.${recurrence.id}&select=end_date`,
+      );
+      expect(recAfter[0].end_date).toBe(nextEnd);
+
+      // Response marked processed.
+      const respAfter = supabaseSelect(
+        'term_continuation_responses',
+        `id=eq.${response.id}&select=is_processed,processed_at`,
+      );
+      expect(respAfter[0].is_processed).toBe(true);
+      expect(respAfter[0].processed_at).not.toBeNull();
+
+      // Run flipped to completed (only one response, all processed).
+      const runAfter = supabaseSelect(
+        'term_continuation_runs',
+        `id=eq.${run.id}&select=status,completed_at`,
+      );
+      expect(runAfter[0].status).toBe('completed');
+      expect(runAfter[0].completed_at).not.toBeNull();
+
+      // New lessons exist in next-term date range tied to the same recurrence.
+      const newLessons = supabaseSelect(
+        'lessons',
+        `org_id=eq.${E2E_ORG_ID}&recurrence_id=eq.${recurrence.id}` +
+          `&start_at=gte.${nextStart}T00:00:00Z` +
+          `&start_at=lte.${nextEnd}T23:59:59Z&select=id`,
+      );
+      expect(newLessons.length).toBeGreaterThan(0);
+    } finally {
+      // Clean up everything (newly-materialised lessons + their participants
+      // included in the recurrence_id-scoped delete).
+      supabaseDelete(
+        'lesson_participants',
+        `org_id=eq.${E2E_ORG_ID}&student_id=eq.${student.id}`,
+      );
+      supabaseDelete('lessons', `org_id=eq.${E2E_ORG_ID}&recurrence_id=eq.${recurrence.id}`);
+      supabaseDelete('term_continuation_responses', `id=eq.${response.id}`);
+      supabaseDelete('term_continuation_runs', `id=eq.${run.id}`);
+      supabaseDelete('recurrence_rules', `id=eq.${recurrence.id}`);
+      supabaseDelete(
+        'student_guardians',
+        `org_id=eq.${E2E_ORG_ID}&student_id=eq.${student.id}`,
+      );
+      supabaseDelete('students', `id=eq.${student.id}`);
+      supabaseDelete(
+        'terms',
+        `org_id=eq.${E2E_ORG_ID}&id=in.(${currentTerm.id},${nextTerm.id})`,
+      );
+    }
   });
 });
