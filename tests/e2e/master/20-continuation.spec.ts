@@ -18,6 +18,7 @@ import {
   supabaseInsert,
   supabaseSelect,
 } from '../supabase-admin';
+import { resetE2ERateLimits } from './_fixtures/stripe-test-helpers';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import { randomBytes } from 'crypto';
@@ -144,6 +145,11 @@ function seedContinuationRunAndResponse(opts: {
 test.beforeAll(() => {
   refreshStorageStateIfStale(AUTH.owner);
   refreshStorageStateIfStale(AUTH.parent);
+  // bulk-process-continuation has a 5/hour per-user rate limit
+  // (see _shared/rate-limit.ts RATE_LIMITS). §20.7 + §20.7b both
+  // hit it as the e2e owner — easy to exhaust during local
+  // iteration. Reset all e2e users' rate_limits at file start.
+  resetE2ERateLimits();
 });
 
 test.describe('§20 — Continuation page (UI smoke)', () => {
@@ -973,6 +979,484 @@ test.describe('§20.7 — bulk-process-continuation (confirmed flow)', () => {
       supabaseDelete(
         'terms',
         `org_id=eq.${E2E_ORG_ID}&id=in.(${currentTerm.id},${nextTerm.id})`,
+      );
+    }
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// §20.7b — bulk-process-continuation (WITHDRAWALS flow)
+// ────────────────────────────────────────────────────────────────────
+//
+// 10th-session pickup. The withdrawal branch was deferred sessions
+// 7+8+9 because it routes through TWO additional layers:
+//   * process-term-adjustment edge fn (preview → confirm)
+//   * cleanup_withdrawal_credits RPC (voids unredeemed credits +
+//     cancels waitlist entries + audit_log)
+//
+// Flow validated by this test:
+//   1. Owner POST bulk-process-continuation with process_type='withdrawals'
+//   2. Fn iterates responses where response='withdrawing'
+//   3. For each lesson_summary item, calls process-term-adjustment
+//      action='preview' (creates draft term_adjustments row with all
+//      financials computed)
+//   4. Then calls action='confirm' which:
+//      - cancels remaining scheduled lessons in the recurrence
+//      - caps recurrence_rule.end_date to (effective_date - 1)
+//      - generates credit note invoice (is_credit_note=true, negative)
+//      - flips term_adjustment.status='draft' → 'confirmed'
+//   5. Calls cleanup_withdrawal_credits(_student_id, _org_id,
+//      _effective_date) RPC — voids matching make_up_credits,
+//      cancels make_up_waitlist entries, writes audit_log row
+//      action='withdrawal_cleanup'.
+//   6. Updates response.term_adjustment_id + is_processed=true
+//   7. Marks run.status='completed' if all responses processed
+//
+// Recurrence shape: the recurrence MUST extend into next_term so
+// process-term-adjustment finds remaining lessons to cancel
+// (preview's `start_at >= effective_date` filter where effective_date
+// = next_term_start). This is the opposite of §20.7 confirmed flow
+// which has recurrence ending at current_term_end and EXTENDS it.
+
+test.describe('§20.7b — bulk-process-continuation (withdrawals flow)', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  test('§20.7b — process_type="withdrawals" cancels remaining lessons + creates credit note + cleanup_withdrawal_credits audit log', async () => {
+    const testId = genTestId();
+    const ownerUserId = getOwnerUserId();
+    const baseYear = 2400 + Math.floor(Math.random() * 500);
+    const currentStart = `${baseYear}-01-01`;
+    const currentEnd = `${baseYear}-04-01`;
+    const nextStart = `${baseYear}-04-02`;
+    const nextEnd = `${baseYear}-04-30`;
+
+    // Terms
+    const currentTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${testId}_current`,
+      start_date: currentStart,
+      end_date: currentEnd,
+      created_by: ownerUserId,
+    });
+    const nextTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${testId}_next`,
+      start_date: nextStart,
+      end_date: nextEnd,
+      created_by: ownerUserId,
+    });
+    if (!currentTerm?.id || !nextTerm?.id) {
+      throw new Error(`seedTerms failed: ${JSON.stringify({ currentTerm, nextTerm })}`);
+    }
+
+    // Student linked to e2e parent guardian as primary payer (so credit
+    // note generation finds the payer via student_guardians lookup).
+    const student = supabaseInsert('students', {
+      org_id: E2E_ORG_ID,
+      first_name: `${testId}_student`,
+      last_name: testId,
+      status: 'active',
+    });
+    if (!student?.id) throw new Error(`seedStudent failed: ${JSON.stringify(student)}`);
+    supabaseInsert('student_guardians', {
+      org_id: E2E_ORG_ID,
+      student_id: student.id,
+      guardian_id: E2E_PARENT_GUARDIAN_ID,
+      relationship: 'guardian',
+      is_primary_payer: true,
+    });
+
+    // Recurrence extending INTO next term — so process-term-adjustment
+    // finds lessons to cancel. This is the opposite of §20.7's confirmed
+    // recurrence which ends at current_term_end.
+    const recurrence = supabaseInsert('recurrence_rules', {
+      org_id: E2E_ORG_ID,
+      start_date: `${baseYear}-01-15`,
+      end_date: nextEnd,
+      pattern_type: 'weekly',
+      days_of_week: [3], // Wednesday
+      interval_weeks: 1,
+    });
+    if (!recurrence?.id) {
+      throw new Error(`seedRecurrence failed: ${JSON.stringify(recurrence)}`);
+    }
+
+    // Two scheduled lessons in next_term (Wednesdays). process-term-
+    // adjustment.preview filters .gte('start_at', effective_date) so
+    // both should be picked up.
+    // Pick an actual Wednesday inside the 4-week next term window.
+    // Apr 2400 has Wednesdays — easy to compute by floor + 7-day stride.
+    const nextStartDate = new Date(`${nextStart}T00:00:00Z`);
+    while (nextStartDate.getUTCDay() !== 3) {
+      nextStartDate.setUTCDate(nextStartDate.getUTCDate() + 1);
+    }
+    const lessonDates = [0, 7].map((days) => {
+      const d = new Date(nextStartDate);
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().slice(0, 10);
+    });
+
+    const lessons: Array<{ id: string }> = [];
+    for (const date of lessonDates) {
+      const lesson = supabaseInsert('lessons', {
+        org_id: E2E_ORG_ID,
+        start_at: `${date}T10:00:00Z`,
+        end_at: `${date}T10:30:00Z`,
+        title: `${testId}_lesson_${date}`,
+        created_by: ownerUserId,
+        status: 'scheduled',
+        recurrence_id: recurrence.id,
+      });
+      if (!lesson?.id) throw new Error(`seedLesson failed: ${JSON.stringify(lesson)}`);
+      lessons.push({ id: lesson.id });
+      supabaseInsert('lesson_participants', {
+        org_id: E2E_ORG_ID,
+        lesson_id: lesson.id,
+        student_id: student.id,
+      });
+    }
+
+    // Run + response (response='withdrawing'). lesson_summary mirrors
+    // what create-continuation-run would have written when the parent
+    // chose Withdraw.
+    const run = supabaseInsert('term_continuation_runs', {
+      org_id: E2E_ORG_ID,
+      current_term_id: currentTerm.id,
+      next_term_id: nextTerm.id,
+      notice_deadline: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      reminder_schedule: [7],
+      assumed_continuing: false,
+      status: 'sent',
+      created_by: ownerUserId,
+    });
+    if (!run?.id) throw new Error(`seedRun failed: ${JSON.stringify(run)}`);
+
+    const response = supabaseInsert('term_continuation_responses', {
+      org_id: E2E_ORG_ID,
+      run_id: run.id,
+      student_id: student.id,
+      guardian_id: E2E_PARENT_GUARDIAN_ID,
+      response: 'withdrawing',
+      withdrawal_reason: 'moving',
+      response_at: new Date().toISOString(),
+      response_method: 'portal',
+      lesson_summary: [
+        {
+          recurrence_id: recurrence.id,
+          day: 'Wednesday',
+          time: '10:00',
+          teacher_id: null,
+          teacher_name: null,
+          duration_mins: 30,
+          rate_minor: 3000,
+          lessons_next_term: lessons.length,
+        },
+      ],
+    });
+    if (!response?.id) throw new Error(`seedResponse failed: ${JSON.stringify(response)}`);
+
+    // Capture audit_log "withdrawal_cleanup" rows-before count so we
+    // can assert the cleanup_withdrawal_credits RPC fired its row.
+    const beforeAudit = supabaseSelect(
+      'audit_log',
+      `org_id=eq.${E2E_ORG_ID}&action=eq.withdrawal_cleanup&entity_id=eq.${student.id}&select=id`,
+    );
+
+    const ownerToken = signInForToken(
+      process.env.E2E_OWNER_EMAIL!,
+      process.env.E2E_OWNER_PASSWORD!,
+    );
+
+    let creditNoteInvoiceId: string | null = null;
+    let termAdjustmentId: string | null = null;
+
+    try {
+      const res = invokeFn(
+        'bulk-process-continuation',
+        {
+          action: 'process',
+          org_id: E2E_ORG_ID,
+          run_id: run.id,
+          next_term_start_date: nextStart,
+          next_term_end_date: nextEnd,
+          process_type: 'withdrawals',
+        },
+        ownerToken,
+      );
+      if (res.status !== 200) {
+        throw new Error(
+          `bulk-process-continuation ${res.status}: ${JSON.stringify(res.body).slice(0, 400)}`,
+        );
+      }
+
+      // Response shape: { processedCount, extendedCount, withdrawnCount,
+      // lessonsCreated, conflictWarnings }. For withdrawals,
+      // extendedCount=0 (no extension), withdrawnCount=1.
+      expect(res.body?.processedCount).toBe(1);
+      expect(res.body?.extendedCount).toBe(0);
+      expect(res.body?.withdrawnCount).toBe(1);
+      // lessonsCreated only counts day_change new lessons; withdrawal
+      // creates 0.
+      expect(res.body?.lessonsCreated || 0).toBe(0);
+
+      // Response marked processed + has term_adjustment_id linking back.
+      const respAfter = supabaseSelect(
+        'term_continuation_responses',
+        `id=eq.${response.id}&select=is_processed,processed_at,term_adjustment_id`,
+      );
+      expect(respAfter[0].is_processed).toBe(true);
+      expect(respAfter[0].processed_at).not.toBeNull();
+      expect(respAfter[0].term_adjustment_id).not.toBeNull();
+      termAdjustmentId = respAfter[0].term_adjustment_id;
+
+      // term_adjustments row exists with status=confirmed, type=withdrawal.
+      const adj = supabaseSelect(
+        'term_adjustments',
+        `id=eq.${termAdjustmentId}&select=adjustment_type,status,credit_note_invoice_id,cancelled_lesson_ids,lesson_rate_minor,lessons_difference,adjustment_amount_minor`,
+      );
+      expect(adj.length).toBe(1);
+      expect(adj[0].adjustment_type).toBe('withdrawal');
+      expect(adj[0].status).toBe('confirmed');
+      expect(adj[0].lessons_difference).toBe(lessons.length);
+      // adjustment_amount_minor = lessons_difference × lesson_rate_minor.
+      // findRateForDuration falls back to first rate card if no
+      // student.default_rate_card_id; org's "Standard 30-min" rate.
+      expect(adj[0].adjustment_amount_minor).toBeGreaterThan(0);
+      expect(Array.isArray(adj[0].cancelled_lesson_ids)).toBe(true);
+      expect(adj[0].cancelled_lesson_ids.length).toBe(lessons.length);
+      creditNoteInvoiceId = adj[0].credit_note_invoice_id;
+
+      // Lessons cancelled.
+      for (const l of lessons) {
+        const lAfter = supabaseSelect(
+          'lessons',
+          `id=eq.${l.id}&select=status,cancellation_reason`,
+        );
+        expect(lAfter[0].status).toBe('cancelled');
+        expect(lAfter[0].cancellation_reason).toBe('Term adjustment');
+      }
+
+      // Recurrence.end_date capped to (effective_date - 1).
+      const recAfter = supabaseSelect(
+        'recurrence_rules',
+        `id=eq.${recurrence.id}&select=end_date`,
+      );
+      const expectedEnd = new Date(`${nextStart}T00:00:00Z`);
+      expectedEnd.setUTCDate(expectedEnd.getUTCDate() - 1);
+      expect(recAfter[0].end_date).toBe(expectedEnd.toISOString().slice(0, 10));
+
+      // Credit note invoice (is_credit_note=true, total_minor < 0,
+      // adjustment_id pointing back at our adjustment).
+      expect(creditNoteInvoiceId).not.toBeNull();
+      const cn = supabaseSelect(
+        'invoices',
+        `id=eq.${creditNoteInvoiceId}&select=is_credit_note,status,total_minor,subtotal_minor,adjustment_id,payer_guardian_id`,
+      );
+      expect(cn[0].is_credit_note).toBe(true);
+      expect(cn[0].total_minor).toBeLessThan(0);
+      expect(cn[0].subtotal_minor).toBeLessThan(0);
+      expect(cn[0].adjustment_id).toBe(termAdjustmentId);
+      expect(cn[0].payer_guardian_id).toBe(E2E_PARENT_GUARDIAN_ID);
+
+      // cleanup_withdrawal_credits RPC fired — audit_log row
+      // action='withdrawal_cleanup' for our student.
+      const afterAudit = supabaseSelect(
+        'audit_log',
+        `org_id=eq.${E2E_ORG_ID}&action=eq.withdrawal_cleanup&entity_id=eq.${student.id}&select=id,after`,
+      );
+      expect(afterAudit.length).toBe(beforeAudit.length + 1);
+      // The newly-added row is the last one (created_at default now()).
+      // afterAudit may not be ordered, but length delta is sufficient.
+
+      // Run status — only one response, all processed → completed.
+      const runAfter = supabaseSelect(
+        'term_continuation_runs',
+        `id=eq.${run.id}&select=status`,
+      );
+      expect(runAfter[0].status).toBe('completed');
+    } finally {
+      // Cleanup order: invoice_items → invoices (credit note) →
+      // attendance_records → lesson_participants → lessons →
+      // term_continuation_responses → term_continuation_runs →
+      // term_adjustments → recurrence_rules → student_guardians →
+      // students → terms.
+      if (creditNoteInvoiceId) {
+        supabaseDelete('invoice_items', `invoice_id=eq.${creditNoteInvoiceId}`);
+        supabaseDelete('invoices', `id=eq.${creditNoteInvoiceId}`);
+      }
+      supabaseDelete(
+        'lesson_participants',
+        `org_id=eq.${E2E_ORG_ID}&student_id=eq.${student.id}`,
+      );
+      supabaseDelete('lessons', `org_id=eq.${E2E_ORG_ID}&recurrence_id=eq.${recurrence.id}`);
+      supabaseDelete('term_continuation_responses', `id=eq.${response.id}`);
+      supabaseDelete('term_continuation_runs', `id=eq.${run.id}`);
+      if (termAdjustmentId) {
+        supabaseDelete('term_adjustments', `id=eq.${termAdjustmentId}`);
+      }
+      supabaseDelete('recurrence_rules', `id=eq.${recurrence.id}`);
+      supabaseDelete(
+        'student_guardians',
+        `org_id=eq.${E2E_ORG_ID}&student_id=eq.${student.id}`,
+      );
+      supabaseDelete('students', `id=eq.${student.id}`);
+      supabaseDelete(
+        'terms',
+        `org_id=eq.${E2E_ORG_ID}&id=in.(${currentTerm.id},${nextTerm.id})`,
+      );
+    }
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// §20.8 — Delete continuation run
+// ────────────────────────────────────────────────────────────────────
+//
+// Catalog §20.1 case 8 ("Delete run with no responses → succeeds")
+// and case 9 ("Delete run with responses → blocks or warns"). The
+// "blocks or warns" framing in the catalog is aspirational —
+// useDeleteContinuationRun (src/hooks/useTermContinuation.ts:743)
+// just calls a direct PostgREST DELETE on term_continuation_runs
+// without any pre-flight check. The
+// term_continuation_responses_run_id_fkey FK has ON DELETE CASCADE
+// (verified via pg_constraint readback 2026-05-09), so responses
+// are silently cascade-deleted. Our test asserts the actual
+// behaviour: cascade deletion, NOT block/warn.
+
+test.describe('§20.8 — Delete continuation run', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  test('§20.8a — delete run with no responses → row gone, no error', async () => {
+    const testId = genTestId();
+    const ownerUserId = getOwnerUserId();
+    const baseYear = 2400 + Math.floor(Math.random() * 500);
+
+    const currentTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${testId}_current`,
+      start_date: `${baseYear}-01-01`,
+      end_date: `${baseYear}-04-01`,
+      created_by: ownerUserId,
+    });
+    const nextTerm = supabaseInsert('terms', {
+      org_id: E2E_ORG_ID,
+      name: `${testId}_next`,
+      start_date: `${baseYear}-04-02`,
+      end_date: `${baseYear}-07-01`,
+      created_by: ownerUserId,
+    });
+    if (!currentTerm?.id || !nextTerm?.id) {
+      throw new Error(`seedTerms failed: ${JSON.stringify({ currentTerm, nextTerm })}`);
+    }
+
+    const run = supabaseInsert('term_continuation_runs', {
+      org_id: E2E_ORG_ID,
+      current_term_id: currentTerm.id,
+      next_term_id: nextTerm.id,
+      notice_deadline: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      reminder_schedule: [7],
+      assumed_continuing: false,
+      status: 'draft',
+      created_by: ownerUserId,
+    });
+    if (!run?.id) throw new Error(`seedRun failed: ${JSON.stringify(run)}`);
+
+    try {
+      // Delete via owner-JWT PostgREST (mirrors useDeleteContinuationRun
+      // hook). org_id eq + id eq scoping matches the hook exactly.
+      const ownerJwt = JSON.parse(
+        fs.readFileSync('tests/e2e/.auth/owner.json', 'utf-8'),
+      ).origins[0].localStorage[0].value;
+      const session = JSON.parse(ownerJwt);
+      const status = execSync(
+        `curl -s -o /tmp/sb-delete-${testId}.txt -w "%{http_code}" ` +
+          `-X DELETE "${process.env.E2E_SUPABASE_URL}/rest/v1/term_continuation_runs?id=eq.${run.id}&org_id=eq.${E2E_ORG_ID}" ` +
+          `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+          `-H "Authorization: Bearer ${session.access_token}"`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      try { fs.unlinkSync(`/tmp/sb-delete-${testId}.txt`); } catch { /* ignore */ }
+      expect(parseInt(status.trim(), 10)).toBeGreaterThanOrEqual(200);
+      expect(parseInt(status.trim(), 10)).toBeLessThan(300);
+
+      // Row gone.
+      const after = supabaseSelect(
+        'term_continuation_runs',
+        `id=eq.${run.id}&select=id`,
+      );
+      expect(after.length).toBe(0);
+    } finally {
+      // run already deleted; just clean up terms.
+      supabaseDelete(
+        'terms',
+        `org_id=eq.${E2E_ORG_ID}&id=in.(${currentTerm.id},${nextTerm.id})`,
+      );
+    }
+  });
+
+  test('§20.8b — delete run with responses → cascade deletes responses (catalog "blocks or warns" not enforced)', async () => {
+    const testId = genTestId();
+    const student = supabaseInsert('students', {
+      org_id: E2E_ORG_ID,
+      first_name: `${testId}_student`,
+      last_name: testId,
+      status: 'active',
+    });
+    if (!student?.id) throw new Error(`seedStudent failed: ${JSON.stringify(student)}`);
+
+    const seeded = seedContinuationRunAndResponse({
+      testId,
+      studentId: student.id,
+      guardianId: E2E_PARENT_GUARDIAN_ID,
+    });
+
+    try {
+      // Confirm response exists pre-delete.
+      const before = supabaseSelect(
+        'term_continuation_responses',
+        `id=eq.${seeded.responseId}&select=id`,
+      );
+      expect(before.length).toBe(1);
+
+      const ownerJwt = JSON.parse(
+        fs.readFileSync('tests/e2e/.auth/owner.json', 'utf-8'),
+      ).origins[0].localStorage[0].value;
+      const session = JSON.parse(ownerJwt);
+      const status = execSync(
+        `curl -s -o /tmp/sb-delete-${testId}.txt -w "%{http_code}" ` +
+          `-X DELETE "${process.env.E2E_SUPABASE_URL}/rest/v1/term_continuation_runs?id=eq.${seeded.runId}&org_id=eq.${E2E_ORG_ID}" ` +
+          `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+          `-H "Authorization: Bearer ${session.access_token}"`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      try { fs.unlinkSync(`/tmp/sb-delete-${testId}.txt`); } catch { /* ignore */ }
+      expect(parseInt(status.trim(), 10)).toBeGreaterThanOrEqual(200);
+      expect(parseInt(status.trim(), 10)).toBeLessThan(300);
+
+      // Run row gone.
+      const runAfter = supabaseSelect(
+        'term_continuation_runs',
+        `id=eq.${seeded.runId}&select=id`,
+      );
+      expect(runAfter.length).toBe(0);
+
+      // Response cascade-deleted via FK ON DELETE CASCADE.
+      const respAfter = supabaseSelect(
+        'term_continuation_responses',
+        `id=eq.${seeded.responseId}&select=id`,
+      );
+      expect(respAfter.length).toBe(0);
+    } finally {
+      // Sweep terms (run + response already deleted).
+      supabaseDelete(
+        'term_continuation_responses',
+        `id=eq.${seeded.responseId}`,
+      );
+      supabaseDelete('term_continuation_runs', `id=eq.${seeded.runId}`);
+      supabaseDelete('students', `id=eq.${student.id}`);
+      supabaseDelete(
+        'terms',
+        `org_id=eq.${E2E_ORG_ID}&name=like.${encodeURIComponent(`${testId}_%`)}`,
       );
     }
   });
