@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-09 (after fixes) by Claude Opus 4.7 (1M context, 3rd session)
+**Last updated:** 2026-05-09 (after §24.12 true-replay) by Claude Opus 4.7 (1M context, 4th session)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -23,6 +23,9 @@
 - 4796f9a — §8.5 recurring lesson edit (2 tests)
 - 65bde4e — fix(edge): continuation-respond verify_jwt=false (unauth flow)
 - ec94ee3 — fix(db): _notify_streak_milestone defensive + §17.4 test (1 test)
+- 499d54b — test(e2e): §24.12 — true-replay webhook idempotency
+  (2 tests + postWebhookEvent helper; HMAC-SHA256 sign arbitrary
+  Stripe events; covers webhook-layer + RPC-layer dedup)
 
 ---
 
@@ -55,15 +58,20 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~37% (was 33%, +4 §26.12/§26.13 + 2 §8.5 + 1 §17.4 milestone tests this session).**
+**Catalog completeness: ~38% (was 37%, +2 §24.12 true-replay webhook idempotency tests this session).**
 
 Current baseline (end of session):
-- **392 passed** (was 385 at session start; +7 net — plus 2 production bug fixes shipped)
+- **395 passed** (was 392 at end of prior session; +2 from §24.12 true-replay,
+  +1 net drift from upstream test stability)
 - **1-5 failed**: always includes the documented §5.4 email-verification
   flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
   to streak math, the supabaseInsert call to students returns undefined),
-  §22.2 timezone (cross-file race with §24), §13 stats (occasional).
-- **153 skipped** (unchanged).
+  §22.2 timezone (cross-file race with §24), §13 stats (occasional),
+  05-rbac Settings degradation (in the 13-brittle JWT-stale group),
+  §20.1 continuation-respond (very occasional curl/spawnSync ETIMEDOUT
+  transient — when it fires, it can cascade to 2 dependent serial tests
+  shown as "did not run").
+- **152 skipped**.
 - ~3.5-4.5 min wall-clock at 4 workers.
 
 **Known intermittent flake — §22/§24 cross-file race:** §22 settings
@@ -92,12 +100,12 @@ And via service-role SQL if onboarding flag drifted (see [Known issues](#known-i
 
 | Category | Real count | What it means |
 |---|---|---|
-| Genuinely behavioural tests (full journeys) | ~108 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone |
+| Genuinely behavioural tests (full journeys) | ~110 | +10 §24, +4 §26.4 makeup, +2 §17.4 streaks, +5 §26.10 compose, +4 §26.12/§26.13 continuation, +2 §8.5 recurring edit, +1 §17.4 milestone, +2 §24.12 true-replay |
 | RBAC matrix (5 roles × 33 routes) | 165 | Just route access; useful but narrow |
 | Page-load smoke tests | ~30 | "Does this URL render?" — no feature behaviour |
 | DB query / trigger guard tests | ~30 | Real, but narrow — single SQL operations |
 | **`test.fixme()` empty placeholders** | **211** | Empty function bodies. They run as "skipped". They prove NOTHING. |
-| **Total spec functions** | **~547** | |
+| **Total spec functions** | **~549** | |
 
 **Track real catalog coverage, not test count.**
 
@@ -289,7 +297,13 @@ test or delete the line.
 
 ### Priority order
 
-1. ~~§24 Stripe payments~~ — **DONE (10/17 catalog items real, ~60%)**.
+1. ~~§24 Stripe payments~~ — **DONE (12/17 catalog items real, ~70%)**.
+   §24.12 webhook idempotency now covers both layers via the new
+   `postWebhookEvent` helper (sign + POST arbitrary events). §24.4
+   hosted-checkout / §24.6 auto-pay / §24.8 disputes / §24.9 Connect /
+   §24.11 verify-session remain — all out-of-scope per their per-item
+   complexity (Stripe CLI / multi-step OAuth / mobile-only). See
+   "Not yet covered" in [§24 progress](#24-progress).
 2. ~~§13 Invoices~~ — **DONE (10 real tests, ~70%)**.
 3. ~~§14 Invoice detail~~ — **DONE (12 real tests, ~75%)**.
 4. **§26 Parent portal — STARTED** (19 real, ~70%). §26.4 makeup
@@ -314,16 +328,17 @@ test or delete the line.
    SUPABASE_SERVICE_ROLE_KEY so notifications don't actually deliver
    yet — that's a separate follow-up if push notifications matter
    pre-launch (audit_log row IS the durable record).
-8. **§24.12 webhook true-replay idempotency** — secret is now baked
-   in (`STRIPE_TEST_WEBHOOK_SECRET` in `~/.claude/settings.json` env,
-   `E2E_STRIPE_TEST_WEBHOOK_SECRET` in `.env.test`; validated by
-   signing a `ping` event and getting HTTP 200 from the webhook on
-   2026-05-09). HOWEVER: the `postWebhookEvent` helper claimed in
-   prior HANDOVER ledger does NOT exist — needs to be written
-   (~30 lines: HMAC-SHA256 of `{ts}.{body}`, header
-   `Stripe-Signature: t=<ts>,v1=<hex>`). Estimate: ~2-3 hours
-   total (helper + replay test asserting `payments` count stays
-   at 1 after re-posting the same event_id).
+8. ~~§24.12 webhook true-replay idempotency~~ — **DONE this session
+   (2 tests + helper)**. `postWebhookEvent` helper landed in
+   `tests/e2e/master/_fixtures/stripe-test-helpers.ts` (HMAC-SHA256
+   sign + POST arbitrary events to the deployed dual-mode webhook).
+   Two new tests under §24.12 in `24-stripe.spec.ts`: (a) same
+   `event_id` twice → webhook layer 1 dedup short-circuits with
+   `{duplicate: true}`, payments stays at 1; (b) different `event_id`
+   but same `payment_intent_id` → RPC layer 2 dedup
+   (`record_stripe_payment` checks `_provider_reference`) keeps
+   payments at 1 even though webhook claimed both events. Both green
+   in isolation (~3s each) and in the full master run.
 9. **§26 remaining** — §26.5 messages tab, §26.6 schedule (parent
    self-view), §26.8 invoice detail / pay drawer, §26.11 chat
    non-happy paths. Each ~1-2 hours; all launch-in-scope.
@@ -358,13 +373,19 @@ Implemented (commits `b7900ab` → `e36e486` on `main`, all pushed):
   subscribed to the 18-event superset the handler dispatches on. Secret
   stored as Supabase env `STRIPE_TEST_WEBHOOK_SECRET`.
 
-**Tests (10/17 catalog §24 items real):**
+**Tests (12/17 catalog §24 items real):**
 - `tests/e2e/master/_fixtures/stripe-test-helpers.ts` — driven via
-  Stripe TEST API directly, not Stripe Elements iframe.
+  Stripe TEST API directly, not Stripe Elements iframe. Now also
+  exposes `postWebhookEvent(eventBody)` for §24.12 true-replay tests
+  (signs with HMAC-SHA256 of `{ts}.{body}` against
+  `STRIPE_TEST_WEBHOOK_SECRET`, posts to
+  `${SUPABASE_URL}/functions/v1/stripe-webhook`).
 - `24-stripe.spec.ts` covers §24.1, §24.2/§24.3, §24.5 list, §24.5 detach,
-  §24.7 partial refund, §24.10 billing history, §24.12 dedup contract,
-  RBAC negative (finance → stripe-process-refund 400), cross-tenant
-  (parent2 → parent1's invoice 400), UI smoke.
+  §24.7 partial refund, §24.10 billing history, §24.12 dedup contract
+  (3 tests: real-PI invariant + true replay same event_id + same
+  PI different event_id), RBAC negative (finance →
+  stripe-process-refund 400), cross-tenant (parent2 → parent1's
+  invoice 400), UI smoke.
 
 **Not yet covered (out of §24 scope):**
 - §24.3 Apple Pay button visibility (mobile-safari project only).
