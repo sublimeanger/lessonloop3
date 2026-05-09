@@ -14,7 +14,7 @@
  * `refresh_token` only when within 5min of expiry.
  */
 
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, type Page } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
@@ -24,6 +24,17 @@ const SUPABASE_URL =
   process.env.E2E_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY =
   process.env.E2E_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+
+// supabase-js stores the session under `sb-<project_ref>-auth-token`.
+// Derive from URL so the key tracks whichever project the run targets.
+const PROJECT_REF = (() => {
+  try {
+    return new URL(SUPABASE_URL).hostname.split('.')[0];
+  } catch {
+    return 'xmrhmxizpslhtkibqyfy';
+  }
+})();
+const STORAGE_KEY = `sb-${PROJECT_REF}-auth-token`;
 
 interface SessionLike {
   access_token: string;
@@ -150,17 +161,72 @@ export function refreshAllStorageStates(): void {
 }
 
 /**
- * Playwright test extended with auto-refreshing storageState.
+ * Read the latest session value from a storage state file and inject it
+ * into the running page's localStorage. Used to push a refreshed JWT into
+ * a context that was created earlier with a now-stale token (the file on
+ * disk may have been refreshed in the meantime by `storageState` override
+ * + `refreshStorageStateIfStale`, but the in-memory localStorage of the
+ * running browser is not auto-resynced).
  *
- * Override the built-in `storageState` fixture so that every time a
- * test context loads a state file (via `test.use({ storageState: ... })`),
- * we first refresh that file's JWT if stale. This catches the case
- * where a parallel batch run takes >60min and earlier-loaded states
- * have gone stale by the time later workers pick them up.
+ * No-op if the file doesn't exist, the localStorage entry is missing, or
+ * the page has not yet navigated to an origin where localStorage is
+ * accessible (page.evaluate failures swallowed).
+ */
+async function injectFreshSessionFromFile(
+  page: Page,
+  storagePath: string,
+): Promise<void> {
+  if (!fs.existsSync(storagePath)) return;
+  let raw: string;
+  try {
+    raw = fs.readFileSync(storagePath, 'utf-8');
+  } catch {
+    return;
+  }
+  let state: any;
+  try {
+    state = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  const lsEntry = state.origins?.[0]?.localStorage?.find(
+    (kv: any) => kv.name === STORAGE_KEY,
+  );
+  if (!lsEntry?.value) return;
+
+  try {
+    await page.evaluate(
+      ([key, val]) => {
+        try {
+          window.localStorage.setItem(key, val);
+        } catch {
+          /* ignore — about:blank or cross-origin */
+        }
+      },
+      [lsEntry.name, lsEntry.value] as const,
+    );
+  } catch {
+    /* page navigation race — caller will retry on next goto */
+  }
+}
+
+/**
+ * Playwright test extended with auto-refreshing storageState + JWT-injection
+ * after first navigation.
  *
- * The override is a no-op when:
- *  - storageState is not a file path (e.g. `{ cookies: [], origins: [] }`)
- *  - the JWT in the file is still > 5min from expiry
+ * Two layers:
+ *  1) `storageState` override — refresh the file on disk before the context
+ *     reads it, so the initial localStorage population is fresh.
+ *  2) `page` override — wrap `page.goto` so that, on first navigation, we
+ *     re-read the (possibly newly-refreshed) file and overwrite the
+ *     running browser's localStorage with the latest token. This handles
+ *     the case where the JWT in a long-lived context goes stale because
+ *     contexts can persist across tests within a worker, and the in-memory
+ *     localStorage doesn't auto-resync just because the file does.
+ *
+ * Both are no-ops when storageState is not a file path (e.g. anonymous
+ * tests) or when the JWT is still fresh (refreshStorageStateIfStale
+ * short-circuits at >5min from expiry).
  */
 export const test = base.extend<{}, {}>({
   storageState: async ({ storageState }, use) => {
@@ -172,6 +238,32 @@ export const test = base.extend<{}, {}>({
       }
     }
     await use(storageState);
+  },
+
+  page: async ({ page, storageState }, use) => {
+    if (typeof storageState !== 'string') {
+      await use(page);
+      return;
+    }
+    const storagePath = storageState;
+    const origGoto = page.goto.bind(page);
+    let injected = false;
+    page.goto = (async (url: any, opts?: any) => {
+      const result = await origGoto(url, opts);
+      if (!injected) {
+        injected = true;
+        try {
+          // Refresh-on-disk first (idempotent if already done in storageState
+          // fixture; covers the case where context is reused across tests).
+          refreshStorageStateIfStale(storagePath);
+          await injectFreshSessionFromFile(page, storagePath);
+        } catch {
+          /* ignore — never fail a test on auth refresh */
+        }
+      }
+      return result;
+    }) as typeof page.goto;
+    await use(page);
   },
 });
 
