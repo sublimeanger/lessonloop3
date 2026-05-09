@@ -2,7 +2,23 @@
 
 **Date:** 2026-05-09 (during session 9 Step 0 secret-persistence)
 **Severity:** P1 — blocks edge-fn fn-invocation E2E coverage; blocks vault seeding for streak notifications (which itself is launch-blocking P0).
-**Status:** Open. Halted Items 1 + 2 of session 9; non-blocked items (3-6) proceeded.
+**Status:** **CLOSED — phantom diagnosis (2026-05-09 session 11)**.
+
+The "drift" framing across sessions 9 + 9a + 10 was wrong. The
+.env.test value IS the canonical legacy service_role JWT (Jamie
+verified externally via jwt.io: ref + iat + role match project
+creation). Session 11 ran a fresh three-probe diagnostic and
+PostgREST direct returned 200, conclusively proving JWT
+signature validity for the project. The 151e578fdd4f… hash
+inherited as "deployment env hash" came from an unreliable
+env-probe-temp function in session 9a and was never validated.
+
+The actual phenomenon (edge fn env injection diverging from
+dashboard service_role) is documented in the replacement finding:
+`2026-05-09-edge-fn-env-injection-mismatch.md`. Items 1+2 stay
+blocked, but for a different reason — surfaced to Jamie as a
+Supabase platform question, not a drift-style diagnosis the
+agent should attempt to fix.
 
 ## What happened
 

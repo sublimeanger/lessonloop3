@@ -205,6 +205,85 @@ async function sweep(): Promise<void> {
   postgrestDelete('rooms', `${orgFilter}&name=like.e2e_*`);
   postgrestDelete('message_log', `${orgFilter}&subject=like.e2e_*`);
 
+  // 5. Stale terms + their continuation runs/responses + adjustments
+  //    + credit notes (added 11th-session — §20.7b withdrawal flow
+  //    leaves these behind if a test fails mid-cleanup; circular FK
+  //    between term_adjustments.credit_note_invoice_id ↔ invoices.adjustment_id
+  //    requires a careful sequence to break before delete).
+  let staleTermIds: string[] = [];
+  try {
+    const out = execSync(
+      `curl -s -X GET "${url}/rest/v1/terms?${orgFilter}&name=like.e2e_*&select=id" ${headers}`,
+      { encoding: 'utf-8', timeout: 30_000 },
+    );
+    const arr = JSON.parse(out);
+    if (Array.isArray(arr)) staleTermIds = arr.map((t: any) => t.id).filter(Boolean);
+  } catch { /* ignore */ }
+
+  if (staleTermIds.length > 0) {
+    const inFilter = `(${staleTermIds.join(',')})`;
+
+    // 5a. Find term_adjustments referencing these terms; capture
+    //     credit_note_invoice_ids for cleanup.
+    let staleAdjustments: Array<{ id: string; credit_note_invoice_id: string | null }> = [];
+    try {
+      const out = execSync(
+        `curl -s -X GET "${url}/rest/v1/term_adjustments?term_id=in.${inFilter}&select=id,credit_note_invoice_id" ${headers}`,
+        { encoding: 'utf-8', timeout: 30_000 },
+      );
+      const arr = JSON.parse(out);
+      if (Array.isArray(arr)) staleAdjustments = arr;
+    } catch { /* ignore */ }
+
+    if (staleAdjustments.length > 0) {
+      const adjIdsIn = `(${staleAdjustments.map((a) => a.id).join(',')})`;
+      const cnIds = staleAdjustments
+        .map((a) => a.credit_note_invoice_id)
+        .filter(Boolean) as string[];
+
+      // 5b. Break circular FK: NULL term_adjustments.credit_note_invoice_id
+      //     before deleting invoices.
+      const tmpNull = `/tmp/sb-null-cn-${Date.now()}.json`;
+      try {
+        require('fs').writeFileSync(tmpNull, JSON.stringify({ credit_note_invoice_id: null }));
+        execSync(
+          `curl -s -X PATCH "${url}/rest/v1/term_adjustments?id=in.${adjIdsIn}" ${headers} -H "Content-Type: application/json" -d @${tmpNull}`,
+          { encoding: 'utf-8', timeout: 30_000 },
+        );
+      } finally {
+        try { require('fs').unlinkSync(tmpNull); } catch { /* ignore */ }
+      }
+
+      // 5c. Delete credit note invoices + their items.
+      if (cnIds.length > 0) {
+        const cnIdsIn = `(${cnIds.join(',')})`;
+        postgrestDelete('invoice_items', `invoice_id=in.${cnIdsIn}`);
+        postgrestDelete('invoices', `id=in.${cnIdsIn}`);
+      }
+
+      // 5d. NULL term_continuation_responses.term_adjustment_id
+      //     (NO ACTION FK would otherwise block delete).
+      const tmpNullAdj = `/tmp/sb-null-adj-${Date.now()}.json`;
+      try {
+        require('fs').writeFileSync(tmpNullAdj, JSON.stringify({ term_adjustment_id: null }));
+        execSync(
+          `curl -s -X PATCH "${url}/rest/v1/term_continuation_responses?term_adjustment_id=in.${adjIdsIn}" ${headers} -H "Content-Type: application/json" -d @${tmpNullAdj}`,
+          { encoding: 'utf-8', timeout: 30_000 },
+        );
+      } finally {
+        try { require('fs').unlinkSync(tmpNullAdj); } catch { /* ignore */ }
+      }
+
+      // 5e. Delete term_adjustments.
+      postgrestDelete('term_adjustments', `id=in.${adjIdsIn}`);
+    }
+
+    // 5f. Continuation runs/responses + terms.
+    postgrestDelete('term_continuation_responses', `run_id=in.(select id from term_continuation_runs where current_term_id in (select id from terms where org_id = '${E2E_ORG_ID}' and name like 'e2e_%'))`);
+    postgrestDelete('term_continuation_runs', `or=(current_term_id.in.${inFilter},next_term_id.in.${inFilter})`);
+    postgrestDelete('terms', `id=in.${inFilter}`);
+  }
+
   const afterStudents = postgrestCount('students', `${orgFilter}&or=(first_name.like.e2e_*,last_name.like.e2e_*)`);
   const afterGuardians = postgrestCount('guardians', `${orgFilter}&or=(email.like.e2e_*,email.like.e2e-*)`);
   const afterLessons = postgrestCount('lessons', `${orgFilter}&title=like.e2e_*`);
