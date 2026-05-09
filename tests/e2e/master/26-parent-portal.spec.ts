@@ -82,6 +82,7 @@ import {
   supabaseDelete,
   supabaseInsert,
   supabaseSelect,
+  supabaseRpc,
   getOwnerUserId,
   getOrgId,
   createTestInvoice,
@@ -2286,4 +2287,223 @@ test.describe('§26.9 — PortalInvoices', () => {
       seeded.cleanup();
     }
   });
+
+  // ─────────────────────────────────────────────────────────────────
+  // §26.9.2 — Pay one installment of a payment-plan invoice.
+  // §26.9.3 — Pay all remaining installments → invoice settles to paid.
+  // ─────────────────────────────────────────────────────────────────
+  //
+  // These two close out the §26.9 catalog entries that were deferred
+  // in 5th-session work (the §26.9.1 full-pay test went through the
+  // PaymentDrawer + Stripe TEST API end-to-end; installment-level
+  // pays needed an invoice_installments seed chain that wasn't yet
+  // wired up). 8th-session pickup per HANDOVER priority 3.
+  //
+  // Catalog intent (§1762-1779 + §958-959):
+  //   * generate_installments creates invoice_installments rows.
+  //   * record_installment_payment marks ONE installment paid +
+  //     recomputes invoice.paid_minor from the payments table.
+  //   * Invoice transitions to status='paid' ONLY when all
+  //     installments are paid AND payments sum >= total_minor.
+  //   * Note: the invoice_status enum has no 'partially_paid' — the
+  //     catalog text refers to the per-installment status flag, not
+  //     a parent-invoice status. Our assertions match the schema:
+  //     invoice stays 'sent' while one+ installment is pending.
+  //
+  // Approach: drive the data flow directly via service-role / owner
+  // RPC (no Stripe integration — §26.9.1 already covers the
+  // full-Stripe-flow path). seed invoice → patchInvoiceStatus to
+  // 'sent' → call generate_installments(_invoice_id, _org_id, 3,
+  // 'monthly') → SELECT installments → for each one paid, INSERT a
+  // matching payments row + call record_installment_payment.
+  // Cleanup deletes payments + installments (both via service-role
+  // since invoice_installments is owner-readable but not
+  // owner-deletable in some RLS shapes), then deletes the invoice.
+
+  test('§26.9.2 — Pay one installment of 3 → just that installment paid, invoice stays sent, paid_minor reflects single installment', async () => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    // 3000 minor / 3 installments = 1000 minor each (no rounding remainder).
+    const { invoiceId, invoiceNumber, cleanup: cleanupInvoice } = seedInvoiceForParent({
+      testId,
+      status: 'sent',
+      amountMinor: 3000,
+    });
+
+    // generate_installments enforces is_org_finance_team(auth.uid(),
+    // _org_id) — service-role's auth.uid()=null fails the check. Use
+    // owner JWT (supabaseRpc default) since the e2e owner IS finance
+    // team. Returns SETOF invoice_installments — we re-SELECT below
+    // for assertion shape rather than parse the SETOF JSON.
+    supabaseRpc('generate_installments', {
+      _invoice_id: invoiceId,
+      _org_id: E2E_ORG_ID,
+      _count: 3,
+      _frequency: 'monthly',
+    });
+
+    const installments = supabaseSelect(
+      'invoice_installments',
+      `invoice_id=eq.${invoiceId}&order=installment_number.asc&select=id,installment_number,amount_minor,status,paid_at`,
+    );
+    expect(installments.length).toBe(3);
+    expect(installments.every((i: any) => i.status === 'pending')).toBe(true);
+    // 3000 / 3 = 1000 each (no remainder; generate_installments uses
+    // floor + remainder-on-last for non-divisible totals — 3000/3 is
+    // clean). We assert the sum, not the per-row value, in case the
+    // helper changes its rounding policy.
+    expect(installments.reduce((s: number, i: any) => s + i.amount_minor, 0)).toBe(3000);
+
+    const target = installments[0];
+    const targetAmount = target.amount_minor as number;
+
+    // Insert the payments row that record_installment_payment will sum
+    // for invoice.paid_minor. Without this, the RPC marks the
+    // installment paid but paid_minor stays at 0.
+    const paymentRow = supabaseInsert('payments', {
+      org_id: E2E_ORG_ID,
+      invoice_id: invoiceId,
+      installment_id: target.id,
+      amount_minor: targetAmount,
+      method: 'card',
+      provider: 'manual',
+      provider_reference: `${testId}_pi_part`,
+    });
+    if (!paymentRow?.id) {
+      throw new Error(`payments insert failed: ${JSON.stringify(paymentRow)}`);
+    }
+
+    try {
+      // record_installment_payment has no auth.uid() check inside —
+      // both owner JWT and service-role work. Use owner JWT for
+      // consistency with generate_installments.
+      const rpcResult = supabaseRpc('record_installment_payment', {
+        p_installment_id: target.id,
+        p_amount_minor: targetAmount,
+        p_stripe_payment_intent_id: `${testId}_pi_part`,
+      });
+      // RPC returns json { installment_id, invoice_id, all_paid,
+      // net_paid, new_status }. all_paid=false → invoice stays sent.
+      expect(rpcResult).toMatchObject({
+        installment_id: target.id,
+        invoice_id: invoiceId,
+        all_paid: false,
+      });
+
+      // Per-installment state: target paid, others pending.
+      const after = supabaseSelect(
+        'invoice_installments',
+        `invoice_id=eq.${invoiceId}&order=installment_number.asc&select=id,installment_number,status,paid_at`,
+      );
+      expect(after.length).toBe(3);
+      const targetAfter = after.find((i: any) => i.id === target.id);
+      expect(targetAfter?.status).toBe('paid');
+      expect(targetAfter?.paid_at).toBeTruthy();
+      const others = after.filter((i: any) => i.id !== target.id);
+      expect(others.length).toBe(2);
+      expect(others.every((i: any) => i.status === 'pending')).toBe(true);
+
+      // Invoice-level: status stays 'sent', paid_minor matches the
+      // single payments-row sum.
+      const inv = supabaseSelect(
+        'invoices',
+        `id=eq.${invoiceId}&select=status,paid_minor,total_minor`,
+      );
+      expect(inv[0].status).toBe('sent');
+      expect(inv[0].paid_minor).toBe(targetAmount);
+      expect(inv[0].total_minor).toBe(3000);
+      void invoiceNumber;
+    } finally {
+      // Delete payments + installments before invoice cleanup so the
+      // FK chain unwinds cleanly. deleteInvoiceById in cleanupInvoice
+      // doesn't sweep these.
+      supabaseDelete('payments', `invoice_id=eq.${invoiceId}`);
+      supabaseDelete('invoice_installments', `invoice_id=eq.${invoiceId}`);
+      cleanupInvoice();
+    }
+  });
+
+  test('§26.9.3 — Pay all 3 installments → all paid, invoice transitions to paid, paid_minor matches total', async () => {
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const { invoiceId, cleanup: cleanupInvoice } = seedInvoiceForParent({
+      testId,
+      status: 'sent',
+      amountMinor: 3000,
+    });
+
+    supabaseRpc('generate_installments', {
+      _invoice_id: invoiceId,
+      _org_id: E2E_ORG_ID,
+      _count: 3,
+      _frequency: 'monthly',
+    });
+
+    const installments = supabaseSelect(
+      'invoice_installments',
+      `invoice_id=eq.${invoiceId}&order=installment_number.asc&select=id,installment_number,amount_minor,status`,
+    );
+    expect(installments.length).toBe(3);
+
+    try {
+      // Pay each installment in succession: insert payment + call RPC.
+      // The "pay all remaining" path is just N invocations of the same
+      // contract — the final call is what flips invoice.status to paid
+      // (when all_paid=true AND net_paid >= total_minor).
+      for (let i = 0; i < installments.length; i++) {
+        const inst = installments[i];
+        const paymentRow = supabaseInsert('payments', {
+          org_id: E2E_ORG_ID,
+          invoice_id: invoiceId,
+          installment_id: inst.id,
+          amount_minor: inst.amount_minor,
+          method: 'card',
+          provider: 'manual',
+          provider_reference: `${testId}_pi_${i + 1}`,
+        });
+        if (!paymentRow?.id) {
+          throw new Error(`payments insert failed at i=${i}: ${JSON.stringify(paymentRow)}`);
+        }
+        const rpcResult = supabaseRpc('record_installment_payment', {
+          p_installment_id: inst.id,
+          p_amount_minor: inst.amount_minor,
+          p_stripe_payment_intent_id: `${testId}_pi_${i + 1}`,
+        });
+        // Only the last call should return all_paid=true.
+        const isLast = i === installments.length - 1;
+        expect((rpcResult as any).all_paid).toBe(isLast);
+      }
+
+      // All 3 installments paid.
+      const after = supabaseSelect(
+        'invoice_installments',
+        `invoice_id=eq.${invoiceId}&select=id,status`,
+      );
+      expect(after.length).toBe(3);
+      expect(after.every((i: any) => i.status === 'paid')).toBe(true);
+
+      // Invoice transitions to paid; paid_minor matches total.
+      const inv = supabaseSelect(
+        'invoices',
+        `id=eq.${invoiceId}&select=status,paid_minor,total_minor`,
+      );
+      expect(inv[0].status).toBe('paid');
+      expect(inv[0].paid_minor).toBe(3000);
+      expect(inv[0].total_minor).toBe(3000);
+
+      // payments table also has 3 rows linked to the 3 installments.
+      const payments = supabaseSelect(
+        'payments',
+        `invoice_id=eq.${invoiceId}&select=id,installment_id,amount_minor`,
+      );
+      expect(payments.length).toBe(3);
+      expect(payments.reduce((s: number, p: any) => s + p.amount_minor, 0)).toBe(3000);
+      // Each payment links to a distinct installment.
+      const linkedInstallmentIds = new Set(payments.map((p: any) => p.installment_id));
+      expect(linkedInstallmentIds.size).toBe(3);
+    } finally {
+      supabaseDelete('payments', `invoice_id=eq.${invoiceId}`);
+      supabaseDelete('invoice_installments', `invoice_id=eq.${invoiceId}`);
+      cleanupInvoice();
+    }
+  });
 });
+
