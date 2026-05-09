@@ -77,7 +77,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Validate required fields
     if (!data.org_id || !data.recipient_id || !data.recipient_type || !data.subject || !data.body) {
-      throw new Error("Missing required fields");
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // MSG-L2: body-length validation
