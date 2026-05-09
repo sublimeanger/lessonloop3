@@ -58,7 +58,7 @@
   cron's idempotence on already-clean rows. Status vs v2 launch
   scope: launch-in-scope (Practice tracking + streaks per §3.1)
   but cron behaviour isn't first-day critical.
-- _next_ — test(e2e): §15.4.7 Outstanding report data correctness
+- 6205880 — test(e2e): §15.4.7 Outstanding report data correctness
   (1 test). Seed a sent invoice with due_date +5 days, render
   /reports/outstanding as owner, assert the invoice_number text
   appears in the Current (0-7 days) bucket's expanded table.
