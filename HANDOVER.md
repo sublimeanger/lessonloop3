@@ -27,7 +27,7 @@
 - 499d54b — test(e2e): §24.12 — true-replay webhook idempotency
   (2 tests + postWebhookEvent helper; HMAC-SHA256 sign arbitrary
   Stripe events; covers webhook-layer + RPC-layer dedup)
-- _next_ — test(e2e): §26.6 PortalSchedule (8 tests + helpers;
+- acc6015 — test(e2e): §26.6 PortalSchedule (8 tests + helpers;
   grouping + past-collapsible, all 3 reschedule policies
   admin_locked / request_only / self_service, Google Cal URL
   format, ICS download content, calendar-ical-feed VEVENT
