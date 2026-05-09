@@ -401,138 +401,84 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
-### Priority order
+### What's done at end of 5th session
 
-1. ~~§24 Stripe payments~~ — **DONE (12/17 catalog items real, ~70%)**.
-   §24.12 webhook idempotency now covers both layers via the new
-   `postWebhookEvent` helper (sign + POST arbitrary events). §24.4
-   hosted-checkout / §24.6 auto-pay / §24.8 disputes / §24.9 Connect /
-   §24.11 verify-session remain — all out-of-scope per their per-item
-   complexity (Stripe CLI / multi-step OAuth / mobile-only). See
-   "Not yet covered" in [§24 progress](#24-progress).
-2. ~~§13 Invoices~~ — **DONE (10 real tests, ~70%)**.
-3. ~~§14 Invoice detail~~ — **DONE (12 real tests, ~75%)**.
-4. **§26 Parent portal — STARTED** (30 real, ~90%). §26.4 makeup
-   respond (4) + §26.6 PortalSchedule (8) + §26.7 practice log (1) +
-   §26.9 PortalInvoices pay+filter+PDF (3) + §26.10 compose thread
-   (5) + §26.12/§26.13 continuation response (4) done. Remaining
-   gaps: §26.9 payment-plan installment paths (catalog §26.9.2/§26.9.3
-   — needs invoice_installments seed + per-installment Stripe PI
-   confirm), §26.10 PortalMessages reply on existing thread (compose
-   already covered), §26.11 PortalProfile (one happy path: edit
-   notification preferences), §26.8 PortalResources (one happy path
-   — file list + download).
-5. **§20 Continuation (term rollover)** — DEFERRED. Needs term
-   boundaries + continuation_run + response rows seeded. ~6-8 hours.
-6. **§8 Lesson CRUD — STARTED** (9 real, ~65%). Group / cancel
-   (basic) / edit duration / recurring edit (this_only +
-   this_and_future) + §8.8.9 attendance cleanup on cancel +
-   §8.8.10a/b auto_issue_credit_on_absence (positive + negative
-   policy) done. Catalog mentions an "all" mode for §8.5 but
-   RecurringActionDialog only exposes the two production modes —
-   that's catalog drift. Remaining: §8.8.3 conflict-detection
-   blocks save (UI), §8.8.12 closure-date warning banner (UI),
-   §8.8.13 Zoom mapping on online lesson (needs Zoom MCP / fixture),
-   §8.8.14 weekly recurrence count.
-7. ~~§17.4 streak milestone~~ — **FIXED + test landed**. Migration
-   `20260518110000_notify_streak_milestone_defensive.sql` wraps the
-   pg_net call in a nested EXCEPTION block; vault/queue failures now
-   log as RAISE WARNING but never roll back the user's INSERT. 5 real
-   §17.4 tests now (3 streak progression + milestone audit-log + DB
-   table queryable). Vault is still missing SUPABASE_URL /
-   SUPABASE_SERVICE_ROLE_KEY so notifications don't actually deliver
-   yet — that's a separate follow-up if push notifications matter
-   pre-launch (audit_log row IS the durable record).
-8. ~~§24.12 webhook true-replay idempotency~~ — **DONE this session
-   (2 tests + helper)**. `postWebhookEvent` helper landed in
-   `tests/e2e/master/_fixtures/stripe-test-helpers.ts` (HMAC-SHA256
-   sign + POST arbitrary events to the deployed dual-mode webhook).
-   Two new tests under §24.12 in `24-stripe.spec.ts`: (a) same
-   `event_id` twice → webhook layer 1 dedup short-circuits with
-   `{duplicate: true}`, payments stays at 1; (b) different `event_id`
-   but same `payment_intent_id` → RPC layer 2 dedup
-   (`record_stripe_payment` checks `_provider_reference`) keeps
-   payments at 1 even though webhook claimed both events. Both green
-   in isolation (~3s each) and in the full master run.
-9. **§26 remaining** — §26.6 + §26.9 **DONE** this session. Still
-   remaining: §26.9 payment-plan installment paths (catalog §26.9.2
-   "pay one installment" + §26.9.3 "pay all remaining" — needs
-   invoice_installments seed first), §26.8 PortalResources (one
-   happy path is enough — file list + download), §26.10
-   PortalMessages reply on existing thread (compose already
-   covered), §26.11 PortalProfile (one happy path: edit notification
-   preferences). Each ~1-2 hours; all launch-in-scope per
-   LESSONLOOP_V2_PLAN.md §3.1.
+| Section | Real tests | Coverage | Notes |
+|---|---:|---:|---|
+| §13 Invoices | 10 | ~70% | mature |
+| §14 Invoice detail | 12 | ~75% | mature |
+| §24 Stripe (incl. §24.12 true-replay) | 12 | ~70% | mature; §24.4/6/8/9/11 deferred — Stripe CLI / OAuth / mobile |
+| §8 Lesson CRUD | 9 | ~65% | §8.5 recurring + §8.6 cancel + §8.8.9-10 auto-credit done |
+| §11 Teachers | 1 + RBAC | ~30% | §11.4.1 unlinked-teacher contract done; invite/archive deferred |
+| §15 Reports | 1 + 9 smoke | ~25% | §15.4.7 Outstanding data correctness done; 7 reports still smoke-only |
+| §17 Practice | 5 + cron | ~75% | §17.4 streaks + §17.5.5-6 cron done |
+| §20 Continuation | 3 | ~50% | DEFERRED, ~6-8 hours |
+| §26 Parent portal | 30+ | ~95% | essentially complete; only §26.8 Resources + §26.9.2-3 installments remain |
+| §32 Security trigger guards | 9 | ~80% | mature |
 
-10. **§26.6 PortalSchedule — DONE in earlier commit (8 tests)**.
-    `26-parent-portal.spec.ts §26.6 — PortalSchedule` block covers
-    9 of the 9 catalog cases minus one tap-to-expand-notes (omitted —
-    flaky click target, low signal vs the other 8). Helpers added in
-    the same file: `patchOrgReschedulePolicy(policy)` service-role
-    PATCH that returns the previous value for try/finally restore;
-    `seedScheduledLessonForParent({testId, daysFromNow, ...})`
-    returns `{studentId, lessonId, title, cleanup}`. Three policy
-    tests (admin_locked / request_only / self_service) double-wrap
-    cleanup so a seed throw can't leak the org policy. Cross-describe
-    teacher-conflict gotcha: §26.4 makeup's `seedOfferedMakeup`
-    hardcodes its matched_lesson at `Date.now() + 3 days`; §26.6
-    lesson offsets must avoid +3 (and ±0 wherever it'd straddle the
-    week boundary). Current §26.6 picks: -10 (always past), 0
-    (always today/this-week), +4, +5, +7, +14, +21 — verified
-    conflict-free in two consecutive full master runs at end of
-    session.
+Catalog overall: **~47%** (was 25% five sessions ago).
 
-11. **§26.9 PortalInvoices — DONE this session (3 tests)**.
-    `26-parent-portal.spec.ts §26.9 — PortalInvoices` block covers
-    catalog §26.9.1 (pay full invoice end-to-end), §26.9.6
-    (download PDF), §26.9.7 (filter by status). Test 1 reuses the
-    §24-style helpers — `signInForToken` + `invokeEdgeFn` (local
-    duplicates, see file note above) + `confirmTestPaymentIntent` +
-    `waitForWebhookPayment` from `_fixtures/stripe-test-helpers.ts`.
-    The test does both: (a) UI smoke — the embedded PaymentDrawer
-    opens with the right amount when the parent clicks Pay, (b)
-    backend pay flow — drive a fresh PI via parent JWT, confirm
-    with `pm_card_visa`, wait for the dual-mode webhook to settle
-    invoice → status=paid + payments row. Realtime UI assertion is
-    intentionally skipped (works in production, flakes in CI on
-    post-webhook delay window).
-    Catalog drift: PortalInvoices doesn't have a separate detail
-    page; the Pay button on the list opens an embedded
-    PaymentDrawer dialog (or Drawer on mobile). The catalog text
-    "lesson updated, toast" was wrong — both reschedule policies
-    insert into `message_requests`, not `lessons`.
-    Hardening landed in the same commit (broader than §26.9):
-    * `§26.4 — Make-up offer respond` describe set to
-      `mode: 'serial'` — its 4 tests collide on the same teacher's
-      +3-day matched_lesson slot when run in parallel.
-    * File-level `resetE2ERateLimits()` in beforeAll — the parent
-      JWT was hitting the hourly cap on `send-parent-message`
-      (§26.10) and `stripe-create-payment-intent` (§26.9.1) once
-      the file grew past ~30 tests.
-    * `seedScheduledLessonForParent` is now atomic-on-failure: a
-      lesson INSERT throw rolls back the just-inserted student +
-      student_guardians. Without this, a partially-seeded run
-      leaks rows that the next run's identical `Date.now() - 10
-      days` slot collides with on the teacher_conflict trigger.
-    * `lessonSlotOffsetMs(testId)` adds a deterministic
-      0-330-minute offset to lesson start_at. Two runs <30min
-      apart at the same wall-clock now land in different 30-min
-      slots, eliminating the inter-run collision class.
-    * `§26.6.1` test seeds are now wrapped in cleanups-as-you-go:
-      each successful seed pushes its cleanup callable to a list,
-      finally runs them in reverse — so a failure on the third
-      seed still cleans up the first two.
+### Priority order — 6th session pickup
 
-    Not yet covered (out of §26.9 scope):
-    * §26.9.2 Pay one installment (needs invoice_installments
-      seed + payment-plan invoice).
-    * §26.9.3 Pay all remaining (same prerequisite).
-    * §26.9.4 Native notice on Capacitor app (mobile-only — not
-      master).
-    * §26.9.5 Apple Pay only on iOS Safari (mobile-safari project).
+1. **§16 Messages (staff-side) — UNTOUCHED** (5 fixmes, 4 schema-only
+   tests, no real send-message backend coverage). Highest value
+   gap-filler now that §26 is done. The pattern is exactly what
+   §26.10 reply did but as the staff role: validate `send-message`
+   edge fn happy path + 400 missing fields + 400 oversized + 403
+   non-staff caller + 403 cross-org recipient. Body limits per the
+   fn source: subject ≤500 chars, body ≤10000 chars. ~1-2h.
+2. **§10 Students CSV import (§10.7) — UNTOUCHED** (5 catalog cases,
+   no tests). Lauren-critical for onboarding — she'll bulk-import
+   her 250 students at launch. Drive `csv-import-execute` edge fn
+   directly (dryRun + execute paths). Match by mapping shape; assert
+   counts; cleanup via `undo_student_import` RPC. ~2-3h.
+3. **§15.4 data correctness for the other 7 reports** —
+   Revenue, Payroll, Lessons delivered, Cancellations, Attendance,
+   Utilisation, Teacher performance. Pattern is established in
+   §15.4.7 Outstanding (commit `6205880`) — seed minimal data,
+   render report as owner, assert specific row visible. Each one is
+   ~30 min once you've got the pattern. ~3-4h for all 7, but they're
+   independent so any subset is shippable.
+4. **§8 remaining cases** (§8.8.3 conflict-detection blocks save,
+   §8.8.12 closure-date warning banner, §8.8.14 weekly recurrence
+   count). All UI-driven; brittle. Defer unless quiet.
+5. **§26.9 payment-plan installments** (§26.9.2 pay one installment,
+   §26.9.3 pay all remaining). Needs invoice_installments seed
+   path; payment-plan invoice is its own setup chain. ~2-3h.
+6. **§20 Continuation (term rollover)** — STILL DEFERRED. Needs
+   term boundaries + continuation_run + response rows seeded.
+   ~6-8 hours. The §26.12-13 tests already cover the response
+   side; what's missing is the run-creation backend.
+7. **§22 Settings tabs** — currently 5 tests covering basic load
+   + timezone + VAT. 24 tabs total; many are launch-hidden per v2
+   plan. Test only the launch-visible ones (organisation, payments,
+   billing, reschedule policies, term continuation, locations,
+   instruments). ~3-4h for full sweep.
+8. **§27 Email & notifications** — notification_preferences
+   are now seeded and queryable (§26.11 lands the upsert path).
+   Real value-add: assert a `send-templated-email` edge fn (or
+   equivalent) HONORS the preference flag — i.e. when
+   `email_invoice_reminders=false`, the reminder fn doesn't
+   send. ~1-2h.
+9. **§9 Daily register** — §9.3.4 check_attendance_not_future
+   is already covered in §32.7. The other §9 cases are UI-heavy
+   (Mark Present, reason picker, Mark Day Complete locks). Defer.
 
-After those, remaining 27 sections are mostly gap-fillers + per-page
-smoke.
+### Gaps that are explicitly NOT priorities
+
+- **Hidden/cut features** per LESSONLOOP_V2_PLAN.md §3.2-3.3:
+  leads pipeline, enrolment_waitlist, lead funnel, recurring
+  billing templates UI, booking page, Zoom integration, parent
+  self-reschedule UI, parent LoopAssist, agency tier. One smoke
+  test each is enough.
+- **Mobile-safari project tests** (§24.3 Apple Pay, §26.9.4
+  native notice, §26.9.5 Apple Pay only). Mobile-safari is a
+  separate Playwright project; not master.
+- **Non-launch reports** if there were any — all 8 are in launch
+  scope per §3.1.
+
+After those nine, remaining ~25 sections are mostly per-page smoke
+and edge cases.
 
 <a id="24-progress"></a>
 ### §24 progress (3rd + 4th session — landed)
@@ -695,6 +641,38 @@ before writing assertions.
 No. The catalog has 500-700 specific cases. We have 80 real ones.
 Track real coverage, not file count.
 
+### ❌ Don't click a Collapsible trigger that's already expanded by default
+
+Caught me on the first §15.4 Outstanding pass. `Outstanding.tsx`
+initialises `expandedBuckets` with `new Set(['Current (0-7 days)'])`
+— the Current bucket renders OPEN by default. Clicking the bucket
+header trigger TOGGLES it, so my "click to expand then assert table
+content" path actually collapsed it.
+
+Pattern: before clicking a Collapsible/Sheet/Drawer/Dialog trigger,
+check the page component for whether the initial state is open.
+React state initialisers are easy to miss — `useState(() => new Set(['Foo']))`
+hides the default in a callback.
+
+### ❌ Don't use `supabaseSelect` to assert on parent-scoped RLS data
+
+`supabaseSelect` (in `tests/e2e/supabase-admin.ts`) uses the OWNER's
+JWT against PostgREST. For tables where RLS scopes to non-owner
+user_ids (e.g. `notification_preferences` only visible to that
+user, not the org owner), the SELECT returns an empty array even
+though the row exists. Use a service-role curl helper instead —
+see `selectServiceRole` in `§26.11` describe.
+
+### ❌ Don't forget the `E2E_PARENT_GUARDIAN_ID` constant in new describes
+
+Each top-level `test.describe` block in `26-parent-portal.spec.ts`
+needs to declare `const E2E_PARENT_GUARDIAN_ID = '44821141-…'` if
+it touches the parent's guardian. Only `§26.4` had it originally;
+adding `§26.10` reply tests caught me with `ReferenceError`. The
+constant lives in multiple places by design (each describe is an
+IIFE-style scope) — copy it from §26.4 / §26.6 / §26.10 when you
+add new describes.
+
 ### ❌ Don't write tests longer than 9 minutes total
 
 Supabase JWTs default to 1hr exp, but in parallel runs with 4 workers,
@@ -852,10 +830,31 @@ resets it.)
 
 | Helper | Notes |
 |---|---|
-| `supabaseSelect(table, query)` | PostgREST GET via owner JWT (RLS-respecting) |
+| `supabaseSelect(table, query)` | PostgREST GET via owner JWT (RLS-respecting). **Doesn't see rows the owner can't see** — e.g. parent's notification_preferences. Use service-role inline for those (see `selectServiceRole` pattern in §26.11 below). |
 | `supabaseInsert(table, payload)` | Uses service-role when configured (RLS bypass for seeds) |
 | `supabaseDelete(table, query)` | Same — service-role for cleanup |
 | `supabaseRpc(fnName, params)` | RPC calls via owner JWT |
+| `patchInvoiceStatus(invoiceId, status)` | Service-role PATCH that goes through `enforce_invoice_status_transition` trigger |
+
+### Inline helpers worth knowing about (5th session — `26-parent-portal.spec.ts`)
+
+These are scoped to specific describes (not exported) but the
+patterns are reusable — copy into other spec files when you need
+the same shape.
+
+| Where | Helper | Pattern it solves |
+|---|---|---|
+| `§26.6` describe | `patchOrgReschedulePolicy(policy)` | Service-role PATCH on `organisations.parent_reschedule_policy`; returns previous value. Has 57014 statement_timeout retry built in. Wrap calls in try/finally so a thrown test doesn't leak the policy across other tests. |
+| `§26.6` describe | `lessonSlotOffsetMs()` | 24-slot Math.random() minute offset (0–11.5h) for lesson seed `start_at`. Stops two runs at the same wall-clock minute from colliding on the teacher_conflict trigger when one run leaks a `-10/+0/+14 day` lesson. |
+| `§26.6` describe | `seedScheduledLessonForParent({testId, daysFromNow})` | Atomic-on-failure: rolls back the just-inserted student + student_guardians if the lesson INSERT throws. Returns `{studentId, lessonId, title, cleanup}`. |
+| `§26.9` describe | `seedInvoiceForParent({testId, status, amountMinor})` | `createTestInvoice` + `patchInvoiceStatus` chain that flips the seeded invoice from draft → sent / paid / overdue (transition trigger validates each hop). Returns `{invoiceId, invoiceNumber, cleanup}`. |
+| `§26.9` describe | `signInForToken(email, password)` + `invokeEdgeFn(fn, token, body)` | Local copies of the §24 helpers (kept inline rather than imported across spec files). Use these to drive parent-JWT edge-fn calls without going through the UI. |
+| `§26.10` describe | `seedStaffMessageToParent({testId, recipientGuardianId, recipientEmail, senderUserId})` | Inserts a staff→parent `message_log` row (recipient_email NOT NULL is enforced). Used as the seed for parent-reply test happy path. Cleanup callable also drops any reply rows that point at the seed. |
+| `§26.11` describe | `selectServiceRole(table, query)` | Owner JWT can't read the parent's `notification_preferences` row (RLS). This is a curl-based service-role GET — needed any time you assert on a row whose RLS scopes to a non-owner user_id. |
+| `§8.6` describe | `patchPolicyEligibility(absenceReason, eligibility)` | Service-role PATCH on `make_up_policies` for `(org_id, absence_reason)`; returns previous eligibility for try/finally restore. Used by §8.8.10a to flip `sick` to `automatic` for the duration of one test. |
+| `§8.6` describe | `patchRows(table, filter, body)` | Generic service-role PATCH used by `patchPolicyEligibility` and the §8.8.9 lesson-cancel via direct curl. |
+| `§17.5` describe | `callRpcAsServiceRole(fnName)` | POST to `/rest/v1/rpc/<name>` with empty body via service-role key. The cron functions (`reset_stale_streaks`, `complete_expired_assignments`) aren't SECURITY DEFINER and aren't callable by anon/auth, so the RPC has to come from service-role. |
+| `§15.4` describe | (re-uses `createTestInvoice` + `patchInvoiceStatus`) | Pattern for report data-correctness: seed minimal data, render report as owner, assert specific row visible. Generalisable to the other 7 reports — just match the page's data flow. |
 
 ---
 
@@ -869,6 +868,11 @@ Living state of every feature: `audit/MASTER.md`. State symbols:
 - ❓ untested (target: zero of these)
 
 Current count (2026-05-08): 14 🟢 / 150 🟡 / 6 🔴 / 10 ⏸ / **0 ❓**.
+This count hasn't been refreshed by automation; the `/sweep` slash
+command updates rows as it walks features, but most rows still need
+the 🟡 → 🟢 promotion based on the test work landed in 4th + 5th
+sessions. Worth a sweep pass before launch to give Jamie an
+accurate gauge.
 
 When you finish a catalog section (real tests, all green), update the
 relevant rows in `audit/MASTER.md` from 🟡 → 🟢.
