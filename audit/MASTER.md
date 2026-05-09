@@ -1,6 +1,6 @@
 # LessonLoop production-readiness — MASTER tracker
 
-**Last updated:** 2026-05-09 (after 7th-session — §22 Settings launch-visible mutations + §27 prefs/dedup + JWT-injection fixture)
+**Last updated:** 2026-05-09 (after 8th-session — §15.4 last 3 reports data-correctness + §26.9.2/3 payment-plan installments)
 **Owner:** Jamie McKaye
 **Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
 
@@ -102,10 +102,10 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Teachers list / CRUD | src/pages/Teachers.tsx | P0 | 🟡 | 2026-05-08 | 6 RLS policies (admin r/w/d, finance r). No USING(true). Smoke 200. Awaits browser CRUD test. |
+| Teachers list / CRUD | src/pages/Teachers.tsx | P0 | 🟡 | 2026-05-09 | 6 RLS policies (admin r/w/d, finance r). No USING(true). Smoke 200. [E2E real per 6a0bbab §11.4.1 — unlinked teacher contract: insert teacher with NULL user_id leaves no auto-org_memberships, no invites row, but audit_teachers_changes trigger fires]. UI invite/archive flows still pending browser CRUD test. |
 | Locations | src/pages/Locations.tsx | P1 | 🟡 | 2026-05-08 | direct table queries (`locations`, `rooms`, `closure_dates`); every mutation scoped with `.eq('org_id', currentOrg.id)` belt+RLS-suspenders pattern; structural ok |
-| Payroll report | src/pages/reports/Payroll.tsx | P1 | 🟡 | 2026-05-08 | uses React Query hook in `useReports.ts`; data via RLS-scoped table queries with org_id filter; structural ok |
-| Teacher performance report | src/pages/reports/TeacherPerformance.tsx | P2 | 🟡 | 2026-05-08 | uses React Query hook in `useReports.ts`; data via RLS-scoped table queries with org_id filter; structural ok |
+| Payroll report | src/pages/reports/Payroll.tsx | P1 | 🟡 | 2026-05-09 | uses `usePayroll` hook, `get_teachers_with_pay` RPC for pay rates + RLS-scoped lessons read; teacher-role auto-filter via teachers.user_id lookup; [E2E data-correctness real per 3e9891b — completed lesson last month → owner teacher row visible in breakdown] |
+| Teacher performance report | src/pages/reports/TeacherPerformance.tsx | P2 | 🟡 | 2026-05-09 | uses `useTeacherPerformanceReport`; FeatureGate('teacher_performance') gates academy/agency/custom plans; RLS-scoped lessons + assignments + invoices reads; [E2E data-correctness real per 3e9891b — completed lesson last month → owner teacher in comparison table] |
 
 ## Invoicing & Payments
 
@@ -221,7 +221,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Outstanding | src/pages/reports/Outstanding.tsx | P1 | 🟡 | 2026-05-09 | uses RLS-scoped invoices query in `useReports.ts`; org_id filter belt+RLS; [E2E data-correctness real per 6205880 — sent invoice → "Current (0-7 days)" bucket invoice_number visible] [PROMOTABLE 🟡→🟢] |
 | Lessons delivered | src/pages/reports/LessonsDelivered.tsx | P2 | 🟡 | 2026-05-09 | direct lessons table query, org_id-scoped + teacher-role auto-filter via `resolveTeacherId`; 10k limit per query with warning banner; [E2E data-correctness real per 3095a15 — completed lesson → owner teacher row visible] |
 | Cancellations | src/pages/reports/Cancellations.tsx | P2 | 🟡 | 2026-05-09 | RLS-scoped lessons query; [E2E data-correctness real per 3095a15 — cancelled lesson + attendance with unique reason → reason text visible in byReason breakdown] |
-| Utilisation | src/pages/reports/Utilisation.tsx | P2 | 🟡 | 2026-05-08 | RLS-scoped lessons + rooms + locations query; data-correctness E2E deferred to session 7 (needs room capacity + closure_dates seeds) |
+| Utilisation | src/pages/reports/Utilisation.tsx | P2 | 🟡 | 2026-05-09 | RLS-scoped lessons + rooms + locations query; defaults to last month + working hours 8-20; closure_dates honoured for working-day count; [E2E data-correctness real per 3e9891b — seeded room + lesson last month → unique room name visible in Room Details table] |
 | Attendance report | src/pages/reports/AttendanceReport.tsx | P2 | 🟡 | 2026-05-09 | RLS-scoped attendance_records query; [E2E data-correctness real per 3095a15 — present attendance + unique-named student → name visible in per-student aggregation] |
 
 ## Parent portal
@@ -232,7 +232,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Portal schedule | src/pages/portal/PortalSchedule.tsx | P1 | 🟡 | 2026-05-09 | data via React Query hooks; RLS handles via parent ↔ student linkage; [E2E real per acc6015 — §26.6 8 tests: grouping, past collapsible, all 3 reschedule policies, GCal URL, ICS download, calendar-ical-feed VEVENT] [PROMOTABLE 🟡→🟢] |
 | Portal practice | src/pages/portal/PortalPractice.tsx | P2 | 🟡 | 2026-05-09 | RLS verified: `practice_logs` Parent INSERT `WITH CHECK is_parent_of_student(auth.uid(), student_id)` — parents cannot create logs for unrelated students. SELECT/DELETE same guard. [E2E real per ec94ee3 §17.4 streak milestone audit_log + 26-parent-portal §26.7 practice_logs trigger] [PROMOTABLE 🟡→🟢] |
 | Portal resources | src/pages/portal/PortalResources.tsx | P2 | 🟡 | 2026-05-08 | bucket `teaching-resources` confirmed `public=false`; access via signed URLs; structural ok |
-| Portal invoices & pay | src/pages/portal/PortalInvoices.tsx | P0 | 🟡 | 2026-05-09 | RLS `Parent can view own invoices` uses `is_invoice_payer(auth.uid(), id)` — checks both `payer_guardian_id` direct + `payer_student_id → student_guardians → guardians.user_id` indirect. [E2E real per 39c11d9 §26.9 3 tests: pay full invoice end-to-end via stripe-create-payment-intent + UI smoke for PaymentDrawer + status filter + PDF download. Currency-error boundary regression test (production bug dbe1a51) also covered] [PROMOTABLE 🟡→🟢] |
+| Portal invoices & pay | src/pages/portal/PortalInvoices.tsx | P0 | 🟡 | 2026-05-09 | RLS `Parent can view own invoices` uses `is_invoice_payer(auth.uid(), id)` — checks both `payer_guardian_id` direct + `payer_student_id → student_guardians → guardians.user_id` indirect. [E2E real per 39c11d9 §26.9 3 tests + ae87a48 §26.9.2/3 installments: pay full invoice end-to-end via stripe-create-payment-intent + UI smoke for PaymentDrawer + status filter + PDF download + pay-one-installment data flow + pay-all-installments transitions invoice to paid. Currency-error boundary regression test (production bug dbe1a51) also covered. §26.9 5/7 cases green; §26.9.4/5 are mobile-safari project] [PROMOTABLE 🟡→🟢] |
 | Portal messages | src/pages/portal/PortalMessages.tsx | P1 | 🟡 | 2026-05-09 | data via hooks; RLS handles; [E2E real per 0f91088 §26.10 compose 5 tests + 10ca3ad §26.10 reply 3 tests + happy path / 404 / cross-tenant 403] [PROMOTABLE 🟡→🟢] |
 | Portal profile | src/pages/portal/PortalProfile.tsx | P2 | 🟡 | 2026-05-09 | reads/writes `notification_preferences`, `guardians`, `profiles`; `guardians` Parent UPDATE `user_id = auth.uid()`; [E2E real per 10ca3ad §26.11 — toggle switch + Save → notification_preferences upsert via service-role select pattern] [PROMOTABLE 🟡→🟢] |
 | Portal continuation | src/pages/portal/PortalContinuation.tsx | P0 | 🟡 | 2026-05-09 | invokes `continuation-respond` edge fn with tokenised payload; [E2E real per a5dec8b §26.12 + 65bde4e fix for verify_jwt=false + §26.13 anonymous happy path] |
