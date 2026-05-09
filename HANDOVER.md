@@ -47,7 +47,7 @@
   §26.6.1's lesson seed times so runs <30min apart land in
   different 30-min slots. Status vs v2 launch scope:
   launch-critical (Stripe Connect / parent payment per §3.1).
-- _next_ — test(e2e): §17.5.5 reset_stale_streaks + §17.5.6
+- f7ee87d — test(e2e): §17.5.5 reset_stale_streaks + §17.5.6
   complete_expired_assignments (2 tests). Both cron functions are
   plain `BEGIN UPDATE … END;` plpgsql; we call them directly via
   service-role RPC `/rest/v1/rpc/<name>` rather than time-travel
