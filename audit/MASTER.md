@@ -1,6 +1,6 @@
 # LessonLoop production-readiness — MASTER tracker
 
-**Last updated:** 2026-05-08
+**Last updated:** 2026-05-09 (after 6th-session E2E hygiene pass — §16 / §10.7 / §15.4 + parent portal cluster)
 **Owner:** Jamie McKaye
 **Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
 
@@ -93,7 +93,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Students list / CRUD | src/pages/Students.tsx | P0 | 🟡 | 2026-05-08 | 9 RLS policies (admin r/w/d, finance r, teacher r-assigned, parent r-linked, soft-delete + trial-block guard); `get_students_for_org` RPC confirmed. No USING(true) footguns. Awaits browser CRUD test. |
 | Student detail | src/pages/StudentDetail.tsx | P0 | 🟡 | 2026-05-08 | covered by Students RLS audit; awaits browser nav |
 | CSV import (mapping step) | src/pages/StudentsImport.tsx → csv-import-mapping fn | P1 | 🟡 | 2026-05-08 | Gemini AI column mapping (gemini-flash-latest); GEMINI_API_KEY required; structural ok, fresh test pending |
-| CSV import (execute) | supabase/functions/csv-import-execute | P1 | 🟡 | 2026-05-08 | bulk insert into students/teachers/instruments/org_memberships; deterministic (no AI); structural ok, fresh test pending |
+| CSV import (execute) | supabase/functions/csv-import-execute | P1 | 🟡 | 2026-05-09 | bulk insert into students/teachers/instruments/org_memberships; deterministic (no AI); [E2E real per a482407 — §10.7 5 tests: dry-run validation, execute + undo round-trip, malformed row, CSV duplicates, missing first_name] [PROMOTABLE 🟡→🟢] |
 | Guardian batch invite | supabase/functions/batch-invite-guardians | P1 | 🟡 | 2026-05-08 | JWT auth; structural ok; bulk send via Resend |
 | Family/guardian linking | src/pages/Students.tsx panels | P1 | 🟡 | 2026-05-08 | direct table queries on `student_guardians` + `guardians` with RLS scope (admin r/w/d); structural ok |
 | Streak notification | supabase/functions/streak-notification | P3 | 🟡 | 2026-05-08 | cron-only via `validateCronAuth`; structural ok |
@@ -111,15 +111,15 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Invoices list | src/pages/Invoices.tsx | P0 | 🟡 | 2026-05-08 | invoices: 6 RLS policies (admin/finance r, parent-via-guardian r). No USING(true). Awaits browser test. |
-| Invoice detail / line edit | src/pages/InvoiceDetail.tsx | P0 | 🟡 | 2026-05-08 | invoice_items: 5 RLS policies. CHECK constraints (NOT VALID) on prices/amounts/quantities (per claude.md). |
+| Invoices list | src/pages/Invoices.tsx | P0 | 🟡 | 2026-05-09 | invoices: 6 RLS policies (admin/finance r, parent-via-guardian r). No USING(true). [E2E real per d7bc927 §13 — 10 tests covering filter/status/role-gate]. |
+| Invoice detail / line edit | src/pages/InvoiceDetail.tsx | P0 | 🟡 | 2026-05-09 | invoice_items: 5 RLS policies. CHECK constraints on prices/amounts/quantities. [E2E real per d7bc927 §14 — 12 tests covering line items / status transitions / patch trigger / send-invoice-email round-trip]. |
 | Invoice PDF generation | supabase/functions/generate-invoice-pdf | P0 | 🟡 | 2026-05-08 | service-role-only fn (verify_jwt=false post-Phase-5); caches in invoice-pdfs bucket; signed URL response or inline base64. End-to-end render not yet exercised on dest. |
 | Send invoice email (parent) | supabase/functions/send-invoice-email | P0 | 🟡 | 2026-05-08 | User JWT + rate limit + Resend SMTP (smtp.resend.com → noreply@lessonloop.net configured). Awaits real send test. |
 | Send invoice email (internal copy) | supabase/functions/send-invoice-email-internal | P1 | 🟡 | 2026-05-08 | service-role-only (Phase 5 reconfigured); Awaits browser-driven test |
 | Stripe checkout (one-off invoice payment) | supabase/functions/stripe-create-checkout | P0 | 🟡 | 2026-05-08 | User JWT + rate-limit + invoiceId required. Confirmed via 6.A.2 browser test on subscription path; one-off-invoice path still untested. Branding gap noted in 00-launch-readiness. |
 | Stripe payment intent (custom) | supabase/functions/stripe-create-payment-intent | P0 | 🟡 | 2026-05-08 | JWT auth + rate limit; standard Stripe@14.21 client; structural ok |
 | Stripe customer portal | supabase/functions/stripe-customer-portal | P1 | 🟡 | 2026-05-08 | JWT auth + membership check before creating portal session; structural ok |
-| Stripe webhook (events) | supabase/functions/stripe-webhook | P0 | 🟡 | 2026-05-08 | constructEventAsync fix verified (commit baa072c); two-phase dedup pattern; 90s stale threshold. Confirmed via test customer.created. Real-world payment flow not yet exercised on destination. |
+| Stripe webhook (events) | supabase/functions/stripe-webhook | P0 | 🟡 | 2026-05-09 | constructEventAsync fix verified (baa072c); two-phase dedup; 90s stale threshold. [E2E real per 499d54b §24.12 true-replay 2 tests — HMAC-SHA256 sign synthetic Stripe events, prove webhook-layer + RPC-layer dedup]. Live endpoint we_1TUlSHAzPfYm94ux4mOfF72i now subscribed to 18-event superset (was 6). |
 | Stripe verify session | supabase/functions/stripe-verify-session | P0 | 🟡 | 2026-05-08 | JWT auth + invoice org_id ownership check; post-checkout return; structural ok |
 | List payment methods | supabase/functions/stripe-list-payment-methods | P1 | 🟡 | 2026-05-08 | JWT auth + guardian/org scoped lookup; structural ok |
 | Detach payment method | supabase/functions/stripe-detach-payment-method | P1 | 🟡 | 2026-05-08 | JWT auth + guardian-scoped lookup + Stripe-side pm.customer match check (prevents cross-customer detach); auto-clears default_payment_method_id on self-detach |
@@ -178,8 +178,8 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Messages inbox (staff) | src/pages/Messages.tsx | P1 | 🟡 | 2026-05-08 | structural; data via RLS-scoped queries |
-| Send single message | supabase/functions/send-message | P0 | 🟡 | 2026-05-08 | JWT auth + rate limit; structural ok |
+| Messages inbox (staff) | src/pages/Messages.tsx | P1 | 🟡 | 2026-05-09 | structural; data via RLS-scoped queries; basic page-load smoke covered |
+| Send single message | supabase/functions/send-message | P0 | 🟡 | 2026-05-09 | JWT auth + rate limit; [E2E real per da619ca — §16.3 5 tests: happy path with DB-resolved recipient, missing-fields 400 (was 500 — fix landed), oversized 400, parent JWT 403, cross-org 403]. See finding 2026-05-09-send-message-missing-fields-500.md. [PROMOTABLE 🟡→🟢] |
 | Send bulk message | supabase/functions/send-bulk-message | P0 | 🟡 | 2026-05-08 | JWT auth + rate limit + batching; structural ok |
 | Send parent message | supabase/functions/send-parent-message | P1 | 🟡 | 2026-05-08 | JWT auth + rate limit; structural ok |
 | Send parent enquiry (public form) | supabase/functions/send-parent-enquiry | P1 | 🟡 | 2026-05-08 | JWT auth + rate limit (public form auth via Bearer token from Supabase anon role); structural ok |
@@ -209,7 +209,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Practice tracker (staff) | src/pages/Practice.tsx | P2 | 🟡 | 2026-05-08 | RLS verified in parent-portal sweep: `practice_logs` Staff INSERT uses `is_org_staff(auth.uid(), org_id)`; structural ok |
+| Practice tracker (staff) | src/pages/Practice.tsx | P2 | 🟡 | 2026-05-09 | RLS verified: `practice_logs` Staff INSERT uses `is_org_staff(auth.uid(), org_id)`. [E2E real per ec94ee3 §17.4 streak milestone audit_log + f7ee87d §17.5.5 reset_stale_streaks cron + §17.5.6 complete_expired_assignments cron via service-role RPC] |
 | Resources library | src/pages/Resources.tsx | P2 | 🟡 | 2026-05-08 | Storage bucket `teaching-resources` confirmed `public=false`, 50MB cap, broad mime allowlist, RLS: staff INSERT/DELETE/SELECT scoped to own org via `org_memberships`; parents SELECT via `resource_shares` + `is_parent_of_student`. See cross-cutting Storage row |
 
 ## Reports
@@ -217,26 +217,26 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
 | Reports index | src/pages/Reports.tsx | P2 | 🟡 | 2026-05-08 | navigation hub; structural |
-| Revenue | src/pages/reports/Revenue.tsx | P1 | 🟡 | 2026-05-08 | uses `get_revenue_report` SECURITY DEFINER RPC (verified in DB); pinned to current_org_id |
-| Outstanding | src/pages/reports/Outstanding.tsx | P1 | 🟡 | 2026-05-08 | uses RLS-scoped invoices query in `useReports.ts`; org_id filter belt+RLS |
-| Lessons delivered | src/pages/reports/LessonsDelivered.tsx | P2 | 🟡 | 2026-05-08 | direct lessons table query, org_id-scoped + teacher-role auto-filter via `resolveTeacherId`; 10k limit per query with warning banner |
-| Cancellations | src/pages/reports/Cancellations.tsx | P2 | 🟡 | 2026-05-08 | RLS-scoped lessons query |
-| Utilisation | src/pages/reports/Utilisation.tsx | P2 | 🟡 | 2026-05-08 | RLS-scoped lessons + rooms + locations query |
-| Attendance report | src/pages/reports/AttendanceReport.tsx | P2 | 🟡 | 2026-05-08 | RLS-scoped attendance_records query |
+| Revenue | src/pages/reports/Revenue.tsx | P1 | 🟡 | 2026-05-09 | uses `get_revenue_report` SECURITY DEFINER RPC; pinned to current_org_id; [E2E data-correctness real per 3095a15 — paid invoice → current-month bucket label visible] |
+| Outstanding | src/pages/reports/Outstanding.tsx | P1 | 🟡 | 2026-05-09 | uses RLS-scoped invoices query in `useReports.ts`; org_id filter belt+RLS; [E2E data-correctness real per 6205880 — sent invoice → "Current (0-7 days)" bucket invoice_number visible] [PROMOTABLE 🟡→🟢] |
+| Lessons delivered | src/pages/reports/LessonsDelivered.tsx | P2 | 🟡 | 2026-05-09 | direct lessons table query, org_id-scoped + teacher-role auto-filter via `resolveTeacherId`; 10k limit per query with warning banner; [E2E data-correctness real per 3095a15 — completed lesson → owner teacher row visible] |
+| Cancellations | src/pages/reports/Cancellations.tsx | P2 | 🟡 | 2026-05-09 | RLS-scoped lessons query; [E2E data-correctness real per 3095a15 — cancelled lesson + attendance with unique reason → reason text visible in byReason breakdown] |
+| Utilisation | src/pages/reports/Utilisation.tsx | P2 | 🟡 | 2026-05-08 | RLS-scoped lessons + rooms + locations query; data-correctness E2E deferred to session 7 (needs room capacity + closure_dates seeds) |
+| Attendance report | src/pages/reports/AttendanceReport.tsx | P2 | 🟡 | 2026-05-09 | RLS-scoped attendance_records query; [E2E data-correctness real per 3095a15 — present attendance + unique-named student → name visible in per-student aggregation] |
 
 ## Parent portal
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Portal home | src/pages/portal/PortalHome.tsx | P1 | 🟡 | 2026-05-08 | drives `respond_to_makeup_offer` + `cancel_booked_makeup` RPCs — both SECURITY DEFINER + auth.uid() check + guardian-belongs-to-org check + waitlist-belongs-to-guardian check + status guards + audit_log entries on every action. Robust. Browser test pending Jamie |
-| Portal schedule | src/pages/portal/PortalSchedule.tsx | P1 | 🟡 | 2026-05-08 | data via React Query hooks (no direct supabase.from); RLS handles via parent ↔ student linkage |
-| Portal practice | src/pages/portal/PortalPractice.tsx | P2 | 🟡 | 2026-05-08 | RLS verified: `practice_logs` Parent INSERT `WITH CHECK is_parent_of_student(auth.uid(), student_id)` — parents cannot create logs for unrelated students. SELECT/DELETE same guard. 0 logs in last 30 days (low usage); 61 historical. Browser test pending |
+| Portal home | src/pages/portal/PortalHome.tsx | P1 | 🟡 | 2026-05-09 | drives `respond_to_makeup_offer` + `cancel_booked_makeup` RPCs — both SECURITY DEFINER + auth.uid() + guardian-belongs-to-org + waitlist-belongs-to-guardian + status guards + audit_log entries. [E2E real per a5dec8b §26.4 makeup respond + acc6015 §26.6 schedule] [PROMOTABLE 🟡→🟢] |
+| Portal schedule | src/pages/portal/PortalSchedule.tsx | P1 | 🟡 | 2026-05-09 | data via React Query hooks; RLS handles via parent ↔ student linkage; [E2E real per acc6015 — §26.6 8 tests: grouping, past collapsible, all 3 reschedule policies, GCal URL, ICS download, calendar-ical-feed VEVENT] [PROMOTABLE 🟡→🟢] |
+| Portal practice | src/pages/portal/PortalPractice.tsx | P2 | 🟡 | 2026-05-09 | RLS verified: `practice_logs` Parent INSERT `WITH CHECK is_parent_of_student(auth.uid(), student_id)` — parents cannot create logs for unrelated students. SELECT/DELETE same guard. [E2E real per ec94ee3 §17.4 streak milestone audit_log + 26-parent-portal §26.7 practice_logs trigger] [PROMOTABLE 🟡→🟢] |
 | Portal resources | src/pages/portal/PortalResources.tsx | P2 | 🟡 | 2026-05-08 | bucket `teaching-resources` confirmed `public=false`; access via signed URLs; structural ok |
-| Portal invoices & pay | src/pages/portal/PortalInvoices.tsx | P0 | 🟡 | 2026-05-08 | RLS `Parent can view own invoices` uses `is_invoice_payer(auth.uid(), id)` — checks both `payer_guardian_id` direct path AND `payer_student_id → student_guardians → guardians.user_id` indirect path. Robust. Pay flow invokes `stripe-verify-session`. Browser test pending |
-| Portal messages | src/pages/portal/PortalMessages.tsx | P1 | 🟡 | 2026-05-08 | data via hooks (no direct supabase.from); RLS handles |
-| Portal profile | src/pages/portal/PortalProfile.tsx | P2 | 🟡 | 2026-05-08 | reads/writes `notification_preferences`, `guardians`, `profiles`; `guardians` Parent UPDATE policy uses `user_id = auth.uid()` — can only edit own record |
-| Portal continuation | src/pages/portal/PortalContinuation.tsx | P0 | 🟡 | 2026-05-08 | invokes `continuation-respond` edge fn with tokenised payload; structural ok; full term-rollover E2E pending Jamie |
-| Public continuation respond | /respond/continuation route | P0 | 🟡 | 2026-05-08 | tokenised URL no-auth path; needs E2E with a real continuation token |
+| Portal invoices & pay | src/pages/portal/PortalInvoices.tsx | P0 | 🟡 | 2026-05-09 | RLS `Parent can view own invoices` uses `is_invoice_payer(auth.uid(), id)` — checks both `payer_guardian_id` direct + `payer_student_id → student_guardians → guardians.user_id` indirect. [E2E real per 39c11d9 §26.9 3 tests: pay full invoice end-to-end via stripe-create-payment-intent + UI smoke for PaymentDrawer + status filter + PDF download. Currency-error boundary regression test (production bug dbe1a51) also covered] [PROMOTABLE 🟡→🟢] |
+| Portal messages | src/pages/portal/PortalMessages.tsx | P1 | 🟡 | 2026-05-09 | data via hooks; RLS handles; [E2E real per 0f91088 §26.10 compose 5 tests + 10ca3ad §26.10 reply 3 tests + happy path / 404 / cross-tenant 403] [PROMOTABLE 🟡→🟢] |
+| Portal profile | src/pages/portal/PortalProfile.tsx | P2 | 🟡 | 2026-05-09 | reads/writes `notification_preferences`, `guardians`, `profiles`; `guardians` Parent UPDATE `user_id = auth.uid()`; [E2E real per 10ca3ad §26.11 — toggle switch + Save → notification_preferences upsert via service-role select pattern] [PROMOTABLE 🟡→🟢] |
+| Portal continuation | src/pages/portal/PortalContinuation.tsx | P0 | 🟡 | 2026-05-09 | invokes `continuation-respond` edge fn with tokenised payload; [E2E real per a5dec8b §26.12 + 65bde4e fix for verify_jwt=false + §26.13 anonymous happy path] |
+| Public continuation respond | /respond/continuation route | P0 | 🟡 | 2026-05-09 | tokenised URL no-auth path; [E2E real per a5dec8b §26.13 anonymous flow — verifies the 65bde4e fix didn't regress] |
 
 ## Cron / lifecycle jobs
 
@@ -266,8 +266,8 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Cleanup webhook retention | cleanup-webhook-retention | daily 03:30 UTC | P2 | 🟡 | 2026-05-08 fired ok |
 | Cleanup invoice PDF orphans | cleanup-invoice-pdf-orphans | daily 03:45 UTC | P2 | 🟡 | 2026-05-08 fired ok |
 | Cron health watchdog | cron-health-watchdog | daily 09:30 UTC | P0 | 🟢 | 2026-05-08 — fixed 3-bug chain in `check_cron_health()`; was 500'ing every run since deployment. Class A working; Class B no-op (separate finding) |
-| Complete expired assignments (SQL fn) | complete_expired_assignments | daily 04:00 UTC | P1 | 🟡 | 2026-05-08 fired ok |
-| Reset stale practice streaks (SQL fn) | reset_stale_streaks | daily 03:00 UTC | P2 | 🟡 | 2026-05-08 fired ok |
+| Complete expired assignments (SQL fn) | complete_expired_assignments | daily 04:00 UTC | P1 | 🟡 | 2026-05-09 fired ok; [E2E real per f7ee87d §17.5.6 — RPC behaviour proven on expired vs future-dated + NULL end_date seeds] |
+| Reset stale practice streaks (SQL fn) | reset_stale_streaks | daily 03:00 UTC | P2 | 🟡 | 2026-05-09 fired ok; [E2E real per f7ee87d §17.5.5 — RPC behaviour proven on stale vs fresh seeds] |
 
 ## Mobile (Capacitor)
 
