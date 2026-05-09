@@ -21,6 +21,8 @@
 - 0f91088 — §26.10 parent compose thread (5 tests)
 - a5dec8b — §26.12/§26.13 continuation response (4 tests)
 - 4796f9a — §8.5 recurring lesson edit (2 tests)
+- 65bde4e — fix(edge): continuation-respond verify_jwt=false (unauth flow)
+- `<this>` — fix(db): _notify_streak_milestone defensive + §17.4 test (1 test)
 
 ---
 
@@ -48,10 +50,10 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~36% (was 33%, +4 §26.12/§26.13 + 2 §8.5 tests this session).**
+**Catalog completeness: ~37% (was 33%, +4 §26.12/§26.13 + 2 §8.5 + 1 §17.4 milestone tests this session).**
 
 Current baseline (end of session):
-- **391 passed** (was 385 at session start; +6 net)
+- **392 passed** (was 385 at session start; +7 net — plus 2 production bug fixes shipped)
 - **1-5 failed**: always includes the documented §5.4 email-verification
   flake. Sometimes also: §17.4 streak (transient seed failure — unrelated
   to streak math, the supabaseInsert call to students returns undefined),
@@ -288,14 +290,15 @@ test or delete the line.
    only exposes the two production modes — that's catalog drift.
    Student-side cancel → make_up_credits trigger left as TODO (needs
    attendance_records insert path).
-7. **§17.4 streak milestone — BLOCKED by production bug.** vault is
-   missing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` secrets, so
-   `_notify_streak_milestone` errors with sqlstate 23502 on the 3rd
-   consecutive practice_log insert; rolls back the user's INSERT.
-   Spawned a task for the fix (seed vault OR wrap pg_net call in
-   defensive EXCEPTION block). Test description is in
-   17-practice.spec.ts comment block — turns into a real test once
-   the bug ships.
+7. ~~§17.4 streak milestone~~ — **FIXED + test landed**. Migration
+   `20260518110000_notify_streak_milestone_defensive.sql` wraps the
+   pg_net call in a nested EXCEPTION block; vault/queue failures now
+   log as RAISE WARNING but never roll back the user's INSERT. 5 real
+   §17.4 tests now (3 streak progression + milestone audit-log + DB
+   table queryable). Vault is still missing SUPABASE_URL /
+   SUPABASE_SERVICE_ROLE_KEY so notifications don't actually deliver
+   yet — that's a separate follow-up if push notifications matter
+   pre-launch (audit_log row IS the durable record).
 8. **§24.12 webhook true-replay idempotency** — needs
    E2E_STRIPE_TEST_WEBHOOK_SECRET copied locally from Supabase secrets;
    postWebhookEvent helper already written. ~2 hours.

@@ -268,33 +268,90 @@ test.describe('§17.4 — Streak progression (trigger)', () => {
 });
 
 // §17.3 parent-side logging is already covered by §26.7 (parent portal).
-//
-// §17.4 streak milestone (3/7/14/30/60/100-day) cannot be exercised
-// end-to-end today: production has a missing-vault-secret bug.
-// `_notify_streak_milestone` calls `net.http_post(url := (SELECT
-// decrypted_secret FROM vault.decrypted_secrets WHERE name =
-// 'SUPABASE_URL'))`, but `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
-// have never been seeded into the vault — only `INTERNAL_CRON_SECRET`
-// is present. The SELECT returns NULL, pg_net's `http_request_queue`
-// rejects the null URL with `null value in column "url" violates
-// not-null constraint` (sqlstate 23502), the trigger errors, and the
-// underlying `practice_logs` INSERT rolls back. Net effect: any user
-// who logs a 3rd, 7th, 14th, 30th, 60th, or 100th consecutive day
-// gets a 500 instead of a successful save.
-//
-// Two ways to fix:
-//   1. Seed the vault: `vault.create_secret('https://...supabase.co',
-//      'SUPABASE_URL')` + same for `SUPABASE_SERVICE_ROLE_KEY`. Migration
-//      drops in alongside `20260303180000_streak_milestone_webhook.sql`.
-//   2. Wrap the `net.http_post` call in a BEGIN/EXCEPTION/END so vault
-//      or queue failures don't roll back the user action; audit_log
-//      remains the durable record. Defensive against future pg_net
-//      outages too.
-//
-// Once one of those lands, the test below should pass without changes:
-//   – seed 3 consecutive days
-//   – assert current_streak=3
-//   – assert audit_log has one streak_milestone row with after->>'streak'='3'
+
+test.describe('§17.4 — Streak milestone (audit + notification side-effect)', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('3-day chain hits milestone → audit_log streak_milestone row written', async () => {
+    // The trigger update_practice_streak fires _notify_streak_milestone at
+    // current_streak ∈ (3,7,14,30,60,100). After the
+    // 20260518110000_notify_streak_milestone_defensive migration, the
+    // helper:
+    //   1. INSERT audit_log (durable — committed regardless)
+    //   2. attempt net.http_post in a nested EXCEPTION block; vault /
+    //      pg_net failures are logged as warnings, never propagate up
+    // So this test is independent of vault state — even if the vault
+    // is missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (production
+    // condition prior to seeding), the audit_log row still commits and
+    // the practice_logs INSERT succeeds. The pg_net delivery side-effect
+    // is best-effort and tested elsewhere (streak-notification edge fn).
+    const { supabaseInsert, supabaseSelect, supabaseDelete, getOwnerUserId } =
+      await import('../supabase-admin');
+    const orgId = process.env.E2E_ORG_ID!;
+    const ownerId = getOwnerUserId();
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    const student = supabaseInsert('students', {
+      org_id: orgId,
+      first_name: `${testId}_milestone`,
+      last_name: testId,
+      status: 'active',
+    });
+    expect(student?.id).toBeTruthy();
+
+    try {
+      const isoDay = (offsetDays: number) =>
+        new Date(Date.now() - offsetDays * 86400_000).toISOString().slice(0, 10);
+
+      // Insert oldest-first so monotonic update_practice_streak walks
+      // 1 → 2 → 3 (milestone fires on the third insert).
+      const milestoneStartedAt = new Date().toISOString();
+      for (const offset of [2, 1, 0]) {
+        const log = supabaseInsert('practice_logs', {
+          org_id: orgId,
+          student_id: student.id,
+          logged_by_user_id: ownerId,
+          practice_date: isoDay(offset),
+          duration_minutes: 25,
+          notes: `${testId}_milestone_d-${offset}`,
+        });
+        expect(log?.id, `insert day -${offset} failed`).toBeTruthy();
+      }
+
+      const streaks = supabaseSelect(
+        'practice_streaks',
+        `org_id=eq.${orgId}&student_id=eq.${student.id}&select=current_streak,longest_streak,last_practice_date`,
+      );
+      expect(streaks.length).toBeGreaterThanOrEqual(1);
+      expect(streaks[0].current_streak).toBe(3);
+      expect(streaks[0].longest_streak).toBeGreaterThanOrEqual(3);
+      expect(streaks[0].last_practice_date).toBe(isoDay(0));
+
+      // The milestone helper writes one audit_log row scoped to this
+      // student. Filter on entity_id (= student_id) and gte created_at to
+      // dodge any pre-existing rows.
+      const audit = supabaseSelect(
+        'audit_log',
+        `org_id=eq.${orgId}&action=eq.streak_milestone&entity_id=eq.${student.id}` +
+          `&created_at=gte.${encodeURIComponent(milestoneStartedAt)}` +
+          `&select=action,entity_type,entity_id,after`,
+      );
+      expect(audit.length).toBe(1);
+      expect(audit[0].action).toBe('streak_milestone');
+      expect(audit[0].entity_type).toBe('practice_streaks');
+      expect(audit[0].after?.streak).toBe(3);
+      expect(audit[0].after?.student_id).toBe(student.id);
+    } finally {
+      supabaseDelete(
+        'audit_log',
+        `org_id=eq.${orgId}&action=eq.streak_milestone&entity_id=eq.${student.id}`,
+      );
+      supabaseDelete('practice_streaks', `org_id=eq.${orgId}&student_id=eq.${student.id}`);
+      supabaseDelete('practice_logs', `org_id=eq.${orgId}&student_id=eq.${student.id}`);
+      supabaseDelete('students', `id=eq.${student.id}`);
+    }
+  });
+});
 
 // §17.5 cron-based tests (reset_stale_streaks,
 // complete_expired_assignments) need time-travel or scheduled-trigger
