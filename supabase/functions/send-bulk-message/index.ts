@@ -113,10 +113,17 @@ const handler = async (req: Request): Promise<Response> => {
       global: { headers: { Authorization: authHeader } },
     });
 
+    // Pass the token explicitly to getUser — the no-args form makes a
+    // request to /auth/v1/user which on this project rejects legacy
+    // HS256 JWTs (see audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md).
+    // getUser(token) does local JWKS verification which accepts the
+    // legacy format. Same pattern as send-message line 57 +
+    // mark-messages-read line 33.
+    const token = authHeader.replace("Bearer ", "");
     const {
       data: { user },
       error: userError,
-    } = await supabaseAuth.auth.getUser();
+    } = await supabaseAuth.auth.getUser(token);
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
