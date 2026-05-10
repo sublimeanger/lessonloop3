@@ -126,7 +126,15 @@ Deno.serve(wrapEdgeFn("process-term-adjustment", async (req: Request) => {
     const userId = user.id;
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const body: TermAdjustmentRequest = await req.json();
+    let body: TermAdjustmentRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Verify user role
     const { data: membership } = await adminClient

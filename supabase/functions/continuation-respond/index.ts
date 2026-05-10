@@ -99,7 +99,15 @@ Deno.serve(wrapEdgeFn("continuation-respond", async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const body: RespondRequest = await req.json();
+    let body: RespondRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!["continuing", "withdrawing"].includes(body.response)) {
       return jsonResponse(

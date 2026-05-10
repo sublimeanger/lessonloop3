@@ -87,7 +87,15 @@ Deno.serve(wrapEdgeFn("bulk-process-continuation", async (req: Request) => {
     }
     const userId = user.id;
 
-    const body: BulkProcessRequest = await req.json();
+    let body: BulkProcessRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (body.action !== "process") {
       return jsonResponse({ error: "Invalid action" }, corsHeaders, 400);

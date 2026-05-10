@@ -32,7 +32,16 @@ Deno.serve(wrapEdgeFn("notify-makeup-offer", async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const isServiceRole = token === supabaseServiceKey;
 
-    const { waitlist_id } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { waitlist_id } = __body;
     if (!waitlist_id) {
       return new Response(JSON.stringify({ error: "waitlist_id required" }), {
         status: 400,

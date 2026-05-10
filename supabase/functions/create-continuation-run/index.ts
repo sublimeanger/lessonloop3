@@ -414,7 +414,15 @@ Deno.serve(wrapEdgeFn("create-continuation-run", async (req: Request) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const body: ContinuationRunRequest = await req.json();
+    let body: ContinuationRunRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Cron-compatible path: process_deadline without run_id processes all
     // overdue runs (called by scheduled cron job with service role key)
