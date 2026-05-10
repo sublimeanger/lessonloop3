@@ -13,6 +13,7 @@ import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { AppShellSkeleton } from "@/components/shared/LoadingState";
+import { CookieConsentBanner } from "@/components/legal/CookieConsentBanner";
 import { useAndroidBackButton } from "@/hooks/useAndroidBackButton";
 import { initPushNotifications, teardownPushNotifications } from "@/services/pushNotifications";
 import { supabase } from "@/integrations/supabase/client";
@@ -204,6 +205,7 @@ const App = () => {
                     <ScrollToTop />
                     <OfflineBanner />
                     <Toaster />
+                    {!platform.isNative && <CookieConsentBanner />}
 
                     <Suspense fallback={<AppShellSkeleton />}>
                       <Routes>
