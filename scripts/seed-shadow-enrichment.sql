@@ -463,3 +463,28 @@ SELECT
   END
 FROM with_picks wp
 ON CONFLICT DO NOTHING;
+
+-- =============================================================================
+-- PHASE 2.6 — populate lessons.notes_shared / notes_private from lesson_notes
+--
+-- s34 follow-up: the per-student "Lesson Notes" panel (src/components/students/
+-- StudentLessonNotes.tsx) renders cards based on lessons.notes_shared (or
+-- notes_private for admins), not the lesson_notes table directly. Structured
+-- content from lesson_notes is shown INSIDE each rendered card. Without
+-- notes_shared populated, the panel renders "No lesson notes yet" even when
+-- lesson_notes rows exist. This block copies the seeded content_covered
+-- (+ homework + focus_areas) into lessons.notes_shared and the
+-- teacher_private_notes into lessons.notes_private so the UI renders.
+-- =============================================================================
+
+UPDATE lessons l
+SET
+  notes_shared = ln.content_covered
+    || E'\n\nHomework: ' || COALESCE(ln.homework, '—')
+    || E'\nFocus areas: ' || COALESCE(ln.focus_areas, '—'),
+  notes_private = ln.teacher_private_notes,
+  updated_at = now()
+FROM lesson_notes ln
+WHERE l.id = ln.lesson_id
+  AND l.org_id = '551ca74e-d47d-4d02-9a4b-24863349a030'
+  AND ln.org_id = '551ca74e-d47d-4d02-9a4b-24863349a030';

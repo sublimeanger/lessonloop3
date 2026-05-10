@@ -9,6 +9,7 @@ This checklist guides the staged Lauren onboarding flow. The shadow org is fully
 ### Changelog
 
 - **s34 (2026-05-10, after s33):** Fixed lesson_notes teacher↔instrument consistency. All 402 notes now point to the student's current primary teacher (per `student_teacher_assignments`), and their content is regenerated from the student's primary instrument family library. Notes are now distributed across all 5 teachers proportional to their student counts (David 118 / Olivia 90 / James 80 / Sarah 78 / Rachel 36). Content libraries extended (keys 25/25/20 content/homework/focus; strings 25/25/20; woodwinds 25/25/20; brass 20/20/15). Unique content_covered jumped 310→364, unique homework 233→361, unique focus_areas 167→358. §26.9.1 Pay-full-invoice flake filed as P3 intermittent (didn't recur in s34 baseline).
+- **s34 follow-up (Jamie pre-flight UI walkthrough):** discovered the per-student "Lesson Notes" panel renders cards based on `lessons.notes_shared`, not the `lesson_notes` table directly. Structured content from `lesson_notes` is shown *inside* each rendered card. Without notes_shared populated, the panel showed "No lesson notes yet" despite 402 lesson_notes rows. Fixed by copying content_covered/homework/focus_areas into lessons.notes_shared and teacher_private_notes into lessons.notes_private for the 402 lessons that have a structured note. Now 402 lessons have shared notes (visible to parents + admins) and 133 have private notes (admin-only).
 
 ---
 
