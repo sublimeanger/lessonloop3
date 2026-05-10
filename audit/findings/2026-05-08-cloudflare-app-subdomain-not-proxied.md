@@ -1,12 +1,21 @@
 # `app.lessonloop.net` bypasses Cloudflare (proxied: false) — no edge WAF
 
 **Severity:** medium
-**Status:** open (decision required)
+**Status:** CLOSED 2026-05-10 (obsolete — resolved by s25 orange-cloud flip)
 **Area:** networking / WAF
 **Discovered:** 2026-05-08
-**Fixed:** —
-**Fixed in:** —
+**Fixed:** 2026-05-10 (s25 flipped DNS record to `proxied: true`)
+**Closed:** 2026-05-10 (s29 verification)
 **Affected components:** Cloudflare zone `lessonloop.net`, DNS record `app.lessonloop.net`
+
+## Closure verification (s29)
+
+`dig app.lessonloop.net +short` → CF anycast (104.21.48.11, 172.67.175.180).
+`curl -I https://app.lessonloop.net` → `cf-ray`, `server: cloudflare`, `cf-cache-status: DYNAMIC` headers present alongside `x-nf-request-id` (proxy chain: CF → Netlify origin).
+Empty-UA WAF: `curl -A "" https://app.lessonloop.net` → 403 (rule firing as configured in s25).
+Normal UA: → 200.
+
+The s25 orange-cloud flip resolved this finding. Paired finding `2026-05-08-supabase-captcha-disabled.md` no longer becomes a "must-fix" — credential-stuffing perimeter is covered by CF WAF + Supabase server-side rate limits (s26 verification).
 
 ## Symptom
 

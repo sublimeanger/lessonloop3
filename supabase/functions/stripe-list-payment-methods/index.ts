@@ -4,6 +4,16 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { getStripeClient } from "../_shared/stripe-client.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { classifyAndRespond, type SafeErrorMap } from "../_shared/stripe-error.ts";
+
+const SAFE_MESSAGES: SafeErrorMap = {
+  exact: {
+    "No authorization header": 401,
+    "Unauthorized": 401,
+    "orgId is required": 400,
+  },
+};
+
 serve(wrapEdgeFn("stripe-list-payment-methods", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -28,7 +38,16 @@ serve(wrapEdgeFn("stripe-list-payment-methods", async (req) => {
     const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { orgId } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { orgId } = __body;
     if (!orgId) throw new Error("orgId is required");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -97,15 +116,7 @@ serve(wrapEdgeFn("stripe-list-payment-methods", async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (error: any) {
-    console.error("Error in stripe-list-payment-methods:", error);
-    const isUnauthorized = error.message === "Unauthorized";
-    return new Response(
-      JSON.stringify({ error: isUnauthorized ? "Unauthorized" : "An internal error occurred. Please try again." }),
-      {
-        status: isUnauthorized ? 401 : 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+  } catch (error: unknown) {
+    return classifyAndRespond(error, SAFE_MESSAGES, corsHeaders, "stripe-list-payment-methods");
   }
 }));

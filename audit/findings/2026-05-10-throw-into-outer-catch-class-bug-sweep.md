@@ -97,32 +97,40 @@ const handler = async (req: Request): Promise<Response> => {
 - stripe-detach-payment-method, stripe-list-payment-methods, stripe-update-payment-preferences (use the gold-standard message-to-status mapping pattern)
 - send-bulk-message, send-invoice-email (s27 fixes)
 
-## Sibling concern: response-body leak (deferred)
+## Sibling concern: response-body leak (CLOSED s29)
 
 Separate from the throw-to-outer-catch shape, 10 fns echo raw `error.message` in their response body to clients:
-- generate-invoice-pdf (service-role internal — leak is harmless, callers are trusted)
-- stripe-billing-history, stripe-connect-onboard, stripe-connect-status, stripe-create-checkout, stripe-create-payment-intent, stripe-customer-portal, stripe-process-refund, stripe-subscription-checkout, stripe-verify-session
+- generate-invoice-pdf (service-role internal — leak is harmless, callers are trusted; left as-is)
+- stripe-billing-history, stripe-connect-onboard, stripe-connect-status, stripe-create-checkout, stripe-create-payment-intent, stripe-customer-portal, stripe-process-refund, stripe-subscription-checkout, stripe-verify-session — all 9 migrated in s29
 
-For the 9 stripe-* fns, the response-body echo is **intentional** UX-string control flow: the fn does `throw new Error("Invoice already paid")` and the catch echoes the message back so the parent-portal UI can display a helpful error. Blanket-replacing with generic "Internal server error" would break legitimate frontend UX paths.
+For the 9 stripe-* fns, the response-body echo was **intentional** UX-string control flow: the fn does `throw new Error("Invoice already paid")` and the catch echoes the message back so the parent-portal UI can display a helpful error. Blanket-replacing with generic "Internal server error" would have broken legitimate frontend UX paths.
 
-**Deferred fix shape (s29):** migrate to stripe-detach-payment-method's pattern:
+**Resolution (s29):** Built `supabase/functions/_shared/stripe-error.ts` with `classifyAndRespond(error, safeMap, corsHeaders, fnName)`. Each fn now has an inline `SAFE_MESSAGES: SafeErrorMap` with:
+- `exact`: known message → HTTP status (e.g., `"Invoice not found": 404`)
+- `prefix`: templated throws (e.g., `"Invoice cannot be paid (status: ": 400` matches "Invoice cannot be paid (status: void)")
+
+Outer catch becomes a single line:
 ```typescript
-} catch (error) {
-  const msg = error instanceof Error ? error.message : "Unknown";
-  const isAuth = msg === "Unauthorized" || msg === "No authorization header";
-  const isClientError = ["invoiceId is required", "Invoice not found", "Invoice cannot be paid", ...].includes(msg);
-  return new Response(
-    JSON.stringify({ error: isAuth ? "Unauthorized" : isClientError ? msg : "Internal server error" }),
-    { status: isAuth ? 401 : isClientError ? 400 : 500, ... }
-  );
+} catch (error: unknown) {
+  return classifyAndRespond(error, SAFE_MESSAGES, corsHeaders, "fn-name");
 }
 ```
 
-Each fn needs an explicit allow-list of known-business-logic messages. ~9 fn × ~10 messages × ~5 min per fn = ~45 min in s29. Not a blocker for v1 launch — the throws are not raw stack traces or PII, just developer-controlled strings. Listed in priority order:
-1. stripe-create-payment-intent (highest call rate — parent portal "Pay this invoice")
-2. stripe-customer-portal (Stripe Billing Portal entry)
-3. stripe-create-checkout (subscription start)
-4. ... rest of stripe-*
+Behaviour:
+- Known msg → return msg + mapped 4xx. Frontend UX preserved.
+- Templated prefix match → return msg + mapped status. Same.
+- Unknown msg → return `"An internal error occurred. Please try again."` + 500. Stripe SDK / DB errors no longer leak verbatim.
+- All paths log full original message via `console.error` for Sentry capture.
+
+Status code mapping rationale:
+- 401: "No authorization header", "Unauthorized" (auth missing/invalid)
+- 403: "Only owners/admins ...", "Not a member ...", "Not authorized to ...", "Insufficient permissions ..." (permission denied)
+- 404: "X not found"
+- 400: validation errors, state preconditions ("Invoice is already fully paid", "Invalid plan", etc.)
+
+Contract test: `tests/e2e/master/27-notifications.spec.ts` §27 — Stripe error classification (s29 sibling-concern close). 9 fns × 1 assertion each (no-auth POST → 4xx with safe known message, no PostgrestError/StripeError/PGRST/stripe_<id>/JSON-parse markers in body). 9/9 pass.
+
+Commits: `a02820b` (fix + helper), `4202558` (contract test).
 
 ## Verification
 

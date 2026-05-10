@@ -4,6 +4,19 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { getStripeClient } from "../_shared/stripe-client.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { classifyAndRespond, type SafeErrorMap } from "../_shared/stripe-error.ts";
+
+const SAFE_MESSAGES: SafeErrorMap = {
+  exact: {
+    "No authorization header": 401,
+    "Unauthorized": 401,
+    "paymentMethodId and orgId are required": 400,
+    "Guardian not found": 404,
+    "No saved payment methods found": 404,
+    "Payment method does not belong to this customer": 403,
+  },
+};
+
 serve(wrapEdgeFn("stripe-detach-payment-method", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -82,15 +95,7 @@ serve(wrapEdgeFn("stripe-detach-payment-method", async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (error: any) {
-    console.error("Error in stripe-detach-payment-method:", error);
-    const isUnauthorized = error.message === "Unauthorized";
-    return new Response(
-      JSON.stringify({ error: isUnauthorized ? "Unauthorized" : "An internal error occurred. Please try again." }),
-      {
-        status: isUnauthorized ? 401 : 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+  } catch (error: unknown) {
+    return classifyAndRespond(error, SAFE_MESSAGES, corsHeaders, "stripe-detach-payment-method");
   }
 }));
