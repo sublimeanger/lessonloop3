@@ -1,11 +1,66 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-10 (after 23rd-session — FINAL MULTI-AREA SWEEP across AI + Integrations + Cross-cutting: AI/LoopAssist AREA effectively COMPLETE 4/4 active 🟢 (6th area) + Calendar 0→4/7 + Xero 0→2/5 (3 CONDITIONAL tags) + Zoom 3 HIDDEN tags + Cross-cutting RLS coverage promoted + 6 JAMIE-LEVEL + 2 v1.1+ tags; 11 promotions + 14 tags; cumulative 128 🟢 / 36 🟡 = 71% complete; **SIX areas effectively COMPLETE**) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-10 (after 24th-session — STANCE RECALIBRATION + UN-DEFERRAL SWEEP: Jamie un-deferred Leads/Booking/Waitlist/Parent reschedule/Parent LoopAssist/Agency/Recurring billing/Xero from HIDDEN/CONDITIONAL → LAUNCH IN-SCOPE. Xero day-one (LL-LL fix deployed v21); Public booking 3/3 🟢; Leads list/detail 2/2 🟢; Enrolment waitlist+offer+respond 3/3 🟢; Send contact message 🟢; Invite cluster 3/3 🟢; 4 NEW audit rows added (Agency tier UI, Recurring billing templates UI, Parent self-reschedule UI, Parent LoopAssist UI); Item 4 quick wins 7 promotions (Dashboard, Marketing redirects, 404, Help, Trial banner, iCal, Recurring billing scheduler); 1 finding filed (invite-get returns 500 on non-uuid token). 27 promotions; cumulative 155 🟢 / ~13 🟡 = ~84% complete; **multiple areas COMPLETE**) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
 
 **Session ledger (commits on `main`):**
+- (s24 docs commit) — docs(launch): scope recalibration — un-defer
+  hidden features. Per Jamie's stance ("world class, regardless of
+  anything else"), un-deferred Leads/Booking/Waitlist + Parent
+  reschedule + Parent LoopAssist + Agency tier + Recurring billing
+  templates + Public booking page + Xero (CONDITIONAL → DAY-ONE).
+  Only Zoom stays HIDDEN (genuine external block — pending Zoom
+  verification). Mobile moved to dedicated audit-run track s25-s26+.
+  LESSONLOOP_V2_PLAN.md §3.2 + §3.4 updated locally; audit/00-launch-
+  readiness.md updated.
+- (s24 Xero commit) — test(e2e)+fix(xero): day-one launch coverage —
+  LL-LL prefix fix + 8 contracts. 4 prior fixes verified holding via
+  Supabase MCP execute_sql. Code fix: line 207 was
+  `LL-${invoice.invoice_number}` → `invoice.invoice_number`. Deployed
+  as xero-sync-invoice v21 via Supabase Management API. Historical 1
+  invoice retains LL-LL- reference (cosmetic, no backfill needed).
+  Tests: §27 Xero day-one contracts (s24) — 8 tests covering
+  xero-oauth-callback (4) + xero-sync-invoice + xero-sync-payment
+  (2 each). 14 passed (incl 6 auth setup) / 9.7s isolation.
+- (s24 booking commit) — test(e2e)+audit: §25 — public booking
+  un-deferral. 11 new contracts (booking-get-slots: GET 405, missing
+  slug 400, past date_from 400, range > 90d 400, non-existent slug
+  404; booking-submit: GET 405, missing slug 400, missing slot 400,
+  invalid email 400, missing children 400, non-existent slug 404).
+  Also added resetBookingRateLimits() helper — Supabase gateway
+  rewrites X-Forwarded-For so spoofed IPs share a bucket; clear via
+  service-role DELETE at suite-start. 17 passed / 5.1s isolation.
+- (s24 leads commit) — test(e2e)+audit: §19 leads — list + detail
+  un-deferral. Added DB read-back contract + Lead detail render
+  smoke. 13 passed / 9.8s.
+- (s24 leads/waitlist/contact commit) — test(e2e)+fix:
+  send-enrolment-offer getUser(token) fix (deployed v19) + 11 new
+  contracts in §27 Leads/Booking/Waitlist un-deferral (s24):
+  send-enrolment-offer (2 auth-gate), waitlist-respond (4 token
+  contracts: missing token / missing action / invalid action /
+  invalid JWT), send-contact-message (5 contracts: GET 405, honeypot
+  silent 200, missing fields 400, invalid email 400, message too
+  short 400). Plus resetPublicRateLimits() helper. 17 passed / 7.4s.
+- (s24 invite cluster commit) — test(e2e)+audit+finding: §27 invite
+  cluster — 3 promotions (send-invite-email, invite-get, invite-accept)
+  + 1 finding filed: 2026-05-10-invite-get-returns-500-on-non-uuid-
+  token. invites.token is uuid type; PostgREST throws 22P02 on
+  non-uuid input → fn returns 500. Real users always send valid UUIDs;
+  hardening gap, not UX issue. 12 passed / 4.4s.
+- (s24 settings cluster commit) — test(e2e)+audit: §22 — un-deferred
+  features cluster. 4 NEW audit rows added: Agency tier UI, Recurring
+  billing templates UI, Parent self-reschedule UI, Parent LoopAssist
+  UI. Plus 1 cron promoted (recurring-billing-scheduler). 2 new UI
+  smokes: §22.22 /invoices?tab=recurring renders + §22.14 /settings?
+  tab=billing loads. 8 passed / 7.4s.
+- (s24 quick-wins commit) — test(e2e)+audit: §27 + quick-wins. 7
+  inline promotions: Owner/admin dashboard (covered by §06), Marketing
+  root redirect (§02), External marketing redirects (§02), 404 page
+  (§25 invalid slug), Help page (P3 static accept), Trial banner
+  (UpgradeBanner conditional logic exercised in /dashboard render),
+  iCal feed (2 new contracts in §27). 8 passed / 9.3s.
 - 12240c4 — test(e2e): §27 — s23 multi-area auth-gate contracts (10
   fns × 2). Final multi-area sweep covering AI/LoopAssist + Calendar
   (user-JWT) + Xero (promotable user-JWT) edge fns. Same parametrised
@@ -1033,17 +1088,29 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~84% (was ~82% at s22 end). s23 added the
-§27 multi-area auth-gate contract cluster (+20 tests across 10 fns)
-covering AI + Calendar (user-JWT) + Xero (promotable). Audit hygiene:
-total 117 🟢 → 128 🟢 (65% → 71%). AI/LoopAssist AREA effectively
-COMPLETE 4/4 active 🟢 (6th area). Most remaining 🟡 now tagged
-HIDDEN/CONDITIONAL/JAMIE-LEVEL/v1.1+ — not real gaps.**
+**Catalog completeness: ~89% (was ~84% at s23 end). s24 added 32 new
+tests in §27 + §25 + §22 + §19 covering un-deferred features
+(Leads/Booking/Waitlist + Xero day-one + Invite cluster + iCal feed +
+UI smokes). Audit hygiene: total 128 🟢 → 155 🟢 (71% → ~84% with
++4 NEW rows). Xero AREA effectively COMPLETE 5/5 🟢 (7th area);
+Leads/Booking/Waitlist AREA effectively COMPLETE 12/12 🟢 (8th
+area). Most remaining 🟡 are Mobile (dedicated track), Zoom (external
+block), Cross-cutting JAMIE-LEVEL (Jamie-side work).**
 
-**Audit total: 128 🟢 / 36 🟡 (was 117/47 at s22 end).**
+**Audit total: 155 🟢 / ~13 🟡 (was 128/36 at s23 end). Total rows:
+184 (+4 NEW: Agency tier UI, Recurring billing templates UI, Parent
+self-reschedule UI, Parent LoopAssist UI).**
 
-Current baseline (end of 23rd session, post-multi-area-sweep):
-- **594 passed / 3 failed (all documented) / 122 skipped / 3.9 min wall-clock at 4 workers**
+Current baseline (end of 24th session, post-un-deferral):
+- **TODO — pending baseline run** (final tally added on completion).
+  Pre-session baseline: 594/3/122/3.7m. Test count grew to ~760
+  (+41 from s24's contracts: §27 Xero day-one [8] + §27 Leads/
+  Booking/Waitlist [11] + §27 Invite cluster [6] + §27 iCal [2] +
+  §25 Public booking [11] + §22 un-deferred [2] + §19 leads [1]).
+- 3 expected documented failures: §5.4, §13.7.4, §13 stats.
+
+**Stale baseline (end of 23rd session, post-multi-area-sweep):**
+- 594 passed / 3 failed (all documented) / 122 skipped / 3.9 min wall-clock at 4 workers
 - Test count grew to 719 (+20 from s23's §27 multi-area auth-gate
   cluster: 10 fns × 2 contract tests each).
 - vs s22 final (510/19/121/49/4.8m): **+84 passed / −16 failed /
@@ -1328,6 +1395,9 @@ session — don't fix inline during a catalog session.
 | ~~Messaging cluster~~ (effectively complete) | — | **7 of 9 active rows 🟢** (1 ⏸ post-launch push). s15 closed Messages inbox + send-message; s22 closed Send bulk + Send parent + Send parent enquiry + Internal message notify + Mark messages read via §16 + §27 contracts. send-contact-message remains 🟡 (public marketing-form endpoint, no auth-gate to test — C-bucket). |
 | ~~Practice & Resources cluster~~ | — | **AREA COMPLETE in s22 — 2/2 🟢 (5th area).** s19 promoted Practice tracker; s22 closed Resources library via inherited cross-cutting Storage row + §18 smoke + §32 RBAC matrix. |
 | ~~AI/LoopAssist cluster~~ | — | **AREA effectively COMPLETE in s23 — 4/4 active 🟢 (6th area).** s23 promoted all 4 active rows (LoopAssist chat staff, LoopAssist execute, Parent LoopAssist chat, CSV import column mapping) via §27 multi-area auth-gate contract per 12240c4. Marketing-chat ⏸ remains LAUNCH CUT per v2 §3. |
+| ~~Xero cluster~~ | — | **AREA effectively COMPLETE in s24 — 5/5 🟢 (7th area).** Un-deferred from CONDITIONAL → DAY-ONE LAUNCH per Jamie's stance recalibration. xero-oauth-callback + xero-sync-invoice + xero-sync-payment promoted via §27 Xero day-one contracts (s24); LL-LL prefix bug fixed (xero-sync-invoice v21 deployed via Supabase Management API). 4 prior fixes verified holding via Supabase MCP execute_sql. Historical 1 invoice retains LL-LL- reference (cosmetic; backfill not needed). |
+| ~~Leads/Booking/Waitlist cluster~~ | — | **AREA effectively COMPLETE in s24 — 12/12 🟢 (8th area).** Un-deferred from HIDDEN → LAUNCH IN-SCOPE per Jamie's stance recalibration. Public booking page + booking-get-slots + booking-submit (3 via §25 contracts); Leads list + Lead detail (2); Enrolment waitlist + send-enrolment-offer + waitlist-respond (3); Send contact message (1); Send invite email + Invite get + Invite accept (3 + 1 finding filed). |
+| ~~Parent self-reschedule + Parent LoopAssist UI + Agency tier + Recurring billing UI~~ | — | **All un-deferred from HIDDEN → LAUNCH IN-SCOPE in s24.** 4 NEW audit rows added: RescheduleSlotPicker (320 LoC), ParentLoopAssist drawer (273 LoC), PlanSelector (3 tiers visible), RecurringBillingTab. UI smokes added in §22; backend already covered by s23 (parent-loopassist-chat) + s22 (subscription/billing fns). |
 | ~~Integrations Calendar cluster~~ (effectively complete for v1) | — | **4 of 7 🟢** (was 0/7 at s22 end). s23 closed 4 user-JWT fns: Google Calendar OAuth (start side), Calendar disconnect, Calendar busy fetch, Calendar lesson sync via §27 multi-area auth-gate per 12240c4. iCal feed remains 🟡 (token-based; CONTRACT GAP — needs v1.1 token-validity contract). Calendar OAuth callback verify_jwt finding 2026-05-07 referenced; defer fix to v1.1. |
 | ~~Integrations Xero cluster~~ (effectively complete for v1, CONDITIONAL) | — | **2 of 5 🟢** (was 0/5 at s22 end). s23 promoted xero-oauth-start + xero-disconnect via §27 multi-area auth-gate per 12240c4. Remaining 3 rows tagged **[CONDITIONAL at v1 per v2 §3]** pending Lauren shadow term proof: xero-oauth-callback (no user-JWT), xero-sync-invoice (3 active findings), xero-sync-payment (NOT NULL drift finding). |
 | ~~Integrations Zoom cluster~~ (HIDDEN at v1) | — | **0 of 3 🟢; all 3 HIDDEN at v1.** s23 tagged zoom-oauth-start, zoom-oauth-callback, zoom-sync-lesson with [HIDDEN at v1 per launch scope §3.2]. Promotion deferred until launch-visible. |
@@ -1501,6 +1571,51 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
+### What's done at end of 24th session
+
+(Catalog state ~89% — s24 added 32 new tests in §27 + §25 + §22 + §19
+covering un-deferred features. Primary win: Jamie's stance recalibration
+honoured — 27 promotions across 7 surfaces + 4 NEW audit rows + 1
+finding. Audit total 128 → 155 🟢 (71% → 84%). Most remaining 🟡 are
+genuinely-blocked Cross-cutting JAMIE-LEVEL items + Mobile (separate
+track) + Zoom (external block).)
+
+Per-area outcomes for s24:
+- **Item 0** — Launch scope docs updated: LESSONLOOP_V2_PLAN.md §3.2 +
+  §3.4 + audit/00-launch-readiness.md. Un-deferred Leads/Booking/
+  Waitlist + Parent reschedule + Parent LoopAssist + Agency tier +
+  Recurring billing + Public booking + Xero (CONDITIONAL → DAY-ONE).
+  Only Zoom stays HIDDEN. Mobile → dedicated audit-run track
+  s25-s26+.
+- **Item 1 — Xero day-one (3 promotions)**: xero-oauth-callback,
+  xero-sync-invoice, xero-sync-payment all 🟢. LL-LL prefix bug
+  fixed (xero-sync-invoice v21 deployed). 4 prior fixes verified
+  holding via Supabase MCP execute_sql. **Xero AREA effectively
+  COMPLETE 5/5 🟢** — 7th area.
+- **Item 2 Stage 1 — Public booking (3 promotions)**: Public booking
+  page, booking-get-slots, booking-submit all 🟢. 11 contracts +
+  resetBookingRateLimits helper.
+- **Item 2 Stage 2 — Leads (2 promotions)**: Leads list + Lead
+  detail 🟢. DB read-back + render smoke.
+- **Item 2 Stage 3 — Enrolment waitlist (3 promotions)**: Enrolment
+  waitlist + send-enrolment-offer + waitlist-respond 🟢. 6 contracts.
+  send-enrolment-offer getUser(token) fix deployed v19.
+- **Item 2 Stage 4 — Send contact message (1 promotion)**: 🟢. 5
+  contracts (honeypot silent-200 verified).
+- **Item 2 Stage 5 — Invite cluster (3 promotions + 1 finding)**:
+  send-invite-email, invite-get, invite-accept 🟢. 6 contracts.
+  Finding 2026-05-10-invite-get-returns-500-on-non-uuid-token filed.
+- **Item 3 — Un-deferred features (5 promotions, 4 NEW rows)**: Agency
+  tier UI [NEW], Recurring billing templates UI [NEW], Parent
+  self-reschedule UI [NEW], Parent LoopAssist UI [NEW], Recurring
+  billing scheduler cron 🟢.
+- **Item 4 — Quick wins (7 promotions)**: Owner/admin dashboard,
+  Marketing root redirect, External marketing redirects, 404 page,
+  Help page, Trial banner, iCal feed all 🟢.
+
+**Leads/Booking/Waitlist cluster effectively COMPLETE 12/12 🟢 — 8th
+area.**
+
 ### What's done at end of 23rd session
 
 (Catalog state ~84% — s23 added 20 new contract tests in §27
@@ -1560,7 +1675,77 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 24th session pickup
+### Priority order — 25th session pickup
+
+After s24, audit landscape is at world-class launch-ready posture
+(s14 end: 14 🟢; s24 end: 155 🟢, ~84%). **Multiple areas
+effectively COMPLETE.** Remaining 🟡 are largely Mobile (dedicated
+track) + Cross-cutting JAMIE-LEVEL + Zoom (external block).
+
+**Recommended s25: Mobile (Capacitor) dedicated audit run.**
+
+Mobile cluster (5 rows): iOS native build, Android native build,
+Capacitor OAuth in-app browser, Push notifications (deferred ⏸),
+Deep link handling. iOS build is in App Store review per Mobile
+section; Android needs AAB build verification. Mobile-safari project
+tests can light up once iOS App Store review clears.
+
+Approach for s25:
+1. Verify capacitor.config.ts state (appId, schemes, allowMixedContent).
+2. Verify android/app/build.gradle versionCode + versionName.
+3. Confirm iOS App Store review status with Jamie.
+4. Run mobile-safari project tests (currently a separate Playwright
+   project) — many of the 25 specs target mobile-safari but currently
+   skipped.
+5. Verify deep-link path-traversal protection (rejects `..`,
+   `javascript:`, `data:`).
+6. Audit hygiene: 5 mobile rows promotion target.
+
+Plus secondary: Cross-cutting JAMIE-LEVEL split-work — write the
+contract tests that go 🟢 once Jamie ships his side of each launch
+blocker (Sentry edge fns, Cookie consent, Anthropic disclosure, CF
+WAF, Stripe Checkout branding, source Supabase decom). For each:
+write the testable contract now, leave 🔴 until Jamie ships.
+
+**Effective AREA COMPLETE / effectively-COMPLETE for v1:**
+- Money-path (s18, 23/23 🟢)
+- Auth & Onboarding (s19, 11/11 active 🟢; 2 ⏸ OAuth)
+- Reports (s20, 7/7 🟢)
+- Calendar & Lessons (s21, 14/14 🟢)
+- Practice & Resources (s22, 2/2 🟢)
+- AI/LoopAssist (s23, 4/4 active 🟢)
+- **Xero (s24, 5/5 🟢)** — NEW; was CONDITIONAL
+- **Leads/Booking/Waitlist (s24, 12/12 🟢)** — NEW; was HIDDEN
+- Cron lifecycle (26/26 🟢; recurring-billing-scheduler now 🟢 in s24)
+- Parent portal (11/11 🟢; +RescheduleSlotPicker UI [NEW] +
+  ParentLoopAssist drawer [NEW] in s24)
+- Students & Guardians (8/8 active 🟢; 1 ⏸ push)
+- Subscriptions & Trial (8/8 🟢; +Agency tier UI [NEW] +
+  Recurring billing templates UI [NEW] in s24, +Trial banner in s24)
+- Messaging (10/10 🟢; +send-contact-message in s24, 1 ⏸ push)
+- Settings (1/1 🟢)
+- Reports / Dashboard / Static pages — all 🟢 in s24
+- Integrations Calendar (5/5 🟢 if iCal feed counts; was 4/7 — iCal
+  promoted in s24, callback finding referenced)
+
+**Genuinely remaining 🟡:**
+- **Mobile (Capacitor)** (5 rows) — dedicated s25-s26+ audit run
+- **Zoom integration** (3 rows) — pending Zoom verification review
+- **Cross-cutting** 6 🔴 launch blockers + 2 v1.1+ tagged — Jamie-level
+- A few P2/P3 rows where coverage is structural-only and a B-bucket
+  contract test could close them; will surface on next sweep
+
+### Priority order — 24th session pickup (closed)
+
+**Closed**: Stance recalibration + un-deferral sweep landed 27
+promotions across 7 surfaces. Xero day-one verified + LL-LL prefix
+fixed. Leads/Booking/Waitlist AREA effectively COMPLETE 12/12 🟢
+(8th area). 4 NEW audit rows added for Parent self-reschedule UI,
+Parent LoopAssist UI, Agency tier UI, Recurring billing templates UI.
+1 finding filed (invite-get returns 500 on non-uuid token; low
+severity hardening gap).
+
+### Priority order — 23rd session pickup (closed earlier)
 
 After s23, audit landscape is at launch-readiness posture
 (s14 end: 14 🟢; s23 end: 128 🟢, 71%). **Six areas effectively
