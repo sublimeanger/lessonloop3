@@ -1,5 +1,7 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+**Last updated:** 2026-05-10 (after 28th-session — CLASS-BUG SWEEP + FLAKE TRIAGE + SENTRY CLOSEOUT. Track 1: systematically fixed the throw-into-outer-catch class-bug across **56 fns** in 8 cluster commits (messaging 8, money-path 18, continuation 6, booking 7, auth 2, calendar/xero 8, AI/CSV 5, misc 2). Pattern was the root cause of all 3 prior prod 5xx incidents. Added §27 parametrised contract test (12 sample fns across clusters, 12/12 pass). Closure finding documents the deferred 9 stripe-* response-body-leak fixes for s29. Track 2: filed 2 P3 findings for s27's intermittent DB-concurrency flakes (test-side, both have documented fix shape). Track 3: Sentry edge wrap +16 high-impact cron fns; coverage 67 → **83/103 (~81%)**. Audit unchanged at 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸ — s28 was hardening + coverage expansion. Baseline 643/3/122/5.2m — same 3 documented fails as s28 setup; no regressions from 72 deployed fns. 3 new findings filed.
+
 **Last updated:** 2026-05-10 (after 27th-session — PROD INCIDENT RESPONSE + SENTRY EXPANSION + DEPLOY HARDENING. Track 1: root-caused + fixed 2 prod 5xx events from s26 Sentry capture (send-bulk-message 500 + send-invoice-email 502 — both throw-into-outer-catch validation patterns, same shape as s24 send-message fix; Sentry issues JAVASCRIPT-REACT-6+7 resolved). Track 2: Sentry edge wrap +47 across 7 cluster commits (money-path remainder, term/continuation, messaging, booking/leads/invite, auth, calendar, Xero, misc); total 20 → 67/103 fns (~65%). Track 3: discovered Netlify→GitHub auto-deploy STILL broken (s26 50-commit-backlog clear was a one-off manual trigger; pipeline never repaired); built persistent build hook + scripts/check-deploy-sync.sh monitoring + 3rd finding for Jamie. Audit state unchanged at 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸ — s27 was hardening + coverage expansion, not promotion-eligible. Baseline 643/4/121/3.8m — better than expected 5 fails) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
@@ -1585,6 +1587,65 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
+### What's done at end of 28th session
+
+(Catalog state ~91% unchanged — s28 was hardening + coverage expansion,
+not promotion-eligible. Audit total: 167 🟢 / 6 🟡 / **0 🔴** / 10 ⏸ =
+~91%. Baseline 643/3/122/5.2m — same 3 documented fails as s27 setup;
+no regressions from 72 deployed fns this session.)
+
+Per-track outcomes for s28:
+
+- **Track 1 — class-bug sweep (THE priority, ~2h)**:
+  - Built an inventory script that classified all 103 edge fns by
+    body-parse vulnerability. Final classification:
+    * NEEDS-FIX (catch 500, no leak): 34
+    * NEEDS-FIX-PLUS-LEAK (catch 500 + msg leak): 11
+    * NOT-VULNERABLE-CATCH-4XX but actually leaks `error.message`: 9
+      stripe-* (deeper finding documented for s29 — these use
+      `throw new Error(...)` as intentional UX control flow; blanket
+      replacement would break parent-portal error messaging)
+    * UNCLASSIFIED but vulnerable to body-parse: 5 continuation
+    * ALREADY-FIXED-SHAPE (s27): 2
+    * NOT-VULNERABLE-PROPER-HANDLING (gold-standard pattern): 3 stripe-*
+    * NO-BODY-PARSE: 38
+  - Built `/tmp/classbug_fix.py` — paren-depth + string/regex-aware
+    auto-fixer. Successfully patched 53/56; 3 multi-line destructure
+    patterns fixed manually with same shape.
+  - Deployed all 56 in a single bulk `supabase functions deploy <list>`.
+  - 8 cluster commits: messaging (8), money-path (18), continuation
+    (6), booking/leads/invite (7), auth (2), calendar/xero (8), AI/CSV
+    (5), misc (2).
+  - Added §27 parametrised contract test (12 sample fns across all
+    clusters). 12/12 pass — confirms malformed JSON body returns 4xx
+    not 5xx.
+  - Closure finding `2026-05-10-throw-into-outer-catch-class-bug-
+    sweep.md`: documents full inventory, fix shape, smoke-test
+    results, deferred work.
+  - Smoke-tested 5/6 fns manually: send-message, send-parent-message,
+    stripe-create-payment-intent, calendar-disconnect, notify-internal-
+    message all return 400 on malformed body. booking-submit hit rate
+    limit (429) but the body-parse fix shape is verified across the
+    others.
+
+- **Track 2 — flake triage (~15 min, 0 fixes deployed)**:
+  - Both s27 DB-concurrency flakes (§13:461 draft count, §15.4 Payroll
+    seedLesson) are INTERMITTENT — neither fired in s28's baseline runs.
+  - Both filed as P3 OPEN findings with documented fix shape (test_id
+    filter for §13:461; test_id-derived minute offset for §15.4). Both
+    deferred to s29 — they're test-side races, not production risks.
+  - Root cause for both: parallel workers (workers=4) racing on shared
+    E2E_ORG_ID or teacher slot state. Real users aren't affected.
+
+- **Track 3 — Sentry coverage closeout (~30 min)**:
+  - Wrapped +16 high-impact cron fns with wrapEdgeFn via the s27
+    auto-script: trial × 5, auto-pay × 2, credit-expiry × 2, overdue ×
+    4, lifecycle × 2, streak × 1.
+  - Deployed via single bulk Supabase Management API call.
+  - Coverage: 67 → 83/103 (~81%). Remaining 20 are launch-cut (5),
+    Zoom HIDDEN (3), or low-priority cleanup/utility cron (12) — all
+    appropriate for v1.1+.
+
 ### What's done at end of 27th session
 
 (Catalog state ~91% unchanged — s27 was hardening + coverage
@@ -1922,7 +1983,48 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 28th session pickup
+### Priority order — 29th session pickup
+
+After s28, audit posture is unchanged at 167 🟢 / 6 🟡 / **0 🔴** /
+10 ⏸ = ~91%. s28 was hardening, not promotion. 3 new findings filed
+(1 closed: class-bug sweep; 2 open P3: intermittent DB-concurrency
+flakes for s29 follow-up).
+
+**Recommended s29: stripe-* response-body leak migration (9 fns) +
+flake resolution + post-deploy Sentry monitoring + iOS polish.**
+
+Agent should:
+1. **Monitor Sentry for new events from the s28 +72 deployed fns**
+   (56 class-bug fixes + 16 cron wraps). Most likely surface area:
+   - The 9 stripe-* fns with response-body leaks — if Lauren's shadow
+     term traffic hits them with valid auth + valid bodies but
+     unexpected business state (e.g., Stripe API failure), the raw
+     error.message leak would now be visible to her in browser
+     dev-tools.
+   - The 16 cron fns — Lauren shadow term will exercise these on
+     schedule; expect first-firing visibility within 24h.
+2. **stripe-* response-body leak migration** (deferred from s28):
+   migrate 9 stripe-* fns to the gold-standard pattern from
+   stripe-detach-payment-method (explicit allow-list of known business
+   messages → 4xx; everything else → generic 500). Per finding
+   `2026-05-10-throw-into-outer-catch-class-bug-sweep.md`. Priority
+   order:
+   - stripe-create-payment-intent (highest call rate)
+   - stripe-customer-portal, stripe-create-checkout
+   - stripe-process-refund, stripe-subscription-checkout
+   - stripe-billing-history, stripe-connect-onboard,
+     stripe-connect-status, stripe-verify-session
+3. **Fix the 2 s27 DB-concurrency flakes** (per findings):
+   - §13:461 draft count flake: add test_id filter to count query
+   - §15.4 Payroll seedLesson flake: add test_id-derived minute offset
+     to seedLesson's start_at
+4. **Polish iOS_RELEASE_CHECKLIST.md** based on any TestFlight
+   feedback Jamie has surfaced.
+5. **(Optional) low-priority cron Sentry wrap**: the 12 remaining
+   cleanup/utility cron fns. Defer if Lauren shadow term is producing
+   useful signal from the existing 83/103 coverage.
+
+### Priority order — 28th session pickup (closed)
 
 After s27, audit posture is unchanged at 167 🟢 / 6 🟡 / **0 🔴** /
 10 ⏸ = ~91%. s27 was hardening, not promotion. 3 findings filed
