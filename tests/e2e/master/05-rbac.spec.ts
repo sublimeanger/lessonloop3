@@ -144,22 +144,74 @@ test.describe('RBAC — Settings degradation', () => {
 });
 
 test.describe('§5.4 — Email verification gate', () => {
-  // s29: skip until test redesign (Option C from finding).
-  // FLOW is production-correct (verified s29 via RouteGuard.tsx:150-153 +
-  // manual smoke test): user.email_confirmed_at null + requireAuth =>
-  // Navigate to /verify-email. The TEST is broken because s17 auth
-  // tightening (enable_email_confirmations=true) makes password-grant
-  // for an unconfirmed user impossible — signInAndWriteStorageState fails
-  // at HTTP 400 email_not_confirmed before the route guard can be exercised.
-  //
-  // Test redesign deferred to s30. See:
-  // audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md
-  // Option C (UI-driven signup → assert /verify-email redirect) is the
-  // recommended path. ~1-2h implementation in s30.
-  test.skip('unconfirmed email user → redirected to /verify-email on protected route', async ({ page: _page }) => {
-    // Test body retained for s30 reference — flow validation in production
-    // works correctly; only the test's signInAndWriteStorageState shortcut
-    // is incompatible with current auth config.
+  // s30 redesign: previous design (create user with email_confirm=false,
+  // then password-grant) hit HTTP 400 email_not_confirmed since the s17
+  // auth tightening. New design:
+  //   1. Create user CONFIRMED so password-grant works.
+  //   2. Sign in → get a real session JWT.
+  //   3. Flip email_confirmed_at → null both in the DB (via
+  //      _e2e_set_user_email_confirmed service-role RPC, safety-guarded
+  //      by @test.lessonloop.net) AND in the storage state's cached
+  //      session.user (since AuthContext.tsx reads session.user, not a
+  //      live getUser() call).
+  //   4. Load patched storage state into Playwright. JWT remains valid.
+  //   5. Navigate to /dashboard. RouteGuard.tsx:150 sees
+  //      user.email_confirmed_at=null && requireAuth → Navigate to
+  //      /verify-email.
+  test('unconfirmed email user → redirected to /verify-email on protected route', async ({ page }) => {
+    const {
+      createThrowawayUser,
+      deleteThrowawayUser,
+      signInAndWriteStorageState,
+      setUserEmailConfirmed,
+    } = await import('../supabase-admin');
+    const fs = await import('fs');
+
+    let userId = '';
+    let storagePath = '';
+    try {
+      // 1. Create user CONFIRMED (so step 2 password-grant succeeds).
+      const u = createThrowawayUser({ emailPrefix: 'e2e-unconf', emailConfirmed: true });
+      userId = u.userId;
+
+      // 2. Sign in → get session JWT.
+      storagePath = signInAndWriteStorageState(u.email, u.password);
+
+      // 3a. Flip email_confirmed_at → null in DB (for any live getUser()).
+      setUserEmailConfirmed(userId, false);
+
+      // 3b. Patch the cached session.user in storage state — AuthContext
+      //     populates `user` from session.user (cached at sign-in), NOT
+      //     from a live getUser() call.
+      const state = JSON.parse(fs.readFileSync(storagePath, 'utf-8'));
+      for (const origin of state.origins || []) {
+        for (const kv of origin.localStorage || []) {
+          if (kv.name.includes('auth-token')) {
+            const val = JSON.parse(kv.value);
+            if (val.user) val.user.email_confirmed_at = null;
+            if (val.user) val.user.confirmed_at = null;
+            kv.value = JSON.stringify(val);
+          }
+        }
+      }
+      fs.writeFileSync(storagePath, JSON.stringify(state));
+
+      // 4. Load patched session into a Playwright context.
+      const ctx = await page.context().browser()!.newContext({ storageState: storagePath });
+      const newPage = await ctx.newPage();
+      await newPage.goto('/dashboard');
+      await newPage.waitForTimeout(3000);
+
+      // 5. RouteGuard should redirect to /verify-email.
+      expect(
+        newPage.url(),
+        `unconfirmed user (${u.email}) should be redirected to /verify-email but landed on ${newPage.url()}`,
+      ).toMatch(/\/verify-email/);
+      await ctx.close();
+    } finally {
+      if (storagePath && fs.existsSync(storagePath)) fs.unlinkSync(storagePath);
+      if (userId) deleteThrowawayUser(userId);
+    }
   });
 });
 

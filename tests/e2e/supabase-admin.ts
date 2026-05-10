@@ -694,6 +694,44 @@ export function createThrowawayUser(opts: ThrowawayUserOpts = {}): {
   }
 }
 
+/**
+ * Flip `auth.users.email_confirmed_at` for an e2e test user via the
+ * `_e2e_set_user_email_confirmed` service-role RPC (added s30 for the
+ * §5.4 RouteGuard test). Pass `confirmed=false` to unconfirm a
+ * previously-confirmed user — the JWT they signed in with remains valid,
+ * but RouteGuard now treats them as unconfirmed and redirects to
+ * /verify-email.
+ *
+ * Safety: the underlying RPC refuses any user whose email doesn't end
+ * `@test.lessonloop.net`. Service-role only.
+ */
+export function setUserEmailConfirmed(userId: string, confirmed: boolean): void {
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('setUserEmailConfirmed: E2E_SUPABASE_SERVICE_ROLE_KEY required');
+  }
+  const payloadFile = `/tmp/sb-set-ec-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+  fs.writeFileSync(payloadFile, JSON.stringify({ _user_id: userId, _confirmed: confirmed }));
+  try {
+    const result = execSync(
+      `curl -s -X POST "${SUPABASE_URL}/rest/v1/rpc/_e2e_set_user_email_confirmed" ` +
+        `-H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" ` +
+        `-H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" ` +
+        `-H "Content-Type: application/json" ` +
+        `-d @${payloadFile}`,
+      { encoding: 'utf-8', timeout: 15_000 }
+    );
+    const parsed = JSON.parse(result);
+    if (parsed?.message && parsed?.code) {
+      throw new Error(`setUserEmailConfirmed failed: ${parsed.message}`);
+    }
+    if (parsed?.email_confirmed_at === undefined) {
+      throw new Error(`setUserEmailConfirmed unexpected response: ${result.slice(0, 200)}`);
+    }
+  } finally {
+    try { fs.unlinkSync(payloadFile); } catch { /* ignore */ }
+  }
+}
+
 /** Delete a throwaway user via admin API. Idempotent. */
 export function deleteThrowawayUser(userId: string): void {
   if (!SUPABASE_SERVICE_ROLE_KEY) return;

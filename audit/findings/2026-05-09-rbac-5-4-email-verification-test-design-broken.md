@@ -1,9 +1,19 @@
 # §5.4 email-verification gate test — fundamentally broken design
 
 **Date:** 2026-05-09 (during session 9 Item 5 root-cause)
-**Severity:** P3 (downgraded s29) — single test file, no production impact. **FLOW manually verified working at s29** (RouteGuard.tsx:150-153 — `user && !user.email_confirmed_at && requireAuth` → `Navigate to "/verify-email"`). Only the test's `signInAndWriteStorageState` shortcut is incompatible with the s17 auth tightening.
-**Status:** OPEN — test skipped at s29 to remove baseline noise; redesign per Option C deferred to s30 (~1-2h).
-**s29 verification:** FLOW NOT broken. Production route-guard logic exists and is correct per code review. Test was skipped (not deleted) to clear baseline failure while preserving the eventual redesign target.
+**Severity:** P3 (downgraded s29) — single test file, no production impact. **FLOW manually verified working at s29** (RouteGuard.tsx:150-153 — `user && !user.email_confirmed_at && requireAuth` → `Navigate to "/verify-email"`).
+**Status:** CLOSED 2026-05-10 s30 — test redesigned + 3/3 stable runs at workers=4.
+**Closure rationale (s30 redesign):**
+
+Two-pronged unconfirm strategy:
+
+1. **DB flip via service-role RPC**: added migration `20260521100000_e2e_set_email_confirmed.sql` introducing `public._e2e_set_user_email_confirmed(_user_id uuid, _confirmed boolean)`. SECURITY DEFINER + service-role only + safety guard rejecting any user whose email doesn't end `@test.lessonloop.net`. Cannot affect real users even if service-role leaks. Exposed to test runtime via `setUserEmailConfirmed(userId, confirmed)` helper in `tests/e2e/supabase-admin.ts`.
+
+2. **Storage-state cached-session patch**: AuthContext.tsx:234 populates `user` from `session.user` (cached at sign-in time), NOT from a live `getUser()` call. So the DB flip alone wouldn't change what RouteGuard sees on initial mount. Test now patches the storage state JSON's cached `session.user.email_confirmed_at` to null after signInAndWriteStorageState, before loading into Playwright context.
+
+Combined: both the DB row (defense for any live getUser refresh) and the cached session.user (what RouteGuard actually reads on mount) are NULL. RouteGuard sees user && !user.email_confirmed_at && requireAuth → Navigate to /verify-email, as designed.
+
+3/3 consecutive runs at workers=4 pass. Test re-enabled (no longer `.skip`).
 
 ## Symptom
 
