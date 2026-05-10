@@ -1,6 +1,6 @@
 # LessonLoop production-readiness — MASTER tracker
 
-**Last updated:** 2026-05-10 (after 11th-session — §16 cluster +7 tests + send-bulk-message getUser fix + drift saga closed as phantom)
+**Last updated:** 2026-05-10 (after 12th-session — vault seeded + streak-notification x-cron-secret fix + getUser sweep 3/30 + §17.4 e2e delivery test + §27 RLS test + global-setup ESM fix)
 **Owner:** Jamie McKaye
 **Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
 
@@ -96,7 +96,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | CSV import (execute) | supabase/functions/csv-import-execute | P1 | 🟡 | 2026-05-09 | bulk insert into students/teachers/instruments/org_memberships; deterministic (no AI); [E2E real per a482407 — §10.7 5 tests: dry-run validation, execute + undo round-trip, malformed row, CSV duplicates, missing first_name] [PROMOTABLE 🟡→🟢] |
 | Guardian batch invite | supabase/functions/batch-invite-guardians | P1 | 🟡 | 2026-05-08 | JWT auth; structural ok; bulk send via Resend |
 | Family/guardian linking | src/pages/Students.tsx panels | P1 | 🟡 | 2026-05-08 | direct table queries on `student_guardians` + `guardians` with RLS scope (admin r/w/d); structural ok |
-| Streak notification | supabase/functions/streak-notification | P3 | 🟡 | 2026-05-08 | cron-only via `validateCronAuth`; structural ok |
+| Streak notification | supabase/functions/streak-notification | P3 | 🟢 | 2026-05-10 | cron-only via `validateCronAuth(x-cron-secret)`. Session 12 closure: vault seeded with SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (was 7-session deferred). Migration `20260519100000_notify_streak_milestone_x_cron_secret.sql` fixes `_notify_streak_milestone` to send `x-cron-secret` header (prior versions sent only `Authorization: Bearer ...` which the fn's validateCronAuth always 401'd — silent revenue/engagement leak on every milestone since deploy). [E2E real per session 12 §17.4 — milestone trigger end-to-end: insert 3 consecutive practice_logs → audit_log row commits + net._http_response shows 200 OK from streak-notification with `{success:true, streak:3, milestone:"Building Momentum!"}`]. See audit/findings/2026-05-10-streak-notification-x-cron-secret-mismatch.md. [PROMOTABLE 🟢] |
 
 ## Teachers & Payroll
 
@@ -114,7 +114,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Invoices list | src/pages/Invoices.tsx | P0 | 🟡 | 2026-05-09 | invoices: 6 RLS policies (admin/finance r, parent-via-guardian r). No USING(true). [E2E real per d7bc927 §13 — 10 tests covering filter/status/role-gate]. |
 | Invoice detail / line edit | src/pages/InvoiceDetail.tsx | P0 | 🟡 | 2026-05-09 | invoice_items: 5 RLS policies. CHECK constraints on prices/amounts/quantities. [E2E real per d7bc927 §14 — 12 tests covering line items / status transitions / patch trigger / send-invoice-email round-trip]. |
 | Invoice PDF generation | supabase/functions/generate-invoice-pdf | P0 | 🟡 | 2026-05-08 | service-role-only fn (verify_jwt=false post-Phase-5); caches in invoice-pdfs bucket; signed URL response or inline base64. End-to-end render not yet exercised on dest. |
-| Send invoice email (parent) | supabase/functions/send-invoice-email | P0 | 🟡 | 2026-05-08 | User JWT + rate limit + Resend SMTP (smtp.resend.com → noreply@lessonloop.net configured). Awaits real send test. |
+| Send invoice email (parent) | supabase/functions/send-invoice-email | P0 | 🟡 | 2026-05-10 | User JWT + rate limit + Resend SMTP (smtp.resend.com → noreply@lessonloop.net configured). Session 12: getUser(token) fix deployed (was getUser() no-args → 401 on legacy JWT sessions; Lauren-paramount per v2 §3.1). See audit/findings/2026-05-10-getuser-noargs-sweep.md. Awaits real send test. |
 | Send invoice email (internal copy) | supabase/functions/send-invoice-email-internal | P1 | 🟡 | 2026-05-08 | service-role-only (Phase 5 reconfigured); Awaits browser-driven test |
 | Stripe checkout (one-off invoice payment) | supabase/functions/stripe-create-checkout | P0 | 🟡 | 2026-05-08 | User JWT + rate-limit + invoiceId required. Confirmed via 6.A.2 browser test on subscription path; one-off-invoice path still untested. Branding gap noted in 00-launch-readiness. |
 | Stripe payment intent (custom) | supabase/functions/stripe-create-payment-intent | P0 | 🟡 | 2026-05-08 | JWT auth + rate limit; standard Stripe@14.21 client; structural ok |
@@ -184,7 +184,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Send parent message | supabase/functions/send-parent-message | P1 | 🟡 | 2026-05-08 | JWT auth + rate limit; structural ok |
 | Send parent enquiry (public form) | supabase/functions/send-parent-enquiry | P1 | 🟡 | 2026-05-08 | JWT auth + rate limit (public form auth via Bearer token from Supabase anon role); structural ok |
 | Send contact message (marketing) | supabase/functions/send-contact-message | P2 | 🟡 | 2026-05-08 | public endpoint with honeypot field (`website`) + IP rate limit (5/hr); structural ok |
-| Internal message notify | supabase/functions/notify-internal-message | P1 | 🟡 | 2026-05-08 | JWT auth; structural ok |
+| Internal message notify | supabase/functions/notify-internal-message | P1 | 🟡 | 2026-05-10 | JWT auth; structural ok. Session 12: getUser(token) fix deployed (was getUser() no-args → 401 on legacy JWT sessions). See audit/findings/2026-05-10-getuser-noargs-sweep.md. |
 | Mark messages read | supabase/functions/mark-messages-read | P2 | 🟡 | 2026-05-08 | JWT auth + rate limit; structural ok |
 | Push notification | supabase/functions/send-push | P2 | ⏸ | — | post-launch |
 
@@ -200,7 +200,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Enrolment waitlist | src/pages/EnrolmentWaitlistPage.tsx | P1 | 🟡 | 2026-05-08 | UI for staff to manage `enrolment_waitlist` rows; standard RLS-scoped |
 | Send enrolment offer | supabase/functions/send-enrolment-offer | P1 | 🟡 | 2026-05-08 | JWT auth; structural ok |
 | Waitlist respond | supabase/functions/waitlist-respond | P1 | 🟡 | 2026-05-08 | JWT-tokenised public endpoint (signed with `WAITLIST_JWT_SECRET` via jose@5.2); HTML response page (no JSON); parent clicks email link; status guard prevents replay |
-| Send cancellation notification | supabase/functions/send-cancellation-notification | P1 | 🟡 | 2026-05-08 | JWT auth; structural ok |
+| Send cancellation notification | supabase/functions/send-cancellation-notification | P1 | 🟡 | 2026-05-10 | JWT auth; structural ok. Session 12: getUser(token) fix deployed (was getUser() no-args → 401 on legacy JWT sessions). See audit/findings/2026-05-10-getuser-noargs-sweep.md. |
 | Send invite email (staff/parent) | supabase/functions/send-invite-email | P0 | 🟡 | 2026-05-08 | JWT auth; account-creation path; calls Resend with branded template |
 | Invite get (token lookup) | supabase/functions/invite-get | P0 | 🟡 | 2026-05-08 | public endpoint reading token from request body; returns invite metadata for AcceptInvite UI; structural ok |
 | Invite accept | supabase/functions/invite-accept | P0 | 🟡 | 2026-05-08 | (same as auth-ancillaries entry above) JWT + token validation + email-match check + role allowlist + idempotent guardian/teacher creation |

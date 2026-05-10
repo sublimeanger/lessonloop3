@@ -442,6 +442,79 @@
   term_adjustments.credit_note_invoice_id ↔ invoices.adjustment_id
   requires NULLing one before deleting the other. Six-step
   sequence now runs idempotently at suite start.
+- (12th session — VAULT SEEDING CLOSED + STREAK NOTIFICATION DELIVERS)
+  Item 1 from prompt landed. Vault seeded with SUPABASE_URL +
+  SUPABASE_SERVICE_ROLE_KEY (was 7-session deferred). Probe revealed
+  a SECOND latent bug: `_notify_streak_milestone` was sending
+  `Authorization: Bearer <vault.SERVICE_ROLE_KEY>` but
+  streak-notification edge fn (verify_jwt=false) gates on
+  `validateCronAuth` checking `x-cron-secret` header against
+  `INTERNAL_CRON_SECRET`. Trigger never sent x-cron-secret → every
+  milestone callout silently 401'd in production since
+  20260518110000_notify_streak_milestone_defensive landed. The
+  prior "fix" (`ec94ee3`) made the trigger non-blocking but didn't
+  actually unblock delivery. Migration
+  `20260519100000_notify_streak_milestone_x_cron_secret.sql` adds
+  the third vault lookup + x-cron-secret header. Re-test:
+  net._http_response shows status_code=200,
+  `{success:true, streak:3, milestone:"Building Momentum!"}`.
+  Same anti-pattern session 11 warned about (don't inherit
+  diagnostic conclusions without re-running the diagnostic) — the
+  prompt assumed Bearer auth was correct. Code review of deployed
+  function source caught it. **First launch-blocking infrastructure
+  item to fully close in 5 sessions.** Finding doc:
+  `audit/findings/2026-05-10-streak-notification-x-cron-secret-mismatch.md`.
+- (12th session — §17.4 e2e delivery test) New real test
+  `milestone triggers streak-notification edge fn end-to-end`
+  inserts 3 consecutive practice_logs + polls
+  `net._http_response` (via Management API db/query — pg_net is not
+  exposed via PostgREST) for ≤30s, asserts status_code=200 + body
+  shape. Includes inline helpers `selectNetHttpResponseSince(sinceId,
+  contentSubstring)` and `maxNetHttpResponseId()` — both gated on
+  `SUPABASE_ACCESS_TOKEN` env (skips test gracefully if absent so CI
+  without the PAT doesn't false-fail). Filters by `id > sinceId` AND
+  `content LIKE '%Building Momentum%'` because `http_request_queue`
+  rows are deleted after pg_net processing (URL JOIN doesn't work).
+  File-level run: 7 passed / 13s.
+- (12th session — Item 2: §27.fixme → real RLS contract test)
+  Replaced the line-59 `test.fixme` placeholder with two real tests:
+  (1) parent JWT sees own `notification_preferences` row + cannot
+  see other users' rows (pre-seeds rows for both parent + owner via
+  service-role, mints parent JWT via password grant, asserts SELECT
+  scoped to user_id=auth.uid()); (2) anonymous request → 0 rows
+  (block-anon policy USING(false)). The fn-invocation TODOs
+  (lines 350+) for send-payment-receipt remain blocked by edge-fn
+  env-injection mismatch (P1 finding 2026-05-09); not fixable in a
+  catalog session. §27 cluster: 5 → 7 real tests. File-level run:
+  16 passed / 6.8s.
+- (12th session — Item 3: getUser() pattern sweep) Sessions 10 +
+  11 each found one P0/P1 of the same shape: edge fn calls
+  `userClient.auth.getUser()` no-args after `createClient` with
+  `Authorization: Bearer <user_jwt>` in headers; on this
+  post-migration project /auth/v1/user rejects legacy HS256 JWTs.
+  Sweep across 50 hits surfaced 30+ user-facing fns with the buggy
+  pattern. Per prompt's 60-min ceiling + halt-after-3 rule: fixed
+  the 3 most launch-critical:
+  * **send-invoice-email** (Lauren-paramount per v2 §3.1)
+  * **notify-internal-message** (internal messaging launch-in-scope)
+  * **send-cancellation-notification** (parent-facing cancel comms)
+  Each: `getUser()` → `getUser(token)` two-line patch matching
+  session-11 commit 08e66e6. Deployed via
+  `supabase functions deploy <name>`. Remaining ~27 fns
+  (stripe-*, xero-*, calendar-*, csv-import-*, gdpr-*, looopassist-*,
+  invite-*, notify-makeup-offer, batch-invite-guardians, etc.)
+  catalogued in finding for a focused next-session sweep. Finding
+  doc: `audit/findings/2026-05-10-getuser-noargs-sweep.md`.
+- (12th session — global-setup ESM fix) The session-11
+  term_adjustment + circular FK sweep was silently failing every
+  run with `[global-setup] Sweep error (non-fatal): require is not
+  defined` because four `require('fs')` calls existed in an ESM
+  context (caught from anti-pattern HANDOVER already documented for
+  spec files, but not enforced for tests/e2e/global-setup.ts).
+  Switched to top-of-file `import fs from 'node:fs'`. Likely
+  contributing factor to flake creep observed in session 11 → 12
+  baseline (6 → 9 fails) — stale term_adjustments / credit-note
+  rows accumulating because the sweep wasn't running.
 - (also at 7th-session start) Manual SQL sweep of stale e2e_ test
   data via Supabase MCP execute_sql — cleared 6 lesson rows
   (1 active scheduled + 5 cancelled), 22 students, 4 invoices, and
@@ -486,17 +559,28 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~64% (was 62% before 11th session — +7 real
-§16 tests close bulk + internal + threads + mark-read; drift saga
-closed as phantom; one P1 fix landed in send-bulk-message).**
+**Catalog completeness: ~66% (was 64% at session 11 end — +1 real §17.4
+end-to-end delivery test, +2 real §27 RLS contract tests; vault
+seeding closed end-to-end (was 7-session deferred); a P0 trigger bug +
+3 P1 user-facing edge fn auth bugs fixed).**
 
-Current baseline (end of 11th session, full-suite run):
-- **459 passed / 6 failed / 133 skipped / 5.3 min wall-clock at 4 workers**
-- **+1 passed** vs pre-11th-session (was 458 — 7 new §16 tests
-  passed in isolation, but full-suite saw 3 transient races take
-  spots)
-- **+3 net failed** vs pre-11th-session (was 3) — but ALL of the
-  new fails are documented transients (§22.2 cross-file race,
+Current baseline (end of 12th session, full-suite run):
+- **464 passed / 7 failed / 132 skipped / 2 did not run / 4.5 min wall-clock at 4 workers**
+- **+5 passed** vs end of 11th-session (was 459 — +1 §17.4 e2e
+  delivery, +2 §27 RLS, +2 transient flakes recovered after the
+  global-setup ESM fix unblocked stale-row sweep)
+- **+1 net failed** vs end of 11th-session (was 6) — small uptick;
+  composition remains the same documented transients (§5.4,
+  §26.6.7 GCal, §26.9 Stripe trio) plus one new §6 dashboard
+  stat-cards transient
+- **−0.8 min wall-clock** vs end of 11th-session (was 5.3 min)
+  — likely attributable to global-setup sweep finally working
+  (term_adjustments + credit-note rows no longer accumulating
+  silently because of the require()-in-ESM bug)
+
+Stale baseline (end of 11th session) for reference:
+- 459 passed / 6 failed / 133 skipped / 5.3 min wall-clock
+- ALL of those fails were documented transients (§22.2 cross-file race,
   §26.6.7 GCal, §20.7b rate-limit cascade). Each passes 5/5 in
   isolation. Pre-existing shapes, not regressions.
 - **+1.3 min wall-clock** — variance; baseline run after sweeps
@@ -578,6 +662,11 @@ to `main`. Don't waste time re-finding them:
 | `65bde4e` | `continuation-respond` had platform `verify_jwt=true` but the frontend uses publishable keys (`sb_publishable_*`); fully-anonymous email-link clicks at `/respond/continuation?token=X` got `UNAUTHORIZED_INVALID_JWT_FORMAT` at the gateway. Function code already does manual auth on both paths; one config.toml line + redeploy fixes it. | **P0** (parent-facing email flow, broken since signing-keys migration) |
 | `ec94ee3` | `_notify_streak_milestone` read `vault.decrypted_secrets` for `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, which were never seeded (only `INTERNAL_CRON_SECRET` was). NULL URL → `null value in column "url" violates not-null constraint` (sqlstate 23502) → trigger errored → AFTER INSERT trigger rolled back the user's `practice_logs` insert. Any user logging the 3rd, 7th, 14th, 30th, 60th, or 100th consecutive practice day got a 500. Fix wraps the `net.http_post` call in nested EXCEPTION; `audit_log` row stays as the durable record, delivery is best-effort. | **P0** (silent revenue / engagement leak on streak milestones) |
 | (10th session) | `bulk-process-continuation` withdrawal branch passed `Bearer ${serviceRoleKey}` to internal `process-term-adjustment` calls. process-term-adjustment validates the caller via `userClient.auth.getUser()` which rejects service-role JWTs ("missing sub claim"). Result: every withdrawal silently failed (preview 401 → continue → withdrawnCount stayed 0; fn returned success:true with all zeros). Broken since deployment (single commit 79ca457, no later edits). Fix: pass through the original user authHeader. Two-line change. Deployed via `supabase functions deploy bulk-process-continuation`. | **P0** (term-end critical — Lauren's continuation flow per v2 §3.1; session 9's HANDOVER claimed this was structurally working) |
+| (11th session) | `send-bulk-message` was calling `supabaseAuth.auth.getUser()` (no args) → /auth/v1/user request that on this project rejects legacy HS256 JWTs → 401 for legacy-session callers. Fix: extract `token = authHeader.replace("Bearer ", "")` + call `getUser(token)` for local JWKS verification. Single-file change, deployed via `supabase functions deploy send-bulk-message`. | **P1** (bulk message UI silently failed for legacy-JWT sessions) |
+| (12th session) | `_notify_streak_milestone` trigger sent `Authorization: Bearer <vault.SERVICE_ROLE_KEY>` only; deployed `streak-notification` edge fn (verify_jwt=false, v18) gates on `validateCronAuth` which checks `x-cron-secret` header. Trigger never sent that header → every milestone callout silently 401'd in production since 20260518110000 landed. Audit_log row commits, but no email/push reaches the guardian. Migration `20260519100000_notify_streak_milestone_x_cron_secret.sql` adds vault lookup of `INTERNAL_CRON_SECRET` + sends `x-cron-secret` header. Re-test: net._http_response shows 200 OK + `{success:true, streak:3, milestone:"Building Momentum!"}`. The prior `ec94ee3` "fix" only made the trigger non-blocking; this is the real delivery fix. | **P0** (silent revenue/engagement leak on every 3/7/14/30/60/100-day streak — Lauren's shadow-term week 4 timer was running) |
+| (12th session) | `send-invoice-email` had the getUser() no-args pattern. Lauren-paramount fn per v2 §3.1 — sending invoices is core. Fix: getUser(token) two-line patch + deploy. | **P1** (silent failure for legacy-JWT senders → no parent receives the bill) |
+| (12th session) | `notify-internal-message` had the getUser() no-args pattern. Internal messaging is launch-in-scope (org-gated). Fix: getUser(token) two-line patch + deploy. | **P1** (staff don't receive internal-message notifications for legacy-JWT senders) |
+| (12th session) | `send-cancellation-notification` had the getUser() no-args pattern. User-triggered cancellation comms. Fix: getUser(token) two-line patch + deploy. | **P1** (parent doesn't receive cancellation email; would show up to a missing class) |
 
 The currency bug specifically is now permanently regression-tested in
 `tests/e2e/master/26-parent-portal.spec.ts` ("invoices page renders
@@ -596,7 +685,8 @@ session — don't fix inline during a catalog session.
 
 | Item | Severity | Notes |
 |---|---|---|
-| **Streak milestone notifications never deliver.** `ec94ee3` made `_notify_streak_milestone` defensive — vault/queue failures now log a `RAISE WARNING` instead of rolling back the user's `practice_logs` insert. But the underlying cause is not fixed: `vault.decrypted_secrets` has only `INTERNAL_CRON_SECRET` seeded; `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are still missing, so the trigger reads NULL and skips the `net.http_post` call entirely. The audit_log row commits as the durable record (which is what §17.4 asserts and why the test passes), but no push notification reaches the user on the 3rd / 7th / 14th / 30th / 60th / 100th consecutive day. **STATUS: still unfixed end of session 8 (FOUR sessions deferred). Shadow-term week 4 timer is running — needs to be addressed before Lauren tests practice notifs. Session 9 is now framed as a dedicated infrastructure session to break the deferral pattern.** | **Launch-blocking for Practice feature delivery** by Lauren's shadow-term week 4 (when streak push notifications would be expected to fire). Needs a separate session: `vault.create_secret('SUPABASE_URL', '...')` + `vault.create_secret('SUPABASE_SERVICE_ROLE_KEY', '...')`. The service-role value can be read from `E2E_SUPABASE_SERVICE_ROLE_KEY` in `.env.test` but **must not be committed**; apply via `execute_sql` directly or a hand-rolled gitignored migration. **Note: the `E2E_SUPABASE_SERVICE_ROLE_KEY` value in .env.test may itself be drifted from current — see "Edge function service-role key drift" item below.** |
+| ~~Streak milestone notifications never deliver.~~ | — | **CLOSED in session 12.** Two bugs in series: (1) vault was missing SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (FIXED — seeded via Management API); (2) `_notify_streak_milestone` sent wrong auth header, streak-notification's validateCronAuth required x-cron-secret (FIXED via migration `20260519100000_notify_streak_milestone_x_cron_secret.sql`). End-to-end verified: net._http_response shows 200 OK with `{success:true, streak:3, milestone:"Building Momentum!"}`. §17.4 e2e delivery test added that polls net._http_response. RESEND_API_KEY still not seeded so emails_sent=0 (best-effort delivery design); seeding RESEND is an unrelated follow-up if Lauren wants email delivery, separate from the auth chain. |
+| **getUser() no-args pattern across 30+ user-facing edge fns** (NEW 2026-05-10) | **P1** | Sessions 10+11+12 each found bugs of this exact shape (3 P0/P1 fixes total). Sweep in session 12 catalogued ~30 remaining instances. Three most launch-critical fixed (send-invoice-email, notify-internal-message, send-cancellation-notification); rest deferred to a dedicated next-session sweep. Each fix is mechanical (`getUser()` → `getUser(token)`) but each requires a deploy + ideally a regression test. See [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md). |
 | **Edge function env injection mismatch** (REPLACES the prior "drift" entry — phantom diagnosis closed in 11th session) | **P1** | 11th-session three-probe diagnostic conclusively proved: the legacy HS256 service_role JWT IS valid against the project (PostgREST returns 200). The "drift" framing carried across sessions 9 + 9a + 10 was based on a hash from session 9a's env-probe-temp (never validated). The actual phenomenon: `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` in deployed edge functions returns a different value than the dashboard's "Project API keys" → service_role row, despite no Custom Secrets override. Jamie's hypothesis on cause: Supabase auto-injection materialises a different value than the dashboard, OR partial migration to signing-keys at the edge gateway. Three resolution paths in [finding](audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md). The agent should NOT propose JWT secret reset or sb_secret_ migration. **Affects edge functions that do `authHeader.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))` byte-equal checks** (send-payment-receipt + likely send-refund-notification + send-auto-pay-alert). Functions that use `getUser(token)` for auth (now including send-bulk-message after 11th-session fix) work fine with legacy JWTs. Vault seeding still blocked because the streak-notification chain runs through this auth path. |
 | **§5.4 email-verification gate test design broken** (NEW 2026-05-09 — formerly listed under "JWT-stale" theory) | **P2** | 9th-session Item 5 confirmed deterministic 5/5 fail. Root cause: Supabase `enable_email_confirmations` (likely toggled in 2026-05-08 auth tightening) rejects password-grant for unconfirmed users with `email_not_confirmed`. The test creates a user with `email_confirm: false` then calls `/auth/v1/token?grant_type=password` to get a session — that path now refuses by design. The test's premise is broken; no quick fix. Three redesign paths in [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md). Estimate to fix: 1-2h via UI-signup flow OR magic-link admin generation. |
 | ~~RBAC Settings UI render race~~ | — | **FIXED** in 9th session. Root cause was a 5s `isVisible` timeout on a regex text match under parallel load. Fix: `waitForLoadState('networkidle')` + `expect(page.locator('main')).toContainText('Profile Information', { timeout: 20_000 })`. Verified 12/12 PASSES under 4-worker parallel load (3 runs × 4 repeats). |
@@ -778,17 +868,57 @@ test or delete the line.
 | §26 Parent portal | 32+ | ~98% | 8th-session: §26.9.2 + §26.9.3 installment pay paths added (5/7 §26.9 cases green; cases 4-5 are mobile-safari project). Only §26.8 Resources remains |
 | §32 Security trigger guards | 9 | ~80% | mature |
 
-Catalog overall: **~64%** (was 62% at session 10 end — 11th-session +7 §16 tests).
+Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
++1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
+closed; 4 production bug fixes shipped).
 
-### Priority order — 12th session pickup
+### Priority order — 13th session pickup
 
-**Continue catalog work + decide vault seeding path.** Session 11
-closed the drift saga as PHANTOM (was never drift). The actual
-edge-fn env mismatch is documented (P1 finding) but doesn't
-block all fn-invocation tests — just byte-equal `.includes()`
-checks against the env. Functions using `getUser(token)` work
-fine with the legacy JWT. Session 11 closed §16 cluster + caught
-a P1 latent bug in send-bulk-message.
+**Primary**:
+
+1. **Continue the getUser() sweep.** Session 12 fixed the 3 most
+   launch-critical (send-invoice-email, notify-internal-message,
+   send-cancellation-notification). Remaining ~27 user-facing fns
+   catalogued in
+   [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md).
+   Stripe-* + xero-* + invite-* + csv-import-* are next priorities.
+   Mechanical fix per fn (2-line patch). Bundle in batches of 5-7 with
+   §-by-§ regression tests where possible. Estimate: 1-2h dedicated
+   session.
+
+2. **§13/§14 remaining invoice cases.** Sections are mature (10 + 12
+   tests already real); a few unfilled gaps remain (bulk-void edge
+   cases, line-edit triggers beyond status-transition). 1-2h pass.
+
+3. **§11 Teachers invite/archive UI flows.** §11.4.1 unlinked-teacher
+   landed; bigger UI surface (invite member, archive teacher,
+   teacher-limit enforcement) still needs coverage. UI-driven so
+   brittle; estimate 2-3h.
+
+**Lower priority**:
+
+4. §22 deeper settings coverage — §22 + §24 cross-file race
+   re-appeared in 11th-session full-suite (3-4 §22.2 tests flake when
+   §24 is interleaved). 30-min separate fix: `playwright.config.ts`
+   give §22 + §24 their own throwaway org via fixture-per-file, OR
+   pin them to single-worker.
+
+5. §5.4 redesign per the finding doc. ~1-2h.
+
+**Quietly closed in session 12** (do NOT re-discover):
+- Vault seeding (was 7-session deferred). vault.SUPABASE_URL +
+  SUPABASE_SERVICE_ROLE_KEY now seeded.
+- _notify_streak_milestone x-cron-secret bug (replaces phantom drift
+  framing entirely).
+- 3 user-facing edge fn auth bugs (getUser → getUser(token)).
+- global-setup.ts require()-in-ESM bug (term_adjustment sweep was
+  silently failing every run).
+
+### Priority order — 12th session pickup (closed)
+
+**Closed:** Vault seeding + streak-notification x-cron-secret fix +
+§17.4 e2e delivery test + §27.fixme → 2 real RLS tests + 3 getUser()
+sweep fixes + global-setup ESM fix.
 
 ### Priority order — 11th session pickup (closed)
 
@@ -1270,6 +1400,81 @@ diagnostic conclusion, re-run the diagnostic before acting on
 it. Especially if the conclusion is structural (drift, RLS bug,
 auth bypass). One wasted probe is much cheaper than a wasted
 session.
+
+### ❌ Don't conclude a flow works because one auth-related path is verified
+
+12th-session lesson. The session-12 prompt asserted vault seeding was
+unblocked because:
+1. _notify_streak_milestone reads from vault.decrypted_secrets, not
+   Deno.env.
+2. streak-notification has verify_jwt=false; gateway doesn't
+   byte-equal check the bearer token.
+3. The legacy JWT signature is valid → trigger callout works
+   end-to-end.
+
+Bullets 1+2 were correct. Bullet 3 was a leap. The function
+ALSO has its own internal auth gate (`validateCronAuth(req)` →
+checks `x-cron-secret` header), which the trigger never sent.
+Result: every milestone callout returned 401 silently.
+
+The mistake was accepting a chain conclusion ("trigger callout
+works end-to-end") that wasn't probe-tested across each link of
+the chain. The correct probe sequence: (a) trigger fires →
+audit_log row commits, (b) net.http_post fires → row appears in
+net._http_response, (c) status_code = 200 (not 401). Sessions 9
+and 11 stopped at (a). Session 12 ran (b) and (c) and immediately
+caught the 401.
+
+**Rule**: vault.decrypted_secrets and Deno.env.get are different
+injection paths in Supabase; values are independent. Similarly,
+gateway verify_jwt and function-internal auth gates are
+different layers. Verify each link before declaring a chain
+"works end-to-end". Always poll `net._http_response` (the
+ground truth) when a trigger calls an edge fn — don't infer
+delivery from the audit_log alone.
+
+### ❌ Don't call userClient.auth.getUser() without an explicit token
+
+Recurring pattern across sessions 10 + 11 + 12. When an edge function
+constructs `createClient(SUPABASE_URL, ANON_KEY, { global: { headers:
+{ Authorization: authHeader } } })` and then calls
+`.auth.getUser()` with no args, that makes a `/auth/v1/user`
+request which on this post-migration project rejects legacy HS256
+JWTs (and rejects service-role JWTs because they have no `sub`
+claim). The fix is **always**:
+
+```ts
+// BAD — silent 401 for legacy-JWT sessions or service-role callers
+const { data: { user } } = await supabaseAuth.auth.getUser();
+
+// GOOD — local JWKS verification, accepts the legacy format
+const token = authHeader.replace("Bearer ", "");
+const { data: { user } } = await supabaseAuth.auth.getUser(token);
+```
+
+Session 12 swept the codebase: ~30 user-facing edge fns still have
+the buggy pattern. 3 most launch-critical fixed in session 12;
+remaining ~27 catalogued in
+[2026-05-10-getuser-noargs-sweep.md](audit/findings/2026-05-10-getuser-noargs-sweep.md).
+**Sweep periodically** — this pattern keeps propagating because the
+buggy form *looks* correct at code-review time.
+
+### ❌ Don't `require()` in tests/e2e/global-setup.ts (it's ESM)
+
+Anti-pattern documented for spec files (HANDOVER §"Don't `require()`
+in spec files — they're ESM"), but slipped into global-setup.ts
+during the 11th-session term/credit-note sweep extension. Caught in
+session 12: every full-suite run was logging
+`[global-setup] Sweep error (non-fatal): require is not defined`
+and silently skipping the term_adjustment + circular FK cleanup.
+The outer `try/catch` swallowed the error so it didn't fail the
+suite, but stale rows accumulated → likely contributing to the
+session-11→12 flake creep (6 → 9 fails, 5.3 → 5.7 min wall-clock).
+Fixed by lifting `import fs from 'node:fs'` to top of file.
+
+**Rule**: tests/e2e/* runs as native ESM under tsx. Always use
+top-of-file imports. Same applies to global-setup.ts, _fixtures/*,
+and any helper imported from spec files.
 
 ### ❌ Don't trust a "freshly-rotated" supplied key without SHA-256 verification
 
