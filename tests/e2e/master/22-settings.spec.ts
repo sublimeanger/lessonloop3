@@ -776,3 +776,36 @@ test.describe('§22.6 — Audit log tab loads', () => {
     await assertNoErrorBoundary(page);
   });
 });
+
+// ────────────────────────────────────────────────────────────────────
+// §22 — Un-deferred features UI smoke (s24)
+// ────────────────────────────────────────────────────────────────────
+//
+// Per s24 stance recalibration: Recurring billing templates UI +
+// Agency tier visibility un-deferred from HIDDEN. These smokes prove
+// the UI surfaces render without error.
+
+test.describe('§22.22 — Recurring billing templates UI (un-deferred s24)', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('/invoices?tab=recurring renders RecurringBillingTab without error', async ({ page }) => {
+    await goTo(page, '/invoices?tab=recurring');
+    await page.waitForTimeout(2000);
+    await assertNoErrorBoundary(page);
+  });
+});
+
+test.describe('§22.14 — Agency tier visible in billing tab (un-deferred s24)', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('Settings billing tab loads without error', async ({ page }) => {
+    await goTo(page, '/settings?tab=billing');
+    await page.waitForTimeout(2000);
+    await assertNoErrorBoundary(page);
+    // PlanSelector includes 'Agency' option (visible at launch per s24
+    // recalibration; was previously hidden behind a flag). Don't assert
+    // text presence here because the billing tab might display current
+    // plan info rather than the picker; the no-error-boundary assertion
+    // is the launch contract.
+  });
+});
