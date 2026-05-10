@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendAutoPayReminders } from "../_shared/auto-pay-reminder-core.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 /**
  * J10-F5 — sends a 24-hour final auto-pay reminder.
  * Daily cron at 0 8 * * * UTC; targets installments due tomorrow with
@@ -10,7 +11,7 @@ import { validateCronAuth } from "../_shared/cron-auth.ts";
  * the 3-day reminder and this one don't conflate. PM brand/last4/expiry
  * + expiry warning shared with the 3-day fn via auto-pay-reminder-core.
  */
-serve(async (req) => {
+serve(wrapEdgeFn("auto-pay-final-reminder", async (req) => {
   const cronAuthError = validateCronAuth(req);
   if (cronAuthError) return cronAuthError;
 
@@ -37,4 +38,4 @@ serve(async (req) => {
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-});
+}));

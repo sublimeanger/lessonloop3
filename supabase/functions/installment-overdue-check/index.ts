@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
-serve(async (req) => {
+import { wrapEdgeFn } from "../_shared/sentry.ts";
+serve(wrapEdgeFn("installment-overdue-check", async (req) => {
   const cronAuthError = validateCronAuth(req);
   if (cronAuthError) return cronAuthError;
 
@@ -122,4 +123,4 @@ serve(async (req) => {
     invoices_recalculated: recalcOk,
     recalc_failed: recalcFailed,
   }), { status: 200, headers: { "Content-Type": "application/json" } });
-});
+}));

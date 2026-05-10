@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendAutoPayReminders } from "../_shared/auto-pay-reminder-core.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 /**
  * Sends a heads-up email to parents 3 days before an auto-pay charge.
  * Called daily via pg_cron at 0 8 * * * UTC.
@@ -13,7 +14,7 @@ import { validateCronAuth } from "../_shared/cron-auth.ts";
  * cadence — same dedup key (auto_pay_reminder), same recipients, same
  * outstanding-aware amount.
  */
-serve(async (req) => {
+serve(wrapEdgeFn("auto-pay-upcoming-reminder", async (req) => {
   const cronAuthError = validateCronAuth(req);
   if (cronAuthError) return cronAuthError;
 
@@ -40,4 +41,4 @@ serve(async (req) => {
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-});
+}));

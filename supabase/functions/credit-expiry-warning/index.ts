@@ -15,9 +15,10 @@ import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { log, logError } from "../_shared/log.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("credit-expiry-warning", async (req) => {
   const cronAuthError = validateCronAuth(req);
   if (cronAuthError) return cronAuthError;
 
@@ -266,4 +267,4 @@ Deno.serve(async (req) => {
     JSON.stringify({ success: true, sent: sentCount, total: unsent.length }),
     { status: 200, headers: { "Content-Type": "application/json" } }
   );
-});
+}));

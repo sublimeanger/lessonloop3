@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 const handler = async (req: Request): Promise<Response> => {
   // Validate cron auth
   const authError = validateCronAuth(req);
@@ -82,4 +83,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(wrapEdgeFn("enrolment-offer-expiry", handler));

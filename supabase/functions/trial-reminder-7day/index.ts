@@ -5,9 +5,10 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-serve(async (req) => {
+serve(wrapEdgeFn("trial-reminder-7day", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -134,4 +135,4 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
-});
+}));

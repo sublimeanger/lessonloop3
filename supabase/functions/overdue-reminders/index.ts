@@ -4,9 +4,10 @@ import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
-serve(async (req) => {
+serve(wrapEdgeFn("overdue-reminders", async (req) => {
   const cronAuthError = validateCronAuth(req);
   if (cronAuthError) return cronAuthError;
 
@@ -155,7 +156,7 @@ serve(async (req) => {
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-});
+}));
 
 // ── HELPERS ────────────────────────────────────────────────
 
