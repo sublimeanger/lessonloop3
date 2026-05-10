@@ -821,6 +821,170 @@ test.describe('§27 — Xero day-one contracts (s24)', () => {
   // see audit/findings/2026-05-07-xero-sync-invoice-ll-prefix-bug.md.
 });
 
+// ────────────────────────────────────────────────────────────────────
+// §27 — Leads/Booking/Waitlist un-deferral contracts (s24)
+// ────────────────────────────────────────────────────────────────────
+//
+// Per s24 stance recalibration: leads/booking/waitlist + send-contact-message
+// promoted to LAUNCH IN-SCOPE. Three edge fns get auth-gate / contract
+// coverage here:
+//
+// - send-enrolment-offer: user-JWT (s24 getUser(token) fix landed in v19).
+// - waitlist-respond: GET-only public endpoint with WAITLIST_JWT_SECRET-
+//   signed JWT in ?token query param. HTML responses (no JSON).
+// - send-contact-message: public POST with honeypot field + IP rate
+//   limit + required-fields + email format + message length validation.
+
+function callPublicFn(fnName: string, opts: { method?: 'GET' | 'POST'; query?: Record<string, string>; body?: any; useAnonAuth?: boolean }): { status: number; body: string } {
+  const respFile = `/tmp/sb-pub-${fnName}-resp-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+  const reqFile = `/tmp/sb-pub-${fnName}-req-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+  const method = opts.method ?? 'POST';
+  const queryStr = opts.query ? '?' + new URLSearchParams(opts.query).toString() : '';
+  const url = `${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}${queryStr}`;
+  fs.writeFileSync(reqFile, JSON.stringify(opts.body ?? {}));
+  // Spoof unique IP per call to keep rate-limit buckets distinct
+  const r = randomBytes(3);
+  const fakeIp = `10.${r[0]}.${r[1]}.${r[2]}`;
+  try {
+    let cmd =
+      `curl -s -o ${respFile} -w "%{http_code}" ` +
+      `-X ${method} "${url}" ` +
+      `-H "X-Forwarded-For: ${fakeIp}" ` +
+      `-H "Content-Type: application/json" `;
+    if (opts.useAnonAuth) {
+      cmd += `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" `;
+    }
+    if (method === 'POST') cmd += `-d @${reqFile}`;
+    const status = execSync(cmd, { encoding: 'utf-8', timeout: 15_000 });
+    const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+    return { status: parseInt(status.trim(), 10), body };
+  } finally {
+    try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+  }
+}
+
+function resetPublicRateLimits(): void {
+  const url = process.env.E2E_SUPABASE_URL!;
+  const key = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+  if (!key) return;
+  execSync(
+    `curl -s -X DELETE "${url}/rest/v1/rate_limits?action_type=in.(send-contact-message,send-enrolment-offer,waitlist-respond)" ` +
+      `-H "apikey: ${key}" -H "Authorization: Bearer ${key}" -H "Prefer: return=minimal"`,
+    { encoding: 'utf-8', timeout: 10_000 },
+  );
+}
+
+test.describe('§27 — Leads/Booking/Waitlist un-deferral contracts (s24)', () => {
+  test.beforeAll(() => {
+    resetPublicRateLimits();
+  });
+
+  // send-enrolment-offer: user-JWT auth-gate
+  test('send-enrolment-offer — anon JWT rejected', async () => {
+    const res = callPublicFn('send-enrolment-offer', {
+      useAnonAuth: true,
+      body: { waitlist_id: '00000000-0000-0000-0000-000000000000', org_id: process.env.E2E_ORG_ID },
+    });
+    expect(res.status, `body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+  });
+
+  test('send-enrolment-offer — no auth rejected', async () => {
+    const res = callPublicFn('send-enrolment-offer', {
+      body: { waitlist_id: '00000000-0000-0000-0000-000000000000', org_id: process.env.E2E_ORG_ID },
+    });
+    expect(res.status, `body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+  });
+
+  // waitlist-respond: GET-only HTML responder. Verify_jwt:false at gateway
+  // (anon Bearer not required because the JWT is in query string).
+  test('waitlist-respond — missing token → 400 Invalid Link', async () => {
+    const res = callPublicFn('waitlist-respond', { method: 'GET', query: { action: 'accept' } });
+    expect(res.status, `body: ${res.body.slice(0, 200)}`).toBe(400);
+    expect(res.body).toMatch(/invalid link/i);
+  });
+
+  test('waitlist-respond — missing action → 400 Invalid Link', async () => {
+    const res = callPublicFn('waitlist-respond', { method: 'GET', query: { token: 'placeholder' } });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatch(/invalid link/i);
+  });
+
+  test('waitlist-respond — invalid action → 400 Invalid Link', async () => {
+    const res = callPublicFn('waitlist-respond', { method: 'GET', query: { token: 'placeholder', action: 'maybe' } });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatch(/invalid link/i);
+  });
+
+  test('waitlist-respond — invalid JWT token → 400 Link Expired', async () => {
+    const res = callPublicFn('waitlist-respond', { method: 'GET', query: { token: 'not-a-real-jwt', action: 'accept' } });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatch(/expired/i);
+  });
+
+  // send-contact-message: public POST with honeypot + IP rate limit
+  test('send-contact-message — GET → 405', async () => {
+    const res = callPublicFn('send-contact-message', { method: 'GET', useAnonAuth: true });
+    expect(res.status, `body: ${res.body.slice(0, 200)}`).toBe(405);
+  });
+
+  test('send-contact-message — POST honeypot field filled → silent 200', async () => {
+    const res = callPublicFn('send-contact-message', {
+      useAnonAuth: true,
+      body: {
+        firstName: 'Bot',
+        lastName: 'Spam',
+        email: 'bot@example.com',
+        subject: 'spam',
+        message: 'spam spam spam spam spam',
+        website: 'http://spam.example.com', // honeypot
+      },
+    });
+    expect(res.status, `body: ${res.body.slice(0, 200)}`).toBe(200);
+    expect(res.body).toMatch(/sent successfully|message received/i);
+  });
+
+  test('send-contact-message — POST missing fields → 400', async () => {
+    const res = callPublicFn('send-contact-message', {
+      useAnonAuth: true,
+      body: { firstName: 'Test' }, // missing other required fields
+    });
+    expect(res.status, `body: ${res.body.slice(0, 200)}`).toBe(400);
+    expect(res.body).toMatch(/required/i);
+  });
+
+  test('send-contact-message — POST invalid email format → 400', async () => {
+    const res = callPublicFn('send-contact-message', {
+      useAnonAuth: true,
+      body: {
+        firstName: 'Test',
+        lastName: 'User',
+        email: 'not-an-email',
+        subject: 'Hi',
+        message: 'This is a message of more than 10 chars',
+      },
+    });
+    expect(res.status, `body: ${res.body.slice(0, 200)}`).toBe(400);
+    expect(res.body).toMatch(/email/i);
+  });
+
+  test('send-contact-message — POST message too short → 400', async () => {
+    const res = callPublicFn('send-contact-message', {
+      useAnonAuth: true,
+      body: {
+        firstName: 'Test',
+        lastName: 'User',
+        email: 'test@example.com',
+        subject: 'Hi',
+        message: 'short',
+      },
+    });
+    expect(res.status, `body: ${res.body.slice(0, 200)}`).toBe(400);
+    expect(res.body).toMatch(/10 and 2000/);
+  });
+});
+
 test.describe('§27 — Cron-lifecycle handler auth-gate contracts', () => {
   for (const fnName of [
     'invoice-overdue-check',

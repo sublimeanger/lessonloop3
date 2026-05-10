@@ -55,10 +55,13 @@ const handler = async (req: Request): Promise<Response> => {
       global: { headers: { Authorization: authHeader } },
     });
 
+    // getUser(token) — local JWKS verification accepts legacy HS256 JWTs.
+    // See: audit/findings/2026-05-10-getuser-noargs-sweep.md
+    const token = authHeader.replace(/^Bearer\s+/i, "");
     const {
       data: { user },
       error: userError,
-    } = await supabaseAuth.auth.getUser();
+    } = await supabaseAuth.auth.getUser(token);
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
