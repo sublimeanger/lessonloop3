@@ -3,17 +3,19 @@
 **Date:** 2026-05-10 (session 12 + 13 sweeps)
 **Severity:** **P1** — silent silently-skipped notifications for users on
 legacy HS256 JWT sessions. Affects multiple user-facing flows.
-**Status:** **13 of ~30 user-facing fns fixed across sessions 12 + 13.**
-S13 added 10 more deploys (csv-import-execute + csv-import-mapping +
-onboarding-setup + profile-ensure + batch-invite-guardians +
-stripe-create-payment-intent + stripe-process-refund +
-stripe-connect-onboard + stripe-connect-status + send-invite-email).
-Remaining ~17 user-facing fns catalogued at the bottom for a follow-up
-session. Note: session 13 baseline was blocked by an unrelated DNS
-outage ([2026-05-10-app-dns-netlify-cname-broken.md](2026-05-10-app-dns-netlify-cname-broken.md))
-so the 10 s13 deploys are unverified-via-E2E; source diffs are clean
-2-line patches matching the s12 proven pattern (commits 11c084b +
-759faa3). Will be verified in session 14 baseline.
+**Status:** **17 of ~30 user-facing fns fixed across sessions 12 + 13 + 14.**
+- s12: 3 (send-invoice-email, notify-internal-message,
+  send-cancellation-notification).
+- s13: 10 (csv-import-execute, csv-import-mapping, onboarding-setup,
+  profile-ensure, batch-invite-guardians,
+  stripe-create-payment-intent, stripe-process-refund,
+  stripe-connect-onboard, stripe-connect-status, send-invite-email).
+- s14: 4 (stripe-create-checkout, stripe-list-payment-methods,
+  stripe-detach-payment-method, stripe-customer-portal).
+
+Remaining ~13 user-facing fns catalogued at the bottom for a
+follow-up session. S14 baseline (post-DNS-fix in s13) confirmed
+no regressions across the cumulative 17 deploys.
 
 ## TL;DR
 
@@ -69,6 +71,17 @@ Each: `getUser()` → `getUser(token)` per session-11 commit `08e66e6`.
 Comment with finding link added inline. Deployed via
 `supabase functions deploy <name>`.
 
+## Fixed in session 14 (deployed)
+
+| Function | Reason for prioritisation |
+|---|---|
+| `stripe-create-checkout` | Hosted-checkout fallback for parents whose embedded drawer fails 3DS — quietly broken for legacy-JWT sessions. |
+| `stripe-list-payment-methods` | Saved-card UI in parent portal + staff invoice detail. List was returning empty for affected sessions. |
+| `stripe-detach-payment-method` | Remove-saved-card button. Silently no-op'd. |
+| `stripe-customer-portal` | Customer portal link from billing page. 401'd for affected sessions. |
+
+Each: identical 2-line patch + deploy via `supabase functions deploy <name>`.
+
 ## Fixed in session 13 (deployed; baseline-verification deferred to s14 due to DNS outage)
 
 | Function | Reason for prioritisation |
@@ -106,11 +119,7 @@ User-facing edge fns confirmed buggy by `grep -B5 -A2 "auth.getUser()"`:
 | `send-notes-notification` | lesson notes emails | live — silent skip on legacy sessions |
 | `invite-accept` | invite acceptance | live — accept flow may fail mid-stream |
 | `account-delete` | self-service account delete | uses different `supabase.auth.getUser()` shape — needs separate analysis |
-| `stripe-create-checkout` | hosted-checkout fallback | live — fallback path may 401 |
 | `stripe-billing-history` | billing history | live — list may show empty |
-| `stripe-list-payment-methods` | saved cards | live — list may show empty |
-| `stripe-detach-payment-method` | remove saved card | live — silently fails |
-| `stripe-customer-portal` | customer portal link | live — portal link 401 |
 | `stripe-update-payment-preferences` | toggle auto-pay | live |
 | `stripe-verify-session` | post-checkout return URL | live |
 | `stripe-subscription-checkout` | subscription checkout | live |

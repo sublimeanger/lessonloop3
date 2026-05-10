@@ -31,7 +31,11 @@ serve(async (req) => {
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    // Pass token explicitly — getUser() no-args calls /auth/v1/user which on
+    // this project rejects legacy HS256 JWTs. See
+    // audit/findings/2026-05-10-getuser-noargs-sweep.md.
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
     if (userError || !user) {
       throw new Error("Unauthorized");
     }
