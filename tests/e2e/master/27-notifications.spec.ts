@@ -525,6 +525,76 @@ function callCronGate(fnName: string, opts: { secret: 'wrong' | 'none' }): { sta
   }
 }
 
+// ────────────────────────────────────────────────────────────────────
+// §27 — Multi-area edge fn auth-gate contracts (s22)
+// ────────────────────────────────────────────────────────────────────
+//
+// Multi-area sweep — auth-gate contracts for fns across Subscriptions
+// & Trial, Messaging, and Students & Guardians clusters that lack
+// fn-invocation tests. Same pattern as s17 §24 / s18 §3.8 / s20 §27
+// calendar / s21 §27 cron-lifecycle.
+//
+// All 8 fns are user-JWT (Authorization header → getUser(token) post-
+// s12-s16 sweep). anon→4xx + no-auth→4xx prove the gate fires.
+
+test.describe('§27 — Multi-area edge fn auth-gate contracts (s22)', () => {
+  for (const fnName of [
+    // Subscriptions & Trial cluster (4 fns)
+    'stripe-subscription-checkout',  // tier upgrade self-serve
+    'stripe-billing-history',         // billing history list
+    'stripe-connect-onboard',         // per-org Connect flow
+    'stripe-connect-status',          // post-onboard status check
+    // Messaging cluster (3 fns)
+    'send-parent-enquiry',            // public-form parent enquiry
+    'notify-internal-message',        // staff internal-msg notify
+    'send-cancellation-notification', // parent cancel comms
+    // Students & Guardians (1 fn)
+    'batch-invite-guardians',         // bulk guardian invite via Resend
+  ]) {
+    test(`${fnName} — anon JWT rejected`, async () => {
+      const reqFile = `/tmp/sb-multi-${fnName}-req-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+      const respFile = `/tmp/sb-multi-${fnName}-resp-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+      fs.writeFileSync(reqFile, JSON.stringify({ orgId: process.env.E2E_ORG_ID }));
+      try {
+        const status = execSync(
+          `curl -s -o ${respFile} -w "%{http_code}" ` +
+            `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+            `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+            `-H "Content-Type: application/json" -d @${reqFile}`,
+          { encoding: 'utf-8', timeout: 15_000 },
+        );
+        const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+        const code = parseInt(status.trim(), 10);
+        expect(code, `${fnName} body: ${body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+        expect(code).toBeLessThan(500);
+      } finally {
+        try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+        try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+      }
+    });
+
+    test(`${fnName} — no auth rejected`, async () => {
+      const reqFile = `/tmp/sb-multi-${fnName}-req-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+      const respFile = `/tmp/sb-multi-${fnName}-resp-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+      fs.writeFileSync(reqFile, JSON.stringify({ orgId: process.env.E2E_ORG_ID }));
+      try {
+        const status = execSync(
+          `curl -s -o ${respFile} -w "%{http_code}" ` +
+            `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+            `-H "Content-Type: application/json" -d @${reqFile}`,
+          { encoding: 'utf-8', timeout: 15_000 },
+        );
+        const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+        const code = parseInt(status.trim(), 10);
+        expect(code, `${fnName} body: ${body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+      } finally {
+        try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+        try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+      }
+    });
+  }
+});
+
 test.describe('§27 — Cron-lifecycle handler auth-gate contracts', () => {
   for (const fnName of [
     'invoice-overdue-check',
