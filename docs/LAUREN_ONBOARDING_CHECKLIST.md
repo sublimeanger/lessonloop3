@@ -2,9 +2,13 @@
 
 **Pre-flight owner:** Jamie McKaye
 **Shadow org:** `551ca74e-d47d-4d02-9a4b-24863349a030` (Lauren's Shadow Studio)
-**Status as of s33 end:** READY FOR ONBOARDING — pending Jamie greenlight.
+**Status as of s34 end:** READY FOR ONBOARDING — pending Jamie greenlight.
 
 This checklist guides the staged Lauren onboarding flow. The shadow org is fully seeded with realistic Studio data (90 students, 2068 lessons, 1124 attendance records, 402 lesson notes, 90 invoices, 71 payments, 40 historical messages, 165 practice logs, recurring billing templates, 5 teachers with realistic instrument specialisations). The shadow-email layer intercepts every outbound email and routes to Jamie + Lauren only.
+
+### Changelog
+
+- **s34 (2026-05-10, after s33):** Fixed lesson_notes teacher↔instrument consistency. All 402 notes now point to the student's current primary teacher (per `student_teacher_assignments`), and their content is regenerated from the student's primary instrument family library. Notes are now distributed across all 5 teachers proportional to their student counts (David 118 / Olivia 90 / James 80 / Sarah 78 / Rachel 36). Content libraries extended (keys 25/25/20 content/homework/focus; strings 25/25/20; woodwinds 25/25/20; brass 20/20/15). Unique content_covered jumped 310→364, unique homework 233→361, unique focus_areas 167→358. §26.9.1 Pay-full-invoice flake filed as P3 intermittent (didn't recur in s34 baseline).
 
 ---
 
@@ -50,13 +54,17 @@ Click the returned URL. You should land in 551ca74e's dashboard.
 - [ ] Teachers page shows 5 teachers with their instrument specialisations.
 - [ ] Settings / org config shows shadow_mode badge (if UI surfaces it; otherwise verify via DB).
 
-### 1.3 Known data inconsistencies to expect
+### 1.3 Known data quirks (realistic patterns, not bugs)
 
-The seed contains a few realistic "mid-reassignment" patterns that look like bugs but aren't:
+After s34's lesson_notes fix, the visible data is internally consistent: every lesson_note shows a teacher whose instrument specialisation includes the student's primary instrument, with content drawn from that instrument's family library.
 
-- **Past lessons can show a different teacher than the student's current primary.** Reason: s33 redistributed students across 5 teachers (Sarah/James originally taught everyone in s32; now David/Olivia/Rachel each have their share). Past lessons retain the historical teacher who actually taught them. New teacher assignments only apply to future lessons.
-- **Some past lessons taught by Sarah may show woodwinds content; James may show trumpet content.** Same root cause: at the time of the lesson, that teacher really was teaching that instrument. Sarah's and James's `instruments[]` specialisation was narrowed in s33.
-- **About 7 students don't have a future lesson schedule yet.** Reason: Phase 1.3 redistributed `student_teacher_assignments` but did not update `lessons.teacher_id` for pre-scheduled future lessons (would conflict with the teacher-double-booking trigger). Lauren can use the UI's "Reschedule student" flow to rebuild.
+One realistic quirk remains: **`lessons.teacher_id` is still set to the original s32 teachers (Sarah/James) for all 2068 lessons.** This is intentional — the `check_lesson_conflicts` DB trigger blocks mass updates because every (dow, hr) slot in the s32 seed has 2 lessons (one per original teacher), and several redistribution mappings would put both students at the same teacher+time. Effects Lauren will see:
+
+- The **calendar / schedule view** shows lessons assigned to Sarah or James (the original lesson teacher), not necessarily the student's current primary teacher.
+- Each student profile correctly shows their current primary teacher (Rachel / David / Olivia / etc).
+- Past **lesson notes** are correctly attributed to the student's current primary teacher (this was fixed in s34).
+
+This is realistic for a Studio mid-reassignment: "Lauren updated her teacher roster recently; the calendar still shows the previous assignments because pre-scheduled lessons haven't been rebuilt yet." Lauren can use the UI's "Reschedule student" flow if she wants to align the calendar, or leave it as-is and only reassign new bookings.
 
 Document any genuinely unexpected behaviour as findings in `audit/findings/`.
 

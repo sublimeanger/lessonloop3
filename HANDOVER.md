@@ -1,5 +1,7 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+**Last updated:** 2026-05-10 (after 34th-session — LESSON_NOTES TEACHER↔INSTRUMENT FIX + LAUREN ONBOARDING READINESS. Post-s33 MCP verification surfaced that 260/402 lesson_notes (65%) had teacher_id pointing to the original s32 teachers (Sarah/James only), leaving Olivia/David/Rachel with zero notes despite being assigned 20/26/8 students. Root cause: s33 derived lesson_notes.teacher_id from lessons.teacher_id (the original lesson scheduling teacher) instead of the student's current primary teacher (per student_teacher_assignments). Phase 1.1: UPDATE 402 rows to current primary teacher via STA. 402/402 valid teacher↔instrument pairs post-fix; notes now distribute David 118 / Olivia 90 / James 80 / Sarah 78 / Rachel 36 (proportional to student counts). Phase 1.2: extended content libraries: keys/strings/woodwinds went 15/10/8 → 25/25/20 content/homework/focus_areas; brass went 15/10/8 → 20/20/15. Phase 1.3: regenerated all 402 notes' content_covered + homework + focus_areas using extended libraries. Unique content jumped 310→364 (90.5%), unique homework 233→361 (89.8%), unique focus_areas 167→358 (89.1%). Engagement/parent_visible/teacher_private_notes preserved untouched. Phase 1.5 spot-check: 10/10 random samples have valid teacher-can-teach-instrument + family-matched content. Phase 2: filed audit/findings/2026-05-10-26-9-1-pay-full-invoice-flake.md as P3 intermittent (didn't recur in s34 baseline). Updated docs/LAUREN_ONBOARDING_CHECKLIST.md §1.3 removing the "past lessons show different teacher" caveat (resolved) and replacing with the realistic "calendar shows original lesson teachers, student profiles show current primary" pattern. scripts/seed-shadow-enrichment.sql Phase 2 block rewritten with corrected STA-derived teacher_id and extended libraries. Phase 3: fresh s34 smoke message af7f2c15... sent successfully (email_sent=true, no error); fresh Jamie magic link minted to /tmp/jamie_magic_link_s34.txt (single-use, ~1hr TTL — Jamie needs to regenerate if expired). **551ca74e is now genuinely Lauren-ready pending Jamie's UI walkthrough.** Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/3.6m (§6 dashboard + §13.7.4 send-invoice-email — both documented pre-existing).
+
 **Last updated:** 2026-05-10 (after 33rd-session — SHADOW ENRICHMENT + ONBOARDING READINESS. Phase 0: Resend smoke test re-fired successfully (status=sent, sent_at 22:13Z); message_log row 709c9306... created cleanly, Resend POST returned 200, shadow-email transformEmailForShadow ran in-line per the code path. Phase 1: added 3 new teachers (Olivia Hartley strings / David Okonkwo woodwinds / Rachel Chen piano), narrowed Sarah's specialisation to piano/trumpet and James's to cello/flute, redistributed all 90 students across 5 teachers with realistic uneven loads (Rachel 8 / Sarah 17 / James 19 / Olivia 20 / David 26), added 11 doubler students with secondary instruments. Phase 2: 402 lesson_notes seeded (35% of 1124 past lessons) with instrument-family-aware content libraries; engagement distribution 5/10/30/35/20% near-perfect; 310/402 unique content_covered strings (77%); parent_visible 80% TRUE; 133 notes have teacher_private_notes. Phase 3: shadow_mode lookup index-scans in 0.088ms; auto-deploy still healthy at 6ee13c3; minted Jamie magic link (not committed — single-use ~1hr TTL, captured locally); wrote docs/LAUREN_ONBOARDING_CHECKLIST.md with full daily-review SQL + reset paths + s34 deferral list. **551ca74e is now Lauren-ready.** Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/3.5m (§6 dashboard pre-existing fail held; §26.9.1 Pay full invoice new flake — investigate s34 if recurs).
 
 **Last updated:** 2026-05-10 (after 32nd-session — MINIMUM-VIABLE-SHADOW SEED EXPANSION. Phase 0: cleaned 2 orphan s31 shadow orgs (66b821ee + aa5a52e9); added Lauren admin membership to 551ca74e (s31 silent insert-failure bug); fixed seed-shadow-org to split membership inserts with per-row error checks; v1.1 finding filed for subscription_plan enum naming (DB="academy" vs UI="Studio"). Phase 1: schema-first constraint inventory query captured all NOT NULL + enum + FK constraints across 21 cluster tables BEFORE coding. Phase 2: 90 students + 80 guardians (10 siblings) + 90 instruments + 90 STAs + 90 recurrences + **2068 lessons** (12 past weeks + 12 future, minus 92 closure-day skips) + 1124 attendance records (92% present/5% absent/3% late) + 20 make_up_credits + 4 waitlist. Phase 3: 90 invoices (66 paid / 16 outstanding / 4 overdue / 4 draft) + 1124 invoice_items + 71 payments (66 full + 5 partial) totalling £17,120 collected. Phase 4: 40 message_log + 5 templates + 90 practice_assignments + 165 practice_logs + 2 recurring_invoice_templates + 24 recipients + 2 items. Phase 5: end-to-end inventory clean; shadow-email smoke test invoked send-message via Jamie JWT (magic-link mint), message_log row created, Resend POST attempted (429 daily quota — NOT a shadow-layer failure; transformEmailForShadow ran in-line between message_log INSERT and Resend POST). Captured all seed SQL as scripts/seed-shadow-clusters.sql (reproducible for s34 Teacher/Agency tier variants). Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/3.9m. **551ca74e is a fully-armed Studio shadow org. Ready for s33 Lauren magic-link onboarding on Jamie greenlight.**
@@ -1596,6 +1598,125 @@ failures, check `.env.test` and the storage states first.
 Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
+
+### What's done at end of 34th session
+
+(Catalog state ~91% unchanged. Audit total: 167 🟢 / 6 🟡 / **0 🔴** /
+10 ⏸ = ~91%. **lesson_notes teacher↔instrument bug closed; Lauren onboarding
+ready pending Jamie's UI walkthrough.** Baseline 665/2/122/3.6m at session
+start — §6 dashboard pre-existing fail held; §13.7.4 send-invoice-email
+returned to fail this run; s33's §26.9.1 Pay-full-invoice DID NOT recur,
+confirming intermittent.)
+
+Per-phase outcomes for s34:
+
+- **Phase 1 — lesson_notes teacher↔instrument fix (~40 min)**:
+  - Pre-fix state (verified via SQL): 142/402 notes (35%) had valid
+    teacher↔instrument pair, 260 (65%) mismatched. Olivia/David/Rachel
+    had ZERO notes despite covering 54 of 90 students.
+  - Phase 1.1: `UPDATE lesson_notes ln SET teacher_id = sta.teacher_id`
+    joined via student_teacher_assignments. 260 rows updated. Post-fix
+    distribution: David 118 / Olivia 90 / James 80 / Sarah 78 / Rachel 36
+    (matches the 26/20/19/17/8 student split scaled by 35% sample rate).
+  - Phase 1.2: extended content libraries:
+    * keys: 25 content + 25 homework + 20 focus (was 15/10/8)
+    * strings: 25 + 25 + 20 (was 15/10/8)
+    * woodwinds: 25 + 25 + 20 (was 15/10/8)
+    * brass: 20 + 20 + 15 (was 15/10/8)
+  - Phase 1.3: regenerated content_covered + homework + focus_areas for
+    all 402 notes using extended libraries, deterministic md5(lesson_id)
+    hash-slice picks (4 slices h1-h4 for 6 distinct field positions).
+    engagement_rating, parent_visible, teacher_private_notes UNTOUCHED
+    (those were correctly distributed in s33).
+  - Phase 1.4 systemic verify: 402/402 valid teacher↔instrument pairs,
+    0 mismatches, 0 empty content/homework/focus_areas.
+    Unique content_covered: 310 → 364 (77% → 91%).
+    Unique homework: 233 → 361 (58% → 90%).
+    Unique focus_areas: 167 → 358 (42% → 89%).
+  - Phase 1.5 spot-check: 10/10 random samples have teacher-can-teach-
+    instrument AND content matches the student's instrument family.
+    Sample: Rory (Trumpet) → Sarah Mitchell (Piano,Trumpet); Logan
+    (Clarinet) → David Okonkwo (Sax,Clarinet,Flute); Sebastian (Cello)
+    → Olivia Hartley (Violin,Viola,Cello). All clean.
+
+- **Phase 2 — findings + onboarding doc update (~15 min)**:
+  - Filed `audit/findings/2026-05-10-26-9-1-pay-full-invoice-flake.md`:
+    P3 intermittent test-side flake, same family as the s28/s30
+    concurrency flakes. Did NOT recur in s34 baseline. Status OPEN
+    for investigation only; not blocking shadow term.
+  - Updated `docs/LAUREN_ONBOARDING_CHECKLIST.md`:
+    - Added s34 changelog block at top.
+    - Replaced §1.3 "intentional data inconsistencies" with the now-
+      accurate description: lessons.teacher_id remains as the original
+      (Sarah/James) for all 2068 lessons because the
+      check_lesson_conflicts trigger blocks mass updates, but each
+      student profile correctly shows their current primary teacher
+      (Rachel/David/Olivia/etc) and every lesson_note attributes to
+      the student's current primary teacher with family-matched content.
+  - Updated `scripts/seed-shadow-enrichment.sql` Phase 2 block: source
+    teacher_id from student_teacher_assignments instead of
+    lessons.teacher_id, and ship the extended content libraries.
+    Future shadow-org reseed runs will produce correct notes from the
+    start.
+
+- **Phase 3 — onboarding readiness (~15 min)**:
+  - Fresh s34 smoke message sent successfully:
+    `message_id af7f2c15-2ca1-4db6-84f4-5fbfe1872f09`, email_sent=true,
+    no error. The send-message edge fn invoked Resend with the shadow-
+    transformed payload. The previous s33 smoke message (709c9306...)
+    was already status=sent at sent_at=22:13:49Z — both bookends
+    confirm the shadow path is intact post-s34 changes.
+  - Fresh Jamie magic link minted to /tmp/jamie_magic_link_s34.txt
+    (single-use, ~1hr TTL). The onboarding checklist's mint-command
+    block lets Jamie regenerate as needed if this one expires before
+    he clicks.
+  - check-deploy-sync.sh confirms origin/main + Netlify pub +
+    CF Pages all at the s34 final commit. Auto-deploy chain still
+    healthy (9 consecutive deploys since s27 reconnect).
+
+### Lauren's Studio shadow org — s34 final state (551ca74e)
+
+| Cluster | s33 → s34 | Notes |
+| --- | --- | --- |
+| Teachers | 5 | Unchanged. Loads still 26/20/19/17/8. |
+| Students | 90 | Unchanged. |
+| Student instruments | 101 | Unchanged. 11 doubler students. |
+| Lessons | 2068 | Unchanged. lessons.teacher_id NOT updated (intentional). |
+| **Lesson notes** | **402** | **Fixed.** Now distributed David 118 / Olivia 90 / James 80 / Sarah 78 / Rachel 36 across all 5 teachers. Content matches student's primary instrument family. |
+| Past lesson coverage | 35% | Unchanged. |
+| Unique content_covered | 310 → 364 | +17% variety |
+| Unique homework | 233 → 361 | +55% variety |
+| Unique focus_areas | 167 → 358 | +114% variety |
+| Invoices | 90 | Unchanged. |
+| Payments | 71 | Unchanged. £17,120 collected. |
+| Message log | 42 | s33 history (40) + s33 smoke (1) + s34 smoke (1) |
+| Smoke email status | s33 sent, s34 sent | Both via Resend with shadow transform |
+
+### Outstanding Jamie actions (s35 unblock)
+
+1. **Click Jamie's fresh s34 magic link** (at /tmp/jamie_magic_link_s34.txt)
+   and run the 7-section UI sanity walkthrough per
+   `docs/LAUREN_ONBOARDING_CHECKLIST.md` §1.2. If expired, mint a new
+   one via the documented curl command.
+2. **Verify lesson notes render with all 5 teachers visible** — click
+   into a few past lessons across different students, confirm the
+   teacher shown teaches the student's instrument and the content
+   matches.
+3. **Verify the s34 smoke email (af7f2c15...) landed in
+   jamie@searchflare.co.uk inbox** with `[SHADOW: 551ca74e]` subject
+   prefix.
+4. **Greenlight Lauren onboarding** by minting Lauren's magic link
+   per Step 3 of the onboarding checklist.
+
+### s35 plan (deferred from s34)
+
+- Teacher tier seed variant (solo-teacher Studio).
+- Agency tier seed variant (multi-studio).
+- Leads + booking + waitlist + AI conversation history seed.
+- Calendar UX fix (Jamie's earlier ask) — post-shadow-term.
+- Import XLSX support (Jamie's earlier ask) — post-shadow-term.
+- API keys / MCP infrastructure — post-shadow-term.
+- Re-investigate §26.9.1 if it surfaces in 2+ consecutive baselines.
 
 ### What's done at end of 33rd session
 

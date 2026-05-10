@@ -138,9 +138,21 @@ FROM doubler_targets;
 -- =============================================================================
 -- PHASE 2 — lesson_notes seed (~402 notes, 35% of past lessons)
 --
--- Content libraries grouped by instrument family (keys/strings/woodwinds/brass).
--- Deterministic selection via md5(lesson_id) hash slices for reproducibility +
--- variety. engagement 5/10/30/35/20%; parent_visible 80% TRUE;
+-- s34 correction: lesson_notes.teacher_id derives from the STUDENT's current
+-- primary teacher (via student_teacher_assignments), NOT from lessons.teacher_id.
+-- s33 used lessons.teacher_id which left all notes attributed to Sarah/James
+-- only (the original 2 teachers), creating teacher↔instrument mismatches
+-- (e.g., Sarah teaching Violin per a note, but Sarah's instruments[] is
+-- ['Piano','Trumpet']).
+--
+-- Extended content libraries:
+--   keys      25 content + 25 homework + 20 focus_areas
+--   strings   25 + 25 + 20
+--   woodwinds 25 + 25 + 20
+--   brass     20 + 20 + 15
+--
+-- Deterministic selection via 4 md5(lesson_id) hash slices. engagement
+-- 5/10/30/35/20% across ratings 1-5; parent_visible 80% TRUE;
 -- teacher_private_notes populated when parent_visible=FALSE OR engagement<=2.
 -- =============================================================================
 
@@ -161,8 +173,18 @@ WITH
       'Hanon 6-10 with metronome at 92bpm',
       'Aural training: interval recognition (minor 3rd, perfect 5th)',
       'Arpeggios in C, G, D, A major root position',
-      'Chopin Prelude in E minor — phrasing and dynamics'
-    ] AS content, ARRAY[
+      'Chopin Prelude in E minor — phrasing and dynamics',
+      'Debussy Clair de Lune — first 16 bars, pedalling and voicing',
+      'Schumann Album for the Young no. 8 — The Wild Horseman',
+      'Two-hand independence drills using contrary motion',
+      'Sight-reading: hymn-style 4-part harmony',
+      'Bach Two-Part Invention no. 1 — voice leading',
+      'Burgmüller Op. 100 no. 2 ''Arabesque'' — articulation',
+      'Modal scales: D Dorian and E Phrygian',
+      'Theory: secondary dominants in C major',
+      'Improvisation: 16-bar melody over a I-vi-IV-V loop',
+      'Tchaikovsky Album for the Young ''Old French Song'' — phrasing'
+    ]::text[] AS content, ARRAY[
       'Practise Hanon 1-5 daily, 10 mins',
       'Memorise the A section of Minuet in G',
       'C major scale with metronome at 80bpm',
@@ -172,12 +194,31 @@ WITH
       'Listen to 2 recordings of Mozart K545 first movement',
       'Pedalling practice: 10 minutes with a slow piece',
       'Improvise over a 12-bar blues for 5 minutes daily',
-      'Aural training: 5 minutes of interval recognition daily'
-    ] AS homework, ARRAY[
+      'Aural training: 5 minutes of interval recognition daily',
+      'Bach Two-Part Invention no. 1 — hands separate by Thursday',
+      'Voicing exercise: hold left hand soft, right hand prominent',
+      'Daily slow-play of Für Elise A section, eyes closed',
+      'Practise arpeggios in C, G, D, A — 4 reps each',
+      'Memorise the first 8 bars of Debussy Clair de Lune',
+      'Theory worksheet on secondary dominants (provided)',
+      'Schumann Wild Horseman — bars 1-16 by next week',
+      'Sight-read one hymn from the ABRSM hymnal daily',
+      'Burgmüller Arabesque — left hand alone, 5 mins/day',
+      'Modal practice: D Dorian scale up + down + arpeggio',
+      'Improvise a 16-bar melody over I-vi-IV-V daily',
+      'Tchaikovsky Old French Song — focus on cantabile tone',
+      'Listen to Chopin Prelude in E minor before next lesson',
+      'Practise hands-together contrary motion exercises',
+      'Record yourself playing the A section of Minuet in G'
+    ]::text[] AS homework, ARRAY[
       'Hand independence', 'Pedal control', 'Dynamic contrast',
       'Articulation', 'Rhythm precision', 'Reading ahead',
-      'Memorisation', 'Phrase shaping'
-    ] AS focus_areas_pool
+      'Memorisation', 'Phrase shaping', 'Voicing', 'Cantabile tone',
+      'Finger strength', 'Wrist relaxation', 'Inner voice clarity',
+      'Counterpoint', 'Texture awareness', 'Tempo stability',
+      'Listening across hands', 'Sight-reading speed',
+      'Posture and seat height', 'Octave preparation'
+    ]::text[] AS focus_areas_pool
     UNION ALL SELECT 'strings', ARRAY[
       'Bow technique: long bows on open strings, even tone',
       'Scales: D major and G major 2 octaves with shifts',
@@ -193,8 +234,18 @@ WITH
       'Bow distribution exercises with metronome',
       'Aural training: identify major vs minor 3rds',
       'Repertoire: Elgar Salut d''Amour theme',
-      'Posture and bow hold review'
-    ], ARRAY[
+      'Posture and bow hold review',
+      'Sevcik Op. 1 Part 1 — daily finger pattern exercise',
+      'Schradieck shifting exercises in 5 positions',
+      'Suzuki book 3 — Gavotte by Lully, bow articulation',
+      'Tartini tones / ring tones — listening for pure intonation',
+      'Off-the-string bowstrokes: sautillé at moderate tempo',
+      'Chamber piece: Telemann viola sonata mvt 1, melody',
+      'Slow martelé on G major scale, bow weight management',
+      'Trills: starting cleanly from above, slow then fast',
+      'Études: Kreutzer no. 2 — bowing variations',
+      'Tone production: full bow with metronome at 60bpm'
+    ]::text[], ARRAY[
       'Practise long bows for 5 mins on each open string',
       'Suzuki Long, Long Ago slowly with metronome',
       'Wohlfahrt no. 8 — work on bars 1-16 hands slowly',
@@ -204,12 +255,31 @@ WITH
       'Sight-read 1 new Trinity grade 3 piece daily',
       'Vibrato: 5 mins of slow vibrato on G string',
       'String crossings: spiccato for 5 mins daily',
-      'Listen to Elgar Salut d''Amour recordings'
-    ], ARRAY[
+      'Listen to Elgar Salut d''Amour recordings',
+      'Sevcik Op. 1 — finger patterns on D string, 10 reps',
+      'Schradieck shifting daily — 5 minutes',
+      'Suzuki Gavotte by Lully — first half by Friday',
+      'Listening journal: identify intervals while listening',
+      'Sautillé at 88bpm for 5 minutes',
+      'Tartini-tones practice on perfect fifths',
+      'Telemann viola sonata — practise the opening 8 bars',
+      'Slow martelé on G major scale, 60bpm',
+      'Trill exercises on D string, 3 mins per trill',
+      'Kreutzer no. 2 with at least 3 bowing variations',
+      'Bow weight: full bow, slow strokes at 50bpm',
+      'Record yourself playing the opening of Salut d''Amour',
+      'Memorise the first 4 bars of the Bach Prelude',
+      'Improvise simple melodies in D major, 5 mins',
+      'Listen to one Tchaikovsky string concerto recording'
+    ]::text[], ARRAY[
       'Bow control', 'Intonation', 'Tone production',
       'Position work', 'Sight-reading', 'Vibrato',
-      'Phrasing', 'Right-hand technique'
-    ]
+      'Phrasing', 'Right-hand technique', 'Left-hand finger spacing',
+      'Pure intervals', 'Bow articulation', 'Shifting accuracy',
+      'Bow speed control', 'Posture', 'Listening to recordings',
+      'Tone colour', 'Slur smoothness', 'Bow weight distribution',
+      'String crossing fluency', 'Memorisation'
+    ]::text[]
     UNION ALL SELECT 'woodwinds', ARRAY[
       'Long tones: 1 minute per note, focus on tone consistency',
       'Scales: B-flat and F major 2 octaves',
@@ -225,23 +295,52 @@ WITH
       'Improvisation over a 12-bar blues in B-flat',
       'Vibrato exercises (advanced students)',
       'Aural training: intervals up to perfect 5th',
-      'Lip flexibility / register transitions'
-    ], ARRAY[
+      'Lip flexibility / register transitions',
+      'Trills: clean lifting from above, slow tempo',
+      'Tonguing & slurring patterns alternation',
+      'Repertoire: Saint-Saëns Sonata, opening Allegretto',
+      'Reed care + adjustment discussion (reed instruments)',
+      'Stamitz Concerto in B-flat — first 16 bars',
+      'Chromatic scale 2 octaves with even tone',
+      'Etude: Cavallini Caprice no. 3',
+      'Subdivision practice: triplets vs duplets at 80bpm',
+      'Posture and breath support drills',
+      'Articulation: legato vs staccato contrast on G scale'
+    ]::text[], ARRAY[
       'Long tones daily, 1 minute per note across the range',
       'B-flat scale with metronome at 80bpm',
       'Klosé exercise 12 — bars 1-16 slowly',
       'Articulation: 5 minutes of single-tonguing daily',
-      'Embouchure: 5 minutes of pure tone exercises',
+      'Tone production: 5 mins of pure tone work',
       'Sight-read 1 new piece daily',
       'Breath control: 4-bar phrases without breath',
       'Listen to Mozart K622 recordings',
       'Practise tonguing patterns at 80bpm',
-      'Improvise over a 12-bar blues for 5 minutes'
-    ], ARRAY[
+      'Improvise over a 12-bar blues for 5 minutes',
+      'Trill exercises — slow tempo daily',
+      'Saint-Saëns Sonata first page — practise opening lines',
+      'Reed adjustment review before each practice session',
+      'Stamitz Concerto opening — hands together by Tuesday',
+      'Chromatic scale across full range, 60bpm',
+      'Cavallini Caprice no. 3 — bars 1-8 slowly',
+      'Triplet vs duplet subdivision drill, 5 mins/day',
+      'Posture check: shoulders relaxed, head balanced',
+      'Legato/staccato contrast on G scale',
+      'Memorise the opening of Mozart K622 first movement',
+      'Record yourself playing today''s etude',
+      'Listen to one jazz improvisation in B-flat',
+      'Mode practice: dorian and mixolydian over a static drone',
+      'Slow-play your repertoire piece from memory',
+      'Mouthpiece-alone exercises for 3 minutes daily'
+    ]::text[], ARRAY[
       'Tone production', 'Breath support', 'Articulation',
-      'Embouchure', 'Reading', 'Range',
-      'Vibrato', 'Intonation'
-    ]
+      'Embouchure', 'Reading', 'Range', 'Vibrato', 'Intonation',
+      'Phrasing', 'Reed control', 'Dynamics', 'Trill cleanness',
+      'Register transitions', 'Improvisation language',
+      'Listening to recordings', 'Posture and stance',
+      'Memorisation', 'Rhythmic accuracy', 'Mode awareness',
+      'Mouthpiece work'
+    ]::text[]
     UNION ALL SELECT 'brass', ARRAY[
       'Long tones in middle register',
       'Lip slurs: 1-3-5-3-1 pattern in B-flat major',
@@ -257,8 +356,13 @@ WITH
       'Mute work: straight mute vs harmon',
       'Improvisation over 12-bar blues in B-flat',
       'Sight-reading + theory: brass band notation',
-      'Posture and breathing review'
-    ], ARRAY[
+      'Posture and breathing review',
+      'Clarke Technical Studies no. 1 — daily',
+      'Stamp warm-up routine — bars 1-8',
+      'Hummel Trumpet Concerto first movement — opening',
+      'Pedal tones for 5 mins to build flexibility',
+      'Articulation drills: doodle-doodle vs k-tonguing'
+    ]::text[], ARRAY[
       'Long tones daily, 1 min per note',
       'Lip slurs: 1-3-5-3-1 daily',
       'B-flat scale at 80bpm',
@@ -268,17 +372,29 @@ WITH
       'Mouthpiece buzzing 5 mins daily',
       'Listen to brass band recordings',
       'Practise double-tonguing at slow tempo',
-      'Posture/breathing review'
-    ], ARRAY[
+      'Posture/breathing review',
+      'Clarke Technical Studies no. 1 — full piece',
+      'Stamp warm-up routine daily',
+      'Hummel Concerto opening — slow and accurate',
+      'Pedal tones for 5 minutes',
+      'Doodle-doodle articulation 3 mins daily',
+      'Improvise over 12-bar blues for 5 minutes',
+      'Record your daily warm-up routine',
+      'Memorise the opening of the brass band piece',
+      'Listen to one Hummel Concerto recording',
+      'Lip flexibility drills before every practice'
+    ]::text[], ARRAY[
       'Tone consistency', 'Lip flexibility', 'Range',
       'Articulation', 'Endurance', 'Breath support',
-      'Phrasing', 'Intonation'
-    ]
+      'Phrasing', 'Intonation', 'Posture', 'Mouthpiece work',
+      'Listening', 'Improvisation', 'Mute control',
+      'Pedal tones', 'Memorisation'
+    ]::text[]
   ),
   lesson_pool AS (
     SELECT
-      l.id AS lesson_id, l.org_id,
-      lp.student_id, l.teacher_id,
+      l.id AS lesson_id, l.org_id, lp.student_id,
+      sta.teacher_id,  -- s34: derived from student's current primary teacher, NOT lessons.teacher_id
       CASE
         WHEN i.name = 'Piano' THEN 'keys'
         WHEN i.name IN ('Violin','Viola','Cello') THEN 'strings'
@@ -293,6 +409,8 @@ WITH
     FROM lessons l
     JOIN lesson_participants lp ON lp.lesson_id = l.id
     JOIN students s ON s.id = lp.student_id
+    JOIN student_teacher_assignments sta
+      ON sta.student_id = s.id AND sta.org_id = l.org_id
     JOIN student_instruments si ON si.student_id = s.id AND si.is_primary
     JOIN instruments i ON i.id = si.instrument_id
     WHERE l.org_id='551ca74e-d47d-4d02-9a4b-24863349a030'
@@ -310,8 +428,8 @@ WITH
     SELECT *,
       content[(abs(h1) % array_length(content,1)) + 1] AS c1,
       content[(abs(h2) % array_length(content,1)) + 1] AS c2,
-      homework[(abs(h2) % array_length(homework,1)) + 1] AS hw1,
-      homework[(abs(h3) % array_length(homework,1)) + 1] AS hw2,
+      homework[(abs(h3) % array_length(homework,1)) + 1] AS hw1,
+      homework[(abs(h4) % array_length(homework,1)) + 1] AS hw2,
       focus_areas_pool[(abs(h1) % array_length(focus_areas_pool,1)) + 1] AS fa1,
       focus_areas_pool[(abs(h2) % array_length(focus_areas_pool,1)) + 1] AS fa2,
       CASE
