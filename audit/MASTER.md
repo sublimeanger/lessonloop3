@@ -23,6 +23,40 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 - **Total rows:** 183
 - **State:** 167 🟢 verified / 6 🟡 structurally-verified-pending-browser / **0 🔴 launch-blockers** / 10 ⏸ deferred-post-launch / **0 ❓ untouched** = **~91% complete**
+- **s31 shadow programme infrastructure + Studio seed milestone**: Phase 1 — migration (`organisations.shadow_mode` boolean column) + `_shared/shadow-email.ts` interception layer + 22 send/notify fns wired with shadow-email pass-through-or-route + Sentry `shadow:true` tag via WeakMap<Request,true> + `reset-shadow-org` fn (cascade delete with shadow-mode safety guard). Phase 2 — `seed-shadow-org` fn deployed; minimal Studio tier seed working: org 551ca74e-d47d-4d02-9a4b-24863349a030 with shadow_mode=true, 2 teachers, 1 location, 2 rooms, 3 terms, 9 UK closures. Students/lessons/invoices deferred to s32 (schema constraints fully mapped now; expand once Lauren onboarding signal in hand). Phase 3 — 2 s30-surfaced flakes filed (§15.4 Utilisation, §16 Messages); both intermittent and didn't recur in s31 baseline. SHADOW_RECIPIENTS + SHADOW_ADMIN_KEY env set in Supabase secrets. **Shadow programme ready for s32 Lauren onboarding.** Audit unchanged at 167 🟢 — shadow programme is launch-parallel infrastructure, not v1 audit rows.
+
+### Shadow programme infrastructure (s31)
+
+New tables / columns:
+- `organisations.shadow_mode boolean NOT NULL DEFAULT FALSE` (migration `20260522100000_add_shadow_mode_flag.sql`)
+
+New edge fns:
+- `seed-shadow-org` — seeds tier-specific shadow org (Studio working in s31; Teacher/Agency configured but not yet smoke-tested)
+- `reset-shadow-org` — cascade-delete shadow org with safety guard (refuses non-shadow orgs)
+
+New helpers:
+- `_shared/shadow-email.ts` — `transformEmailForShadow(payload, { orgId, supabase, req? })` interception layer; pass-through for non-shadow orgs, route to SHADOW_RECIPIENTS env for shadow orgs with `[SHADOW: <prefix>]` subject prefix + visible banner
+
+Wrap extensions:
+- `_shared/sentry.ts` — `markRequestAsShadow(req)` exported; wrapEdgeFn auto-tags `shadow:true` when set
+
+22 fns wired with shadow-email:
+- Messaging (8): send-message, send-bulk-message, send-payment-receipt, notify-internal-message, notify-makeup-offer, send-parent-message, send-cancellation-notification, send-notes-notification
+- Money-path notifications (7): send-enrolment-offer, send-dispute-notification, send-refund-notification, send-auto-pay-alert, send-auto-pay-failure-notification, send-recurring-billing-alert, installment-upcoming-reminder
+- Cron (6): send-lesson-reminders, streak-notification, overdue-reminders, credit-expiry-warning, ical-expiry-reminder, create-continuation-run
+- Public (1): booking-submit
+
+NOT wired (3 — intentional, no orgId in scope): send-contact-message, send-parent-enquiry, cron-health-watchdog
+
+Identity:
+- SHADOW_RECIPIENTS env: `jamie@searchflare.co.uk,laurentwilleypiano@gmail.com`
+- SHADOW_ADMIN_KEY env: rotating secret (in Supabase secrets only; Jamie holds locally for shadow ops invocation)
+- Jamie user_id: `29ae9f1e-c528-40ea-b9e8-84c2f03b15a9`
+- Lauren user_id: `1e52dad5-77aa-437a-9cc9-6425001f3e39`
+- First shadow org: `551ca74e-d47d-4d02-9a4b-24863349a030` (Lauren's Shadow Studio)
+
+This section is for documentation, not audit row counting. Shadow programme is launch-parallel infrastructure.
+
 - **s30 prod-finding root causes + remaining closeouts milestone**: Track 1 (stripe-list-payment-methods 500) — hypothesis (stale Stripe customer ID) verified WRONG: both customers EXIST in Stripe live mode and direct paymentMethods.list calls succeed. HALTED per HARD RULE; deferred to s31 shadow-term live debug. Track 2 (streak-notification 500) — replaced 2 throw paths with idempotent 200-skip responses; Sentry issue JAVASCRIPT-REACT-9 resolved. Track 3 (§20.7b seedTerms flake) — replaced Math.random baseYear with deterministic per-testId hash (10K-year window); 5/5 stable runs; finding CLOSED. Track 4 (rbac-5-4 email-verification test) — two-pronged unconfirm via new SECURITY-DEFINER RPC (`_e2e_set_user_email_confirmed`, safety-guarded by @test.lessonloop.net email pattern) + storage-state cached-session.user patch; 3/3 stable runs; finding CLOSED. Track 5 (send-invoice-email 502) — explicit MONITOR reclassification (unreproducible from synthetic traffic; awaiting live shadow-term recurrence or 30d implicit closure). Audit state unchanged at 167 🟢 — s30 was finding closeout, not promotion. Open findings 6 → 4 (only truly-irreducible: stripe-list-payment-methods s31-defer, stripe-branding Jamie-action, supabase-captcha v1.1+, send-invoice-email-502 MONITOR, plus zoom-tier deferred + cron-net-http informational). Shadow programme infrastructure READY for s31 Jamie greenlight.
 - **s29 final hardening + open-findings closeout milestone**: Track 1 (stripe response-body leak allow-list) — migrated 9 stripe-* fns to `_shared/stripe-error.ts` `classifyAndRespond` helper with explicit SAFE_MESSAGES maps; 9 sample contract tests pass (15/15 incl auth setup). Mid-session Sentry captured 2 NEW prod 5xx events (JAVASCRIPT-REACT-8 stripe-list-payment-methods 500 × 3 users; JAVASCRIPT-REACT-9 streak-notification 500 × 1 user) — filed 2 findings, migrated 3 more stripe fns (list/detach/update) for parity (total 12). Track 2 — 4 findings closed/downgraded: cloudflare-subdomain CLOSED (s25 orange-cloud verified holding); env-injection DOWNGRADED v1.1+ (production unaffected per s25-s29 Sentry monitoring); cron-class-b DOWNGRADED v1.1+ (s28 Sentry cron wrap is the workaround); 2 concurrency flakes CLOSED (3/3 stable runs after testId-scoped filter + per-testId second offset). Track 3 — rbac-5-4 FLOW verified production-correct via RouteGuard.tsx code review; test SKIPPED with explicit redesign plan deferred to s30 (Option C, ~1-2h). Audit state unchanged at 167 🟢 — s29 was hardening + finding closeout, not promotion. Baseline target: 643/1/123/<5m post-skip.
 - **s28 class-bug sweep + Sentry coverage closeout milestone**: Track 1 — root-caused + fixed the throw-into-outer-catch class-bug across **56 fns** (8 cluster commits) that previously returned 500 on malformed JSON bodies; pattern was the root cause of all 3 prior prod 5xx incidents (s24 send-message, s27 send-bulk-message, s27 send-invoice-email). Added §27 parametrised contract test asserting 12 sample fns return 4xx not 5xx on malformed body. Track 2 — filed 2 findings for the 2 intermittent DB-concurrency flakes carried over from s27 (test-side, not production race; both have documented fix shape for s29). Track 3 — Sentry edge wrap +16 high-impact cron fns (trial × 5, auto-pay × 2, credit-expiry × 2, overdue × 4, lifecycle × 2, streak); coverage 67 → **83/103 (~81%)**, remaining 20 are all launch-cut/HIDDEN/low-priority. Audit state unchanged at 167 🟢 — s28 was hardening + coverage expansion, not promotion. Baseline 643/3/122/5.2m — equally clean. 3 new findings filed (1 closed, 2 open P3 deferred-flakes).

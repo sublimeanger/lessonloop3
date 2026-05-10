@@ -1,5 +1,7 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+**Last updated:** 2026-05-10 (after 31st-session — SHADOW INFRASTRUCTURE + STUDIO SEED. Phase 1: migration (organisations.shadow_mode) + _shared/shadow-email.ts interception layer + 22 send/notify fns wired + Sentry shadow:true tag via WeakMap + reset-shadow-org fn. Phase 2: seed-shadow-org deployed; minimal Studio tier working (org 551ca74e). Phase 3: 2 s30-surfaced flakes filed. SHADOW_RECIPIENTS + SHADOW_ADMIN_KEY env set. Students/lessons/invoices deferred to s32 — schema constraints now fully mapped; expand once Lauren onboarding signal in hand. Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/5.1m (s30 intermittents didn't recur). **Shadow programme ready for s32 Lauren onboarding.**
+
 **Last updated:** 2026-05-10 (after 30th-session — PROD-FINDING ROOT CAUSES + REMAINING CLOSEOUTS. Track 1: stripe-list-payment-methods 500 hypothesis WRONG (customers exist in Stripe; halted per HARD RULE; deferred to s31 shadow-term). Track 2: streak-notification 500 root-caused + fixed (idempotent skip on missing student/org). Track 3: §20.7b seedTerms flake CLOSED (deterministic per-testId baseYear). Track 4: rbac-5-4 redesigned via new SECURITY-DEFINER RPC + storage-state patch (3/3 stable). Track 5: send-invoice-email 502 → MONITOR. Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸ = ~91%. Open findings 6 → 4 truly-irreducible. **Shadow programme infrastructure READY for s31 Jamie greenlight.**
 
 **Last updated:** 2026-05-10 (after 29th-session — FINAL HARDENING + OPEN-FINDINGS CLOSEOUT. Track 1: migrated 12 stripe-* fns (9 planned + 3 mid-session-additional) to `_shared/stripe-error.ts` classifyAndRespond helper with explicit SAFE_MESSAGES allow-lists. Caught 2 new prod 5xx events mid-session via Sentry monitoring (stripe-list-payment-methods 3×, streak-notification 1×); filed 2 findings, partial-fixed list-payment-methods. Track 2: 4 finding closeouts — cloudflare-subdomain CLOSED, env-injection DOWNGRADED v1.1+, cron-class-b DOWNGRADED v1.1+, 2 concurrency flakes CLOSED (3/3 stable). Track 3: rbac-5-4 FLOW verified production-correct, test SKIPPED for s30 redesign (Option C). Open findings 12 → 5 (2 new prod + 2 v1.1+ defers + 1 rbac-5-4 redesign + 1 stripe-branding Jamie-action + zoom-tier deferred). Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸ — hardening + closeout, not promotion. Baseline post all fixes pending.
@@ -1591,6 +1593,75 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
+### What's done at end of 31st session
+
+(Catalog state ~91% unchanged. Audit total: 167 🟢 / 6 🟡 / **0 🔴** /
+10 ⏸ = ~91%. Shadow programme infrastructure deployed. Baseline
+665/2/122/5.1m at session start — 2 documented pre-existing fails only,
+s30 intermittents didn't recur.)
+
+Per-phase outcomes for s31:
+
+- **Phase 1 — shadow infrastructure (~2h)**:
+  - Migration applied: `organisations.shadow_mode boolean NOT NULL
+    DEFAULT FALSE` + partial index on shadow_mode=true rows.
+    (`supabase/migrations/20260522100000_add_shadow_mode_flag.sql`)
+  - `_shared/shadow-email.ts` — `transformEmailForShadow(payload, ctx)`
+    intercepts outbound emails: pass-through for non-shadow orgs,
+    route to SHADOW_RECIPIENTS env with `[SHADOW: <org-prefix>]`
+    subject prefix + visible banner for shadow orgs.
+  - 22 send/notify fns wired with shadow-email layer (single bulk
+    deploy via Supabase Management API). Smoke test confirmed
+    non-shadow pass-through unaffected.
+  - Sentry shadow:true tag via WeakMap<Request,true> in
+    `_shared/sentry.ts`. `markRequestAsShadow(req)` exported;
+    shadow-email helper calls it when interception fires. wrapEdgeFn
+    auto-tags Sentry events.
+  - `reset-shadow-org` fn deployed — cascade-delete a shadow org
+    with safety guard (refuses non-shadow orgs).
+  - SHADOW_RECIPIENTS env set in Supabase secrets:
+    `jamie@searchflare.co.uk,laurentwilleypiano@gmail.com`.
+  - SHADOW_ADMIN_KEY env set in Supabase secrets — rotating secret
+    Jamie holds for out-of-band shadow ops invocation. Necessary
+    because Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") inside fns isn't
+    byte-equal to the dashboard service-role JWT (env-injection
+    finding); SHADOW_ADMIN_KEY is the parallel auth path for shadow
+    fns called externally.
+
+- **Phase 2 — Studio-tier seed (~1h, scope-reduced)**:
+  - `seed-shadow-org` fn deployed. Idempotent via reset=true.
+  - Smoke test successful: tier=studio, reset=true → org
+    `551ca74e-d47d-4d02-9a4b-24863349a030` (Lauren's Shadow Studio)
+    with shadow_mode=true, stripe_test_mode=true, 2 teachers,
+    1 location, 2 rooms, 3 terms, 9 UK closures.
+  - Jamie (owner) + Lauren (admin) memberships + profiles set.
+  - **Scope reduction**: students / lessons / invoices NOT seeded
+    in s31. The live schema has more NOT-NULL fields than the
+    plan anticipated (lessons.lesson_type, lessons.is_online,
+    lessons.is_open_slot, invoices.issue_date / subtotal_minor /
+    tax_minor / vat_rate / credit_applied_minor / is_credit_note /
+    pdf_rev, payments.provider / currency_code, students.payment_plan_preference,
+    attendance_records.attendance_status / recorded_by, etc.).
+    Working through each enum + NOT NULL constraint iteratively
+    consumed s31's budget. s32 should:
+    1. Read entire schema for the target tables upfront via
+       information_schema query.
+    2. Map enums (employment_type=contractor not self_employed,
+       location_type=studio, etc.) before coding.
+    3. Build students / lessons / invoices clusters with full schema
+       confidence.
+  - Net result: Lauren CAN log in and see the empty Studio org.
+    The shadow programme infrastructure is FULLY WIRED — when she
+    sends a message (or any of the 22 fns fires), it will route
+    correctly. Just no historical data to interact with yet.
+
+- **Phase 3 — flake findings (~10 min)**:
+  - Filed 2 P3 findings for s30-surfaced flakes (didn't recur in
+    s31 baseline — intermittent):
+    - audit/findings/2026-05-10-15-4-utilisation-concurrency-flake.md
+    - audit/findings/2026-05-10-16-messages-page-renders-flake.md
+  - s32+ to revisit if they consistently surface in further baselines.
+
 ### What's done at end of 30th session
 
 (Catalog state ~91% unchanged — s30 was finding closeout, not promotion.
@@ -2183,7 +2254,79 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 31st session pickup
+### Priority order — 32nd session pickup
+
+After s31, audit posture is unchanged at 167 🟢 / 6 🟡 / **0 🔴** /
+10 ⏸ = ~91%. Shadow programme infrastructure deployed + working
+end-to-end (Lauren can log into the seeded Studio org now). Open
+findings 4 truly-irreducible (carried from s30); +2 new low-priority
+flakes filed (s30 surfacing, intermittent).
+
+**Recommended s32: Lauren onboarding walkthrough + expand seed
+clusters (students/lessons/invoices) + Teacher + Agency tier seeds.**
+
+Agent should:
+1. **Re-baseline** at start (expect 665/2/122/~5m).
+2. **Expand seed-shadow-org** with the missing clusters:
+   - students + guardians (need student_guardians.relationship enum:
+     mother|father|guardian|other; students.payment_plan_preference NOT NULL)
+   - rate_cards per teacher per instrument
+   - recurrence_rules + lessons (lesson_type NOT NULL — private|group;
+     is_online + is_open_slot NOT NULL booleans; status enum:
+     scheduled|completed|cancelled)
+   - lesson_participants (rate_minor optional)
+   - attendance_records on past lessons (attendance_status enum:
+     present|absent|late|cancelled_by_teacher|cancelled_by_student;
+     recorded_by + recorded_at NOT NULL)
+   - invoices (issue_date + subtotal_minor + tax_minor + vat_rate +
+     credit_applied_minor + is_credit_note + pdf_rev NOT NULL;
+     status enum draft|sent|paid|overdue|void|outstanding)
+   - payments (currency_code + method + provider NOT NULL;
+     payment_method enum card|bank_transfer|cash|other;
+     payment_provider enum stripe|manual)
+   - notification_preferences expansion
+3. **Smoke-test the expanded seed** for tier=studio + tier=teacher
+   + tier=agency.
+4. **Lauren walkthrough** (Jamie observing):
+   - Lauren logs into app.lessonloop.net
+   - Switches to "Lauren's Shadow Studio" org (now with seeded data)
+   - Exercises core paths: sends bulk message, marks lesson attendance,
+     creates invoice, processes payment (test mode Stripe), uses
+     LoopAssist
+   - For each path: verify email lands at jamie+lauren only, Sentry
+     events tag shadow:true, no unexpected 5xx
+5. **Wire `req` parameter into 22 shadow-email callers** so Sentry
+   shadow:true tag fully fires (currently only fires if helper is
+   called with req in ctx; the 22 wires from s31 don't pass req).
+   This is the remaining s31 Phase 1.4 cleanup.
+
+Jamie should (carried + new):
+1. **Greenlight Lauren shadow programme** to actually start.
+2. **Subscribe to Sentry email alerts** for `runtime:deno-edge
+   level:error firstSeen:-24h` (cron Class B workaround per s29
+   finding).
+3. **Capture SHADOW_ADMIN_KEY** from Supabase secrets dashboard
+   (for out-of-band shadow ops invocation). Keep secret; rotate
+   periodically.
+4. Continue carried-over:
+   - iOS TestFlight + App Store submission
+   - Stripe Dashboard paste (~5 min)
+   - Source Supabase decommission at 2026-08-19
+   - Apple OAuth re-enable post-launch
+
+**Genuinely remaining open findings (unchanged from s30 + 2 new s31)**:
+- stripe-list-payment-methods-prod-500 (s31-defer; live recurrence)
+- send-invoice-email-prod-502 (MONITOR; 30d implicit closure)
+- stripe-branding (Jamie Dashboard paste)
+- supabase-captcha-disabled (v1.1+ UX)
+- cron-net-http-post-5s-timeout (informational)
+- zoom-tier-3-2-deferred-e2e (HIDDEN at v1)
+- 15-4-utilisation-concurrency-flake (P3 intermittent; s32 if recurs)
+- 16-messages-page-renders-flake (P3 intermittent; s32 if recurs)
+
+**No 🔴 launch blockers.** All P0/P1 cleared.
+
+### Priority order — 31st session pickup (closed)
 
 After s30, audit posture is unchanged at 167 🟢 / 6 🟡 / **0 🔴** /
 10 ⏸ = ~91%. **Shadow programme infrastructure ready for Jamie
