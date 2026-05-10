@@ -98,6 +98,7 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
           onChange={(v) => update('dob', v)}
           max={new Date().toISOString().split('T')[0]}
           placeholder="Date of birth"
+          longRange
         />
       </div>
 

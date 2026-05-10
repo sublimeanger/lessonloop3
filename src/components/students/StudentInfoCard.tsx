@@ -160,7 +160,7 @@ export function StudentInfoCard({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-dob">Date of birth</Label>
-                <DatePicker id="edit-dob" value={dob} onChange={setDob} max={new Date().toISOString().split('T')[0]} placeholder="Date of birth" />
+                <DatePicker id="edit-dob" value={dob} onChange={setDob} max={new Date().toISOString().split('T')[0]} placeholder="Date of birth" longRange />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-notes">Notes</Label>

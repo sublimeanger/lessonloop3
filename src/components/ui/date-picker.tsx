@@ -23,6 +23,23 @@ export interface DatePickerProps {
   max?: string;
   className?: string;
   id?: string;
+  /**
+   * Enables year + month dropdown navigation and opens on a sensible historical
+   * default month (~10 years ago) when no value is set. Use for date-of-birth,
+   * anniversary dates, or any date that may be many years in the past.
+   * Defaults to false — existing call sites unchanged.
+   */
+  longRange?: boolean;
+  /**
+   * Override the year-dropdown range when longRange is true.
+   * Default: current year - 100.
+   */
+  fromYear?: number;
+  /**
+   * Override the year-dropdown range when longRange is true.
+   * Default: current year + 5.
+   */
+  toYear?: number;
 }
 
 export function DatePicker({
@@ -34,6 +51,9 @@ export function DatePicker({
   max,
   className,
   id,
+  longRange = false,
+  fromYear,
+  toYear,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -51,6 +71,20 @@ export function DatePicker({
     },
     [minDate, maxDate, disabledFn],
   );
+
+  const computedDefaultMonth = React.useMemo(() => {
+    if (selected) return selected;
+    if (longRange) {
+      const tenYearsAgo = new Date();
+      tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+      return tenYearsAgo;
+    }
+    return undefined;
+  }, [selected, longRange]);
+
+  const currentYear = new Date().getFullYear();
+  const computedFromYear = fromYear ?? (longRange ? currentYear - 100 : undefined);
+  const computedToYear = toYear ?? (longRange ? currentYear + 5 : undefined);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -79,7 +113,10 @@ export function DatePicker({
             }
           }}
           disabled={isDisabled}
-          defaultMonth={selected}
+          defaultMonth={computedDefaultMonth}
+          captionLayout={longRange ? 'dropdown-buttons' : 'buttons'}
+          fromYear={computedFromYear}
+          toYear={computedToYear}
           initialFocus
           className={cn('p-3 pointer-events-auto')}
         />
