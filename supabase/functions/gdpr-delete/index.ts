@@ -50,7 +50,15 @@ serve(wrapEdgeFn("gdpr-delete", async (req) => {
     }
 
     // Get request body
-    const body = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { action, entityType, entityId, org_id } = body;
 
     if (!action || !entityType || !entityId || !org_id) {

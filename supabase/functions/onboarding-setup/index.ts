@@ -73,7 +73,15 @@ Deno.serve(wrapEdgeFn("onboarding-setup", async (req) => {
     }
 
     // Parse request body
-    const body: OnboardingRequest = await req.json();
+    let body: OnboardingRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { org_type, phone, subscription_plan, also_teaches } = body;
     let { org_name, full_name } = body;
 
