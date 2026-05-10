@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-10 (after 15th-session — flake hardening for §13.7.4 + §14.10.16 via service-role curl pattern; §22 +4 real tests (50%→75%); §11 +3 real tests (60%→75%); audit hygiene 12 rows promoted 🟡→🟢 per the recalibrated world-class bar) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-10 (after 16th-session — DEDICATED getUser sweep: 15 user-facing fns hardened in 5 cluster commits; cumulative 32/45 across s12+s13+s14+s16; HIGH+MEDIUM done; Track C closed for v1 launch; audit +6 promotions 🟡→🟢) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -656,6 +656,59 @@
   * getUser sweep gets a dedicated session (recommend s16 or
     s17). 17/~30 done across s12+s13+s14. ~13 remain. Stop
     capping at 5/session — clear the lot in one focused pass.
+- (16th session — DEDICATED getUser SWEEP, Track C closed for v1)
+  Jamie picked option A from s15's pickup list. Single-purpose
+  session: read finding, grep current state, classify
+  HIGH/MEDIUM/LOW, fix in priority clusters, deploy, commit per
+  cluster.
+  * **Cluster 1 (12c9665) — 4 Stripe HIGH:** stripe-billing-history
+    (billing tab list 401'd → empty); stripe-subscription-checkout
+    (tier upgrade); stripe-update-payment-preferences (auto-pay
+    toggle); stripe-verify-session (post-checkout return).
+  * **Cluster 2 (7c37115) — 4 GDPR/invite/notes:** gdpr-export
+    (data export 401 → compliance gap); gdpr-delete (org-side
+    anonymise/soft-delete); invite-accept (used `jwtToken` to
+    avoid name collision with the invite-token from req.json());
+    send-notes-notification (parent-facing lesson-notes email).
+  * **Cluster 3 (4b1704e) — 4 run-creation/makeup:**
+    create-billing-run (recurring billing run); create-continuation-run
+    (term-rollover, Lauren-paramount; only the manual-trigger path
+    hit the bug — cron deadline path uses service-role bearer);
+    process-term-adjustment (the standalone-call path; the
+    bulk-process caller path was patched in s10);
+    notify-makeup-offer (token already extracted at line 31 for
+    the isServiceRole check — just reused for getUser(token)).
+  * **Cluster 4 (ee82016) — 3 final HIGH:** account-delete
+    (GDPR self-service); bulk-process-continuation (the PRIMARY
+    auth check at top-of-fn — distinct from s10's auth-passthrough
+    fix); continuation-respond (portal-based path; token-based
+    path takes a different branch and was already correct;
+    used `jwtToken` to avoid collision with body.token).
+  * **MEDIUM cluster (e13fb0a) — 6 fns:** looopassist-chat
+    (staff AI chat); looopassist-execute (AI tool execution);
+    xero-oauth-start; xero-disconnect; xero-sync-invoice;
+    xero-sync-payment.
+  * **Cumulative across s12+s13+s14+s16: 32 of 45 fns fixed**
+    (s12=3, s13=10, s14=4, s16=15). HIGH+MEDIUM done.
+    Remaining ~7 LOW: calendar-* (4), zoom-* (2), seed-* (4),
+    send-enrolment-offer — all hidden at v1 per v2 §3.2.
+    Deferred to a future sweep when those features light up.
+  * **Track C effectively CLOSED for v1 launch.** The
+    getUser-no-args bug class no longer appears on
+    user-launch-path edge fns. Finding doc updated with
+    closure section.
+  * **Audit +6 promotions** 🟡→🟢: Settings (org config);
+    Invoices list; Invoice detail; Stripe webhook; Continuation
+    respond; Term adjustment processor. Plus inline
+    [getUser fix per <sha> (s16)] tags on rows for the 15 fns
+    touched. Summary refreshed to 32 🟢 / 132 🟡.
+  * **Baseline: 479 passed / 7 failed / 125 skipped / 2 did-not-run /
+    4.5m** — significantly better than s15 (458/10/124/21/5.0m):
+    +21 passed / −3 failed / −19 did-not-run / −0.5m. The 7
+    failures are documented transients (§5.4 design-broken;
+    §11.4.7 filter count race — s15-introduced from §11.4.10
+    seeding teachers in the e2e org; §20.7b rate-limit cascade;
+    §26.6.7 GCal UI race; §26.9.1/2/3 Stripe trio).
 - (also at 7th-session start) Manual SQL sweep of stale e2e_ test
   data via Supabase MCP execute_sql — cleared 6 lesson rows
   (1 active scheduled + 5 cancelled), 22 students, 4 invoices, and
@@ -700,14 +753,30 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~73% (was ~70% at end of s14). s15 closed what
-s14 left in flight: flake hardening landed (§13.7.4 + §14.10.16 now
-service-role-backed and stable across cross-file contention) plus
-deeper §22 (50%→~75%) + §11 (60%→~75%) coverage. Audit hygiene
-re-established with 12 rows 🟡→🟢 per Jamie's recalibrated bar.**
+**Catalog completeness: ~73% (unchanged from s15). s16 was a dedicated
+infra session — no catalog progress, but Track C (getUser sweep) is
+closed for v1 launch. 15 user-facing fns hardened in 5 cluster commits.
+Audit hygiene +6 promotions 🟡→🟢 (32 🟢 total, was 26).**
 
-Current baseline (end of 15th session, post-flake-hardening + §22/§11 catalog + audit hygiene + 10s audit_log poll):
-- **458 passed / 10 failed / 124 skipped / 21 did not run / 5.0 min wall-clock at 4 workers**
+Current baseline (end of 16th session, post-getUser-sweep):
+- **479 passed / 7 failed / 125 skipped / 2 did not run / 4.5 min wall-clock at 4 workers**
+- vs s15 final (458/10/124/21/5.0m): **+21 passed / −3 failed / −19 did-not-run / −0.5m**.
+- Wall-clock comfortable at 4.5m. did-not-run dropped sharply
+  (the s15 §22.2/§24 cross-file race cascade evidently didn't
+  fire this run — variance, not regression).
+- The 7 failures are documented transients:
+  * §5.4 email-verification (deterministic — broken test design).
+  * §11.4.7 filter tab counts (NEW transient — s15 introduced
+    §11.4.10 archive teacher status flip in the e2e org which
+    races with §11.4.7's all=linked+unlinked count math.
+    Fix path: either pin §11.4.7 mode='serial' against §11.4.10,
+    or move §11.4.10 to a throwaway org. ~15min in s17.)
+  * §20.7b withdrawal (rate-limit cascade).
+  * §26.6.7 GCal URL (UI race).
+  * §26.9.1/2/3 Stripe trio (transient Stripe API variance).
+
+**Stale baseline (end of 15th session):**
+- 458 passed / 10 failed / 124 skipped / 21 did not run / 5.0 min wall-clock
 - vs s14 wrap (460/13/129/8/7.0m): −2 passed / **−3 failed / −5 skipped (s15 fixme conversions) / +13 did-not-run / −2.0m wall-clock**.
 - Wall-clock recovered to ≤5m as targeted by s15 Item 1 exit criterion.
 - An earlier-in-s15 baseline (post-flake-fix only, before §22+§11+audit
@@ -859,8 +928,8 @@ session — don't fix inline during a catalog session.
 |---|---|---|
 | ~~Streak milestone notifications never deliver.~~ | — | **CLOSED in session 12.** Two bugs in series: (1) vault was missing SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (FIXED — seeded via Management API); (2) `_notify_streak_milestone` sent wrong auth header, streak-notification's validateCronAuth required x-cron-secret (FIXED via migration `20260519100000_notify_streak_milestone_x_cron_secret.sql`). End-to-end verified: net._http_response shows 200 OK with `{success:true, streak:3, milestone:"Building Momentum!"}`. §17.4 e2e delivery test added that polls net._http_response. RESEND_API_KEY still not seeded so emails_sent=0 (best-effort delivery design); seeding RESEND is an unrelated follow-up if Lauren wants email delivery, separate from the auth chain. |
 | ~~app.lessonloop.net DNS chain broken~~ | — | **RESOLVED in session 13.** Outage at start of s13 because the entire `*.netlify.app` zone went NXDOMAIN globally (verified across all major resolvers + the .app TLD authoritative servers). Cloudflare CNAME at `app.lessonloop.net` was pointing at `lessonloop-app.netlify.app`. Fixed via Cloudflare API: CNAME swapped to `lessonloop-app.netlify.com` (same project, TLD swap). Verified end-to-end (HTTPS 200, Netlify edge cache hit). ~10 min from diagnosis to resolution. Long-term consideration: switch DNS hosting to Netlify so they manage the chain end-to-end as their internal naming evolves. See [DNS finding](audit/findings/2026-05-10-app-dns-netlify-cname-broken.md). |
-| **getUser() no-args pattern across 30+ user-facing edge fns** (sweep in progress) | **P1** | Sessions 10+11 each found 1; s12 fixed 3; s13 fixed 10; s14 fixed 4 (stripe-create-checkout, -list-payment-methods, -detach-payment-method, -customer-portal). s15 NO new fixes — focused on flake hardening + §22/§11 catalog instead, per the recalibrated stance. **Cumulative 17 of ~30 fixed; ~13 remain.** Remaining catalogued in [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md). **FLAGGED for dedicated session 16/17** — the s15 prompt explicitly asked to stop piecemeal and clear the lot in one focused pass. |
-| **Money-path systematic clearing** (Invoicing & Payments cluster) | **P0/P1 mix** | Lauren-paramount per v2 §3.1. 23 audit rows; only ~3 are 🟢 even after s15. Sessions 16-18 dedicated workstream per recalibrated stance: every row to 🟢 with real test + production verification + audit tag. Includes Stripe webhook (already 🟡 with §24.12 true-replay), payment-intent + checkout, refund + dispute notifications, auto-pay run, recurring billing run. Most are service-role-only edge fns — DB-shape contract tests are appropriate (similar to §27). |
+| ~~getUser() no-args pattern across 30+ user-facing edge fns~~ | — | **CLOSED in s16 for v1 launch.** Cumulative 32 of 45 fns fixed across s12+s13+s14+s16. s16 was the dedicated sweep — 15 user-facing fns hardened in 5 cluster commits (Stripe x4, GDPR/invite/notes x4, run-creation/makeup x4, account-delete + bulk-process + continuation-respond x3, MEDIUM looopassist + Xero x6). HIGH+MEDIUM done; LOW cluster (~7 fns: calendar-* x4, zoom-* x2, seed-* x4, send-enrolment-offer) all hidden at v1 launch per v2 §3.2 — deferred to a future sweep when those features light up. See [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md) Closure section. |
+| **Money-path systematic clearing** (Invoicing & Payments cluster) | **P0/P1 mix** | Lauren-paramount per v2 §3.1. After s16 promoted Invoice list + Invoice detail + Stripe webhook + Settings to 🟢, ~20 money-path rows still 🟡. **PRIMARY workstream for s17-s18.** Walk every row in audit/MASTER.md "Invoicing & Payments" section, verify against current test coverage, promote where stable. Most Stripe-* fns now have getUser(token) fixes from s12-s16 but lack auth-gate E2E tests. Send-* notification fns are service-role-only — DB-shape contract tests appropriate (similar to §27). Cron rows (auto-pay-installment, billing-run scheduler) need cron-fire verification. Target: 10-12 rows green per session. |
 | **DNS hardening** (raised in s13; Jamie-level work) | **P1 launch readiness** | The s13 outage exposed that production DNS relies on a Cloudflare CNAME pointing at a Netlify-managed target whose naming Netlify can change without notice. Same pattern could fail again. JAMIE-LEVEL launch-readiness item: (a) move DNS hosting to Netlify entirely, OR (b) add external uptime monitoring on app.lessonloop.net + a runbook for the CNAME swap. Runbook is filed in audit/findings/2026-05-10-app-dns-netlify-cname-broken.md. NOT agent work. |
 | **Edge function env injection mismatch** (REPLACES the prior "drift" entry — phantom diagnosis closed in 11th session) | **P1** | 11th-session three-probe diagnostic conclusively proved: the legacy HS256 service_role JWT IS valid against the project (PostgREST returns 200). The "drift" framing carried across sessions 9 + 9a + 10 was based on a hash from session 9a's env-probe-temp (never validated). The actual phenomenon: `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` in deployed edge functions returns a different value than the dashboard's "Project API keys" → service_role row, despite no Custom Secrets override. Jamie's hypothesis on cause: Supabase auto-injection materialises a different value than the dashboard, OR partial migration to signing-keys at the edge gateway. Three resolution paths in [finding](audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md). The agent should NOT propose JWT secret reset or sb_secret_ migration. **Affects edge functions that do `authHeader.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))` byte-equal checks** (send-payment-receipt + likely send-refund-notification + send-auto-pay-alert). Functions that use `getUser(token)` for auth (now including send-bulk-message after 11th-session fix) work fine with legacy JWTs. Vault seeding still blocked because the streak-notification chain runs through this auth path. |
 | **§5.4 email-verification gate test design broken** (NEW 2026-05-09 — formerly listed under "JWT-stale" theory) | **P2** | 9th-session Item 5 confirmed deterministic 5/5 fail. Root cause: Supabase `enable_email_confirmations` (likely toggled in 2026-05-08 auth tightening) rejects password-grant for unconfirmed users with `email_not_confirmed`. The test creates a user with `email_confirm: false` then calls `/auth/v1/token?grant_type=password` to get a session — that path now refuses by design. The test's premise is broken; no quick fix. Three redesign paths in [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md). Estimate to fix: 1-2h via UI-signup flow OR magic-link admin generation. |
@@ -1024,7 +1093,12 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
-### What's done at end of 15th session
+### What's done at end of 16th session
+
+(Catalog state unchanged from s15 — s16 was a dedicated infra
+session for the getUser sweep, no new tests were added. Track C
+is closed for v1 launch; cumulative 32/45 user-facing fns
+hardened.)
 
 | Section | Real tests | Coverage | Notes |
 |---|---:|---:|---|
@@ -1051,11 +1125,63 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 16th session pickup
+### Priority order — 17th session pickup
 
-**Recommended**: pick ONE of two dedicated workstream sessions. Both
-are explicit in the s15 prompt's recalibrated stance — Jamie is the
-one to choose between them.
+**PRIMARY: Money-path systematic clearing kickoff (~3-4h).**
+This is the explicit s15 recommendation and remains the next
+dedicated workstream after s16 closed Track C.
+
+Invoicing & Payments has many 🟡 rows in audit/MASTER.md. After
+s16 promoted Stripe webhook + Invoice list + Invoice detail to
+🟢 (3 of the cluster's rows), the rest still need verification +
+promotion. Per Jamie's recalibrated bar: every row to 🟢 with
+real test + production verification + audit tag.
+
+**Workflow:**
+1. Walk every row in audit/MASTER.md "Invoicing & Payments"
+   section. Each row gets one of:
+   * 🟢 **promotable now** — has [E2E real per <sha>] tag + tests
+     verified passing + launch-in-scope. Promote in this session.
+   * 🟡 **needs new test** — write a DB-shape contract test
+     (similar to §27 RLS pattern) for the auth path / state
+     transitions / RLS boundary that this fn / surface owns.
+     Then promote.
+   * ⏸ **deferred** — hidden at v1 launch (e.g. recurring
+     billing templates per v2 §3.2). Mark explicitly in Notes
+     and skip.
+2. Stripe-* edge fns are the bulk: list-payment-methods,
+   create-payment-intent, process-refund, customer-portal,
+   detach-payment-method, etc. Most have getUser fixes from
+   s12-s16 but no E2E tests asserting the auth gate works.
+   §24 spec already covers some — extend rather than rebuild.
+3. Send-* notification fns (refund, dispute, auto-pay, recurring
+   billing alert) — most are service-role-only. RLS / auth-gate
+   contract tests appropriate.
+4. Cron rows (auto-pay-installment, billing-run scheduler,
+   overdue-check) — verify they fire + their downstream effects;
+   most are already 🟢 or 🟡-pending-cron-run-verification.
+
+**Target end-of-session:** ~10-12 money-path rows green; clear
+diagnostic for what's left after s17 (rolls into s18).
+
+**Step 0**: pull, read HANDOVER, run baseline. Expected:
+~479 passed / 7 failed / 125 skipped / 4-5m wall-clock.
+The §11.4.7 filter race may still flake — small fix in s17 to
+either pin mode='serial' or move §11.4.10 to throwaway-org.
+
+**Audit hygiene mandate continues:** ≥5 rows promoted to 🟢
+per session. s17 should see significant progress here since
+money-path is the focus.
+
+### Priority order — 16th session pickup (closed)
+
+**Closed**: Dedicated getUser() sweep cleared 15 user-facing
+edge fns across 5 cluster commits. Cumulative 32/45 across
+s12+s13+s14+s16. HIGH+MEDIUM done. Track C closed for v1
+launch (LOW cluster — calendar/zoom/seed/enrolment-offer
+— remains, all hidden at v1 per v2 §3.2).
+
+**Original recommendation** (s15 wrote two options):
 
 **Option A: getUser() sweep dedicated session (~2-3h).** Cumulative
 17 of ~30 user-facing edge fns fixed across s12+s13+s14. ~13
@@ -2126,10 +2252,12 @@ Living state of every feature: `audit/MASTER.md`. State symbols:
 - 🔴 known launch blocker
 - ❓ untested (target: zero of these)
 
-Current count (2026-05-10, after s15): **26 🟢 / 138 🟡 / 6 🔴 / 10 ⏸ / 0 ❓**.
-s15 promoted 12 rows 🟡→🟢 (Outstanding; Continuation flow; CSV
-import execute; Teachers list/CRUD; Messages inbox; Send-message
-edge fn; Portal home/schedule/practice/invoices/messages/profile).
+Current count (2026-05-10, after s16): **32 🟢 / 132 🟡 / 6 🔴 / 10 ⏸ / 0 ❓**.
+s16 promoted 6 rows 🟡→🟢 (Settings; Invoices list; Invoice detail;
+Stripe webhook; Continuation respond; Term adjustment processor).
+s15 promoted 12 rows (Outstanding; Continuation flow; CSV import
+execute; Teachers list/CRUD; Messages inbox; Send-message edge fn;
+Portal home/schedule/practice/invoices/messages/profile).
 
 **The recalibrated bar (s15-onwards):** audit hygiene is non-negotiable
 per session; ≥5 rows backfilled to 🟢, target ~150+ tagged at launch.
