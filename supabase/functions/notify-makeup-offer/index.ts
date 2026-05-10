@@ -44,7 +44,10 @@ Deno.serve(async (req) => {
         global: { headers: { Authorization: authHeader } },
       });
 
-      const { data: { user }, error: userError } = await userClient.auth.getUser();
+      // getUser(token) — `token` already extracted line 31. Local JWKS
+      // verification accepts legacy HS256 JWTs. See:
+      // audit/findings/2026-05-10-getuser-noargs-sweep.md
+      const { data: { user }, error: userError } = await userClient.auth.getUser(token);
       if (userError || !user) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
