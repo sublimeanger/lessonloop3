@@ -1,12 +1,25 @@
 # Cron Class B (HTTP-failing) detection is currently a no-op
 
 **Severity:** medium
-**Status:** open (workaround in place — Class A still works)
+**Status:** DOWNGRADED to v1.1+ 2026-05-10 s29 — Sentry edge wrap (s28 +16 high-impact cron fns) provides equivalent monitoring; Option A rewrite of 16 cron registrations deferred.
 **Area:** crons / observability
 **Discovered:** 2026-05-08
-**Fixed:** —
-**Fixed in:** —
+**Fixed:** — (Option A rewrite deferred to v1.1+; Sentry provides the alerting now)
+**Fixed in:** — (workaround via s28 Sentry cron wrap)
 **Affected components:** `public.check_cron_health()`, all 16 `net.http_post`-style cron commands, `cron-health-watchdog`
+
+## s29 closure rationale
+
+The original finding's "Workaround (in place)" section already correctly identified Sentry edge-fn 5xx alerting as the partial mitigation. s28 expanded Sentry coverage to 83/103 edge fns (~81%), specifically wrapping 16 high-impact cron-fired fns (trial × 5, auto-pay × 2, credit-expiry × 2, overdue × 4, lifecycle × 2, streak × 1). Every cron-target fn that LessonLoop business logic cares about now captures 5xx events.
+
+Class A (stopped-firing) detection still works via the existing `cron-health-watchdog` + `check_cron_health()` chain.
+
+Combined coverage:
+- Class A: cron-health-watchdog detects jobs that stopped firing entirely
+- Class B (NEW via Sentry): cron-target fns that fire reliably into a 500 wall surface as Sentry events with `runtime:deno-edge fn_name:<cron-fn>`
+- Jamie should configure a Sentry alert rule for shadow term: `runtime:deno-edge level:error firstSeen:-24h` → email Jamie. Documented in HANDOVER §29 Jamie actions.
+
+Option A (rewrite cron registrations to surface request_id) remains the proper long-term fix but is now correctly scoped as v1.1+ migration work, not v1 launch-blocker.
 
 ## Symptom
 

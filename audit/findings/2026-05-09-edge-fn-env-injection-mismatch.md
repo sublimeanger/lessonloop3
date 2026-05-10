@@ -1,11 +1,22 @@
 # Edge function `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` returns ≠ dashboard service_role
 
 **Date:** 2026-05-09 (session 11 three-probe diagnostic)
-**Severity:** P1 — blocks edge-fn fn-invocation E2E tests + vault
-seeding for streak notifications. NOT launch-blocking IF Jamie
-manually verifies the streak-notification path in production.
-**Status:** Open. Cause not yet fully understood; surfaced to Jamie
-without proposing a code or project-settings fix.
+**Severity:** P1 originally; **DOWNGRADED to v1.1+ scope** at s29 close — production unaffected.
+**Status:** DOWNGRADED 2026-05-10 s29 — re-investigation evidence below shows zero production impact across s25-s29 (4+ sessions of live Sentry monitoring). E2E-test-only impact; workarounds in place. Defer root-cause investigation to v1.1+.
+
+## s29 re-investigation (HARD TIMEBOX hit, conclusion below)
+
+Evidence considered (s29):
+1. **Sentry monitoring history (s25-s29)**: zero 5xx events on any of the 6 service-role-gated fns flagged in this finding (send-payment-receipt, send-refund-notification, send-auto-pay-alert, send-auto-pay-failure-notification, send-dispute-notification, send-recurring-billing-alert). They've been wrapped with wrapEdgeFn since s27.
+2. **Server-to-server byte-equal works in production**: when stripe-webhook calls send-payment-receipt with `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, both caller and callee read the SAME auto-injected value. Byte-equal succeeds. So the production flow is fine — only the E2E test, which uses the local .env.test JWT (the dashboard one), can't directly invoke these fns.
+3. **The 1 known production-side symptom** (streak-notification trigger silently 401'ing per the original finding) was a SEPARATE bug — `x-cron-secret` header missing, NOT service-role mismatch. Fixed s12. See audit/findings/2026-05-10-streak-notification-x-cron-secret-mismatch.md (CLOSED).
+4. **E2E workaround**: tests that need state-setup for these fns use the seedX factories + PostgREST RPC (where service-role write IS accepted because PostgREST verifies the JWT against the project's JWT secret directly — see Probe A in original finding). No test directly invokes a service-role-gated edge fn.
+
+Conclusion: the mismatch is real but the production-impact framing was wrong. Server-to-server calls work fine; only the local-test → live-edge-fn path is affected, and that path is already worked around. v1.1+ should still investigate the root cause (probably the new sb_secret_* signing key system or asymmetric-key migration), but it's not a v1 launch blocker.
+
+## Original finding below
+
+---
 
 ## REPLACES
 
