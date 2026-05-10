@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-10 (after 11th-session — drift saga CLOSED as phantom; §16 cluster +7 tests + send-bulk-message getUser fix + global-setup term/adjustment sweep) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-10 (after 15th-session — flake hardening for §13.7.4 + §14.10.16 via service-role curl pattern; §22 +4 real tests (50%→75%); §11 +3 real tests (60%→75%); audit hygiene 12 rows promoted 🟡→🟢 per the recalibrated world-class bar) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -602,6 +602,60 @@
   new flaky tests by switching their result-side queries to
   service-role curl (bypasses owner-JWT-proxy contention) —
   same pattern §27 RLS test uses successfully.
+- (15th session — FLAKE HARDENING + §22/§11 deeper coverage)
+  Three commits land:
+  * (flake fix) §13.7.4 + §14.10.16 result-side selects switched
+    from supabaseSelect (owner JWT) to inline selectServiceRole
+    (curl + SUPABASE_SERVICE_ROLE_KEY) helpers. Same shape as §27
+    selectNotifPrefServiceRole / §26.11 selectServiceRole.
+    Service-role bypasses the owner-JWT-PostgREST-proxy contention
+    pattern that returned non-array shapes under load in s14. For
+    §14.10.16 audit_log assertion the helper got an extra
+    selectServiceRoleWithPoll wrapper (10s deadline) — the
+    apply_lost_dispute_cascade RPC commits audit_log inside its
+    transaction, but PostgREST visibility under cross-file
+    contention occasionally lags 1-3s. Both helpers coerce
+    non-array PostgREST responses to []. Verified 5x parallel +
+    full-§14-file (15/15 in 17.7s). Full-baseline §14.10.16
+    initially still flaked on 3s poll — bumped to 10s in the
+    same commit. **Both flaky tests now stable across the
+    contention scenarios documented in s14.**
+  * (catalog) §22 +4 real tests (§22.5 closure date CRUD,
+    §22.8 rate cards CRUD, §22.10 message templates CRUD,
+    §22.11 availability_blocks overlap trigger raises EXCEPTION
+    on same-teacher-same-day overlap). Removed §22.4 fixme
+    (duplicate of §32.7 protect_owner_role). §22 50% → ~75%.
+    Plus §11 +3 real tests (§11.4.6 plan-cap via throwaway org
+    with max_teachers=1 — second active teacher rejected by
+    check_teacher_limit, inactive teacher exempt; §11.4.10
+    archive teacher status flip via PATCH; §11.4.8 invite
+    expiry contract — invites row remains queryable but
+    accepted_at stays null after expiry). §11 60% → ~75%.
+  * (audit) MASTER.md hygiene per Jamie's recalibrated bar:
+    12 rows promoted 🟡→🟢 (Outstanding report; Continuation
+    flow; CSV import execute; Teachers list/CRUD; Messages
+    inbox; Send-message edge fn; Portal home; Portal schedule;
+    Portal practice; Portal invoices & pay; Portal messages;
+    Portal profile). Header bumped to s15 reference. Summary
+    refreshed to 26 🟢 / 138 🟡 (was 14 / 150). §22 settings
+    row tag extended with s15 work and given new
+    [PROMOTABLE 🟡→🟢] marker.
+- (15th session — recalibrated stance) Jamie's s15 prompt
+  explicitly recalibrated the bar: not "fix the worst bugs
+  first" but "every area, feature and function systematically
+  cleared to world-class". Practical implications carried
+  forward in s16+ planning:
+  * Audit/MASTER.md hygiene is now NON-NEGOTIABLE per session.
+    Target ≥5 rows backfilled to 🟢 per session. s15 landed 12
+    (well over the floor); ~150+ should be tagged at launch.
+  * Money-path systematic clearing is the next big workstream
+    (Invoicing & Payments has 23 audit rows, only ~3 of which
+    are 🟢 even after s15). Sessions 16-18 should be a
+    dedicated money-path sweep — every row to 🟢 with real
+    test + production verification + audit tag.
+  * getUser sweep gets a dedicated session (recommend s16 or
+    s17). 17/~30 done across s12+s13+s14. ~13 remain. Stop
+    capping at 5/session — clear the lot in one focused pass.
 - (also at 7th-session start) Manual SQL sweep of stale e2e_ test
   data via Supabase MCP execute_sql — cleared 6 lesson rows
   (1 active scheduled + 5 cancelled), 22 students, 4 invoices, and
@@ -646,30 +700,41 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~70% (was 66% at end of s12+s13). S14 returned
-to catalog-primary work after two infrastructure-heavy sessions:
-+8 real tests across §13/§14/§11; +1 P1 production bug fix
-(bulk_update_lessons enum cast); +4 getUser sweep deploys
-(cumulative 17/~30).**
+**Catalog completeness: ~73% (was ~70% at end of s14). s15 closed what
+s14 left in flight: flake hardening landed (§13.7.4 + §14.10.16 now
+service-role-backed and stable across cross-file contention) plus
+deeper §22 (50%→~75%) + §11 (60%→~75%) coverage. Audit hygiene
+re-established with 12 rows 🟡→🟢 per Jamie's recalibrated bar.**
 
-Current baseline (end of 14th session, post-catalog-work full-suite run):
-- **460 passed / 13 failed / 129 skipped / 8 did not run / 7.0 min wall-clock at 4 workers**
-- vs s14 start (464/7/132/2/4.4m): −4 passed, +6 failed, −3 skipped
-  (s14 converted 3 §11 fixmes), +6 did-not-run, **+2.6 min wall-clock**.
-- Net diagnosis: NOT regressions from s14 deploys. The +6 failures
-  are: 2 of s14's new long-running tests (§13.7.4 ~58s + §14.10.16
-  ~52s) flaking under parallel contention (pass in isolation; the
-  contention-mode failure shape is supabaseSelect's owner-JWT
-  PostgREST proxy returning non-array under load), plus the
-  documented transient cross-file race shape (§22.2, §26.6.6,
-  §26.13, §6 dashboard, §21 LoopAssist). Wall-clock attributable
-  to s14 work: ~2m for the 2 new long tests; rest is variance
-  exacerbated by contention.
-- Recommendation for s15: harden the 2 flaky s14 tests by
-  switching their result-side queries to service-role curl
-  (bypasses owner-JWT-proxy contention) — same pattern §27
-  RLS test uses successfully. ~30 min fix.
-- s14 start baseline (462/7/132/2/4.4m) is the clean reference.
+Current baseline (end of 15th session, post-flake-hardening + §22/§11 catalog + audit hygiene + 10s audit_log poll):
+- **458 passed / 10 failed / 124 skipped / 21 did not run / 5.0 min wall-clock at 4 workers**
+- vs s14 wrap (460/13/129/8/7.0m): −2 passed / **−3 failed / −5 skipped (s15 fixme conversions) / +13 did-not-run / −2.0m wall-clock**.
+- Wall-clock recovered to ≤5m as targeted by s15 Item 1 exit criterion.
+- An earlier-in-s15 baseline (post-flake-fix only, before §22+§11+audit
+  commits): 471 passed / 8 failed / 129 skipped / 2 did-not-run / 4.6m.
+  The +19 did-not-run delta in the final baseline is the standard
+  §22.2 + §24 cross-file race cascade pattern (within-file serial
+  for §22.2 means subsequent §22.2 tests are skipped if the first
+  fails); s11 noted this as a `playwright.config.ts` change to
+  pin §22 + §24 mutually exclusive — still pending.
+- **§14.10.16 stable in final baseline** (was the s14 flake target).
+  The s15 fix held: service-role-curl plus 10s audit_log poll.
+- The 10 remaining failures are all documented transients:
+  §5.4 email-verification (deterministic — broken test design,
+  needs redesign); §22.2 timezone (cross-file race with §24);
+  §20.7b withdrawal (rate-limit cascade); §24.5 detach (transient
+  Stripe API variance); parent portal login redirect (UI race);
+  §26.6.2 past lessons collapsible (UI race); §26.13 already-
+  submitted (continuation token UI race); §26.9.1/2/3 Stripe
+  trio (transient flake — known).
+- The s15 fix verified by 5x parallel run (16/16 in 26s) and full
+  §14 file passes (15/15 in 17.7s isolation).
+
+Stale baseline (end of 14th session, post-catalog-work full-suite run):
+- 460 passed / 13 failed / 129 skipped / 8 did not run / 7.0 min wall-clock
+- See s14 ledger entry for the diagnosis (NOT regressions from s14
+  deploys; the +6 failures were 2 of s14's new long-running tests
+  flaking under parallel contention plus documented transients).
 
 Stale baseline (end of 13th session) for reference:
 - 461 passed / 9 failed / 132 skipped / 4.3 min wall-clock
@@ -794,7 +859,8 @@ session — don't fix inline during a catalog session.
 |---|---|---|
 | ~~Streak milestone notifications never deliver.~~ | — | **CLOSED in session 12.** Two bugs in series: (1) vault was missing SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (FIXED — seeded via Management API); (2) `_notify_streak_milestone` sent wrong auth header, streak-notification's validateCronAuth required x-cron-secret (FIXED via migration `20260519100000_notify_streak_milestone_x_cron_secret.sql`). End-to-end verified: net._http_response shows 200 OK with `{success:true, streak:3, milestone:"Building Momentum!"}`. §17.4 e2e delivery test added that polls net._http_response. RESEND_API_KEY still not seeded so emails_sent=0 (best-effort delivery design); seeding RESEND is an unrelated follow-up if Lauren wants email delivery, separate from the auth chain. |
 | ~~app.lessonloop.net DNS chain broken~~ | — | **RESOLVED in session 13.** Outage at start of s13 because the entire `*.netlify.app` zone went NXDOMAIN globally (verified across all major resolvers + the .app TLD authoritative servers). Cloudflare CNAME at `app.lessonloop.net` was pointing at `lessonloop-app.netlify.app`. Fixed via Cloudflare API: CNAME swapped to `lessonloop-app.netlify.com` (same project, TLD swap). Verified end-to-end (HTTPS 200, Netlify edge cache hit). ~10 min from diagnosis to resolution. Long-term consideration: switch DNS hosting to Netlify so they manage the chain end-to-end as their internal naming evolves. See [DNS finding](audit/findings/2026-05-10-app-dns-netlify-cname-broken.md). |
-| **getUser() no-args pattern across 30+ user-facing edge fns** (sweep in progress) | **P1** | Sessions 10+11 each found 1; s12 fixed 3; s13 fixed 10; s14 fixed 4 (stripe-create-checkout, -list-payment-methods, -detach-payment-method, -customer-portal). **Cumulative 17 of ~30 fixed.** Remaining ~13 catalogued in [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md). Lower priority going forward (less launch-critical fns left). |
+| **getUser() no-args pattern across 30+ user-facing edge fns** (sweep in progress) | **P1** | Sessions 10+11 each found 1; s12 fixed 3; s13 fixed 10; s14 fixed 4 (stripe-create-checkout, -list-payment-methods, -detach-payment-method, -customer-portal). s15 NO new fixes — focused on flake hardening + §22/§11 catalog instead, per the recalibrated stance. **Cumulative 17 of ~30 fixed; ~13 remain.** Remaining catalogued in [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md). **FLAGGED for dedicated session 16/17** — the s15 prompt explicitly asked to stop piecemeal and clear the lot in one focused pass. |
+| **Money-path systematic clearing** (Invoicing & Payments cluster) | **P0/P1 mix** | Lauren-paramount per v2 §3.1. 23 audit rows; only ~3 are 🟢 even after s15. Sessions 16-18 dedicated workstream per recalibrated stance: every row to 🟢 with real test + production verification + audit tag. Includes Stripe webhook (already 🟡 with §24.12 true-replay), payment-intent + checkout, refund + dispute notifications, auto-pay run, recurring billing run. Most are service-role-only edge fns — DB-shape contract tests are appropriate (similar to §27). |
 | **DNS hardening** (raised in s13; Jamie-level work) | **P1 launch readiness** | The s13 outage exposed that production DNS relies on a Cloudflare CNAME pointing at a Netlify-managed target whose naming Netlify can change without notice. Same pattern could fail again. JAMIE-LEVEL launch-readiness item: (a) move DNS hosting to Netlify entirely, OR (b) add external uptime monitoring on app.lessonloop.net + a runbook for the CNAME swap. Runbook is filed in audit/findings/2026-05-10-app-dns-netlify-cname-broken.md. NOT agent work. |
 | **Edge function env injection mismatch** (REPLACES the prior "drift" entry — phantom diagnosis closed in 11th session) | **P1** | 11th-session three-probe diagnostic conclusively proved: the legacy HS256 service_role JWT IS valid against the project (PostgREST returns 200). The "drift" framing carried across sessions 9 + 9a + 10 was based on a hash from session 9a's env-probe-temp (never validated). The actual phenomenon: `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` in deployed edge functions returns a different value than the dashboard's "Project API keys" → service_role row, despite no Custom Secrets override. Jamie's hypothesis on cause: Supabase auto-injection materialises a different value than the dashboard, OR partial migration to signing-keys at the edge gateway. Three resolution paths in [finding](audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md). The agent should NOT propose JWT secret reset or sb_secret_ migration. **Affects edge functions that do `authHeader.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))` byte-equal checks** (send-payment-receipt + likely send-refund-notification + send-auto-pay-alert). Functions that use `getUser(token)` for auth (now including send-bulk-message after 11th-session fix) work fine with legacy JWTs. Vault seeding still blocked because the streak-notification chain runs through this auth path. |
 | **§5.4 email-verification gate test design broken** (NEW 2026-05-09 — formerly listed under "JWT-stale" theory) | **P2** | 9th-session Item 5 confirmed deterministic 5/5 fail. Root cause: Supabase `enable_email_confirmations` (likely toggled in 2026-05-08 auth tightening) rejects password-grant for unconfirmed users with `email_not_confirmed`. The test creates a user with `email_confirm: false` then calls `/auth/v1/token?grant_type=password` to get a session — that path now refuses by design. The test's premise is broken; no quick fix. Three redesign paths in [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md). Estimate to fix: 1-2h via UI-signup flow OR magic-link admin generation. |
@@ -958,32 +1024,86 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
-### What's done at end of 8th session
+### What's done at end of 15th session
 
 | Section | Real tests | Coverage | Notes |
 |---|---:|---:|---|
 | §10 Students (incl. §10.7 CSV import) | 7 | ~60% | §10.7 5 tests via csv-import-execute (Lauren-critical) done |
-| §13 Invoices | 10 | ~70% | mature |
-| §14 Invoice detail | 12 | ~75% | mature |
-| §15 Reports | 8 + 9 smoke | ~70% | 8th-session: §15.4 last 3 reports landed (Payroll, Utilisation, TeacherPerformance) — full §15 cluster now data-correctness covered for all 7 launch reports |
-| §16 Messages | 12 + smoke | ~80% | 11th-session: §16.3 bulk in-app + RBAC + validation, §16.4 internal compose + read tracking, §16.5 thread reply, §16.10 mark-messages-read parent-side. Plus a P1 fix in send-bulk-message (getUser(token) pattern) |
-| §17 Practice | 5 + cron | ~75% | mature |
-| §20 Continuation | 12 | ~98% | 10th-session: §20.7b withdrawals flow + §20.8a/b delete-run cases shipped. P0 bug found+fixed in bulk-process-continuation (auth chain). §20 cluster functionally complete except UI-driven cases |
-| §22 Settings | 8 + 21 smoke | ~50% | 7th-session: schedule_hours validation, parent_reschedule_policy, continuation defaults, invite member, music custom-instrument CRUD. Members invite/archive UI flows + closure dates + GDPR + audit log + rate cards CRUD all deferred |
+| §11 Teachers | 8 + RBAC | ~75% | s15: §11.4.6 plan-cap (throwaway org), §11.4.8 invite expiry contract, §11.4.10 archive teacher PATCH. UI archive-dialog flow still pending |
+| §13 Invoices | 12 | ~80% | s15: §13.7.4 hardened with service-role-curl result-side selects |
+| §14 Invoice detail | 14 | ~85% | s15: §14.10.16 hardened with service-role-curl + 10s audit_log poll |
+| §15 Reports | 8 + 9 smoke | ~95% | mature; full §15 cluster data-correctness covered for all 7 launch reports |
+| §16 Messages | 12 + smoke | ~80% | mature |
+| §17 Practice | 5 + 2 cron + 1 e2e | ~80% | end-to-end verified post-s12 |
+| §20 Continuation | 12 | ~98% | mature; §20 cluster functionally complete except UI-driven cases |
+| §22 Settings | 12 + 21 smoke | ~75% | s15: §22.5 closure date / §22.8 rate cards / §22.10 message templates / §22.11 availability_blocks overlap trigger. §22.7 GDPR / §22.12 calendar OAuth / §22.14 billing / §22.15 booking page (hidden) / §22.21 Xero / §22.22 recurring billing (hidden) remain fixme |
 | §24 Stripe (incl. §24.12 true-replay) | 12 | ~70% | mature; §24.4/6/8/9/11 deferred — Stripe CLI / OAuth / mobile |
-| §27 Notifications | 5 | ~40% | 7th-session: prefs upsert+SELECT round-trip / absent-row default / dedup unique partial idx_message_log_payment_receipt_dedup / RBAC auth gate (anon→401, no-auth→401). Live fn-invocation tests still deferred — service-role key in .env.test drifted, NOT resolved in 8th session (Jamie did not supply key) |
-| §8 Lesson CRUD | 9 | ~65% | §8.5 recurring + §8.6 cancel + §8.8.9-10 auto-credit done |
-| §11 Teachers | 1 + RBAC | ~30% | §11.4.1 unlinked-teacher contract done; invite/archive deferred |
-| §26 Parent portal | 32+ | ~98% | 8th-session: §26.9.2 + §26.9.3 installment pay paths added (5/7 §26.9 cases green; cases 4-5 are mobile-safari project). Only §26.8 Resources remains |
+| §26 Parent portal | 32+ | ~95% | mature; only §26.8 Resources remains |
+| §27 Notifications | 5 + 2 RLS | ~55% | mature; live fn-invocation tests still deferred (edge-fn env-injection mismatch) |
 | §32 Security trigger guards | 9 | ~80% | mature |
+| §8 Lesson CRUD | 9 | ~65% | §8.5 recurring + §8.6 cancel + §8.8.9-10 auto-credit done |
+
+Catalog overall: **~73%** (was ~70% at end of s14). s15 closed s14's
+flake debt and pushed §22 + §11 from "shallow" to "respectable
+launch-ready" coverage.
 
 Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 15th session pickup
+### Priority order — 16th session pickup
 
-**Step 0**: re-baseline. If the 2 new s14 flaky tests (§13.7.4
+**Recommended**: pick ONE of two dedicated workstream sessions. Both
+are explicit in the s15 prompt's recalibrated stance — Jamie is the
+one to choose between them.
+
+**Option A: getUser() sweep dedicated session (~2-3h).** Cumulative
+17 of ~30 user-facing edge fns fixed across s12+s13+s14. ~13
+remain. Mechanical 2-line fix per fn (`getUser()` →
+`getUser(token)` with `token = authHeader.replace('Bearer ', '')`).
+Catalogued in [audit/findings/2026-05-10-getuser-noargs-sweep.md].
+Stop capping at 5/session — clear the lot in one focused pass.
+Each fn left unbroken is a Lauren-shadow-term papercut. Remaining
+priorities (live launch-in-scope from the finding):
+stripe-update-payment-preferences, stripe-verify-session,
+stripe-subscription-checkout, stripe-billing-history, gdpr-export,
+gdpr-delete, send-notes-notification, notify-makeup-offer,
+process-term-adjustment, invite-accept, create-billing-run,
+create-continuation-run.
+
+**Option B: Money-path systematic clearing kickoff (~3-4h).**
+Invoicing & Payments is the single biggest 🟡 block in audit/MASTER.md
+(23 rows; ~3 are 🟢 even after s15). Lauren-paramount per v2 §3.1.
+Sessions 16-18 should be a money-path sweep — every row to 🟢 with
+real test + production verification + audit tag. s16 kickoff:
+* Start with the easiest-to-promote rows that already have stable
+  E2E coverage (Invoice list/detail, Stripe webhook, payment-intent
+  + checkout) — straight 🟡→🟢 promotion candidates after Notes
+  audit, like s15's portal sweep.
+* Then add tests for the under-covered rows (auto-pay run,
+  recurring billing run, refund notification, dispute notification).
+  Most are service-role-only edge fns — DB-shape contract tests
+  similar to §27 are appropriate.
+* End-of-session target: ~10-12 rows in the money-path block at 🟢.
+
+Both options assume the recalibrated stance: **audit/MASTER.md
+hygiene is non-negotiable**; aim for ≥5 rows backfilled to 🟢 per
+session (s15 landed 12). The bar is "every area cleared to
+world-class", not "fix the worst bug".
+
+**Step 0** (either option): pull, read HANDOVER, run baseline.
+Expected: ~471 passed / 7-9 failed / 129 skipped / 4-5m wall-clock.
+If §14.10.16 still flakes after the s15 10s poll bump, mark the
+file `mode: 'serial'` like §22.2.
+
+### Priority order — 15th session pickup (closed)
+
+**Closed**: 2 flaky tests hardened (§13.7.4 bulk-send + §14.10.16
+dispute-cascade) via service-role-curl pattern; §22 +4 real tests
+(50%→75%); §11 +3 real tests (60%→75%); audit hygiene 12 rows
+🟡→🟢. Catalog 70% → ~73%.
+
+**Original**: re-baseline. If the 2 new s14 flaky tests (§13.7.4
 bulk-send + §14.10.16 dispute-cascade) are still flaking, harden
 them first (~30 min). Pattern: replace `supabaseSelect` calls in
 result-assertion phase with direct service-role curl. Reference:
@@ -1455,6 +1575,40 @@ user_ids (e.g. `notification_preferences` only visible to that
 user, not the org owner), the SELECT returns an empty array even
 though the row exists. Use a service-role curl helper instead —
 see `selectServiceRole` in `§26.11` describe.
+
+### ❌ Don't use `supabaseSelect` for result-side assertions in long-running tests under parallel contention (s14+s15 lesson)
+
+Recurring shape across sessions 14 + 15. When a test does heavy
+work (multiple edge-fn calls + RPCs + dispute insert + cascade
+RPC), the result-side `supabaseSelect` calls (which route through
+the owner JWT proxy) can return:
+- non-array shapes (PostgREST error objects) under PostgREST
+  proxy timeouts at high cross-file contention;
+- 0 rows even when the data exists, because PostgREST visibility
+  has lagged 1-3s behind the latest committed transaction.
+
+The fix is **always**:
+1. Inline `selectServiceRole(table, query)` at the describe scope
+   (or top-of-file, but inline keeps the pattern legible at the
+   call-site). Service-role curl bypasses the owner-JWT-proxy.
+   **Always coerce non-array responses to []** so callers can
+   rely on `.length`.
+2. For assertions on rows the RPC writes inside its body
+   (audit_log being the prototype case), wrap with
+   `selectServiceRoleWithPoll(table, query, predicate)` —
+   10s deadline, 250ms poll interval. The row IS committed when
+   the RPC returns; the poll just defuses PostgREST visibility
+   lag.
+
+The full pattern is implemented in §13.7.4 + §14.10.16 (s15
+fixes). Copy when writing any new test that does
+edge-fn-call → result-side-select.
+
+**Don't:** add a `mode: 'serial'` directive as the first response.
+Serial-within-file isn't enough when the contention is cross-file
+(§22.2 was already serial within file and still raced against §24).
+Service-role-curl is the durable fix; serial is a fallback if
+service-role somehow can't be used.
 
 ### ❌ Don't `require()` in spec files — they're ESM
 
@@ -1952,6 +2106,15 @@ the same shape.
 | `§27` describe | `upsertParentNotifPref(orgId, userId, prefs)` + `deleteParentNotifPref(orgId, userId)` | Service-role POST with `Prefer: resolution=merge-duplicates` for upsert; DELETE for cleanup. Use to flip `email_payment_receipts` / `email_invoice_reminders` etc. for testing pref-honoring contracts. |
 | `§27` describe | `insertPaymentServiceRole(payload)` | Service-role POST to `payments` table with `Prefer: return=representation` + error-throwing wrapper. Used by §27 dedup test to seed a payment that both the message_log dedup index test and a future fn-invocation test depend on. |
 
+### Inline helpers worth knowing about (15th session)
+
+| Where | Helper | Pattern it solves |
+|---|---|---|
+| `§13.7.4` describe | `selectServiceRole(table, query)` | Service-role-curl SELECT for result-side assertions on tables (invoices, message_log) where the owner JWT path through PostgREST returned non-array shapes under cross-file parallel contention in s14. Coerces non-array responses to `[]` so callers can rely on `.length`. |
+| `§14.10.16` describe | `selectServiceRole(table, query)` + `selectServiceRoleWithPoll(table, query, predicate)` | Same selectServiceRole shape plus a 10s-deadline poll wrapper for assertions on rows the RPC writes inside its transaction body (audit_log here). Row IS committed when the RPC returns, but PostgREST visibility under contention occasionally lags 1-3s — the poll defuses without slowing the happy path. |
+| `§22` describe | `srPost / srPostStatus / srDelete / srSelect` | Generic service-role-curl helpers (POST returning array, POST returning {status,body}, DELETE, SELECT-coerced-to-array). Used for closure_dates / rate_cards / message_templates / availability_blocks CRUD in s15. Pattern: for any table where the test asserts post-mutation state, use service-role to bypass owner JWT contention. |
+| `§11.4.6 / §11.4.10 / §11.4.8` describe | `srPostT / srPostStatusT / srDeleteT / srPatchT` | Local copies of the §22 srPost shape (separate suffix to avoid collision with the existing `selectServiceRoleWithPoll` import-style approach). srPatchT covers PATCH-with-status-capture for the archive-status-flip test. The throwaway-org pattern for §11.4.6 plan-cap is documented inline — INSERT a one-off `organisations` row with `max_teachers=1`, exercise the trigger, cleanup in finally. |
+
 ---
 
 ## Audit framework
@@ -1963,15 +2126,38 @@ Living state of every feature: `audit/MASTER.md`. State symbols:
 - 🔴 known launch blocker
 - ❓ untested (target: zero of these)
 
-Current count (2026-05-08): 14 🟢 / 150 🟡 / 6 🔴 / 10 ⏸ / **0 ❓**.
-This count hasn't been refreshed by automation; the `/sweep` slash
-command updates rows as it walks features, but most rows still need
-the 🟡 → 🟢 promotion based on the test work landed in 4th + 5th
-sessions. Worth a sweep pass before launch to give Jamie an
-accurate gauge.
+Current count (2026-05-10, after s15): **26 🟢 / 138 🟡 / 6 🔴 / 10 ⏸ / 0 ❓**.
+s15 promoted 12 rows 🟡→🟢 (Outstanding; Continuation flow; CSV
+import execute; Teachers list/CRUD; Messages inbox; Send-message
+edge fn; Portal home/schedule/practice/invoices/messages/profile).
+
+**The recalibrated bar (s15-onwards):** audit hygiene is non-negotiable
+per session; ≥5 rows backfilled to 🟢, target ~150+ tagged at launch.
+"World-class" means every area, feature, and function systematically
+cleared — not just the worst-bug-of-the-week. Money-path (Invoicing &
+Payments) is the next dedicated workstream s16-s18.
 
 When you finish a catalog section (real tests, all green), update the
-relevant rows in `audit/MASTER.md` from 🟡 → 🟢.
+relevant rows in `audit/MASTER.md` from 🟡 → 🟢. **Don't promote
+without verification** — verify the Notes column has [E2E real per
+<sha>] and that the cited tests are launch-in-scope and passing.
+
+### Audit/MASTER.md hygiene status (end of 15th session)
+
+s15 promotions (12 rows): 🟡→🟢 across the parent portal cluster
+(home, schedule, practice, invoices, messages, profile), staff
+messaging cluster (inbox, send-message), and individual mature
+sections (Outstanding, Continuation, CSV import execute, Teachers
+list/CRUD).
+
+§22 settings row tag extended with s15's 4 new real tests + new
+[PROMOTABLE 🟡→🟢] marker; the row stays 🟡 because the catalog
+asks for §22.7 GDPR + §22.12 calendar OAuth + §22.14 billing
+upgrade etc. which remain fixme. Promotion candidate for s17 once
+the launch-hidden ones are explicitly marked ⏸.
+
+s14's 3 promotable parent-portal candidates flagged at the end of
+that session were among the 12 s15 promotions.
 
 ---
 
