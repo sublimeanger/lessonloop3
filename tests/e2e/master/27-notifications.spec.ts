@@ -55,10 +55,79 @@ test.describe('§27 — message_log table is the source of truth', () => {
   });
 });
 
-test.describe('§27 — notification_preferences table is queryable', () => {
-  test.fixme('table accepts SELECT for current authed user (RLS-scoped)', async () => {
-    // RLS scoping varies — column names + auth.uid() filter need test
-    // user with explicit notification_preferences rows.
+test.describe('§27 — notification_preferences RLS contract', () => {
+  // Policies (verified 2026-05-10 via pg_policy):
+  //   "Users can view own notification preferences"  USING (user_id = auth.uid())
+  //   "Users can insert own notification preferences" WITH CHECK (user_id = auth.uid() AND is_org_member(...))
+  //   "Users can update own notification preferences" USING (user_id = auth.uid())
+  //   "Block anonymous access to notification_preferences" USING (false)
+  //
+  // The fn-shape SELECT in §27.2 above hits this table via service-role
+  // (bypasses RLS). This test asserts the RLS contract from a parent JWT —
+  // the actual user-facing path that NotificationsTab + the parent settings
+  // page use to read/write prefs. If the policy ever drifts to allow
+  // cross-user reads, this test catches it.
+  test('parent JWT sees own pref row + cannot see other users\' pref rows', async () => {
+    const orgId = process.env.E2E_ORG_ID!;
+    const parentUserId = E2E_PARENT_USER_ID;
+    const { getOwnerUserId } = await import('../supabase-admin');
+    const ownerUserId = getOwnerUserId();
+    expect(ownerUserId).not.toBe(parentUserId); // sanity
+
+    // Seed both rows via service-role (bypasses RLS)
+    upsertParentNotifPref(orgId, parentUserId, { email_payment_receipts: true, email_invoice_reminders: false });
+    upsertParentNotifPref(orgId, ownerUserId, { email_payment_receipts: false, email_invoice_reminders: true });
+
+    try {
+      // Sign in as parent to mint a JWT
+      const tmp = `/tmp/sb-login-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+      fs.writeFileSync(tmp, JSON.stringify({ email: process.env.E2E_PARENT_EMAIL!, password: process.env.E2E_PARENT_PASSWORD! }));
+      let parentToken: string;
+      try {
+        const res = execSync(
+          `curl -s -X POST "${process.env.E2E_SUPABASE_URL}/auth/v1/token?grant_type=password" ` +
+            `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" -H "Content-Type: application/json" -d @${tmp}`,
+          { encoding: 'utf-8', timeout: 15_000 },
+        );
+        const session = JSON.parse(res);
+        if (!session.access_token) throw new Error(`Parent sign-in failed: ${JSON.stringify(session).slice(0, 200)}`);
+        parentToken = session.access_token as string;
+      } finally {
+        try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+      }
+
+      // SELECT all rows in this org via parent JWT — RLS should scope to user_id=auth.uid()
+      const result = execSync(
+        `curl -s "${process.env.E2E_SUPABASE_URL}/rest/v1/notification_preferences?org_id=eq.${orgId}&select=user_id,email_payment_receipts,email_invoice_reminders" ` +
+          `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+          `-H "Authorization: Bearer ${parentToken}"`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const rows = JSON.parse(result);
+      expect(Array.isArray(rows)).toBe(true);
+      // Parent must see exactly own row, never the owner's row
+      expect(rows.length).toBe(1);
+      expect(rows[0].user_id).toBe(parentUserId);
+      expect(rows[0].email_payment_receipts).toBe(true);
+      expect(rows[0].email_invoice_reminders).toBe(false);
+    } finally {
+      deleteParentNotifPref(orgId, parentUserId);
+      deleteParentNotifPref(orgId, ownerUserId);
+    }
+  });
+
+  test('anonymous (no JWT) → 0 rows from notification_preferences (block-anon policy)', async () => {
+    const orgId = process.env.E2E_ORG_ID!;
+    // No row needed; anon policy USING (false) returns 0 unconditionally
+    const result = execSync(
+      `curl -s "${process.env.E2E_SUPABASE_URL}/rest/v1/notification_preferences?org_id=eq.${orgId}&select=user_id" ` +
+        `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+        `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}"`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const rows = JSON.parse(result);
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows.length).toBe(0);
   });
 });
 
