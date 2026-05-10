@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-10 (after 26th-session — VERIFICATION + COLLAPSE-DEFENSIVE-TAGS + SENTRY EXPANSION: All 7 Track-1 verifications green (CF held, Sentry firing, cookie banner live, AASA serving, source clean) + 2 production fixes (env-probe-temp deleted, invite-get UUID guard) + 50-commit Netlify backlog cleared + 3 audit promotions (Anthropic 🟡→🟢 via CF Pages auto-deploy, Rate limiting + Realtime defensive tags collapsed) + Sentry edge expanded 9 → 20 fns + Bundle ID + invite-get + Stripe-branding-API findings closed/updated + Stripe Billing Portal Configuration branded via API. Cumulative 167 🟢 / 6 🟡 / **0 🔴** / 10 ⏸ = **~91% complete**) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-10 (after 27th-session — PROD INCIDENT RESPONSE + SENTRY EXPANSION + DEPLOY HARDENING. Track 1: root-caused + fixed 2 prod 5xx events from s26 Sentry capture (send-bulk-message 500 + send-invoice-email 502 — both throw-into-outer-catch validation patterns, same shape as s24 send-message fix; Sentry issues JAVASCRIPT-REACT-6+7 resolved). Track 2: Sentry edge wrap +47 across 7 cluster commits (money-path remainder, term/continuation, messaging, booking/leads/invite, auth, calendar, Xero, misc); total 20 → 67/103 fns (~65%). Track 3: discovered Netlify→GitHub auto-deploy STILL broken (s26 50-commit-backlog clear was a one-off manual trigger; pipeline never repaired); built persistent build hook + scripts/check-deploy-sync.sh monitoring + 3rd finding for Jamie. Audit state unchanged at 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸ — s27 was hardening + coverage expansion, not promotion-eligible. Baseline 643/4/121/3.8m — better than expected 5 fails) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -1585,6 +1585,89 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
+### What's done at end of 27th session
+
+(Catalog state ~91% unchanged — s27 was hardening + coverage
+expansion, not promotion-eligible. Audit total: 167 🟢 / 6 🟡 /
+**0 🔴** / 10 ⏸ = ~91%. Baseline 643/4/121/3.8m — better than the
+expected ~5 fails.)
+
+Per-track outcomes for s27:
+
+- **Track 1 — prod incident response (NON-NEGOTIABLE FIRST)**:
+  - Pulled both Sentry events from JAVASCRIPT-REACT-6 + REACT-7.
+    Diagnosis: all 4 capture events (2 per fn) came from `curl 8.7.1`
+    on the same BT/EE mobile IPv6 /48 in UK, 18 minutes apart. Same
+    synthetic test source pattern.
+  - **send-bulk-message 500**: Root cause = `throw new Error("Missing
+    required fields...")` at line 162 fell into outer catch returning
+    500. **Same bug shape as s24 send-message missing-fields fix.**
+    Fix: wrapped `req.json()` in try/catch returning 400 + moved
+    validation above membership check + replaced throw with explicit
+    400 return. Deployed via Supabase Management API. Reproduction
+    cases (empty body, malformed JSON, missing fields) all now return
+    400. Finding: 2026-05-10-send-bulk-message-prod-500.md. Sentry
+    issue JAVASCRIPT-REACT-7 resolved.
+  - **send-invoice-email 502**: 500 path (malformed body)
+    reproducible — fixed via body-parse guard. 502 path
+    (worker-crash) NOT reproducible — documented in finding as
+    deferred for follow-up if it recurs. Sentry issue
+    JAVASCRIPT-REACT-6 resolved. Finding:
+    2026-05-10-send-invoice-email-prod-502.md notes this as PARTIAL
+    FIX with reasoning: 500 path closed + verified, 502 path is
+    likely Deno worker crash (unhandled rejection / OOM), happens
+    once in 4 events from synthetic source, Sentry instrumentation
+    will catch recurrence.
+  - Audit rows for both fns stay 🟢. Notes appended to MASTER row:
+    `[s27 prod hardening: body-parse + validation returns 400 not
+    500; was JAVASCRIPT-REACT-{6,7}]`.
+- **Track 2 — Sentry expansion (~3h)**:
+  - Total wrapped 20 → 67 / 103 fns (~65%). Targets met: ~35-40
+    range exceeded.
+  - Per-cluster commits:
+    * `b2ef395` money-path (12 fns)
+    * `0799efe` term/continuation (4 fns)
+    * `9c0098e` messaging (8 fns)
+    * `544c4e2` booking/leads/invite (5 fns)
+    * `67e0321` auth (3 fns)
+    * `be4d22c` calendar/xero (12 fns)
+    * `cb7fe1c` misc (3 fns)
+  - All 47 fns deployed via single Supabase Management API
+    `functions deploy <list>` call.
+  - Wrap pattern: `serve(wrapEdgeFn("<name>", <handler>))` matching
+    s25/s26 — captures thrown errors + 5xx responses, fire-and-
+    forget envelope POST, no user-response latency impact.
+  - Script: `/tmp/wrap_sentry.py` written for this session — handles
+    `Deno.serve(async (req) => {...})` (inline) and `serve(handler)`
+    (named) patterns with paren-depth + string/regex/comment-aware
+    closing-paren matching. One file (`booking-submit`) had nested
+    template literals that confused the matcher — wrapped manually.
+- **Track 3 — Netlify deploy pipeline hardening**:
+  - Confirmed Netlify→GitHub auto-deploy STILL broken: s26's
+    50-commit-backlog clearance was a one-off manual trigger, not
+    a real repair. The 4 s26 commits pushed to origin/main at
+    17:38-18:00 UTC produced ZERO Netlify build attempts.
+  - Diagnosis: no repo webhooks (`hooks` returns `[]`), no GitHub
+    App `installation_id` on Netlify build_settings, deploy key
+    last-used 2026-05-07. Cloudflare Pages received the same pushes
+    and deployed fine — so GitHub IS notifying integrations; only
+    Netlify is silent.
+  - Cloudflare Pages (`lessonloop.net` marketing) is current with
+    HEAD. Netlify (`app.lessonloop.net` app) was on s25 commit
+    `e2eafad`.
+  - Mitigations shipped: persistent build hook
+    (`shadow-term-emergency-redeploy`, id `6a00ced887eb236b680b1df4`,
+    branch `main`) + manual rebuild triggered for `2d02032` (s26
+    HEAD) + `scripts/check-deploy-sync.sh` — compares HEAD vs
+    Netlify pub vs CF Pages check-run, accepts `--rebuild` to fire
+    a build via API.
+  - No customer impact this time: all s26-s27 commits are
+    server-side (edge fns / audit / tests / docs); no React app
+    changes existed to ship.
+  - Finding 2026-05-10-netlify-github-app-link-broken.md filed with
+    Jamie's reconnect steps (Netlify dashboard → Sites →
+    lessonloop-app → Continuous deployment → reconnect repo).
+
 ### What's done at end of 26th session
 
 (Catalog state ~91% — s26 added 4 new tests in §33-cookie-consent +
@@ -1839,7 +1922,85 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 27th session pickup
+### Priority order — 28th session pickup
+
+After s27, audit posture is unchanged at 167 🟢 / 6 🟡 / **0 🔴** /
+10 ⏸ = ~91%. s27 was hardening, not promotion. 3 findings filed
+(both prod 5xx fixed; Netlify pipeline finding open for Jamie).
+
+**Recommended s28: Sentry expansion to ~80%+, validate Track 1
+fixes hold in prod, address any new Sentry events that landed
+during shadow term, and either polish iOS_RELEASE_CHECKLIST.md
+(if Jamie has TestFlight feedback) or move toward Cluster H
+(remaining cron-only fns to v1.1+ readiness).**
+
+Agent should:
+1. **Verify Track 1 fixes hold in prod 24h+ since deploy**: query
+   Sentry for any new send-bulk-message 5xx or send-invoice-email
+   5xx events since s27 deploy timestamps. If clean: confirm row
+   notes; if dirty: re-open finding.
+2. **Verify any new Sentry events from the s27 +47 cluster wraps**:
+   the broader instrumentation will likely surface 2-5 more
+   latent bugs within 48h of shadow-term traffic. For each:
+   file finding, fix if scope-bounded, downgrade row to 🟡 if
+   bigger than scope.
+3. **Check Netlify deploy state**: run `scripts/check-deploy-sync.sh`.
+   If Jamie has reconnected the GitHub App (per s27 finding),
+   verify auto-deploy fires on a new push. If not, status quo
+   manual-trigger workflow.
+4. **(Optional) Sentry expansion to 80%+ coverage**: target the
+   16 unwrapped non-cron non-launch-cut fns:
+   - `account-delete`, `create-billing-run`, `gdpr-delete`,
+     `gdpr-export`, `invite-accept`, `looopassist-chat`,
+     `parent-loopassist-chat`, `send-bulk-message`,
+     `send-invite-email`, `send-invoice-email`, `send-message`,
+     `stripe-connect-onboard`, `stripe-connect-status`,
+     `stripe-create-checkout`, `stripe-create-payment-intent`,
+     `stripe-customer-portal`, `stripe-process-refund`,
+     `stripe-update-payment-preferences`, `stripe-verify-session`,
+     `stripe-webhook` — these were wrapped in s25/s26 already so
+     skip. Remaining: notify-makeup-match (service-role trigger),
+     send-push (rarely used), send-lesson-reminders (cron — defer
+     to v1.1), all cron-* / cleanup-* / trial-* (cron — defer).
+   - Realistically: most user-facing surface is now covered. The
+     remaining unwrapped fns are cron-only or single-purpose
+     service-role triggers. Coverage hit a natural ceiling at
+     ~65%; pushing to 80% means wrapping crons, which the s27
+     prompt explicitly deferred to v1.1.
+5. **Polish iOS_RELEASE_CHECKLIST.md** based on any TestFlight
+   feedback Jamie has surfaced.
+
+Jamie should (new in s27 + carried from s26):
+1. **Netlify**: reconnect the GitHub App for the Netlify integration
+   per `audit/findings/2026-05-10-netlify-github-app-link-broken.md`.
+   Until done, every session must run
+   `scripts/check-deploy-sync.sh --rebuild` to ship frontend
+   changes to Netlify. Once reconnected, verify with the script
+   that auto-deploy fires on a fresh push.
+2. **iOS**: replace TEAMID placeholder in apple-app-site-association
+   with the actual Apple Developer Team ID; add Push Notifications +
+   Associated Domains capabilities in Xcode; archive + TestFlight +
+   App Store submit per docs/iOS_RELEASE_CHECKLIST.md.
+3. **Stripe Dashboard**: paste branding per
+   audit/findings/2026-05-10-stripe-branding-platform-account-api-restriction.md
+   (~5 minutes — file IDs + colors + support contacts already prepared
+   by agent).
+4. **Source Supabase**: pause project at 2026-08-19 then delete
+   after 14-90d rollback window per audit/00-launch-readiness.md.
+5. **Apple OAuth**: re-enable post-launch when provider config available.
+6. **Lauren shadow term**: coordinate with her — production Sentry
+   instrumentation is now wide (67/103 edge fns), expect 2-5 new
+   findings per day during her shadow week.
+
+**Genuinely remaining 🟡 (post-s27, unchanged from s26)**:
+- iOS native build (Jamie TestFlight)
+- Android native build (NOT-LAUNCHING-V1)
+- Stripe Checkout branding (Jamie Dashboard paste)
+- Zoom × 3 (Zoom verification block)
+
+**No 🔴 launch blockers.** All P0/P1 cleared or staged.
+
+### Priority order — 27th session pickup (closed)
 
 After s26, audit landscape is **post-launch-readiness posture**
 (s14 end: 14 🟢; s26 end: 167 🟢, ~91%). **ZERO 🔴 launch blockers**;
