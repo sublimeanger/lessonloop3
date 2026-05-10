@@ -30,6 +30,29 @@ function genTestId() {
   return `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
+/**
+ * Deterministic per-testId baseYear for `terms` seeding (s30 fix for
+ * audit/findings/2026-05-10-20-7b-seedterms-concurrency-flake.md).
+ *
+ * Previously each test picked baseYear via `2400 + Math.random() * 500`.
+ * With ~6 tests in this file at workers=4, two parallel runs can pick
+ * the same baseYear (~1/500 pairwise), causing the second `terms` INSERT
+ * to hit the check_term_overlap trigger and return null. The fixture
+ * then throws "seedTerms failed".
+ *
+ * Replacing Math.random with a per-testId hash makes baseYear
+ * deterministic for any given testId, so two parallel tests can only
+ * collide if they share the exact same testId — which can't happen
+ * because genTestId() includes Date.now() at ms precision.
+ *
+ * 10_000-year window gives effectively zero pairwise collision odds.
+ */
+function termsBaseYear(testId: string): number {
+  let h = 0;
+  for (const c of testId) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return 2400 + (Math.abs(h) % 10_000);
+}
+
 function signInForToken(email: string, password: string): string {
   const result = execSync(
     `curl -s -X POST "${process.env.E2E_SUPABASE_URL}/auth/v1/token?grant_type=password" ` +
@@ -84,12 +107,8 @@ function seedContinuationRunAndResponse(opts: {
   // any existing terms in the test org. The check_term_overlap trigger
   // rejects any current/next term insert that intersects another term's
   // date range. Each test_id gets a unique base year so parallel tests
-  // don't collide either.
-  // 500-year window gives <5% pairwise collision odds across the
-  // ~6 tests in this file even on identical-ms test starts. Combined
-  // with serial-mode within each describe + the SQL sweep run before
-  // session 6 picked up §20, this is enough headroom.
-  const baseYear = 2400 + Math.floor(Math.random() * 500);
+  // don't collide either (s30: deterministic hash, see termsBaseYear).
+  const baseYear = termsBaseYear(opts.testId);
   const currentTermStart = `${baseYear}-01-01`;
   const currentTermEnd = `${baseYear}-04-01`;
   const nextTermStart = `${baseYear}-04-02`;
@@ -347,7 +366,7 @@ test.describe('§20.4 — create-continuation-run (run-creation backend)', () =>
   } {
     const ownerUserId = getOwnerUserId();
     // Same robust per-test baseYear scheme as seedContinuationRunAndResponse.
-    const baseYear = 2400 + Math.floor(Math.random() * 500);
+    const baseYear = termsBaseYear(opts.testId);
     const currentStart = `${baseYear}-01-01`;
     const currentEnd = `${baseYear}-04-01`;
     const nextStart = `${baseYear}-04-02`;
@@ -603,7 +622,7 @@ test.describe('§20.5 — process_deadline', () => {
     cleanup: () => void;
   } {
     const ownerUserId = getOwnerUserId();
-    const baseYear = 2400 + Math.floor(Math.random() * 500);
+    const baseYear = termsBaseYear(opts.testId);
 
     const currentTerm = supabaseInsert('terms', {
       org_id: E2E_ORG_ID,
@@ -783,7 +802,7 @@ test.describe('§20.7 — bulk-process-continuation (confirmed flow)', () => {
   test('§20.7 — process_type="confirmed" extends recurrence + materialises lessons + marks response processed + run completed', async () => {
     const testId = genTestId();
     const ownerUserId = getOwnerUserId();
-    const baseYear = 2400 + Math.floor(Math.random() * 500);
+    const baseYear = termsBaseYear(testId);
     const currentStart = `${baseYear}-01-01`;
     const currentEnd = `${baseYear}-04-01`;
     const nextStart = `${baseYear}-04-02`;
@@ -1024,7 +1043,7 @@ test.describe('§20.7b — bulk-process-continuation (withdrawals flow)', () => 
   test('§20.7b — process_type="withdrawals" cancels remaining lessons + creates credit note + cleanup_withdrawal_credits audit log', async () => {
     const testId = genTestId();
     const ownerUserId = getOwnerUserId();
-    const baseYear = 2400 + Math.floor(Math.random() * 500);
+    const baseYear = termsBaseYear(testId);
     const currentStart = `${baseYear}-01-01`;
     const currentEnd = `${baseYear}-04-01`;
     const nextStart = `${baseYear}-04-02`;
@@ -1329,7 +1348,7 @@ test.describe('§20.8 — Delete continuation run', () => {
   test('§20.8a — delete run with no responses → row gone, no error', async () => {
     const testId = genTestId();
     const ownerUserId = getOwnerUserId();
-    const baseYear = 2400 + Math.floor(Math.random() * 500);
+    const baseYear = termsBaseYear(testId);
 
     const currentTerm = supabaseInsert('terms', {
       org_id: E2E_ORG_ID,

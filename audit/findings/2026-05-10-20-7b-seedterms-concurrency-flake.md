@@ -1,9 +1,10 @@
 # §20.7b seedTerms fixture concurrency flake
 
 **Severity:** P3 (test-side fixture race, not production)
-**Status:** OPEN — investigation only; not blocking launch
+**Status:** CLOSED 2026-05-10 s30 — applied per-testId hash for baseYear in all 6 call sites; verified 5/5 consecutive runs at workers=4.
 **First observed:** 2026-05-10 s29 final baseline (after Track 2.4 fixed 2 other concurrency flakes)
 **Not observed in:** s28, s29 setup baselines
+**Closed:** 2026-05-10 s30 — root cause confirmed (Math.random() * 500 baseYear pairwise collisions at workers=4); fixed via deterministic `termsBaseYear(testId)` hash function (10,000-year window, effectively zero collision odds).
 
 ## Test
 
