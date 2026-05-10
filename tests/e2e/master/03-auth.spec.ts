@@ -183,3 +183,64 @@ test.fixme('§3.6 — accept invite happy path (existing user, role=teacher)', a
 test.fixme('§3.6 — accept invite expired token shows error', async () => {});
 test.fixme('§3.6 — accept invite wrong email shows error', async () => {});
 test.fixme('§3.7 — zoom OAuth callback happy path', async () => {});
+
+// ────────────────────────────────────────────────────────────────────
+// §3.8 — Auth-cluster edge fn auth-gate contracts (s18)
+// ────────────────────────────────────────────────────────────────────
+//
+// Account-delete + GDPR-export + GDPR-delete are user-facing edge fns
+// that go through getUser(token) (s16 fix landed for all three). The
+// audit rows still showed 🟡 because no test verified the auth gate.
+// Same shape as s17 §24 money-path B-bucket: anon→4xx + no-auth→4xx
+// prove the gate fires.
+//
+// Same `callFnAuthGate` pattern as §24 — copied inline rather than
+// imported across spec files (per s5 anti-pattern guidance).
+
+import { execSync } from 'child_process';
+import fs from 'fs';
+
+function callAuthFnGate(fnName: string, opts: { auth: 'anon' | 'none'; payload?: Record<string, unknown> }): { status: number; body: string } {
+  const respFile = `/tmp/sb-auth-${fnName}-resp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.txt`;
+  const reqFile = `/tmp/sb-auth-${fnName}-req-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
+  fs.writeFileSync(reqFile, JSON.stringify(opts.payload ?? {}));
+  let authHeader = '';
+  if (opts.auth === 'anon') {
+    authHeader = `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" `;
+  }
+  try {
+    const status = execSync(
+      `curl -s -o ${respFile} -w "%{http_code}" ` +
+        `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+        `${authHeader}` +
+        `-H "Content-Type: application/json" ` +
+        `-d @${reqFile}`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+    return { status: parseInt(status.trim(), 10), body };
+  } finally {
+    try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+  }
+}
+
+test.describe('§3.8 — Auth-cluster edge fn auth-gate contracts', () => {
+  // User-JWT fns (all post-s16 getUser(token) fix).
+  for (const fnName of [
+    'account-delete',
+    'gdpr-export',
+    'gdpr-delete',
+  ]) {
+    test(`${fnName} — anon JWT rejected`, async () => {
+      const res = callAuthFnGate(fnName, { auth: 'anon', payload: { confirm: true } });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBeLessThan(500);
+    });
+
+    test(`${fnName} — no auth rejected`, async () => {
+      const res = callAuthFnGate(fnName, { auth: 'none' });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+    });
+  }
+});

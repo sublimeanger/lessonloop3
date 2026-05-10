@@ -895,3 +895,96 @@ test.describe('§24 — Money-path edge fn auth-gate contracts', () => {
     });
   }
 });
+
+// ────────────────────────────────────────────────────────────────────
+// §24 — Money-path C-bucket auth-gate contracts (s18 close-out)
+// ────────────────────────────────────────────────────────────────────
+//
+// The 5 rows still 🟡 in audit/MASTER.md "Invoicing & Payments" after
+// s17. Three are service-role-bearer or user-JWT (extend the s17
+// pattern); two are cron-auth (validateCronAuth checking x-cron-secret
+// header against INTERNAL_CRON_SECRET env). Cron-auth happy path
+// requires the secret which is vault-only (not in .env.test) — auth-
+// gate negatives are sufficient proof of the gate. Happy paths for
+// the heaviest two (create-billing-run, stripe-auto-pay-installment)
+// require deep seed setup; deferred to a future session if needed.
+
+function callFnCronAuthGate(fnName: string, opts: { secret: 'wrong' | 'none'; payload?: Record<string, unknown> }): { status: number; body: string } {
+  const respFile = `/tmp/sb-${fnName}-cron-resp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.txt`;
+  const reqFile = `/tmp/sb-${fnName}-cron-req-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
+  fs.writeFileSync(reqFile, JSON.stringify(opts.payload ?? {}));
+  let cronHeader = '';
+  if (opts.secret === 'wrong') {
+    cronHeader = `-H "x-cron-secret: definitely-not-the-real-secret-${Date.now()}" `;
+  }
+  try {
+    const status = execSync(
+      `curl -s -o ${respFile} -w "%{http_code}" ` +
+        `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+        `${cronHeader}` +
+        `-H "Content-Type: application/json" ` +
+        `-d @${reqFile}`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+    return { status: parseInt(status.trim(), 10), body };
+  } finally {
+    try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+  }
+}
+
+test.describe('§24 — Money-path C-bucket auth-gate contracts (s18)', () => {
+  // Service-role-bearer fns. Same shape as the s17 service-role-only
+  // batch — anon → 4xx + no-auth → 4xx prove the byte-equal gate fires.
+
+  for (const fnName of [
+    'send-invoice-email-internal', // recurring-template internal sender
+    'generate-invoice-pdf',         // PDF generator (caches to invoice-pdfs bucket)
+  ]) {
+    test(`${fnName} — anon JWT rejected (service-role bearer fn)`, async () => {
+      const res = callFnAuthGate(fnName, { auth: 'anon', payload: { invoice_id: '00000000-0000-0000-0000-000000000000', source: 'recurring_scheduler' } });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBeLessThan(500);
+    });
+
+    test(`${fnName} — no auth rejected`, async () => {
+      const res = callFnAuthGate(fnName, { auth: 'none' });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+    });
+  }
+
+  // create-billing-run is user-JWT (s16 fix per 4b1704e). Same as
+  // the s17 user-JWT batch.
+  test('create-billing-run — anon JWT rejected', async () => {
+    const res = callFnAuthGate('create-billing-run', { auth: 'anon', payload: { run_date: new Date().toISOString().slice(0, 10), run_type: 'manual' } });
+    expect(res.status, `create-billing-run body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+  });
+
+  test('create-billing-run — no auth rejected', async () => {
+    const res = callFnAuthGate('create-billing-run', { auth: 'none' });
+    expect(res.status, `create-billing-run body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+  });
+
+  // Cron-auth fns — validateCronAuth checks x-cron-secret header
+  // against INTERNAL_CRON_SECRET. Happy path requires the secret
+  // (vault-only, not in .env.test). Negatives prove the gate fires:
+  //   - missing x-cron-secret → 401
+  //   - wrong x-cron-secret → 401
+
+  for (const fnName of [
+    'admin-backfill-default-pm',     // operator-triggered backfill
+    'stripe-auto-pay-installment',    // daily cron, installment auto-pay
+  ]) {
+    test(`${fnName} — missing x-cron-secret rejected`, async () => {
+      const res = callFnCronAuthGate(fnName, { secret: 'none' });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBe(401);
+    });
+
+    test(`${fnName} — wrong x-cron-secret rejected`, async () => {
+      const res = callFnCronAuthGate(fnName, { secret: 'wrong' });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBe(401);
+    });
+  }
+});
