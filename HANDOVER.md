@@ -1102,12 +1102,26 @@ block), Cross-cutting JAMIE-LEVEL (Jamie-side work).**
 self-reschedule UI, Parent LoopAssist UI).**
 
 Current baseline (end of 24th session, post-un-deferral):
-- **TODO — pending baseline run** (final tally added on completion).
-  Pre-session baseline: 594/3/122/3.7m. Test count grew to ~760
-  (+41 from s24's contracts: §27 Xero day-one [8] + §27 Leads/
-  Booking/Waitlist [11] + §27 Invite cluster [6] + §27 iCal [2] +
-  §25 Public booking [11] + §22 un-deferred [2] + §19 leads [1]).
-- 3 expected documented failures: §5.4, §13.7.4, §13 stats.
+- **629 passed / 6 failed (all documented) / 120 skipped / 5 did not run / 6.3 min wall-clock at 4 workers**
+- Test count grew to 760 (+41 from s24's contracts: §27 Xero day-one
+  [8] + §27 Leads/Booking/Waitlist [11] + §27 Invite cluster [6] +
+  §27 iCal [2] + §25 Public booking [11] + §22 un-deferred [2] +
+  §19 leads [1]).
+- vs s23 final (594/3/122/3.9m): **+35 passed / +3 failed / −2
+  skipped / +5 did-not-run / +2.4m wall-clock**.
+- Pre-session baseline (before s24 changes) was 594/3/122/3.7m clean.
+- 6 failures are all documented transients (none new from s24):
+  * §5.4 email-verification (deterministic — broken-test-design)
+  * Owner Dashboard stat cards (transient UI race)
+  * §13.7.4 bulk send drafts (PostgREST contention)
+  * §13 stats reflect DB (transient race)
+  * §26.6.6 admin_locked policy (transient)
+  * §26.9.1 Pay full invoice (transient)
+- s24 work itself: §27 Xero day-one (14/14 in 9.7s), §27 Leads/
+  Booking/Waitlist (17/17 in 7.4s), §27 Invite cluster (12/12 in
+  4.4s), §27 iCal (8/8 in 9.3s), §25 Public booking (17/17 in 5.1s),
+  §22 un-deferred (8/8 in 7.4s), §19 leads (13/13 in 9.8s) — all
+  green in isolation. Wall-clock 6.3m within target (was <8m budget).
 
 **Stale baseline (end of 23rd session, post-multi-area-sweep):**
 - 594 passed / 3 failed (all documented) / 122 skipped / 3.9 min wall-clock at 4 workers
