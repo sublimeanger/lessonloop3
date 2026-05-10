@@ -33,11 +33,16 @@ serve(wrapEdgeFn("reset-shadow-org", async (req): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const shadowAdminKey = Deno.env.get("SHADOW_ADMIN_KEY") || "";
 
+    // Auth: accept EITHER service-role bearer OR SHADOW_ADMIN_KEY.
+    // See seed-shadow-org for rationale (env-injection-mismatch finding).
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader || authHeader !== `Bearer ${supabaseServiceKey}`) {
+    const isServiceRole = authHeader === `Bearer ${supabaseServiceKey}`;
+    const isShadowAdmin = !!shadowAdminKey && authHeader === `Bearer ${shadowAdminKey}`;
+    if (!authHeader || (!isServiceRole && !isShadowAdmin)) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized — service role required" }),
+        JSON.stringify({ error: "Unauthorized — service role or shadow admin key required" }),
         { status: 401, headers: jsonHeaders },
       );
     }
