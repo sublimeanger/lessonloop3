@@ -1,7 +1,8 @@
 # send-invoice-email returned 502 on malformed body (worker crash path)
 
 **Severity:** P2 (hardening — 500-path fixed; 502-path could not be reproduced)
-**Status:** PARTIAL FIX (s27)
+**Status:** MONITOR (s30) — 500-path closed in s27; 502-path unreproducible from synthetic traffic. Awaiting live shadow-term traffic to either recur (new actionable finding) or accumulate 30d zero-occurrence (implicit closure).
+**Reclassified:** 2026-05-10 s30 — explicit "monitor" status (not open-blocking, not silently-closed). Sentry continues to capture; s31+ to revisit if it recurs.
 **First seen:** 2026-05-10T17:37:01Z
 **Last seen:** 2026-05-10T17:55:32Z
 **Sentry issue:** [JAVASCRIPT-REACT-6](https://lessonloop.sentry.io/issues/JAVASCRIPT-REACT-6)
