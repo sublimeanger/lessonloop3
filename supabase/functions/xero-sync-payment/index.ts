@@ -37,7 +37,16 @@ Deno.serve(wrapEdgeFn("xero-sync-payment", async (req) => {
       });
     }
 
-    const { payment_id } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { payment_id } = __body;
     if (!payment_id) {
       return new Response(JSON.stringify({ error: 'payment_id is required' }), {
         status: 400,

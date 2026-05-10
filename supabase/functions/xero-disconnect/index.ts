@@ -36,7 +36,16 @@ Deno.serve(wrapEdgeFn("xero-disconnect", async (req) => {
       });
     }
 
-    const { org_id } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { org_id } = __body;
     if (!org_id) {
       return new Response(JSON.stringify({ error: 'org_id is required' }), {
         status: 400,

@@ -91,7 +91,15 @@ Deno.serve(wrapEdgeFn("calendar-fetch-busy", async (req) => {
     // Optionally accept a specific connection_id from request body
     let connectionId: string | null = null;
     try {
-      const body = await req.json();
+      let body: any;
+      try {
+        body = await req.json();
+      } catch {
+        return new Response(
+          JSON.stringify({ error: "Invalid JSON body" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       connectionId = body.connection_id || null;
     } catch {
       // No body

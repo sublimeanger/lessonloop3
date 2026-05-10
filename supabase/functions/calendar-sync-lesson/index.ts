@@ -103,7 +103,15 @@ Deno.serve(wrapEdgeFn("calendar-sync-lesson", async (req) => {
       });
     }
 
-    const payload: SyncPayload = await req.json();
+    let payload: SyncPayload;
+    try {
+      payload = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { lesson_id, action } = payload;
 
     if (!lesson_id || !action) {

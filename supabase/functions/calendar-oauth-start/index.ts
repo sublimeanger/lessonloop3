@@ -63,7 +63,16 @@ Deno.serve(wrapEdgeFn("calendar-oauth-start", async (req) => {
     }
 
     // Get request body
-    const { org_id, redirect_uri } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { org_id, redirect_uri } = __body;
     
     if (!org_id) {
       return new Response(JSON.stringify({ error: 'org_id is required' }), {

@@ -34,7 +34,16 @@ Deno.serve(wrapEdgeFn("calendar-disconnect", async (req) => {
       });
     }
 
-    const { connection_id, delete_events = false } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { connection_id, delete_events = false } = __body;
 
     if (!connection_id) {
       return new Response(JSON.stringify({ error: 'connection_id is required' }), {
