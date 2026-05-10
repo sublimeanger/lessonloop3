@@ -1,5 +1,7 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+**Last updated:** 2026-05-11 (after 37th-session — LOOPASSIST PHASE 1 AUDIT + CRITICAL-PATH FIX. Jamie's shadow studio walkthrough surfaced a trust-breaking failure: he asked "show me outstanding invoices" + "yes please draft reminders", LoopAssist replied "I'll draft..." with a hallucinated "Action proposal below ↓" trailer, then **nothing rendered**. Marketing promises ("LoopAssist proposes actions; you approve with one click") were not holding up end-to-end. **Pre-investigation hypothesis (instruction buried at 88% of knowledge base) was WRONG.** Phase 0.1 root-cause inspection of Lauren's actual conversation showed: model DID emit a structurally valid `\`\`\`action` JSON block; block had correct action_type, description, entities, params; **but entity `id` values were invoice NUMBERS (`"LL-2026-00108"`) instead of UUIDs**. Client-side `validateProposal` (`useLoopAssist.ts:83`) rejects entities where `id` doesn't match UUID_RE and silently drops the proposal. **Smoking gun**: chat fn's `search_invoices` tool output (`looopassist-chat/index.ts:694`) emits `[Invoice:${inv.invoice_number}]` — a 2-part marker that omits the UUID entirely. Compare with Students/Lessons/Guardians which use 3-part `[Entity:UUID:Label]`. Worse, the knowledge base at line 37 EXPLICITLY trained the model to use 2-part invoice citation. Phase 0: filed `audit/feature-catalogues/loopassist.md` (24-capability table) + `audit/findings/2026-05-11-loopassist-comprehensive-audit.md` (root cause + severity classification + s37/s38/s39 split). Phase 1A: changed all 4 invoice-marker sites in chat fn + the strip regex to 3-part format. Phase 1B: rewrote knowledge base entity-citation docs; moved ACTION PROPOSALS section to TOP of prompt; added explicit UUID-extraction guidance; added BAD vs GOOD negative examples; added trailing CRITICAL INVARIANT reinforcement in RESPONSE FORMATTING. Phase 1C: server-side `detectsBrokenPromise()` helper scans final assistant content for commit-language without a `\`\`\`action` block; if detected, console.warns + appends a clarifying note for the user. Phase 1D: deployed via Supabase CLI. Phase 2 (real-Anthropic e2e test) DEFERRED to s38 mock-mode design — non-deterministic + API-cost-expensive. Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸ (LoopAssist findings live separately under audit/findings/, not audit/MASTER.md rows). Baseline 665/2/122/3.3m. **NEW failure §22.8 Rate cards CRUD** (s36 MoneyInput regression; investigate s38). **Manual verification by Jamie still required** for Phase 1D end-to-end — gates Lauren onboarding alongside the existing s35/s36 sanity walkthrough items.
+
 **Last updated:** 2026-05-11 (after 36th-session — RATE_AMOUNT CONVENTION ENFORCEMENT + WORLD-CLASS MONEY INPUT UX. Launch-blocker money bug surfaced during Jamie's s35 UI walkthrough: `rate_cards.rate_amount` was named without `_minor` suffix and stored ambiguously — 36 of 63 cards were pence-shaped (correct per UI convention), 27 cards across 6 orgs were pound-shaped. LoopAssist edge fn + 3 of 4 PL/pgSQL functions ALSO had the Convention B `* 100` contradiction (rate_amount as pounds). Had Lauren onboarded onto a pence-shaped org + run LoopAssist billing, invoices would have been 100× too cheap. Fix in 5 phases. Phase 0: confirmed LoopAssist `* 100` bug at looopassist-execute/index.ts lines 485-518 AND 1071-1112; verified 27-row pound-shaped count (under 100-row HALT threshold); chose **Option A** (column rename). Phase 1: migration `rate_amount_to_minor_pence_convention` — UPDATE pound-shaped × 100, ADD CHECK constraint (rate_amount_minor >= 100 OR = 0), RENAME column to `rate_amount_minor`, COMMENT documenting the convention. Phase 2: recreated 4 PL/pgSQL fns (auto_issue_credit_on_absence, confirm_makeup_booking, generate_invoices_from_template, retry_failed_recipients) via 2 follow-up migrations — column rename + 7 total `* 100` removals across the 3 affected functions; 18 application files renamed via perl regex; 5 seed scripts updated to pence-shaped literals (3000 = £30). Phase 3: built `src/components/ui/money-input.tsx` (135 lines) — text input with inputMode=decimal, accepts `35` or `35.00` interchangeably (both → 3500 minor units), strips non-numeric, caps decimals at 2, on-blur pads to 2dp, live preview below input, tooltip helpText. Wired into `RateCardsTab.tsx` — removed `/100` `*100` dance, form state now matches DB directly. 14 unit tests in `src/test/ui/MoneyInput.test.tsx` cover typing intuition + sanitisation + state sync + accessibility. 14/14 pass. Phase 4: filed `audit/findings/2026-05-11-rate-amount-convention-enforcement.md` (P1 → RESOLVED). Verified 63 cards / 13 orgs / 0 pound-shaped / £8.75 min / £65 max / npx tsc --noEmit clean / 4 live PL/pgSQL fns reference rate_amount_minor only. **9 other numeric money inputs in invoices/ deferred to v1.1 UX polish per HARD RULE — they use already-correctly-named columns and aren't broken.** Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline still running at HANDOVER time.
 
 **Last updated:** 2026-05-11 (after 35th-session — DOB CALENDAR UX FIX. Pre-launch UX defect: shadcn Calendar wrapping react-day-picker 8.10.1 had chevron-only month-by-month navigation, requiring ~432 clicks to enter a 1990 DOB from today (May 2026). Phase 1: `src/components/ui/calendar.tsx` extended to forward `captionLayout` to react-day-picker + dropdown styling (caption_dropdowns, dropdown, dropdown_month, dropdown_year, vhidden classnames; static caption_label hidden when dropdowns active). Phase 2: `src/components/ui/date-picker.tsx` extended with opt-in `longRange` prop + `fromYear`/`toYear` overrides. When longRange=true, captionLayout switches to `"dropdown-buttons"`, defaultMonth opens at ~10 years ago (sensible for DOB), year range defaults to current-100 / current+5. Default behaviour byte-identical to pre-change (every existing call site unchanged). Phase 3: wired `longRange` on the 2 DOB DatePicker sites — `StudentInfoStep.tsx` wizard + `StudentInfoCard.tsx` edit view. No other DatePicker site touched. Phase 4: 8 unit tests in `src/test/ui/DatePicker.test.tsx` cover both modes (backwards-compat default, longRange dropdowns, fromYear/toYear overrides, ~10-year-ago default month, value-overrides-defaultMonth). 8/8 pass; full unit suite has only pre-existing csv-parser + DeleteValidation failures unrelated to UI. Phase 5: pushed at dd438d5; Netlify auto-deploy in flight at HANDOVER time. After: DOB entry takes 2 taps (Year dropdown → 1990, Month dropdown → March, click day 15) instead of hundreds of chevrons. Lauren onboarding still paused on Jamie's UI walkthrough — s35 DOB fix is one of the things he'll verify. Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/3.6m (§6 dashboard + §26.9.1 — the latter recurred after skipping s34 baseline, confirming intermittent classification).
@@ -1602,6 +1604,126 @@ failures, check `.env.test` and the storage states first.
 Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
+
+### What's done at end of 37th session
+
+(Catalog state ~91% unchanged. Audit total: 167 🟢 / 6 🟡 / **0 🔴** /
+10 ⏸ = ~91%. **LoopAssist proposal-emission bug ROOT-CAUSED + FIXED at
+source.** Baseline 665/2/122/3.3m — §6 dashboard pre-existing + §22.8
+Rate cards CRUD NEW regression from s36 MoneyInput; investigate s38.)
+
+Per-phase outcomes for s37:
+
+- **Phase 0 — audit (~30 min)**:
+  - Phase 0.1 root-cause inspection: pre-investigation hypothesis WRONG.
+    Model DID emit valid action block; bug was that entity `id` values
+    were invoice NUMBERS, not UUIDs. Client-side `validateProposal`
+    silently dropped. 0 rows in `ai_action_proposals` for shadow studio
+    confirms.
+  - Phase 0.2: 24-capability LoopAssist feature catalogue committed at
+    `audit/feature-catalogues/loopassist.md` — tracks marketing claim,
+    implemented?, e2e tested?, currently working?, severity-if-broken
+    for every LoopAssist capability.
+  - Phase 0.3: comprehensive audit finding at
+    `audit/findings/2026-05-11-loopassist-comprehensive-audit.md` —
+    root cause + severity classification + s37/s38/s39 split + manual
+    verification methodology.
+
+- **Phase 1A — invoice tool format fix (~10 min)**:
+  - Changed 4 invoice-marker sites in `looopassist-chat/index.ts`
+    (lines 436, 694, 989, 1336) from 2-part `[Invoice:NUMBER]` to
+    3-part `[Invoice:UUID:NUMBER]` — matches the Students / Lessons /
+    Guardians format.
+  - Updated strip regex at line 1022 to `\[Invoice:[^:]+:([^\]]+)\]`.
+  - Added `id` to credit_note select in `get_term_adjustments` so the
+    UUID is available where referenced.
+
+- **Phase 1B — knowledge base rewrite (~15 min)**:
+  - Fixed the smoking gun: line 37 used to teach `[Invoice:LL-2026-XXXXX]`
+    (no UUID). Replaced with 3-part canonical format + CRITICAL
+    callout explaining that UUIDs from citations are what go into
+    proposal entities[].id.
+  - **Moved ACTION PROPOSALS — WRITE OPERATIONS section to TOP of
+    knowledge base** (was at line 520 of 586, now at line ~40).
+    Position bias improves model adherence even though it wasn't the
+    actual root cause.
+  - Added explicit ENTITY-ID GUIDANCE: "The UUID is the MIDDLE segment
+    between the colons" + "NEVER use the display label as an id".
+  - Added NEGATIVE EXAMPLES (BAD: invoice number as id / GOOD: UUID
+    as id) using the exact pattern from Lauren's failed conversation.
+  - Added trailing reinforcement in RESPONSE FORMATTING section:
+    "CRITICAL INVARIANT" repeating the commit-language → action-block
+    requirement + the trailing prose rule.
+  - Removed redundancy: old ACTION PROPOSALS block at line 520 trimmed
+    to a quick-reference for action types only (full contract lives
+    at the top now).
+
+- **Phase 1C — server-side broken-promise detector (~10 min)**:
+  - Added `detectsBrokenPromise(content: string): boolean` helper —
+    matches commit-language regexes (I'll draft / send / generate / etc.)
+    against presence of a `\`\`\`action` JSON block.
+  - Inserted into the chat fn's streaming-complete path (after the
+    tool-use loop, before `[DONE]`): if the final text triggers the
+    detector, `console.warn` with model + org_id + 500-char preview
+    (Sentry edge wrap surfaces it as a quality metric), AND push an
+    SSE clarification to the user: *"I started to propose an action
+    but didn't complete the proposal correctly. Please ask me again..."*
+  - Defensive: detector errors are caught and logged; never break
+    the stream.
+
+- **Phase 1D — deploy (~5 min)**:
+  - `looopassist-chat` deployed via `supabase functions deploy`.
+  - `npx tsc --noEmit` clean before and after all edits.
+
+- **Phase 2 — e2e test DEFERRED to s38**:
+  - Rationale (per prompt's HARD RULE escape hatch): real-Anthropic
+    e2e is non-deterministic + API-cost-expensive. Even a 10% flake
+    rate would erode trust in the master baseline.
+  - s38 task: design a mock-mode for `looopassist-chat` that emits
+    a canned action block when invoked with a designated test header.
+    Mock-mode runs in CI; real path covered by manual verification +
+    occasional smoke runs.
+
+- **Phase 3 — docs + commit + push**:
+  - Audit finding + feature catalogue committed.
+  - HANDOVER updated with s37 outcomes + manual verification gate.
+  - Existing fixme placeholders in `tests/e2e/master/21-loopassist.spec.ts`
+    untouched (s38 mock-mode will let us write real assertions).
+
+### Outstanding Jamie actions
+
+Unchanged from s35/s36, plus:
+
+- **s37 Phase 1D manual verification**: open LoopAssist in shadow studio
+  (Cmd+J) → "Show me outstanding invoices" → "yes please" → confirm
+  the action card now renders. If it doesn't, escalate before s38.
+- Onboarding still gated on the rolling sanity walkthrough +
+  Lauren-greenlight (DOB / Rate cards / lesson notes / LoopAssist).
+
+### s38 plan (deferred from s37)
+
+- Mock-mode for `looopassist-chat` enabling deterministic e2e tests
+  for the proposal pipeline (ask → propose → confirm → execute).
+- Tool catalogue expansion: `search_lesson_notes`, `search_message_log`,
+  `search_makeup_credits`, `search_resources`.
+- Safety hardening: server-side entity-ID validation against caller's
+  org (defence in depth on top of RLS).
+- Streaming UX: surface a "drafting..." indicator while the model is
+  mid-response, before the action block lands.
+- Stale-proposal expiry cron (16 rows stuck in `status='proposed'`
+  cross-org from test data).
+- Investigate **§22.8 Rate cards CRUD** regression (new in s37 baseline;
+  likely a s36 MoneyInput integration issue — test probably types into
+  a now-text-mode input expecting number-mode behaviour).
+- Parent LoopAssist parallel audit (`parent-loopassist-chat` likely
+  has the same invoice-marker bug).
+
+### s39 plan
+
+- Marketing alignment review (per-capability fix-or-adjust).
+- Mobile parity verification.
+- Advanced flows (multi-turn proposals, edit-before-confirm, "undo").
+- Long-tail capability adds.
 
 ### What's done at end of 36th session
 

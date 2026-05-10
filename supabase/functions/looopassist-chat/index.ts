@@ -7,6 +7,32 @@ import { sanitiseMessage } from "../_shared/sanitise-ai-input.ts";
 import { LOOPASSIST_KNOWLEDGE_BASE } from './knowledge-base.ts';
 import { wrapEdgeFn } from "../_shared/sentry.ts";
 
+/**
+ * Detect "promised but didn't deliver" responses. The model commits to an
+ * action ("I'll draft those reminders...") in conversational text but never
+ * emits a ```action JSON block. From the user's perspective the conversation
+ * dead-ends. Used as a server-side quality-metric + UX safety net; the real
+ * fix lives in the knowledge-base ENTITY-ID guidance (s37 Phase 1B).
+ */
+function detectsBrokenPromise(content: string): boolean {
+  if (!content) return false;
+  const promiseKeywords = [
+    /\bI['']?ll draft\b/i,
+    /\bI['']?ll send\b/i,
+    /\bI['']?ll generate\b/i,
+    /\bI['']?ll create\b/i,
+    /\bI['']?ll mark\b/i,
+    /\bI['']?ll reschedule\b/i,
+    /\bI['']?ll cancel\b/i,
+    /\bonce you confirm\b/i,
+    /\baction proposal below\b/i,
+    /\bproposal below\b/i,
+  ];
+  const hasPromise = promiseKeywords.some((p) => p.test(content));
+  const hasActionBlock = /```action\s*[\s\S]*?```/.test(content);
+  return hasPromise && !hasActionBlock;
+}
+
 /** Sanitise user-generated text before embedding in AI system prompt to prevent prompt injection. */
 function sanitiseForPrompt(text: string | null | undefined): string {
   if (!text) return "";
@@ -433,7 +459,7 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
       const outstandingCount = sorted.filter((i: Invoice) => i.status === "sent").length;
       context += `\n\nInvoices (${sorted.length} shown, ${overdueCount} overdue, ${outstandingCount} outstanding):`;
       sorted.slice(0, 5).forEach((inv: Invoice) => {
-        context += `\n  - [Invoice:${inv.invoice_number}] ${inv.status} ${fmtCurrency(inv.total_minor)}`;
+        context += `\n  - [Invoice:${inv.id}:${inv.invoice_number}] ${inv.status} ${fmtCurrency(inv.total_minor)}`;
       });
       if (sorted.length > 5) {
         context += `\n  ... and ${sorted.length - 5} more invoices`;
@@ -691,7 +717,7 @@ async function executeToolCall(
         const payer = inv.guardians?.full_name ||
           (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Unknown");
         const creditTag = inv.is_credit_note ? " [CREDIT NOTE]" : "";
-        result += `\n- [Invoice:${inv.invoice_number}] ${inv.status}${creditTag} — ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
+        result += `\n- [Invoice:${inv.id}:${inv.invoice_number}] ${inv.status}${creditTag} — ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
       });
       return result;
     }
@@ -961,7 +987,7 @@ async function executeToolCall(
           lesson_rate_minor, adjustment_amount_minor, currency_code,
           notes, confirmed_at,
           terms:term_id(name),
-          credit_note:credit_note_invoice_id(invoice_number, total_minor)
+          credit_note:credit_note_invoice_id(id, invoice_number, total_minor)
         `)
         .eq("student_id", toolInput.student_id)
         .eq("status", "confirmed")
@@ -986,7 +1012,7 @@ async function executeToolCall(
         const direction = a.adjustment_amount_minor > 0 ? "credit to parent" : a.adjustment_amount_minor < 0 ? "additional charge" : "no financial change";
         result += `\n  Financial: ${fmtCurrency(amount)} ${direction}`;
         if (a.credit_note) {
-          result += ` — [Invoice:${a.credit_note.invoice_number}]`;
+          result += ` — [Invoice:${a.credit_note.id}:${a.credit_note.invoice_number}]`;
         }
         if (a.notes) result += `\n  Notes: ${a.notes.slice(0, 200)}`;
       });
@@ -1016,10 +1042,11 @@ function synthesizeFallbackFromToolData(toolResults: Array<{ content: string }>)
   const sections: string[] = [];
   for (const result of toolResults) {
     if (!result.content || typeof result.content !== "string") continue;
-    // Strip internal entity markers like [Student:uuid:Name] → just keep Name
+    // Strip internal entity markers like [Student:uuid:Name] → just keep Name.
+    // Invoice markers are 3-part [Invoice:uuid:NUMBER] (s37 Phase 1A — was 2-part).
     const cleaned = result.content
       .replace(/\[Student:[^:]+:([^\]]+)\]/g, "$1")
-      .replace(/\[Invoice:([^\]]+)\]/g, "Invoice $1")
+      .replace(/\[Invoice:[^:]+:([^\]]+)\]/g, "Invoice $1")
       .replace(/\[Lesson:[^:]+:([^\]]+)\]/g, "$1")
       .replace(/\[Guardian:[^:]+:([^\]]+)\]/g, "$1")
       .trim();
@@ -1333,7 +1360,7 @@ serve(wrapEdgeFn("looopassist-chat", async (req) => {
               (invoice.students ? sanitiseForPrompt(`${invoice.students.first_name} ${invoice.students.last_name}`) : "Unknown");
             const payerId = invoice.payer_guardian_id || invoice.payer_student_id;
             const payerType = invoice.payer_guardian_id ? "Guardian" : "Student";
-            pageContextInfo = `\n\nCURRENT PAGE - Invoice: [Invoice:${invoice.invoice_number}]
+            pageContextInfo = `\n\nCURRENT PAGE - Invoice: [Invoice:${invoice.id}:${invoice.invoice_number}]
 Invoice ID: ${invoice.id}
 Status: ${invoice.status}
 Total: ${fmtCurrency(invoice.total_minor)}
@@ -1771,6 +1798,36 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
 
           if (!nextResponse) break;
           currentResponse = await consumeAnthropicStream(nextResponse, true);
+        }
+
+        // s37 broken-promise detector: if the final assistant content
+        // commits to an action ("I'll draft", "Once you confirm", etc.) but
+        // contains no ```action JSON block, the user sees a dead-end and
+        // the proposal pipeline silently fails. Append a clarifying note
+        // and log a quality-metric warning. The fix is upstream (prompt
+        // restructuring + entity-ID guidance); this is the safety net.
+        try {
+          const finalText = (currentResponse.content || [])
+            .filter((b: any) => b.type === "text" && typeof b.text === "string")
+            .map((b: any) => b.text)
+            .join("");
+          if (detectsBrokenPromise(finalText)) {
+            console.warn(
+              "[loopassist-chat] broken-promise detected",
+              JSON.stringify({
+                model: aiModel,
+                org_id: orgId,
+                preview: finalText.slice(0, 500),
+              }),
+            );
+            await pushSSE({
+              text:
+                "\n\n---\n*I started to propose an action but didn't complete the proposal correctly. Please ask me again — e.g., \"draft those reminders now\" — and I'll attempt it again.*",
+            });
+          }
+        } catch (detectErr) {
+          // Detector must never break the stream.
+          console.error("[loopassist-chat] detector error", detectErr);
         }
 
         await writer.write(sseEncoder.encode("data: [DONE]\n\n"));
