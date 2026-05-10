@@ -1,11 +1,11 @@
 # iOS bundle ID mismatch — capacitor.config.ts vs Xcode pbxproj
 
 **Severity:** medium
-**Status:** open (Jamie verification required before s25 entitlements ship)
+**Status:** fixed (kept com.lessonloop.app per shipped App Store ID)
 **Area:** mobile / iOS
 **Discovered:** 2026-05-10 (s25)
-**Fixed:** —
-**Fixed in:** —
+**Fixed:** 2026-05-10 (s26)
+**Fixed in:** capacitor.config.ts edit in s26
 **Affected components:** capacitor.config.ts, ios/App/App.xcodeproj/project.pbxproj
 
 ## Symptom
@@ -22,20 +22,18 @@ Two possibilities:
 
 Per shipped state being source-of-truth (HANDOVER says "v1.2 in App Store review"), the App Store entry is `com.lessonloop.app`.
 
-## Action required (Jamie)
+## Resolution (s26)
 
-Decision: keep `com.lessonloop.app` (live ID) or migrate to `net.lessonloop.app` (NEW app entry).
+Agent applied the recommended fix: kept `com.lessonloop.app` (the live App Store ID per pbxproj) and aligned `capacitor.config.ts` to match.
 
-Recommend KEEP `com.lessonloop.app`. Migrating to a new bundle ID would:
-- Force every existing user to manually re-install
-- Require a new App Store listing (lose reviews, ratings)
-- Break iCloud / KeyChain entries
+Migration to `net.lessonloop.app` would have forced every existing user to manually re-install (App Store treats it as a new app), broken iCloud / KeyChain entries, and lost the existing App Store listing's reviews + ratings. None of those costs are worth a cosmetic ID change.
 
-Fix:
-1. Update `capacitor.config.ts`: `appId: 'com.lessonloop.app'`
-2. Run `npx cap sync ios`
-3. Verify `PRODUCT_BUNDLE_IDENTIFIER` still matches in pbxproj (should not change)
-4. Update apple-app-site-association `appID` to use the team-id-prefixed form: `<TEAMID>.com.lessonloop.app`
+Changes shipped:
+1. `capacitor.config.ts` `appId: 'net.lessonloop.app'` → `'com.lessonloop.app'` (1-line edit + comment block).
+2. `ios/App/App.xcodeproj/project.pbxproj` `PRODUCT_BUNDLE_IDENTIFIER = com.lessonloop.app` — unchanged (already correct).
+3. `public/.well-known/apple-app-site-association` `appID: TEAMID.com.lessonloop.app` — unchanged (s25 already used `com.` prefix correctly).
+
+Jamie's remaining step: replace the literal string `TEAMID` in `public/.well-known/apple-app-site-association` with the actual Apple Developer Team ID before the next App Store submission. See docs/iOS_RELEASE_CHECKLIST.md for instructions.
 
 ## s25 entitlements work
 

@@ -43,19 +43,29 @@ Two files uploaded to Stripe Files API using the platform secret key (this works
   - Same source PNG
   - Purpose: `business_logo`
 
-## Action required (Jamie)
+## Action required (Jamie) — ~5 minute Dashboard paste
 
-Stripe Dashboard → Settings → [Branding](https://dashboard.stripe.com/settings/branding):
+**Stripe Dashboard → Settings → [Branding](https://dashboard.stripe.com/settings/branding):**
 
-1. **Icon**: select the `business_icon` upload (or upload again — file IDs above prove the asset is already on Stripe's side; the Dashboard should list it under "previously uploaded")
-2. **Logo**: same as icon (use the LessonLoop wordmark for the logo if you have a PNG variant; otherwise the icon works for both)
-3. **Brand color (primary)**: `#00c2b8` (LessonLoop teal — matches `iconColor` in `capacitor.config.ts`)
-4. **Brand accent (secondary)**: `#0a1628` (LessonLoop ink/dark navy — matches `backgroundColor` in `capacitor.config.ts`)
+1. **Icon**: paste file ID `file_1TVakiAzPfYm94uxOZBBtM41` (the LessonLoop iOS app icon, 1024x1024 PNG, already on Stripe's CDN — the upload UI should list it under "previously uploaded files" or accept the file_id directly).
+2. **Logo**: paste file ID `file_1TVakkAzPfYm94uxtYgddioT` (same source asset; if you have a horizontal wordmark PNG variant, use that instead — but the icon works for both fields).
+3. **Brand colour (primary)**: paste `#00c2b8` (LessonLoop teal — matches `iconColor` in `capacitor.config.ts`).
+4. **Brand accent (secondary)**: paste `#0a1628` (LessonLoop ink/dark navy — matches `backgroundColor` in `capacitor.config.ts`).
 
-Stripe Dashboard → Settings → [Public details](https://dashboard.stripe.com/settings/public):
+**Stripe Dashboard → Settings → [Public details](https://dashboard.stripe.com/settings/public):**
 
-5. **Support email**: `jamie@searchflare.co.uk` (or `support@lessonloop.net` if/when set up)
-6. **Support URL**: `https://lessonloop.net/contact`
+5. **Support email**: `jamie@searchflare.co.uk` (or `support@lessonloop.net` if/when MX is set up).
+6. **Support URL**: `https://lessonloop.net/contact`.
+
+**(Already done by agent in s26 via API):**
+- Stripe Billing Portal Configuration `bpc_1TUPRXAzPfYm94uxnkflag2b` updated with:
+  - headline "Manage your LessonLoop subscription"
+  - privacy_policy_url https://lessonloop.net/privacy
+  - terms_of_service_url https://lessonloop.net/terms
+  - default_return_url https://app.lessonloop.net/settings?tab=billing
+- Statement descriptor "LESSONLOOP" already set (read via GET /v1/account)
+- Support phone +44... already set (per pre-flight)
+- Both files (icon + logo) uploaded to Stripe Files API in s25 — they're discoverable in the Dashboard upload picker by file ID.
 
 ## Verification
 

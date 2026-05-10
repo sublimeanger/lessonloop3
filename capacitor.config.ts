@@ -1,7 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'net.lessonloop.app',
+  // s26: aligned with ios/App/App.xcodeproj/project.pbxproj
+  // PRODUCT_BUNDLE_IDENTIFIER (com.lessonloop.app — the live App Store ID).
+  // See audit/findings/2026-05-10-ios-bundle-id-mismatch-capacitor-vs-pbxproj.md.
+  // Don't change without coordinating an App Store ID migration.
+  appId: 'com.lessonloop.app',
   appName: 'LessonLoop',
   webDir: 'dist',
 
