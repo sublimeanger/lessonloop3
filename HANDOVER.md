@@ -526,31 +526,27 @@
   `supabase functions deploy <name>`. **Cumulative: 13 of ~30
   user-facing fns fixed across s12+s13.** Remaining ~17
   catalogued in finding for follow-up session.
-- (13th session — HALTED at baseline due to DNS outage) Baseline
-  came back **343 failed / 111 passed / 132 skipped / 19 did not run**
-  — every test that calls `page.goto('https://app.lessonloop.net/...')`
-  fails with `net::ERR_NAME_NOT_RESOLVED`. Triangulated:
-  `app.lessonloop.net` CNAMEs to `lessonloop-app.netlify.app`,
-  which now returns NXDOMAIN from every public resolver tried
-  (1.1.1.1, 8.8.8.8, system). The Netlify project is healthy
-  (current deploy state "ready" per MGMT API; HTTP 200 when
-  reached by `curl --resolve` to a Netlify edge IP). Likely cause:
-  Netlify renamed the bare auto-subdomain on this project (the
-  `branchVersionOfSite` field shows `main--lessonloop-app.netlify.app`
-  — note the `main--` prefix that doesn't match the CF CNAME
-  target). Cloudflare CNAME at `app.lessonloop.net` still points
-  to the bare name. NOT caused by s13's edge-fn deploys (those
-  target `xmrhmxizpslhtkibqyfy.supabase.co`, totally separate
-  domain). Session 12's final baseline (~30 min before s13
-  started) ran 464 passed / 4.5m — DNS was working then.
-  Per s13 prompt's halt-on-new-bug-pattern rule, s13 stops
-  catalog work after filing the finding.
-  Finding: `audit/findings/2026-05-10-app-dns-netlify-cname-broken.md`.
-  Action required by Jamie: investigate Netlify auto-subdomain
-  status + update Cloudflare CNAME if Netlify renamed the target.
-  10 edge-fn deploys stay in production (no rollback warranted —
-  patches are syntactically clean, match a proven pattern, and
-  the issue is upstream of any fn-invocation).
+- (13th session — DNS outage diagnosed + RESOLVED) Baseline came
+  back 343 failed / 111 passed because every test failed with
+  `net::ERR_NAME_NOT_RESOLVED` on `app.lessonloop.net`. Diagnosed:
+  Cloudflare CNAME pointed at `lessonloop-app.netlify.app`, but the
+  entire `*.netlify.app` zone returns NXDOMAIN globally (verified
+  from 1.1.1.1, 8.8.8.8, 9.9.9.9, OpenDNS, and the .app TLD
+  authoritative servers; reproduced for other Netlify customer
+  sites — `jamstack.netlify.app`, `open-props.netlify.app`,
+  `cssreference.netlify.app`). The Netlify project itself was
+  healthy throughout (HTTP 200 via Host-header override to the
+  Netlify edge IP). Probed alternative routing targets and found
+  `lessonloop-app.netlify.com` (TLD swap, same project name)
+  resolves and serves the actual LessonLoop HTML correctly. With
+  Jamie's authorisation, applied the Cloudflare API CNAME swap
+  (`.netlify.app` → `.netlify.com`). Verified end-to-end within
+  30s: DNS resolves, HTTPS 200, real HTML, "Netlify Edge" cache
+  hit. **Production app restored from outage to functional in
+  ~10 minutes.** Finding:
+  `audit/findings/2026-05-10-app-dns-netlify-cname-broken.md`.
+  NOT caused by s13's edge-fn deploys (those targeted
+  `xmrhmxizpslhtkibqyfy.supabase.co`, separate domain).
 - (also at 7th-session start) Manual SQL sweep of stale e2e_ test
   data via Supabase MCP execute_sql — cleared 6 lesson rows
   (1 active scheduled + 5 cancelled), 22 students, 4 invoices, and
@@ -599,9 +595,19 @@ this is the only mind-share between sessions. Specifically:
 DNS outage). 10 more user-facing edge fns hardened against the
 getUser() legacy-JWT silent-401 pattern (cumulative 13 of ~30).**
 
-Current baseline status:
-- **End of 12th session: 464 passed / 7 failed / 132 skipped / 2 did not run / 4.5 min wall-clock**
-- **Session 13: BASELINE BLOCKED — 343 failed / 111 passed / 132 skipped / 19 did not run / 2.7 min** (DNS outage; not a regression). See [DNS finding](audit/findings/2026-05-10-app-dns-netlify-cname-broken.md). Resume baseline once Jamie restores DNS.
+Current baseline (end of 13th session, post-DNS-fix full-suite run):
+- **461 passed / 9 failed / 132 skipped / 3 did not run / 4.3 min wall-clock at 4 workers**
+- vs s12 end (464/7/132/2/4.5m): −3 passed, +2 failed, +1 did-not-run, **−0.2 min wall-clock**.
+  Net within the documented ±3 transient band. The 10 s13 edge-fn
+  deploys did NOT introduce regressions — fails are the same
+  documented shape: §5.4 email-verification (deterministic), §22.2
+  cross-file race, §20.7b withdrawal transient, §26.6.7 GCal,
+  §26.9.1/2/3 Stripe transients, §13 stats + §27.2 absent-prefs
+  (both in-noise transients).
+- Session 13 mid-run baseline (pre-DNS-fix) showed 343 failed / 111
+  passed because every test that called `page.goto('https://app.lessonloop.net/...')`
+  failed with `ERR_NAME_NOT_RESOLVED`. Cause: Netlify-side `*.netlify.app`
+  DNS outage; fixed via Cloudflare CNAME swap to `.netlify.com`.
 - **+5 passed** vs end of 11th-session (was 459 — +1 §17.4 e2e
   delivery, +2 §27 RLS, +2 transient flakes recovered after the
   global-setup ESM fix unblocked stale-row sweep)
@@ -722,7 +728,7 @@ session — don't fix inline during a catalog session.
 | Item | Severity | Notes |
 |---|---|---|
 | ~~Streak milestone notifications never deliver.~~ | — | **CLOSED in session 12.** Two bugs in series: (1) vault was missing SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (FIXED — seeded via Management API); (2) `_notify_streak_milestone` sent wrong auth header, streak-notification's validateCronAuth required x-cron-secret (FIXED via migration `20260519100000_notify_streak_milestone_x_cron_secret.sql`). End-to-end verified: net._http_response shows 200 OK with `{success:true, streak:3, milestone:"Building Momentum!"}`. §17.4 e2e delivery test added that polls net._http_response. RESEND_API_KEY still not seeded so emails_sent=0 (best-effort delivery design); seeding RESEND is an unrelated follow-up if Lauren wants email delivery, separate from the auth chain. |
-| **app.lessonloop.net DNS chain broken** (NEW 2026-05-10, session 13) | **P0 PRODUCTION OUTAGE** | `app.lessonloop.net` CNAMEs to `lessonloop-app.netlify.app`, which returns NXDOMAIN from every public resolver. Likely Netlify auto-subdomain renamed; Cloudflare CNAME stale. Site is healthy (HTTP 200 via `curl --resolve` to Netlify edge IP). Requires Jamie action: investigate Netlify subdomain → update Cloudflare CNAME or switch to Netlify DNS hosting. Session 13 halted catalog work because every Playwright test fails with `ERR_NAME_NOT_RESOLVED`. See [DNS finding](audit/findings/2026-05-10-app-dns-netlify-cname-broken.md). |
+| ~~app.lessonloop.net DNS chain broken~~ | — | **RESOLVED in session 13.** Outage at start of s13 because the entire `*.netlify.app` zone went NXDOMAIN globally (verified across all major resolvers + the .app TLD authoritative servers). Cloudflare CNAME at `app.lessonloop.net` was pointing at `lessonloop-app.netlify.app`. Fixed via Cloudflare API: CNAME swapped to `lessonloop-app.netlify.com` (same project, TLD swap). Verified end-to-end (HTTPS 200, Netlify edge cache hit). ~10 min from diagnosis to resolution. Long-term consideration: switch DNS hosting to Netlify so they manage the chain end-to-end as their internal naming evolves. See [DNS finding](audit/findings/2026-05-10-app-dns-netlify-cname-broken.md). |
 | **getUser() no-args pattern across 30+ user-facing edge fns** (sweep in progress) | **P1** | Sessions 10+11 each found 1; session 12 fixed 3 most-critical and catalogued ~27 remaining; session 13 fixed 10 more (csv-import-execute/-mapping, onboarding-setup, profile-ensure, batch-invite-guardians, stripe-create-payment-intent, stripe-process-refund, stripe-connect-onboard/-status, send-invite-email). **Cumulative 13 of ~30 fixed**. ~17 user-facing fns remain (most launch-in-scope). See [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md) for prioritised remaining list. Each fix is mechanical (`getUser()` → `getUser(token)`) but each needs a deploy + ideally a regression test. |
 | **Edge function env injection mismatch** (REPLACES the prior "drift" entry — phantom diagnosis closed in 11th session) | **P1** | 11th-session three-probe diagnostic conclusively proved: the legacy HS256 service_role JWT IS valid against the project (PostgREST returns 200). The "drift" framing carried across sessions 9 + 9a + 10 was based on a hash from session 9a's env-probe-temp (never validated). The actual phenomenon: `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` in deployed edge functions returns a different value than the dashboard's "Project API keys" → service_role row, despite no Custom Secrets override. Jamie's hypothesis on cause: Supabase auto-injection materialises a different value than the dashboard, OR partial migration to signing-keys at the edge gateway. Three resolution paths in [finding](audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md). The agent should NOT propose JWT secret reset or sb_secret_ migration. **Affects edge functions that do `authHeader.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))` byte-equal checks** (send-payment-receipt + likely send-refund-notification + send-auto-pay-alert). Functions that use `getUser(token)` for auth (now including send-bulk-message after 11th-session fix) work fine with legacy JWTs. Vault seeding still blocked because the streak-notification chain runs through this auth path. |
 | **§5.4 email-verification gate test design broken** (NEW 2026-05-09 — formerly listed under "JWT-stale" theory) | **P2** | 9th-session Item 5 confirmed deterministic 5/5 fail. Root cause: Supabase `enable_email_confirmations` (likely toggled in 2026-05-08 auth tightening) rejects password-grant for unconfirmed users with `email_not_confirmed`. The test creates a user with `email_confirm: false` then calls `/auth/v1/token?grant_type=password` to get a session — that path now refuses by design. The test's premise is broken; no quick fix. Three redesign paths in [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md). Estimate to fix: 1-2h via UI-signup flow OR magic-link admin generation. |
@@ -911,20 +917,24 @@ closed; 4 production bug fixes shipped).
 
 ### Priority order — 14th session pickup
 
-**Step 0 (REQUIRED before any other work)**: verify DNS for
-`app.lessonloop.net` is resolvable. If still NXDOMAIN, halt and
-surface to Jamie with current state. Do not run baseline until DNS
-is fixed — every test will fail with `ERR_NAME_NOT_RESOLVED` and
-waste cycles.
+**Step 0**: verify DNS still resolves cleanly. The s13 fix (CNAME →
+`lessonloop-app.netlify.com`) is in place; if `*.netlify.app` ever
+comes back online there's no action needed (`.com` continues to
+work). If a different DNS issue surfaces, see s13's finding doc for
+the diagnostic playbook (resolver chain, TLD authoritative probe,
+edge-IP override).
 
-Once DNS is restored:
-- Re-run baseline. Expected ~464 passed (s12 end) ± transients.
-- Verify s13's 10 deploys (csv-import-execute, csv-import-mapping,
-  onboarding-setup, profile-ensure, batch-invite-guardians,
-  stripe-create-payment-intent, stripe-process-refund,
-  stripe-connect-onboard, stripe-connect-status, send-invite-email)
-  haven't introduced regressions. Spot-check §10.7 csv-import,
-  §24.7 stripe-process-refund, §27 invite flows if real tests exist.
+The s13 baseline post-fix should also be checked first thing — see
+the "Reality check" section for the post-fix counters.
+
+S13's 10 edge-fn deploys (csv-import-execute, csv-import-mapping,
+onboarding-setup, profile-ensure, batch-invite-guardians,
+stripe-create-payment-intent, stripe-process-refund,
+stripe-connect-onboard, stripe-connect-status, send-invite-email)
+were verified by the post-fix baseline if numbers match the s12
+baseline (~464 passed). Spot-check §10.7 csv-import,
+§24.7 stripe-process-refund, §27 invite flows if real tests exist
+and full-suite isn't conclusive.
 
 **Primary (post-baseline)**:
 

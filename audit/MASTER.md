@@ -1,6 +1,6 @@
 # LessonLoop production-readiness — MASTER tracker
 
-**Last updated:** 2026-05-10 (after 13th-session — getUser sweep continued: 10 more fns fixed + deployed, cumulative 13/~30; HALTED at baseline due to app.lessonloop.net DNS outage — see audit/findings/2026-05-10-app-dns-netlify-cname-broken.md)
+**Last updated:** 2026-05-10 (after 13th-session — getUser sweep continued: 10 more fns fixed + deployed, cumulative 13/~30; production DNS outage (Netlify *.netlify.app zone went NXDOMAIN globally) diagnosed + fixed via Cloudflare CNAME swap to .netlify.com, app restored end-to-end)
 **Owner:** Jamie McKaye
 **Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
 

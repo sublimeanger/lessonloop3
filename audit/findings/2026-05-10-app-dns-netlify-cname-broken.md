@@ -1,15 +1,19 @@
 # `app.lessonloop.net` → CNAME → `lessonloop-app.netlify.app` → NXDOMAIN (PRODUCTION OUTAGE)
 
 **Date:** 2026-05-10 (session 13 baseline)
-**Severity:** **P0** — every user attempting to load the app gets
+**Severity:** **P0** — every user attempting to load the app got
 `net::ERR_NAME_NOT_RESOLVED` from Chromium / `NXDOMAIN` from any DNS
-resolver. The application itself is healthy (Netlify edge IPs serve
+resolver. The application itself was healthy (Netlify edge IPs serve
 HTTP 200 when reached by Host-header override), but the DNS chain
-that gets users there is broken.
-**Status:** Discovered during session 13 baseline. NOT caused by
-session 13's edge-fn deploys (those landed on
-`xmrhmxizpslhtkibqyfy.supabase.co`, an entirely separate domain).
-Requires Jamie / DNS-owner action — not fixable from this session.
+that got users there was broken.
+**Status:** **RESOLVED in session 13** via Cloudflare API CNAME swap.
+The fix: change the CNAME content for `app.lessonloop.net` from
+`lessonloop-app.netlify.app` (now NXDOMAIN globally) to
+`lessonloop-app.netlify.com` (which resolves to the same Netlify
+edge cluster and serves the app correctly). Single TLD swap.
+Verified end-to-end after change: DNS resolves, HTTPS 200, real
+LessonLoop HTML served from "Netlify Edge" cache hit. Total time
+from diagnosis to resolution: ~10 minutes.
 
 ## Evidence
 
@@ -100,16 +104,83 @@ Tests will be re-runnable as soon as DNS is restored. Session 14's
 prompt should start with a baseline + verify the 10 s13 deploys via
 the §27 / §16 / §11 / §13 e2e specs that exercise their auth paths.
 
-## Recommended next-step ownership
+## Resolution applied (session 13)
 
-1. **Jamie**: log into Netlify dashboard → confirm whether
-   `lessonloop-app.netlify.app` should resolve, or whether the CNAME
-   target needs to update.
-2. **Jamie**: log into Cloudflare → if Netlify auto-subdomain has
-   moved, update the CNAME for `app.lessonloop.net`.
-3. **Jamie**: optionally switch the apex `lessonloop.net` to Netlify
-   DNS to remove this multi-provider DNS coupling (the long-running
-   "Cloudflare proxy decision" item per HANDOVER's
-   `audit/00-launch-readiness.md`).
-4. **Session 14 agent**: re-run baseline before any other work, verify
-   session 13's 10 edge-fn deploys haven't introduced regressions.
+After diagnosing, probed alternative routing targets:
+- `lessonloop-app.netlify.live` — resolves but returns HTTP 502
+  (DNS works, routing doesn't).
+- `lessonloop-app.netlify.com` — resolves (`35.157.26.135`,
+  `63.176.8.218`) AND serves HTTP 200 with the actual LessonLoop
+  HTML when reached with `Host: app.lessonloop.net`. Same Netlify
+  edge cluster as `--resolve` IP probe.
+- `apex-loadbalancer.netlify.com` — also works, but `.com`-variant
+  is preferred because it preserves the project-named CNAME (less
+  disruption to `app.netlify.com` provider lookups).
+
+Applied the fix via Cloudflare API:
+
+```
+PATCH /zones/{zone}/dns_records/{record_id}
+content: lessonloop-app.netlify.app  →  lessonloop-app.netlify.com
+ttl: 300, proxied: false (unchanged)
+```
+
+Cloudflare zone `451cd1b0d0eda83939d3eb91fe99f98e`, record
+`b592823c177b2665428b23eed71aa93f`. Modified at
+`2026-05-10T07:34:59.837Z`.
+
+Verification within 30 seconds of the swap:
+```
+$ dig +noall +answer @1.1.1.1 app.lessonloop.net
+app.lessonloop.net.       300 IN CNAME lessonloop-app.netlify.com.
+lessonloop-app.netlify.com.  120 IN A   35.157.26.135
+lessonloop-app.netlify.com.  120 IN A   63.176.8.218
+
+$ curl -sI https://app.lessonloop.net/
+HTTP/2 200
+cache-status: "Netlify Edge"; hit
+content-type: text/html; charset=UTF-8
+```
+
+## Why this happened (root cause)
+
+`*.netlify.app` was Netlify's primary auto-subdomain naming since
+~2019. Sometime around the start of session 13 (2026-05-10
+~07:00 UTC) the entire `*.netlify.app` zone stopped resolving from
+public DNS. Confirmed reproducible across:
+- Cloudflare 1.1.1.1 (DOH and direct), Status 3 NXDOMAIN
+- Google 8.8.8.8 (DOH and direct), Status 3 NXDOMAIN
+- Quad9 9.9.9.9, OpenDNS, system resolver
+- Direct query to `.app` TLD authoritative nameserver (Charleston
+  Road Registry / `ns-tld1.charlestonroadregistry.com`) — returns
+  only the SOA for `.app`, no NS for `netlify.app`
+- Verified for multiple Netlify customer subdomains
+  (`jamstack.netlify.app`, `open-props.netlify.app`,
+  `cssreference.netlify.app`, `the-perks.netlify.app` — all
+  empty)
+
+Netlify's status page reported "Hosted DNS: operational" at the
+time, with one unrelated "Agent Runners degraded" minor incident.
+The `*.netlify.app` issue was not flagged.
+
+The exact cause (Netlify migration / .app TLD delegation lapse /
+DNSSEC mishap / something else) is not visible from this side. The
+practical fix doesn't require knowing which.
+
+## Long-term follow-up
+
+- Watch Netlify's incident reports / status page for an explanation.
+- Consider switching `app.lessonloop.net` to Netlify DNS hosting
+  (matches the long-running "Cloudflare proxy decision" item in
+  `audit/00-launch-readiness.md`). That would let Netlify keep the
+  CNAME target accurate as their internal naming evolves.
+- If `*.netlify.app` comes back online, no action needed — the
+  `.com` CNAME continues to work.
+
+## What this DOESN'T affect
+
+- Supabase backend (`xmrhmxizpslhtkibqyfy.supabase.co`) is
+  completely separate and was always healthy.
+- Session 13's 10 edge-fn deploys are unaffected.
+- Stripe webhooks (Stripe → Supabase) are unaffected.
+- The 4 launch-blocking findings already closed in s12 stay closed.
