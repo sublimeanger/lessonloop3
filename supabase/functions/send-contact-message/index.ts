@@ -1,5 +1,6 @@
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
@@ -14,7 +15,7 @@ interface ContactRequest {
   website?: string; // honeypot field
 }
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("send-contact-message", async (req) => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -191,4 +192,4 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+}));

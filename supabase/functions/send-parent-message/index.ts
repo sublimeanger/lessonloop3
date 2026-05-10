@@ -4,6 +4,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 /**
  * Unified edge function for parent-initiated messages.
  * Handles both new conversations and replies to existing threads.
@@ -345,4 +346,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(wrapEdgeFn("send-parent-message", handler));

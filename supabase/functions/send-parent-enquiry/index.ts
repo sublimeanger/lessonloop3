@@ -4,6 +4,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 interface ParentEnquiryRequest {
   org_id: string;
   subject: string;
@@ -220,4 +221,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(wrapEdgeFn("send-parent-enquiry", handler));
