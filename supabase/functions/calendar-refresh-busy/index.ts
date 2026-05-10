@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { validateCronAuth } from '../_shared/cron-auth.ts';
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 async function refreshAccessToken(
   supabase: any,
   connectionId: string,
@@ -50,7 +51,7 @@ async function getValidAccessToken(supabase: any, connection: any): Promise<stri
   return connection.access_token;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("calendar-refresh-busy", async (req) => {
   // Only allow cron/internal calls
   const authError = validateCronAuth(req);
   if (authError) return authError;
@@ -166,4 +167,4 @@ Deno.serve(async (req) => {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-});
+}));

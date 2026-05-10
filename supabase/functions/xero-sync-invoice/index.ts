@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { getValidXeroToken } from "../_shared/xero-auth.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 /** Map LessonLoop invoice status to Xero invoice status. */
 function mapInvoiceStatus(status: string): string {
   switch (status) {
@@ -19,7 +20,7 @@ function toXeroDate(d: string | Date): string {
   return date.toISOString().split('T')[0];
 }
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("xero-sync-invoice", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
 
@@ -305,4 +306,4 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

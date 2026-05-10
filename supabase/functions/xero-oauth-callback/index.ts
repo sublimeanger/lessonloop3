@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("xero-oauth-callback", async (req) => {
   try {
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
@@ -131,4 +132,4 @@ Deno.serve(async (req) => {
     console.error('Xero OAuth callback error:', error);
     return new Response('Internal server error', { status: 500 });
   }
-});
+}));

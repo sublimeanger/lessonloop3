@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 async function refreshAccessToken(
   supabase: any,
   connectionId: string,
@@ -56,7 +57,7 @@ async function getValidAccessToken(supabase: any, connection: any): Promise<stri
   return connection.access_token;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("calendar-fetch-busy", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
 
@@ -222,4 +223,4 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

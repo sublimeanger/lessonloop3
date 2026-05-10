@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 /** Validate redirect_uri against allowed domains to prevent open-redirect attacks. */
@@ -30,7 +31,7 @@ function validateRedirectUri(uri: string | undefined | null): string {
   return fallback;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("xero-oauth-start", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
 
@@ -131,4 +132,4 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

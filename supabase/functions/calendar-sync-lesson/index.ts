@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 interface SyncPayload {
   lesson_id: string;
   action: 'create' | 'update' | 'delete';
@@ -71,7 +72,7 @@ async function getValidAccessToken(
   return connection.access_token;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("calendar-sync-lesson", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
 
@@ -377,4 +378,4 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));
