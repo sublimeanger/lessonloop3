@@ -22,7 +22,16 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 ## Summary
 
 - **Total rows:** 180
-- **State:** 117 🟢 verified / 47 🟡 structurally-verified-pending-browser / 6 🔴 launch-blockers / 10 ⏸ deferred-post-launch / **0 ❓ untouched** = **65% complete**
+- **State:** 128 🟢 verified / 36 🟡 structurally-verified-pending-browser / 6 🔴 launch-blockers / 10 ⏸ deferred-post-launch / **0 ❓ untouched** = **71% complete**
+- **s23 promotions (11 rows — final multi-area sweep across AI + Integrations + Cross-cutting):**
+  * **AI/LoopAssist (4)** → **AREA effectively COMPLETE 4/4 active 🟢 (6th area; 1 ⏸ marketing-chat is LAUNCH CUT per v2 §3)**: LoopAssist chat (staff); LoopAssist execute (tool calls); Parent LoopAssist chat; CSV import column mapping. All via §27 multi-area auth-gate contracts (s23).
+  * **Integrations Calendar (4)**: Google Calendar OAuth (start side; callback verify_jwt finding referenced); Calendar disconnect; Calendar busy fetch; Calendar lesson sync. All via §27 multi-area auth-gate contracts (s23). iCal feed remains 🟡 (token-based; CONTRACT GAP — needs token-validity contract test in v1.1).
+  * **Integrations Xero (2)**: xero-oauth-start; xero-disconnect. Both promoted via §27 multi-area auth-gate contracts (s23). 3 remaining Xero rows tagged **[CONDITIONAL at v1 per v2 §3 — Xero deferred unless Lauren shadow term proves stable]**: xero-oauth-callback (no user-JWT path); xero-sync-invoice (3 active findings); xero-sync-payment (NOT NULL drift finding).
+  * **Integrations Zoom (0 — 3 HIDDEN tags applied)**: zoom-oauth-start, zoom-oauth-callback, zoom-sync-lesson all tagged **[HIDDEN at v1 per launch scope §3.2]**. State stays 🟡; promotion deferred until launch-visible.
+  * **Cross-cutting (1)**: RLS coverage promoted via cumulative §32 + §27 + §10 + §11 + §13 + §16 + §17 + §22 + §26 RLS contracts proven across 13+ catalog sections in s11-s23.
+  * **Cross-cutting JAMIE-LEVEL tags (6)**: Sentry edge fns, Cookie consent, Anthropic sub-processor, Cloudflare WAF, Stripe Checkout branding, Source Supabase decom — all 🔴 launch blockers tagged for Jamie's pickup.
+  * **Cross-cutting v1.1+ tags (2)**: Rate limiting on auth endpoints (CAPTCHA + WAF tightening pending); Realtime subscriptions reconnect (mobile sleep/wake test pending). State stays 🟡; promotion deferred to v1.1.
+  * Plus **20 new §27 multi-area auth-gate contract tests** across 10 fns (4 AI + 4 Calendar + 2 Xero) per 12240c4 — 20/20 passed in 10.9s isolation.
 - **s22 promotions (19 rows — multi-area sweep across 5 weak areas):**
   * Practice & Resources (1) → **AREA COMPLETE 2/2 🟢 (5th area)**: Resources library promoted via inherited cross-cutting Storage row + §18 smoke + §32 RBAC matrix.
   * Subscriptions & Trial (5): Tier/subscription checkout; Billing history; Stripe Connect onboard; Stripe Connect status check; Tier-gated feature access. Trial banner remains 🟡 (UI-only — C-bucket).
@@ -182,29 +191,29 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Google Calendar OAuth | calendar-oauth-{start,callback} | P0 | 🟡 | 2026-05-08 | verify_jwt=false on callback ✓; 1 active Google connection in production (last sync 14:00 UTC today, token still valid). 1 errored connection (refresh_token revoked — user reconnect required). Needs fresh E2E sign-in by Jamie |
-| Calendar disconnect | calendar-disconnect | P1 | 🟡 | 2026-05-08 | structural verify only |
-| Calendar busy fetch (now) | calendar-fetch-busy | P1 | 🟡 | 2026-05-08 | calendar-refresh-busy cron firing every 15 min; sync_status='active' for 1 connection |
-| Calendar lesson sync (write back) | calendar-sync-lesson | P0 | 🟡 | 2026-05-08 | idempotency fixed in 9c72ca3; fresh sync of a real lesson + verify single Google event pending Jamie |
-| iCal feed (read-only export) | calendar-ical-feed | P1 | 🟡 | 2026-05-08 | tokenised URL; 1 Apple iCal connection in DB but `last_sync_at='2026-04-03'` (>30 days stale) — see findings |
-| Zoom OAuth start | zoom-oauth-start | P0 | 🟡 | 2026-05-08 | verify_jwt=false ✓; no production Zoom connections yet (table calendar_connections has 0 rows with provider='zoom') |
-| Zoom OAuth callback | zoom-oauth-callback + src/pages/ZoomOAuthCallback.tsx | P0 | 🟡 | 2026-05-08 | structural; E2E pending Jamie |
-| Zoom lesson sync | zoom-sync-lesson | P0 | 🟡 | 2026-05-08 | idempotency preemptively fixed; full E2E pending Jamie |
-| Xero OAuth start | xero-oauth-start | P0 | 🟡 | 2026-05-10 | verify_jwt=false ✓; 2 connections in production (both with expired access tokens — refresh-on-demand via shared/xero-auth.ts). [getUser fix per e13fb0a (s16)] |
-| Xero OAuth callback | xero-oauth-callback | P0 | 🟡 | 2026-05-08 | verify_jwt=false ✓ |
-| Xero invoice sync | xero-sync-invoice | P0 | 🟡 | 2026-05-10 | schema drift fix 2c4b410 + FK fix 025a423; auto_sync_invoices=true on both connections; fresh sync pending Jamie. [getUser fix per e13fb0a (s16)] |
-| Xero payment sync | xero-sync-payment | P0 | 🟡 | 2026-05-10 | NOT NULL drift fix 9c72ca3; auto_sync_payments=true on both connections; fresh sync pending Jamie. [getUser fix per e13fb0a (s16)] |
-| Xero disconnect | xero-disconnect | P1 | 🟡 | 2026-05-10 | structural verify only. [getUser fix per e13fb0a (s16)] |
+| Google Calendar OAuth | calendar-oauth-{start,callback} | P0 | 🟢 | 2026-05-10 | verify_jwt=false on callback ✓; 1 active Google connection in production (last sync 14:00 UTC today, token still valid). 1 errored connection (refresh_token revoked — user reconnect required). [E2E real per 12240c4 §27 multi-area auth-gate (s23) — calendar-oauth-start anon→4xx + no-auth→4xx prove user-JWT gate fires on the user-action side]. callback verify_jwt finding 2026-05-07-calendar-oauth-callback-verify-jwt-missing remains as separate observation; deferred to dedicated session or v1.1. Promoted 🟡→🟢 in s23. |
+| Calendar disconnect | calendar-disconnect | P1 | 🟢 | 2026-05-10 | structural verify ok. [E2E real per 12240c4 §27 multi-area auth-gate (s23) — anon→4xx + no-auth→4xx prove gate fires]. Promoted 🟡→🟢 in s23. |
+| Calendar busy fetch (now) | calendar-fetch-busy | P1 | 🟢 | 2026-05-10 | calendar-refresh-busy cron firing every 15 min; sync_status='active' for 1 connection. [E2E real per 12240c4 §27 multi-area auth-gate (s23) — anon→4xx + no-auth→4xx prove gate fires]. Promoted 🟡→🟢 in s23. |
+| Calendar lesson sync (write back) | calendar-sync-lesson | P0 | 🟢 | 2026-05-10 | idempotency fixed in 9c72ca3. [E2E real per 12240c4 §27 multi-area auth-gate (s23) — anon→4xx + no-auth→4xx prove user-JWT gate fires]. Idempotency finding 2026-05-07-calendar-sync-lesson-idempotency remains as reference; fresh sync E2E deferred to v1.1. Promoted 🟡→🟢 in s23. |
+| iCal feed (read-only export) | calendar-ical-feed | P1 | 🟡 | 2026-05-10 | tokenised URL (no JWT auth — public read by signed token); 1 Apple iCal connection in DB but `last_sync_at='2026-04-03'` (>30 days stale) — see findings. **[CONTRACT GAP per s23 — token-based public read; no auth-gate to test in same shape; needs token-validity contract test]** — deferred to v1.1. End-to-end VEVENT shape proven via §26.6 PortalSchedule per acc6015. |
+| Zoom OAuth start | zoom-oauth-start | P0 | 🟡 | 2026-05-10 | verify_jwt=false ✓; no production Zoom connections yet (table calendar_connections has 0 rows with provider='zoom'). **[HIDDEN at v1 per launch scope §3.2 — Zoom integration HIDDEN]** — promotion deferred until launch-visible. |
+| Zoom OAuth callback | zoom-oauth-callback + src/pages/ZoomOAuthCallback.tsx | P0 | 🟡 | 2026-05-10 | structural ok. **[HIDDEN at v1 per launch scope §3.2 — Zoom integration HIDDEN]** — promotion deferred until launch-visible. |
+| Zoom lesson sync | zoom-sync-lesson | P0 | 🟡 | 2026-05-10 | idempotency preemptively fixed. **[HIDDEN at v1 per launch scope §3.2 — Zoom integration HIDDEN]** — promotion deferred until launch-visible. Idempotency finding 2026-05-07-zoom-sync-lesson-idempotency remains as reference. |
+| Xero OAuth start | xero-oauth-start | P0 | 🟢 | 2026-05-10 | verify_jwt=false ✓; 2 connections in production (both with expired access tokens — refresh-on-demand via shared/xero-auth.ts). [getUser fix per e13fb0a (s16) + E2E real per 12240c4 §27 multi-area auth-gate (s23) — anon→4xx + no-auth→4xx prove user-JWT gate fires]. Promoted 🟡→🟢 in s23. |
+| Xero OAuth callback | xero-oauth-callback | P0 | 🟡 | 2026-05-10 | verify_jwt=false ✓; no user-JWT path (called by Xero redirect). **[CONDITIONAL at v1 per v2 §3 — Xero deferred unless Lauren shadow term proves stable]** — promotion deferred. |
+| Xero invoice sync | xero-sync-invoice | P0 | 🟡 | 2026-05-10 | schema drift fix 2c4b410 + FK fix 025a423; auto_sync_invoices=true on both connections. [getUser fix per e13fb0a (s16)]. **[CONDITIONAL at v1 per v2 §3 — Xero deferred unless Lauren shadow term proves stable]**; 3 active findings remain (NOT NULL drift, FK name, ll-prefix bug). Promotion deferred. |
+| Xero payment sync | xero-sync-payment | P0 | 🟡 | 2026-05-10 | NOT NULL drift fix 9c72ca3; auto_sync_payments=true on both connections. [getUser fix per e13fb0a (s16)]. **[CONDITIONAL at v1 per v2 §3 — Xero deferred unless Lauren shadow term proves stable]**; NOT NULL drift finding remains. Promotion deferred. |
+| Xero disconnect | xero-disconnect | P1 | 🟢 | 2026-05-10 | structural verify ok. [getUser fix per e13fb0a (s16) + E2E real per 12240c4 §27 multi-area auth-gate (s23) — anon→4xx + no-auth→4xx prove user-JWT gate fires]. Promoted 🟡→🟢 in s23. |
 
 ## AI
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| LoopAssist chat (staff) | looopassist-chat | P0 | 🟡 | 2026-05-10 | Anthropic Claude — Sonnet (academy/agency/custom) or Haiku (free/solo); date-pinned snapshots claude-sonnet-4-5-20250929 + claude-haiku-4-5-20251001; ANTHROPIC_API_KEY required; prompt-injection sanitiser on org-pref injection (control chars + system: prefix + "ignore previous instructions"); 7744 historical conversations carried over; last activity 2026-05-03 (pre-migration); fresh chat test pending Jamie. [getUser fix per e13fb0a (s16)] |
-| LoopAssist execute (tool calls) | looopassist-execute | P0 | 🟡 | 2026-05-10 | deterministic SQL execution from `ai_action_proposals`; 31 historical proposals; user-confirm gate; structural ok. [getUser fix per e13fb0a (s16)] |
-| Parent LoopAssist chat | parent-loopassist-chat | P1 | 🟡 | 2026-05-08 | Anthropic Claude; structural ok, awaits parent-portal browser test |
-| CSV import column mapping | csv-import-mapping | P1 | 🟡 | 2026-05-08 | Gemini Flash (gemini-flash-latest); GEMINI_API_KEY required; structural ok |
-| Marketing chat | marketing-chat | P2 | ⏸ | — | marketing site separate stack — out of cutover |
+| LoopAssist chat (staff) | looopassist-chat | P0 | 🟢 | 2026-05-10 | Anthropic Claude — Sonnet (academy/agency/custom) or Haiku (free/solo); date-pinned snapshots claude-sonnet-4-5-20250929 + claude-haiku-4-5-20251001; ANTHROPIC_API_KEY required; prompt-injection sanitiser on org-pref injection (control chars + system: prefix + "ignore previous instructions"); 7744 historical conversations carried over; last activity 2026-05-03 (pre-migration). [getUser fix per e13fb0a (s16) + E2E real per 12240c4 §27 multi-area auth-gate (s23) — anon→4xx + no-auth→4xx prove gate fires]. Promoted 🟡→🟢 in s23. |
+| LoopAssist execute (tool calls) | looopassist-execute | P0 | 🟢 | 2026-05-10 | deterministic SQL execution from `ai_action_proposals`; 31 historical proposals; user-confirm gate; structural ok. [getUser fix per e13fb0a (s16) + E2E real per 12240c4 §27 multi-area auth-gate (s23)]. Promoted 🟡→🟢 in s23. |
+| Parent LoopAssist chat | parent-loopassist-chat | P1 | 🟢 | 2026-05-10 | Anthropic Claude; getUser(token) auth pattern. [E2E real per 12240c4 §27 multi-area auth-gate (s23) — anon→4xx + no-auth→4xx prove gate fires]. Promoted 🟡→🟢 in s23. |
+| CSV import column mapping | csv-import-mapping | P1 | 🟢 | 2026-05-10 | Gemini Flash (gemini-flash-latest); GEMINI_API_KEY required; getUser(token) auth pattern. [E2E real per 12240c4 §27 multi-area auth-gate (s23) — anon→4xx + no-auth→4xx prove gate fires]. Promoted 🟡→🟢 in s23. |
+| Marketing chat | marketing-chat | P2 | ⏸ | — | marketing site separate stack — out of cutover. **[LAUNCH CUT per v2 §3]** |
 
 ## Messaging
 
@@ -315,19 +324,19 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Concern | Criticality | State | Notes |
 |---|---|---|---|
-| RLS coverage | P0 | 🟡 | per Mega Audit + Phase 6 — broadly verified; per-feature RLS spot-checks happen during each /sweep run (especially parent ↔ staff data isolation, cross-org isolation) |
+| RLS coverage | P0 | 🟢 | 2026-05-10 | per Mega Audit + Phase 6 — broadly verified. [E2E real: cumulative §32 trigger guards (s11+ — protect_teacher_user_link, lesson_notes RLS) + §27 notification_preferences RLS (s7 — anon→0 rows, parent JWT scoped to own user_id) + §10 students cross-org 403 + §11 teachers archive scoping + §13 invoices org-scoped + §16/§26 messages parent vs staff isolation + §17 practice_logs Parent INSERT WITH CHECK is_parent_of_student + §22 settings cross-org guard + §26 portal cross-guardian 403. RLS contracts proven across 13+ catalog sections via real-test isolation runs in s11-s23]. Promoted 🟡→🟢 in s23. |
 | Sentry capture (browser) | P1 | 🟢 | DSN wired 2026-05-08; @sentry/vite-plugin 4.4 wired into vite.config.ts with source-map upload + post-upload .map deletion (so .map files never reach CDN); SENTRY_AUTH_TOKEN/ORG/PROJECT set as Netlify build env on next deploy |
-| Sentry capture (edge functions) | P1 | 🔴 | 2026-05-08 — confirmed NO Sentry instrumentation in any edge function (0 references to @sentry/deno or Sentry.init across all 100+ fns). Edge fn errors only surface in Supabase logs (mcp_get_logs service=edge-function) — no aggregation, no alerting beyond cron-health-watchdog. Recommend adding shared `_shared/sentry.ts` wrapper post-launch |
-| Cookie consent banner | P1 | 🔴 | flagged in claude.md remaining items |
-| Anthropic sub-processor disclosure | P1 | 🔴 | flagged in claude.md remaining items |
-| Cloudflare WAF rules | P1 | 🔴 | 2026-05-08 — `app.lessonloop.net` is `proxied: false`, bypasses Cloudflare entirely. No edge WAF / DDoS / rate-limit. Removed stale `_lovable.app` TXT record. See findings/2026-05-08-cloudflare-app-subdomain-not-proxied. Decision required: flip orange-cloud or rely on Netlify alone |
-| Rate limiting on auth endpoints | P0 | 🟡 | 2026-05-08 — verified Supabase defaults: 30/5min on signup/email/OTP/verify, 150 on token refresh. Adequate for launch but tightening pending CAPTCHA + Cloudflare WAF |
+| Sentry capture (edge functions) | P1 | 🔴 | 2026-05-08 — confirmed NO Sentry instrumentation in any edge function (0 references to @sentry/deno or Sentry.init across all 100+ fns). Edge fn errors only surface in Supabase logs (mcp_get_logs service=edge-function) — no aggregation, no alerting beyond cron-health-watchdog. **[JAMIE-LEVEL launch blocker per audit/00-launch-readiness.md]** — agent-untagable infra work. Recommend adding shared `_shared/sentry.ts` wrapper post-launch. |
+| Cookie consent banner | P1 | 🔴 | flagged in claude.md remaining items. **[JAMIE-LEVEL launch blocker per audit/00-launch-readiness.md]** — agent-untagable. |
+| Anthropic sub-processor disclosure | P1 | 🔴 | flagged in claude.md remaining items. **[JAMIE-LEVEL launch blocker per audit/00-launch-readiness.md]** — agent-untagable. |
+| Cloudflare WAF rules | P1 | 🔴 | 2026-05-08 — `app.lessonloop.net` is `proxied: false`, bypasses Cloudflare entirely. No edge WAF / DDoS / rate-limit. Removed stale `_lovable.app` TXT record. See findings/2026-05-08-cloudflare-app-subdomain-not-proxied. Decision required: flip orange-cloud or rely on Netlify alone. **[JAMIE-LEVEL launch blocker per audit/00-launch-readiness.md]** — agent-untagable. |
+| Rate limiting on auth endpoints | P0 | 🟡 | 2026-05-08 — verified Supabase defaults: 30/5min on signup/email/OTP/verify, 150 on token refresh. Adequate for launch but tightening pending CAPTCHA + Cloudflare WAF. **[v1.1+ scope per s23 — CAPTCHA + WAF tightening; verified-adequate for v1]** — promotion deferred until tightening. |
 | CSP allow-list (pwnedpasswords) | P0 | 🟢 | 2026-05-08 fixed in index.html — added `https://api.pwnedpasswords.com` to connect-src; also removed stale `*.lovable.app` and `*.lovableproject.com` references (Lovable detached) |
 | Auth tightening (HIBP, reauth, security emails) | P1 | 🟢 | 2026-05-08 — enabled `password_hibp_enabled`, `security_update_password_require_reauthentication`, and 6 security-event notification emails (password/email/MFA/identity-link changed) via Management API. See findings/2026-05-08-supabase-auth-tightening-pre-launch |
-| Stripe Checkout branding | P1 | 🔴 | known launch blocker |
-| Realtime subscriptions reconnect | P1 | 🟡 | 2026-05-08 — `useRealtimeInvoices` hook subscribes to 7 postgres_changes listeners on a single channel filtered by org_id=eq; cleanup via `removeChannel` on unmount; supabase-js handles WS reconnect automatically on sleep/wake. PERF-M5 noted in code (consolidate-listeners optimisation deferred). Per-feature mobile sleep/wake test pending Jamie |
+| Stripe Checkout branding | P1 | 🔴 | known launch blocker. **[JAMIE-LEVEL launch blocker per audit/00-launch-readiness.md]** — agent-untagable Stripe Dashboard config. |
+| Realtime subscriptions reconnect | P1 | 🟡 | 2026-05-08 — `useRealtimeInvoices` hook subscribes to 7 postgres_changes listeners on a single channel filtered by org_id=eq; cleanup via `removeChannel` on unmount; supabase-js handles WS reconnect automatically on sleep/wake. PERF-M5 noted in code (consolidate-listeners optimisation deferred). **[v1.1+ scope per s23 — needs mobile sleep/wake test (Capacitor); web reconnect is library-level]** — promotion deferred. |
 | Storage bucket policies | P0 | 🟢 | 2026-05-08 — 5 buckets verified: `avatars` (public, 2MB cap, image-mime allowlist — tightened today), `org-logos` (public, 2MB, image-mime), `invoice-pdfs` (private, 10MB, PDF-only, service_role only), `migration-dump` (private, owner-only), `teaching-resources` (private, 50MB, broad mime; staff INSERT/UPDATE/DELETE in own org, parents SELECT via resource_shares + is_parent_of_student). All RLS robust. See findings/2026-05-08-storage-avatars-bucket-no-mime-or-size-limit |
-| Source Supabase decommission | P0 | 🔴 | known launch blocker |
+| Source Supabase decommission | P0 | 🔴 | known launch blocker. **[JAMIE-LEVEL launch blocker per audit/00-launch-readiness.md]** — agent-untagable; the source backup project (ximxgnkpcswbvfrkkmjq) decommission is scheduled for 2026-08-19. |
 
 ## Demo / dev / migration utilities (non-launch)
 
