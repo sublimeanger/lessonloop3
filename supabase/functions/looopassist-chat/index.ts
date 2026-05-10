@@ -1233,7 +1233,15 @@ serve(wrapEdgeFn("looopassist-chat", async (req) => {
     }
 
     // Parse body once
-    const body = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { context, orgId, lastContextHash } = body;
     let { messages } = body;
 

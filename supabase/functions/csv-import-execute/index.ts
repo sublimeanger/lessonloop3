@@ -492,7 +492,16 @@ serve(wrapEdgeFn("csv-import-execute", async (req) => {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
-    const { rows: rawRows, mappings, orgId, teacherId: reqTeacherId, teacherUserId, dryRun, skipDuplicates, rowsToImport } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { rows: rawRows, mappings, orgId, teacherId: reqTeacherId, teacherUserId, dryRun, skipDuplicates, rowsToImport } = __body;
     const effectiveTeacherIdFromRequest = reqTeacherId || teacherUserId;
 
     if (!orgId || !rawRows || !Array.isArray(rawRows) || !mappings) {

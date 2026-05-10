@@ -72,7 +72,16 @@ serve(wrapEdgeFn("parent-loopassist-chat", async (req) => {
       return rateLimitResponse(corsHeaders, rateCheck);
     }
 
-    let { messages } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    let { messages } = __body;
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: "Messages required" }), {
         status: 400,
