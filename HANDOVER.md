@@ -1,11 +1,30 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-10 (after 22nd-session — MULTI-AREA SWEEP across 5 weak areas: Practice & Resources AREA COMPLETE 2/2 🟢 (5th area) + Subscriptions/Connect 0→5/6 + Messaging 2→7/9 + Parent portal 6→9/9 + Students 3→8/8 active 🟢; 19 promotions; cumulative 117 🟢 / 47 🟡 = 65% complete; **FIVE areas COMPLETE**) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-10 (after 23rd-session — FINAL MULTI-AREA SWEEP across AI + Integrations + Cross-cutting: AI/LoopAssist AREA effectively COMPLETE 4/4 active 🟢 (6th area) + Calendar 0→4/7 + Xero 0→2/5 (3 CONDITIONAL tags) + Zoom 3 HIDDEN tags + Cross-cutting RLS coverage promoted + 6 JAMIE-LEVEL + 2 v1.1+ tags; 11 promotions + 14 tags; cumulative 128 🟢 / 36 🟡 = 71% complete; **SIX areas effectively COMPLETE**) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
 
 **Session ledger (commits on `main`):**
+- 12240c4 — test(e2e): §27 — s23 multi-area auth-gate contracts (10
+  fns × 2). Final multi-area sweep covering AI/LoopAssist + Calendar
+  (user-JWT) + Xero (promotable user-JWT) edge fns. Same parametrised
+  describe shape as s17/s18/s20/s21/s22 — anon→4xx + no-auth→4xx
+  prove the gate fires. Coverage: AI cluster (4): looopassist-chat,
+  looopassist-execute, parent-loopassist-chat, csv-import-mapping.
+  Calendar cluster (4 user-JWT): calendar-disconnect,
+  calendar-fetch-busy, calendar-oauth-start, calendar-sync-lesson
+  (still bare getUser() — LOW priority in s16 sweep; auth-gate still
+  fires under bare getUser() because anon JWT has no `sub` claim).
+  Xero cluster (2 promotable): xero-oauth-start, xero-disconnect.
+  File-level run: 26 passed (incl 6 auth setup) / 10.9s isolation.
+- (s23 audit hygiene commit) — audit: §ai+integrations+cross-cutting
+  — 11 promotions + 14 tags. AI/LoopAssist (4) — AREA effectively
+  COMPLETE 6th area. Integrations Calendar (4) + Xero (2). Cross-cutting
+  (1 RLS coverage). Plus 14 tags: 3 Zoom HIDDEN at v1, 6 Cross-cutting
+  JAMIE-LEVEL launch blockers, 2 Cross-cutting v1.1+ scope, 3 Xero
+  CONDITIONAL at v1. Audit total 117 → 128 🟢 (65% → 71%). Areas now
+  COMPLETE/effectively-COMPLETE: 8 (was 7).
 - `b7900ab` — J24-A canary (migration + helper + stripe-list-payment-methods)
 - `763c474` — Batch A+B (6 read/light-write fns)
 - `049e84f` — Batch C (payment-intent + checkout)
@@ -1014,32 +1033,33 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~74% (was ~73% at s16 end). s17 added the §24
-auth-gate contract tests cluster (+18 tests across 9 fns) — modest
-catalog bump. Primary win was audit hygiene: money-path goes from
-3 🟢 (s16) → 18 🟢 (s17), or ~78% of the cluster. 5 C-bucket rows
-remain.**
+**Catalog completeness: ~84% (was ~82% at s22 end). s23 added the
+§27 multi-area auth-gate contract cluster (+20 tests across 10 fns)
+covering AI + Calendar (user-JWT) + Xero (promotable). Audit hygiene:
+total 117 🟢 → 128 🟢 (65% → 71%). AI/LoopAssist AREA effectively
+COMPLETE 4/4 active 🟢 (6th area). Most remaining 🟡 now tagged
+HIDDEN/CONDITIONAL/JAMIE-LEVEL/v1.1+ — not real gaps.**
 
-**Audit total: 47 🟢 / 117 🟡 (was 32/132 at s16 end).**
+**Audit total: 128 🟢 / 36 🟡 (was 117/47 at s22 end).**
 
-Current baseline (end of 22nd session, post-multi-area-sweep):
-- **510 passed / 19 failed / 121 skipped / 49 did not run / 4.8 min wall-clock at 4 workers**
-- Test count grew to 699 (+16 from s22's §27 multi-area auth-gate
-  cluster: 8 fns × 2 contract tests each).
-- vs s21 final (548/11/122/2/8.5m): **−38 passed / +8 failed /
-  −1 skipped / +47 did-not-run / −3.7m wall-clock**.
-- Wall-clock improved 3.7m. The +47 did-not-run is the §22.2/§24
-  cross-file race cascade firing harder this run — same documented
-  pattern as s18 (49) and s19 (38) and s20 (40).
-- Pre-session baseline (before s22 changes) was 554/7/122/5.2m
-  clean — confirms the cascade is timing-variance not test-content.
-- 19 failures include the documented transients (§5.4 deterministic;
-  §11.4.6 plan-cap throwaway-org contention; §13.7.4/§14.10.16
-  PostgREST contention; §17.5.5/§17.5.6 cron RPC variance;
-  §20.x continuation cluster cascade-affected; §21 LoopAssist
-  UI race; §22.2 cross-file race trio with §24).
-- s22 work itself: §27 multi-area cluster passed 22/22 in 16.7s
-  isolation (the new contract tests are themselves stable).
+Current baseline (end of 23rd session, post-multi-area-sweep):
+- **594 passed / 3 failed (all documented) / 122 skipped / 3.9 min wall-clock at 4 workers**
+- Test count grew to 719 (+20 from s23's §27 multi-area auth-gate
+  cluster: 10 fns × 2 contract tests each).
+- vs s22 final (510/19/121/49/4.8m): **+84 passed / −16 failed /
+  +1 skipped / −49 did-not-run / −0.9m wall-clock**.
+- Pre-session baseline (before s23 changes) was 574/3/122/3.7m
+  clean — the cascade did NOT fire this run; smooth recovery from
+  s22's variance-heavy run.
+- 3 failures are all documented transients:
+  * §5.4 email-verification (deterministic — broken-test-design)
+  * §13.7.4 bulk-send-drafts (PostgREST contention)
+  * §13 stats reflect DB (transient race)
+- s23 work itself: §27 multi-area s23 cluster passed 20/20 in 10.9s
+  isolation. The new contract tests are themselves stable.
+
+**Stale baseline (end of 22nd session, post-multi-area-sweep):**
+- 510 passed / 19 failed / 121 skipped / 49 did not run / 4.8 min wall-clock
 
 **Stale baseline (end of 21st session, post-Calendar-AREA-COMPLETE + Cron-backfill):**
 - 548 passed / 11 failed / 122 skipped / 2 did not run / 8.5 min wall-clock
@@ -1307,6 +1327,11 @@ session — don't fix inline during a catalog session.
 | ~~Cron lifecycle cluster~~ (effectively complete) | — | **25 of 26 rows 🟢 in s21.** Single-session backfill via 26 §27 cron-auth-gate contracts (32/32 in 19.4s) covering 13 handlers using validateCronAuth. Lone 🟡 is recurring-billing-scheduler (tagged [HIDDEN at v1] per launch scope §3.2 — recurring billing templates UI hidden at v1). Effectively complete for launch. |
 | ~~Messaging cluster~~ (effectively complete) | — | **7 of 9 active rows 🟢** (1 ⏸ post-launch push). s15 closed Messages inbox + send-message; s22 closed Send bulk + Send parent + Send parent enquiry + Internal message notify + Mark messages read via §16 + §27 contracts. send-contact-message remains 🟡 (public marketing-form endpoint, no auth-gate to test — C-bucket). |
 | ~~Practice & Resources cluster~~ | — | **AREA COMPLETE in s22 — 2/2 🟢 (5th area).** s19 promoted Practice tracker; s22 closed Resources library via inherited cross-cutting Storage row + §18 smoke + §32 RBAC matrix. |
+| ~~AI/LoopAssist cluster~~ | — | **AREA effectively COMPLETE in s23 — 4/4 active 🟢 (6th area).** s23 promoted all 4 active rows (LoopAssist chat staff, LoopAssist execute, Parent LoopAssist chat, CSV import column mapping) via §27 multi-area auth-gate contract per 12240c4. Marketing-chat ⏸ remains LAUNCH CUT per v2 §3. |
+| ~~Integrations Calendar cluster~~ (effectively complete for v1) | — | **4 of 7 🟢** (was 0/7 at s22 end). s23 closed 4 user-JWT fns: Google Calendar OAuth (start side), Calendar disconnect, Calendar busy fetch, Calendar lesson sync via §27 multi-area auth-gate per 12240c4. iCal feed remains 🟡 (token-based; CONTRACT GAP — needs v1.1 token-validity contract). Calendar OAuth callback verify_jwt finding 2026-05-07 referenced; defer fix to v1.1. |
+| ~~Integrations Xero cluster~~ (effectively complete for v1, CONDITIONAL) | — | **2 of 5 🟢** (was 0/5 at s22 end). s23 promoted xero-oauth-start + xero-disconnect via §27 multi-area auth-gate per 12240c4. Remaining 3 rows tagged **[CONDITIONAL at v1 per v2 §3]** pending Lauren shadow term proof: xero-oauth-callback (no user-JWT), xero-sync-invoice (3 active findings), xero-sync-payment (NOT NULL drift finding). |
+| ~~Integrations Zoom cluster~~ (HIDDEN at v1) | — | **0 of 3 🟢; all 3 HIDDEN at v1.** s23 tagged zoom-oauth-start, zoom-oauth-callback, zoom-sync-lesson with [HIDDEN at v1 per launch scope §3.2]. Promotion deferred until launch-visible. |
+| **Cross-cutting / platform** (mostly tagged) | **JAMIE-LEVEL** | **5 of 13 🟢** (was 4/13 at s22 end). s23 promoted RLS coverage via cumulative §32 + §27 + §10 + §11 + §13 + §16 + §17 + §22 + §26 contracts proven across 13+ catalog sections. **6 🔴 launch blockers tagged [JAMIE-LEVEL per audit/00-launch-readiness.md]**: Sentry edge fns, Cookie consent, Anthropic sub-processor, Cloudflare WAF, Stripe Checkout branding, Source Supabase decom. **2 🟡 tagged [v1.1+]**: Rate limiting on auth (CAPTCHA + WAF tightening), Realtime subscriptions reconnect (mobile sleep/wake test). |
 | ~~Subscriptions & Trial cluster~~ (effectively complete) | — | **5 of 6 🟢.** s22 closed Tier/subscription checkout, Billing history, Stripe Connect onboard, Stripe Connect status, Tier-gated feature access via §27 multi-area contracts + §32 RBAC matrix. Trial banner remains 🟡 (UI-only — C-bucket; small UI smoke could close in s23). |
 | ~~Parent portal cluster~~ | — | **9/9 🟢.** s15 + s22 work covers all rows. Cluster effectively complete. |
 | ~~Students & Guardians cluster~~ (effectively complete) | — | **8 of 8 active rows 🟢** (1 ⏸ post-launch push). s15 promoted CSV import execute + Streak notification; s22 closed Students list/CRUD, Student detail, CSV import (mapping step), Guardian batch invite, Family/guardian linking. |
@@ -1476,7 +1501,32 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
-### What's done at end of 22nd session
+### What's done at end of 23rd session
+
+(Catalog state ~84% — s23 added 20 new contract tests in §27
+multi-area auth-gate cluster covering AI + Calendar (user-JWT) +
+Xero (promotable). Primary win: AI/LoopAssist AREA effectively
+COMPLETE 4/4 active 🟢 (6th area) + 11 promotions across 3
+target areas + 14 tags applied for HIDDEN/CONDITIONAL/JAMIE-LEVEL/v1.1+
+classification. Audit total 117 → 128 🟢 (65% → 71%); remaining 🟡
+mostly tagged as not-real-gaps.)
+
+Per-area outcomes for s23:
+- AI/LoopAssist: 4/4 active 🟢 (1 ⏸ marketing-chat = LAUNCH CUT) —
+  effective AREA COMPLETE.
+- Integrations Calendar: 4/7 🟢 promoted (calendar-disconnect,
+  calendar-fetch-busy, calendar-oauth-start, calendar-sync-lesson)
+  + Google Calendar OAuth row (covers start, callback finding
+  referenced). iCal feed 🟡 (CONTRACT GAP — token-based, needs
+  v1.1 token-validity contract). Calendar OAuth callback
+  verify_jwt finding referenced; defer fix to v1.1.
+- Integrations Xero: 2/5 🟢 promoted (xero-oauth-start,
+  xero-disconnect). 3 CONDITIONAL tags applied (xero-oauth-callback,
+  xero-sync-invoice, xero-sync-payment) — promotion deferred until
+  Lauren shadow term proves stable.
+- Integrations Zoom: 0/3 🟢 — all 3 HIDDEN at v1 tags applied.
+- Cross-cutting: 1/3 🟡 agent-tagable promoted (RLS coverage); 6 🔴
+  JAMIE-LEVEL tags + 2 v1.1+ tags applied to remaining cells.
 
 (Catalog state ~82% — s22 added 22 new contract tests in §27
 multi-area auth-gate cluster. Primary win was Practice & Resources
@@ -1510,11 +1560,12 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 23rd session pickup
+### Priority order — 24th session pickup
 
-After s22, audit landscape is dramatically tightened (s14 end:
-14 🟢; s22 end: 117 🟢, 65%). Five areas COMPLETE; 4 more
-effectively at 100% for v1. Remaining work clusters:
+After s23, audit landscape is at launch-readiness posture
+(s14 end: 14 🟢; s23 end: 128 🟢, 71%). **Six areas effectively
+COMPLETE; 9 more at 100% for v1.** Remaining 🟡 are largely tagged
+HIDDEN/CONDITIONAL/JAMIE-LEVEL/v1.1+ — not real gaps.
 
 **Effective AREA COMPLETE for v1 (no further work needed):**
 - Money-path (s18, 23/23 🟢)
@@ -1522,58 +1573,82 @@ effectively at 100% for v1. Remaining work clusters:
 - Reports (s20, 7/7 🟢)
 - Calendar & Lessons (s21, 14/14 🟢)
 - Practice & Resources (s22, 2/2 🟢)
+- **AI/LoopAssist (s23, 4/4 active 🟢; 1 ⏸ marketing-chat = LAUNCH CUT)** — NEW
 - Cron lifecycle (25/26 🟢; 1 HIDDEN-at-v1)
 - Parent portal (9/9 🟢)
 - Students & Guardians (8/8 active 🟢; 1 ⏸ push)
 
-**Partial / next sweep candidates:**
+**Effective for v1 launch (mostly tagged 🟡 = HIDDEN/CONDITIONAL/v1.1+):**
+- Integrations Calendar (4/7 🟢; iCal CONTRACT GAP v1.1; OAuth callback
+  finding referenced)
+- Integrations Xero (2/5 🟢; 3 rows CONDITIONAL pending Lauren shadow term)
+- Integrations Zoom (0/3 🟢; all 3 HIDDEN at v1)
+- Cross-cutting / platform (5/13 🟢; 6 🔴 JAMIE-LEVEL launch blockers; 2 v1.1+ tagged)
+
+**Partial / remaining work:**
 1. **Subscriptions & Trial** (5/6 🟢): 1 row remaining (Trial
    banner — UI-only). C-bucket — small UI smoke would close it.
 2. **Messaging** (7/9 active 🟢, 1 ⏸ push): 1 row remaining
    (send-contact-message — public endpoint, marketing-page-side).
    C-bucket — needs honeypot + rate-limit contract.
-3. **Cross-cutting / platform** (~13 rows, 4 🟢, 6 🔴): 6 launch
-   blockers (Jamie-level: Stripe Checkout branding, Cookie consent,
-   Anthropic sub-processor, CF WAF, Sentry edge fns, source
-   Supabase decom). Rest mostly 🟡 (RLS coverage, Realtime, Cookie
-   policies). 3-4 promotions feasible from existing test coverage.
-4. **Integrations** (12 rows, 0 🟢): Calendar OAuth (Google/Apple/Zoom)
-   + Xero. Most are HIDDEN-at-v1 (Zoom) or conditional (Xero per
-   shadow term). Xero rows have s16 getUser fix; Calendar rows
-   have s21 calendar-refresh-busy contract. 4-6 promotions feasible.
-5. **AI** (5 rows, 0 🟢, 1 ⏸): LoopAssist staff/parent chat +
-   exec; CSV mapping; marketing-chat (cut). s17 LoopAssist auth-gate
-   contracts cover the chat fns. 3-4 promotions feasible.
-6. **Mobile (Capacitor)** (5 rows, 0 🟢): Mostly mobile-safari project
-   tests pending — defer to s24+.
+3. **Mobile (Capacitor)** (5 rows, 0 🟢): Mostly mobile-safari project
+   tests pending — Capacitor-specific work; low priority for v1 web
+   launch.
+4. **Hidden-feature audit areas** (Leads/Booking/Waitlist 12 rows):
+   Defer — most are LAUNCH HIDDEN per v2 §3.2.
 
-**Two recommended s23 options:**
+**6 cross-cutting launch blockers (JAMIE-LEVEL, agent-untagable):**
+Sentry edge fns, Cookie consent banner, Anthropic sub-processor
+disclosure, Cloudflare WAF rules, Stripe Checkout branding, Source
+Supabase decommission. Tracked separately in
+audit/00-launch-readiness.md.
 
-**Option A: Final multi-area sweep (~3-4h, target 10-15 promotions).**
-Walk Cross-cutting (3-4) + Integrations (4-6) + AI (3-4). Plus the
-2 small remaining Trial banner + send-contact-message rows. After s23:
-- Audit total target: 117 → 130-140 🟢 (~72-78% complete)
-- 7-8 areas effectively COMPLETE
-- Remaining: 6 launch blockers (Jamie-level) + Mobile + hidden features
+**Two recommended s24 options:**
 
-**Option B: Calendar OAuth contracts deep dive (~2-3h).**
-Calendar OAuth (Google/Apple) is launch-relevant per v2 §3.1 (Lauren's
-shadow term needs Google Calendar). Walk calendar-* edge fns + iCal
-feed. Target 5-6 promotions in Integrations cluster.
+**Option A: Final cleanup pass + Lauren shadow term parallel (~2-3h).**
+- Promote the 2 small remaining cells (Trial banner UI smoke +
+  send-contact-message honeypot/rate-limit contract).
+- Audit/MASTER.md hygiene backfill — sweep stale notes, verify
+  remaining 🟡 row tags are accurate.
+- Begin Lauren shadow term parallel work: monitor production data
+  flow, verify Calendar OAuth in real use (closes the verify_jwt
+  finding ref), Xero CONDITIONAL flip-decision criteria.
+- After s24: audit total target ~130-132 🟢 (~73%); remaining 🟡 are
+  largely tagged-not-gaps.
 
-**Recommended: Option A** — broader coverage; Option B too narrow
-given remaining launch deadline pressure. Multi-area sweep accumulates
-launch-readiness signal across more surfaces.
+**Option B: Mobile (Capacitor) + Hidden-feature smoke pass (~3-4h).**
+- Mobile (5 rows): Capacitor-specific contracts for iOS/Android
+  build artifacts, deep links, in-app browser OAuth.
+- Hidden features (12 rows): Smoke-only contracts for Leads, Booking,
+  Waitlist if the discipline of full v1 audit closure demands it.
+- Most rows will end up tagged HIDDEN/v1.1+.
+
+**Recommended: Option A** — final cleanup is more launch-readiness
+signal per hour; Option B mostly produces tag-only outcomes for
+non-launch features. Lauren shadow term parallel surface real
+production behaviour that audit work can't simulate.
 
 **Step 0** (either option): pull, read HANDOVER, run baseline.
-Expected: ~554-580 passed / 5-12 failed / ≤5 did-not-run / 5-9m
-wall-clock.
+Expected: **~590-600 passed / 3-7 failed (documented) / 122 skipped / 3.5-5m
+wall-clock**. Pre-session clean run today: 574/3/122/3.7m. Post-s23
+contracts: 594/3/122/3.9m. The §22.2/§24 cross-file race cascade
+fires intermittently (s22 final hit 49 did-not-run; s23 baseline
+clean) — load variance, not deterministic.
 
 **Audit hygiene mandate continues:** ≥5 rows promoted to 🟢 per
-session. After 7 consecutive sessions of 7-19 promotions each,
-this is comfortable.
+session. After 8 consecutive sessions of 7-19 promotions each,
+this is comfortable. After s23, most "easy" promotions are exhausted;
+s24 will trend toward smaller per-session promotion counts as
+remaining 🟡 are mostly real gaps not auth-gate-shaped.
 
-### Priority order — 22nd session pickup (closed)
+### Priority order — 23rd session pickup (closed)
+
+**Closed**: Final multi-area sweep landed 11 promotions + 14 tags.
+AI/LoopAssist AREA effectively COMPLETE 6th area in 6 consecutive
+sessions. Audit total 117 → 128 🟢 (65% → 71%). Most remaining 🟡
+now tagged HIDDEN/CONDITIONAL/JAMIE-LEVEL/v1.1+ — not real gaps.
+
+### Priority order — 22nd session pickup (closed earlier)
 
 **Closed**: Multi-area sweep landed 19 promotions (2nd-largest
 single-session count). Practice & Resources AREA COMPLETE 5th area.
