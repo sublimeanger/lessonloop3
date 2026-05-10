@@ -18,6 +18,8 @@ import {
   supabaseSelect,
 } from '../supabase-admin';
 import { resetE2ERateLimits } from './_fixtures/stripe-test-helpers';
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
 
 function genTestId() {
   return `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -314,6 +316,195 @@ test.describe('§14 — Status transitions (enforce_invoice_status_transition)',
       // the visible state must remain 'paid'.
       expect(after[0].status).toBe('paid');
       void threw; // either branch is acceptable
+    } finally {
+      supabaseDelete('payments', `invoice_id=eq.${inv.id}`);
+      deleteInvoiceById(inv.id);
+    }
+  });
+});
+
+test.describe('§14.10.14 — PDF rev bump trigger', () => {
+  // Catalog §14.10.14: "PDF download — first call generates, second uses
+  // cache, modify line item → bump_invoice_pdf_rev_* trigger increments
+  // rev → next download regenerates."
+  // We assert the trigger half (DB-shape): seed an invoice, assert pdf_rev
+  // starts at 0, mutate an item, assert pdf_rev incremented. The cache
+  // half is in InvoiceDetail.tsx PDF download flow (UI heavy; not in
+  // scope here).
+  test('mutating a line item bumps invoices.pdf_rev (cache invalidation)', async () => {
+    const testId = genTestId();
+    const guardianId = getFirstGuardianId();
+    expect(guardianId).toBeTruthy();
+
+    const inv = createTestInvoice({
+      dueDate: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: guardianId,
+      notes: `${testId}_pdfrev`,
+      items: [{ description: `${testId}_item`, quantity: 1, unit_price_minor: 1000 }],
+    });
+
+    try {
+      // bump_invoice_pdf_rev_from_items_ins fires on item INSERT, so the
+      // baseline after createTestInvoice is already > 0. Capture and
+      // compare delta — the contract under test is "mutating bumps it",
+      // not "starts at 0".
+      const baseline = supabaseSelect('invoices', `id=eq.${inv.id}&select=pdf_rev`);
+      expect(baseline[0].pdf_rev).toBeGreaterThanOrEqual(1);
+      const startRev = baseline[0].pdf_rev as number;
+
+      // UPDATE the item — bump_invoice_pdf_rev_from_items_upd should fire.
+      const items = supabaseSelect('invoice_items', `invoice_id=eq.${inv.id}&select=id`);
+      expect(items.length).toBe(1);
+      const itemId = items[0].id;
+      execSync(
+        `curl -s -X PATCH "${process.env.E2E_SUPABASE_URL}/rest/v1/invoice_items?id=eq.${itemId}" ` +
+          `-H "apikey: ${process.env.E2E_SUPABASE_SERVICE_ROLE_KEY}" ` +
+          `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_SERVICE_ROLE_KEY}" ` +
+          `-H "Content-Type: application/json" ` +
+          `-d '{"description":"${testId}_item_mutated"}'`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+
+      const after = supabaseSelect('invoices', `id=eq.${inv.id}&select=pdf_rev`);
+      expect(after[0].pdf_rev, `pdf_rev should bump on item UPDATE: ${startRev} → ${after[0].pdf_rev}`).toBeGreaterThan(startRev);
+    } finally {
+      deleteInvoiceById(inv.id);
+    }
+  });
+});
+
+test.describe('§14.10.16 — apply_lost_dispute_cascade', () => {
+  // Catalog §14.10.16: "apply_lost_dispute_cascade cascades correctly."
+  // The RPC is service-role only (rejects auth.uid() != NULL — see
+  // pg_proc body verified 2026-05-10). Stripe webhook calls it when
+  // a dispute closes with outcome='lost'. Tests:
+  //   - happy path: paid invoice + dispute + RPC → refund row + invoice
+  //     transitions back from paid + audit_log row
+  //   - idempotency: second call returns already_applied:true
+  test('paid invoice + lost dispute → cascade inserts refund + invoice no longer "paid" + audit_log dispute_lost_cascade_applied', async () => {
+    const testId = genTestId();
+    const guardianId = getFirstGuardianId();
+    const orgId = process.env.E2E_ORG_ID!;
+    expect(guardianId).toBeTruthy();
+
+    const inv = createTestInvoice({
+      dueDate: new Date(Date.now() + 14 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: guardianId,
+      notes: `${testId}_dispute`,
+      items: [{ description: `${testId}_i`, quantity: 1, unit_price_minor: 5000 }],
+    });
+
+    try {
+      patchInvoiceStatus(inv.id, 'sent');
+      const totalRow = supabaseSelect('invoices', `id=eq.${inv.id}&select=total_minor`);
+      const total = totalRow[0].total_minor as number;
+
+      // Pay it via record_manual_payment so paid_minor reflects + status=paid.
+      supabaseRpc('record_manual_payment', {
+        p_invoice_id: inv.id,
+        p_amount_minor: total,
+        p_method: 'card',
+        p_paid_at: new Date().toISOString(),
+        p_reference: `${testId}_pay_ref`,
+        p_installment_id: null,
+      });
+      const paid = supabaseSelect('invoices', `id=eq.${inv.id}&select=status`);
+      expect(paid[0].status).toBe('paid');
+
+      const payments = supabaseSelect('payments', `invoice_id=eq.${inv.id}&select=id`);
+      expect(payments.length).toBe(1);
+      const paymentId = payments[0].id;
+
+      // Insert a payment_disputes row directly (mirrors what
+      // stripe-webhook would do on charge.dispute.closed).
+      const disputeReqFile = `/tmp/sb-dispute-${Date.now()}.json`;
+      fs.writeFileSync(
+        disputeReqFile,
+        JSON.stringify({
+          payment_id: paymentId,
+          invoice_id: inv.id,
+          org_id: orgId,
+          stripe_dispute_id: `dp_test_${testId}`,
+          stripe_charge_id: `ch_test_${testId}`,
+          amount_minor: total,
+          currency_code: 'GBP',
+          reason: 'unrecognized',
+          status: 'lost',
+          outcome: 'lost',
+          opened_at: new Date(Date.now() - 7 * 24 * 3600_000).toISOString(),
+          closed_at: new Date().toISOString(),
+        }),
+      );
+      let disputeId: string;
+      try {
+        const dRaw = execSync(
+          `curl -s -X POST "${process.env.E2E_SUPABASE_URL}/rest/v1/payment_disputes" ` +
+            `-H "apikey: ${process.env.E2E_SUPABASE_SERVICE_ROLE_KEY}" ` +
+            `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_SERVICE_ROLE_KEY}" ` +
+            `-H "Content-Type: application/json" ` +
+            `-H "Prefer: return=representation" ` +
+            `-d @${disputeReqFile}`,
+          { encoding: 'utf-8', timeout: 15_000 },
+        );
+        const rows = JSON.parse(dRaw);
+        expect(Array.isArray(rows) && rows[0]?.id, `payment_disputes insert failed: ${dRaw.slice(0, 200)}`).toBeTruthy();
+        disputeId = rows[0].id;
+      } finally {
+        try { fs.unlinkSync(disputeReqFile); } catch { /* ignore */ }
+      }
+
+      // Apply the cascade RPC — service-role only (validated in pg_proc).
+      const cascadeRaw = execSync(
+        `curl -s -X POST "${process.env.E2E_SUPABASE_URL}/rest/v1/rpc/apply_lost_dispute_cascade" ` +
+          `-H "apikey: ${process.env.E2E_SUPABASE_SERVICE_ROLE_KEY}" ` +
+          `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_SERVICE_ROLE_KEY}" ` +
+          `-H "Content-Type: application/json" ` +
+          `-d '{"_dispute_id": "${disputeId}"}'`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const cascadeResult = JSON.parse(cascadeRaw);
+      expect(cascadeResult.already_applied).toBe(false);
+      expect(cascadeResult.refund_id).toBeTruthy();
+
+      // Refund row exists with status=succeeded + linked to dispute.
+      const refunds = supabaseSelect(
+        'refunds',
+        `payment_id=eq.${paymentId}&select=amount_minor,status,refund_from_dispute_id`,
+      );
+      expect(refunds.length).toBe(1);
+      expect(refunds[0].amount_minor).toBe(total);
+      expect(refunds[0].status).toBe('succeeded');
+      expect(refunds[0].refund_from_dispute_id).toBe(disputeId);
+
+      // Invoice no longer 'paid' (recalculate_invoice_paid runs inside the
+      // RPC). Should be 'sent' or 'overdue' depending on due_date.
+      const after = supabaseSelect('invoices', `id=eq.${inv.id}&select=status`);
+      expect(['sent', 'overdue'], `invoice status after cascade: ${after[0].status}`).toContain(after[0].status);
+
+      // Audit log: dispute_lost_cascade_applied row keyed on the invoice.
+      const audit = supabaseSelect(
+        'audit_log',
+        `org_id=eq.${orgId}&entity_type=eq.invoice&entity_id=eq.${inv.id}&action=eq.dispute_lost_cascade_applied&select=action,after`,
+      );
+      expect(audit.length).toBeGreaterThanOrEqual(1);
+      expect(audit[0].after?.dispute_id).toBe(disputeId);
+
+      // Idempotency: second call returns already_applied:true.
+      const second = JSON.parse(execSync(
+        `curl -s -X POST "${process.env.E2E_SUPABASE_URL}/rest/v1/rpc/apply_lost_dispute_cascade" ` +
+          `-H "apikey: ${process.env.E2E_SUPABASE_SERVICE_ROLE_KEY}" ` +
+          `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_SERVICE_ROLE_KEY}" ` +
+          `-H "Content-Type: application/json" ` +
+          `-d '{"_dispute_id": "${disputeId}"}'`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      ));
+      expect(second.already_applied).toBe(true);
+      expect(second.refund_id).toBe(cascadeResult.refund_id);
+
+      // Cleanup
+      supabaseDelete('audit_log', `entity_id=eq.${inv.id}&action=eq.dispute_lost_cascade_applied`);
+      supabaseDelete('refunds', `id=eq.${cascadeResult.refund_id}`);
+      supabaseDelete('payment_disputes', `id=eq.${disputeId}`);
     } finally {
       supabaseDelete('payments', `invoice_id=eq.${inv.id}`);
       deleteInvoiceById(inv.id);
