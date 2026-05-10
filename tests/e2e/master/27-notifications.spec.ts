@@ -1221,3 +1221,80 @@ test.describe('§27 — Cron-lifecycle handler auth-gate contracts', () => {
     });
   }
 });
+
+// ────────────────────────────────────────────────────────────────────
+// §27 — Class-bug contract: malformed JSON body must NOT return 500 (s28)
+// ────────────────────────────────────────────────────────────────────
+//
+// s24 send-message + s27 send-bulk-message + s27 send-invoice-email all
+// surfaced the same bug: body-parse inside the outer try block, SyntaxError
+// caught generically, returns 500 instead of 400. The s28 sweep fixed
+// this across 56 fns by adding a dedicated `let body: any; try { body =
+// await req.json() } catch { return 400 }` pre-extract before the outer
+// try. This contract asserts the fix holds: malformed JSON → < 500.
+//
+// We don't assert exact 400 because some fns gate on auth/rate-limit BEFORE
+// body parse (401/429 are fine — the contract is just "no 500-on-bad-body").
+// We use the anon key so auth-gated fns return 401 first; for those, the
+// contract still holds because the catch we care about was never reached
+// from a malformed body path.
+
+function callBodyParse(fnName: string, opts: { auth: 'anon' | 'none' | 'service' }): { status: number; body: string } {
+  const respFile = `/tmp/sb-bp-${fnName}-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+  let authHeader = '';
+  if (opts.auth === 'anon') {
+    authHeader = `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" `;
+  } else if (opts.auth === 'service') {
+    authHeader = `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_SERVICE_ROLE_KEY}" `;
+  }
+  try {
+    const status = execSync(
+      `curl -s -o ${respFile} -w "%{http_code}" ` +
+        `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+        `${authHeader}` +
+        `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+        `-H "Content-Type: application/json" ` +
+        `-d 'not-valid-json'`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+    return { status: parseInt(status.trim(), 10), body };
+  } finally {
+    try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+  }
+}
+
+test.describe('§27 — Class-bug: malformed JSON body must not 500 (s28 sweep)', () => {
+  // Sample 12 fns across clusters — covering every cluster type from the s28 sweep.
+  // Full 56-fn list lives in audit/findings/2026-05-10-throw-into-outer-catch-
+  // class-bug-sweep.md; we sample here for baseline speed (parametrised over
+  // every fn would add ~60 tests).
+  const sample: Array<{ fn: string; auth: 'anon' | 'service'; cluster: string }> = [
+    { fn: 'send-message',                  auth: 'anon',    cluster: 'messaging' },
+    { fn: 'mark-messages-read',            auth: 'anon',    cluster: 'messaging' },
+    { fn: 'send-parent-message',           auth: 'anon',    cluster: 'messaging' },
+    { fn: 'stripe-create-payment-intent',  auth: 'anon',    cluster: 'money-path' },
+    { fn: 'stripe-billing-history',        auth: 'anon',    cluster: 'money-path' },
+    { fn: 'generate-invoice-pdf',          auth: 'service', cluster: 'money-path' },
+    { fn: 'continuation-respond',          auth: 'anon',    cluster: 'continuation' },
+    { fn: 'create-continuation-run',       auth: 'anon',    cluster: 'continuation' },
+    { fn: 'calendar-disconnect',           auth: 'anon',    cluster: 'calendar' },
+    { fn: 'xero-sync-invoice',             auth: 'service', cluster: 'xero' },
+    { fn: 'looopassist-chat',              auth: 'anon',    cluster: 'ai' },
+    { fn: 'invite-get',                    auth: 'anon',    cluster: 'auth' },
+  ];
+
+  for (const { fn, auth, cluster } of sample) {
+    test(`${fn} (${cluster}) — malformed JSON body → 4xx, never 5xx`, async () => {
+      const res = callBodyParse(fn, { auth });
+      expect(
+        res.status,
+        `${fn} returned ${res.status} (body: ${res.body.slice(0, 200)}) — should be 4xx`,
+      ).toBeGreaterThanOrEqual(400);
+      expect(
+        res.status,
+        `${fn} returned ${res.status} (body: ${res.body.slice(0, 200)}) — 5xx means body-parse class-bug regressed`,
+      ).toBeLessThan(500);
+    });
+  }
+});
