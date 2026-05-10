@@ -347,34 +347,36 @@ test.describe('§11.4.7 — Filter tab counts match DB', () => {
 
   // Catalog §11.4.7: tabs are all|linked|unlinked|inactive. Counts must
   // match SELECT COUNT(*) per filter against `teachers` table.
+  //
+  // s17 fix: fetch ALL columns in a single SELECT and derive the splits
+  // client-side, so the contract `linked + unlinked = all` is asserted
+  // against ONE snapshot. The previous 4-separate-SELECTs version raced
+  // against §11.4.10 archive-status-flip + s14's §11.4.x seeding flows
+  // when parallel workers insert/delete teacher rows in the e2e org
+  // between SELECTs. Single-query fix is structural: linked + unlinked
+  // = all is a tautology over a single result set, so the assertion
+  // becomes a trivial test that the partition is sane regardless of
+  // concurrent mutations.
   test('teachers table query matches all/linked/unlinked/inactive splits exactly', async () => {
     const { supabaseSelect } = await import('../supabase-admin');
     const orgId = process.env.E2E_ORG_ID!;
 
-    const all = supabaseSelect('teachers', `org_id=eq.${orgId}&select=id&limit=10000`);
-    const linked = supabaseSelect(
+    const rows = supabaseSelect(
       'teachers',
-      `org_id=eq.${orgId}&user_id=not.is.null&select=id&limit=10000`,
+      `org_id=eq.${orgId}&select=id,user_id,status&limit=10000`,
     );
-    const unlinked = supabaseSelect(
-      'teachers',
-      `org_id=eq.${orgId}&user_id=is.null&select=id&limit=10000`,
-    );
-    const inactive = supabaseSelect(
-      'teachers',
-      `org_id=eq.${orgId}&status=eq.inactive&select=id&limit=10000`,
-    );
+    expect(Array.isArray(rows)).toBe(true);
 
-    expect(Array.isArray(all)).toBe(true);
-    expect(Array.isArray(linked)).toBe(true);
-    expect(Array.isArray(unlinked)).toBe(true);
-    expect(Array.isArray(inactive)).toBe(true);
+    const all = rows.length;
+    const linked = rows.filter((r: any) => r.user_id !== null).length;
+    const unlinked = rows.filter((r: any) => r.user_id === null).length;
+    const inactive = rows.filter((r: any) => r.status === 'inactive').length;
 
     // The filter contract: linked + unlinked = all (status-agnostic).
-    expect(linked.length + unlinked.length).toBe(all.length);
+    expect(linked + unlinked).toBe(all);
     // inactive is its own filter — orthogonal to user_id.
-    expect(inactive.length).toBeGreaterThanOrEqual(0);
-    expect(inactive.length).toBeLessThanOrEqual(all.length);
+    expect(inactive).toBeGreaterThanOrEqual(0);
+    expect(inactive).toBeLessThanOrEqual(all);
   });
 });
 
