@@ -52,7 +52,15 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const data: NotifyInternalRequest = await req.json();
+    let data: NotifyInternalRequest;
+    try {
+      data = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Validate required fields
     if (!data.org_id || !data.recipient_user_id || !data.subject || !data.body) {

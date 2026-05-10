@@ -59,6 +59,15 @@ const handler = async (req: Request): Promise<Response> => {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const {
       lessonId,
       notesShared,
@@ -67,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
       teacherName,
       orgName,
       orgId,
-    }: NotesNotificationRequest = await req.json();
+    }: NotesNotificationRequest = __body;
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);

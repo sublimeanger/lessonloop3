@@ -46,7 +46,16 @@ Deno.serve(wrapEdgeFn("mark-messages-read", async (req) => {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
-    const { guardian_id, org_id, message_ids } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { guardian_id, org_id, message_ids } = __body;
 
     if (!guardian_id || !org_id) {
       return new Response(

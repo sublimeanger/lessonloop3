@@ -52,7 +52,16 @@ const handler = async (req: Request): Promise<Response> => {
     const rateLimitResult = await checkRateLimit(user.id, "send-cancellation-notification");
     if (!rateLimitResult.allowed) return rateLimitResponse(corsHeaders, rateLimitResult);
 
-    const { lessonIds, lessonTitle, lessonDate, cancellationReason, orgName, orgId }: CancellationRequest = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { lessonIds, lessonTitle, lessonDate, cancellationReason, orgName, orgId }: CancellationRequest = __body;
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);

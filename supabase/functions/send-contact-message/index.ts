@@ -57,7 +57,15 @@ Deno.serve(wrapEdgeFn("send-contact-message", async (req) => {
       );
     }
 
-    const body: ContactRequest = await req.json();
+    let body: ContactRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Honeypot check — bots fill this hidden field; silently discard
     if (body.website) {

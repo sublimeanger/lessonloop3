@@ -71,7 +71,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const data: SendMessageRequest = await req.json();
+    let data: SendMessageRequest;
+    try {
+      data = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Default send_email to true for backward compatibility
     const shouldSendEmail = data.send_email !== false;
