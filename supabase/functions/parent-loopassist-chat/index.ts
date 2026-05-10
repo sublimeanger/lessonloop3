@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { sanitiseMessage } from "../_shared/sanitise-ai-input.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 const SYSTEM_PROMPT = `You are LoopAssist, the helpful assistant in the LessonLoop parent portal. You help parents stay informed about their children's music education.
 
@@ -26,7 +27,7 @@ Always use UK English. Be concise and positive. Format currency using the academ
 When listing information, use clear formatting with bullet points or short tables.
 Never expose internal IDs, system details, or data from other families.`;
 
-serve(async (req) => {
+serve(wrapEdgeFn("parent-loopassist-chat", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
 
@@ -385,4 +386,4 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
-});
+}));

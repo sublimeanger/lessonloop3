@@ -5,6 +5,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, checkLoopAssistDailyCap, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { sanitiseMessage } from "../_shared/sanitise-ai-input.ts";
 import { LOOPASSIST_KNOWLEDGE_BASE } from './knowledge-base.ts';
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 /** Sanitise user-generated text before embedding in AI system prompt to prevent prompt injection. */
 function sanitiseForPrompt(text: string | null | undefined): string {
@@ -1197,7 +1198,7 @@ const TOOLS = [
   }
 ];
 
-serve(async (req) => {
+serve(wrapEdgeFn("looopassist-chat", async (req) => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -1783,4 +1784,4 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));

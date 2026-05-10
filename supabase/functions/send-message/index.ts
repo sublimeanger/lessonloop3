@@ -4,6 +4,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { log, logError as safeLogError } from "../_shared/log.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 interface SendMessageRequest {
   org_id: string;
@@ -334,4 +335,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(wrapEdgeFn("send-message", handler));

@@ -4,13 +4,14 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 interface InviteEmailRequest {
   inviteId: string;
   guardianId?: string; // Optional, for linking context
 }
 
-serve(async (req: Request): Promise<Response> => {
+serve(wrapEdgeFn("send-invite-email", async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -234,4 +235,4 @@ serve(async (req: Request): Promise<Response> => {
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
-});
+}));

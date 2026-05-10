@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,7 +61,7 @@ function findRateForDuration(
   return rateCards[0]?.rate_amount || fallbackMinor;
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(wrapEdgeFn("create-billing-run", async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -144,7 +145,7 @@ Deno.serve(async (req: Request) => {
       }
     );
   }
-});
+}));
 
 async function handleCreate(
   client: any,

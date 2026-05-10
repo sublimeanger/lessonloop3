@@ -7,6 +7,7 @@ import {
   type InvoiceRow,
   type SendInvoiceCoreInput,
 } from "../_shared/send-invoice-email-core.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 interface InvoiceEmailRequest {
   invoiceId: string;
@@ -114,4 +115,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(wrapEdgeFn("send-invoice-email", handler));

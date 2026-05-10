@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { logError } from "../_shared/log.ts";
 
@@ -509,4 +510,4 @@ async function fetchFilteredGuardians(
   return guardians || [];
 }
 
-serve(handler);
+serve(wrapEdgeFn("send-bulk-message", handler));

@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { PLAN_LIMITS } from "../_shared/plan-config.ts";
 import { recalcWithRetry } from "../_shared/recalc-with-retry.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 // Structured logging: only emits in non-production environments
 const isProduction = Deno.env.get("ENVIRONMENT") === "production";
@@ -24,7 +25,7 @@ for (const [envKey, planKey] of priceEnvPairs) {
   if (priceId) PRICE_TO_PLAN[priceId] = planKey;
 }
 
-serve(async (req) => {
+serve(wrapEdgeFn("stripe-webhook", async (req) => {
   try {
     const liveStripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     const liveWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
@@ -400,7 +401,7 @@ serve(async (req) => {
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-});
+}));
 
 // Handle subscription checkout completion
 async function handleSubscriptionCheckoutCompleted(
