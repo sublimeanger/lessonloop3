@@ -43,8 +43,11 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Verify user
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    // Verify user. Pass token explicitly — getUser() no-args calls
+    // /auth/v1/user which on this project rejects legacy HS256 JWTs. See
+    // audit/findings/2026-05-10-getuser-noargs-sweep.md.
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await userClient.auth.getUser(token);
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: 'Invalid or expired token' }),
