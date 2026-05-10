@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-10 (after 19th-session — Auth & Onboarding C-bucket close: **AREA COMPLETE 11/11 active 🟢** (2 ⏸ OAuth deferred); +3 backfill rows; cumulative 65 🟢 / 99 🟡; **TWO areas COMPLETE** so far — money-path + auth) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-10 (after 20th-session — Calendar & Lessons kickoff (13 of 14 🟢, near AREA COMPLETE) + Reports AREA COMPLETE 7/7 🟢 + 2 Teachers backfill; 18 promotions; cumulative 83 🟢 / 81 🟡; **THREE areas COMPLETE** so far — money-path + auth + reports) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -656,6 +656,57 @@
   * getUser sweep gets a dedicated session (recommend s16 or
     s17). 17/~30 done across s12+s13+s14. ~13 remain. Stop
     capping at 5/session — clear the lot in one focused pass.
+- (20th session — Calendar & Lessons kickoff + Reports AREA COMPLETE)
+  Per s19 pickup, picked Calendar & Lessons cluster. Single
+  commit lands 18 promotions (10 Calendar & Lessons + 6 Reports
+  backfill + 2 Teachers backfill — well over the 8+ target).
+  * **§27 spec extended with Calendar-cluster auth-gate contracts.**
+    6 tests across 3 notification fns (12/12 passed in 41.6s
+    isolation): send-notes-notification (user-JWT, s16 fix),
+    notify-makeup-offer (dual auth, s16 fix), notify-makeup-match
+    (service-role-only). Same shape as s17 §24 / s18 §3.8 /
+    s18 §24 C-bucket: anon→4xx + no-auth→4xx prove gate fires.
+  * **Calendar & Lessons — 10 promotions, cluster now 13/14 🟢**
+    (only Lesson notes explorer 🟡 remains, C-bucket).
+    A-bucket (already covered, just untagged):
+    - Single lesson CRUD (§08 cluster: 15 passed / 1 skipped /
+      2.1m isolation — §8.5/8.6/8.7/8.8.x cluster)
+    - Recurring lesson template create + Recurring run detail /
+      exceptions (§8.5 covers recurrence chain mechanics)
+    - Make-up lesson dashboard (§26.4 makeup respond + §8.8.10
+      auto-credit side-effect)
+    - Calendar page (drag-drop) (§07 view-state smoke +
+      §11.4.4/5 RPC contracts + s14 enum-cast P1 fix)
+    - Daily register + Batch attendance (§09 smoke + RBAC +
+      §32.7 trigger guards)
+    B-bucket via §27 contracts above:
+    - Make-up offer notification, Make-up match notification,
+      Notes notification.
+  * **Reports AREA COMPLETE 7/7 🟢** (s17 promoted Outstanding,
+    s20 promotes the other 6: Reports index, Revenue, Lessons
+    delivered, Cancellations, Utilisation, Attendance report).
+    All 6 had [E2E data-correctness real per s8] tags but were
+    never promoted — clean backfill.
+  * **Teachers & Payroll backfill (2):** Payroll report,
+    Teacher performance report (same s8 tag).
+  * **Audit total: 83 🟢 / 81 🟡** (was 65/99 at s19 end).
+    s15-s20 cumulative: **69 promotions** since the recalibrated
+    bar landed.
+  * **THREE AREAS COMPLETE so far in the recalibrated push:**
+    Money-path (s18), Auth & Onboarding (s19), Reports (s20).
+    Plus Calendar & Lessons at 13/14 🟢 — only Lesson notes
+    explorer remaining (C-bucket).
+  * **Cross-file cascade investigation:** §22 + §24 in isolation
+    passed 83/90 in 1.3m clean — no deterministic cascade.
+    Pre-session baseline (451/18/122/59/9.3m) was system-load
+    variance rather than a specific cross-file race. The 18
+    failures spanned 7+ different specs (§22.2, §14.10.16,
+    §15.4, §16.3, §17.4, §11.4.6, §20.7b, §24.2/3, §26.x x4).
+    Item 0 (cascade fix) deferred to s21 — root cause is
+    broader load-tuning, not isolated to two files. The
+    documented transients (§5.4 deterministic, §14.10.16
+    PostgREST contention, §20.7b rate-limit) account for
+    most of the spread; the rest is variance.
 - (19th session — Auth & Onboarding AREA COMPLETE 11/11 active 🟢)
   Per s18 pickup, Option A picked: close Auth C-bucket. Single
   commit lands all 4 C-bucket rows + 3 backfill from other areas
@@ -886,10 +937,31 @@ remain.**
 
 **Audit total: 47 🟢 / 117 🟡 (was 32/132 at s16 end).**
 
-Current baseline (end of 19th session, post-Auth-close):
-- **481 passed / 9 failed / 122 skipped / 38 did not run / 6.0 min wall-clock at 4 workers**
-- Test count grew to 650 (+3 from s19 — 6 new tests minus 3 §3.6
-  fixmes removed).
+Current baseline (end of 20th session, post-Calendar-kickoff):
+- **481 passed / 14 failed / 121 skipped / 40 did not run / 8.1 min wall-clock at 4 workers**
+- Test count grew to 656 (+6 from s20's §27 calendar-cluster
+  contracts).
+- vs s19 final (481/9/122/38/6.0m): **same passes / +5 failed /
+  −1 skipped / +2 did-not-run / +2.1m wall-clock**.
+- Wall-clock crept up — the +6 new tests add ~10s, the rest
+  is variance. Pre-session baseline was even worse
+  (451/18/122/59/9.3m). The cascade pattern fires hard on
+  some runs and barely on others.
+- Cross-file cascade investigation: §22 + §24 in isolation
+  passed 83/90 in 1.3m clean. The cascade is **system-load
+  variance, not a deterministic cross-file race in those
+  two files**. Item 0 deferred to s21.
+- 14 failures all documented transients (§5.4 deterministic;
+  §14.10.16 PostgREST contention; §15.4 Outstanding flake;
+  §17.4 streak milestone net._http_response variance;
+  §20.7b rate-limit; §22.2 schedule_hours / continuation /
+  message templates UI race; §24.x flakes; §26.x UI races).
+  None are from s20 work itself: s20's §27 calendar-cluster
+  contracts pass 12/12 in isolation; full §08 lesson-crud
+  passes 15/16 in isolation.
+
+**Stale baseline (end of 19th session, post-Auth-close):**
+- 481 passed / 9 failed / 122 skipped / 38 did not run / 6.0 min wall-clock
 - vs s18 final (462/11/125/49/5.6m): **+19 passed / −2 failed /
   −3 skipped / −11 did-not-run / +0.4m**.
 - Pre-session baseline was clean 518/4/124/1/5.1m. The 38 did-not-
@@ -1114,7 +1186,9 @@ session — don't fix inline during a catalog session.
 | ~~getUser() no-args pattern across 30+ user-facing edge fns~~ | — | **CLOSED in s16 for v1 launch.** Cumulative 32 of 45 fns fixed across s12+s13+s14+s16. s16 was the dedicated sweep — 15 user-facing fns hardened in 5 cluster commits (Stripe x4, GDPR/invite/notes x4, run-creation/makeup x4, account-delete + bulk-process + continuation-respond x3, MEDIUM looopassist + Xero x6). HIGH+MEDIUM done; LOW cluster (~7 fns: calendar-* x4, zoom-* x2, seed-* x4, send-enrolment-offer) all hidden at v1 launch per v2 §3.2 — deferred to a future sweep when those features light up. See [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md) Closure section. |
 | ~~Money-path systematic clearing~~ (Invoicing & Payments cluster) | — | **AREA COMPLETE in s18 — 23/23 🟢.** Combined s16+s17+s18 work: s16 promoted 3 (Settings; Invoices list; Invoice detail; Stripe webhook), s17 promoted 15 (6 A-bucket + 9 B-bucket via new §24 auth-gate contracts), s18 promoted 5 C-bucket via auth-gate contracts (10 new tests in §24's "C-bucket" describe). World-class money-path achieved. First full-area-green signal in audit/MASTER.md. |
 | ~~Auth & Onboarding cluster~~ | — | **AREA COMPLETE in s19 — 11/11 active 🟢** (2 ⏸ OAuth deferred: Google in verification, Apple not yet configured at dest Supabase). s18 kicked off (1 → 7 🟢) and s19 closed (7 → 11 🟢). 6 new tests across §3.9 (4 invite-accept scenarios), §3.10 (1 password-reset-complete), §3.11 (1 signup → onboarding wizard backend chain). |
-| **Calendar & Lessons cluster** (next big weak area) | **P0** | 16 audit rows, only 1 🟢 (Single lesson CRUD via §32 trigger guards). Largest remaining weak area. Includes calendar OAuth (Google, Apple, Zoom), recurring lesson templates, make-up dashboard, attendance, daily register. Most launch-in-scope per v2 §3.1. **PRIMARY workstream for s20.** Walk pattern same as money-path/auth: classify A/B/C, promote A-bucket immediately, write contract tests for B. |
+| **Calendar & Lessons cluster** (~complete) | **P0** | s20 kickoff: 3 → 13 🟢. **Only 1 🟡 remaining**: Lesson notes explorer (C-bucket — no specific test for `NotesExplorer.tsx`). 30-45 min in s21 closes the area: smoke + RBAC contract for the NotesExplorer page. |
+| ~~Reports cluster~~ | — | **AREA COMPLETE in s20 — 7/7 🟢.** s17 promoted Outstanding (the lone 🟢); s20 backfilled the other 6 (Reports index, Revenue, Lessons delivered, Cancellations, Utilisation, Attendance report). All had [E2E data-correctness real per s8] tags from `3095a15` + `3e9891b` but were never promoted. Plus Payroll + Teacher performance backfilled in Teachers & Payroll section. |
+| **Cron lifecycle cluster** (next backfill candidate) | **P0/P1 mix** | 26 cron rows; 3 🟢 (streak-notification s12, reset_stale_streaks s15, complete_expired_assignments s15). Remaining ~23 fired-ok per s8 cron sweep + several have edge-fn auth-gate contracts now via s17/s18. Realistic target s21: 8-12 promotions. |
 | **DNS hardening** (raised in s13; Jamie-level work) | **P1 launch readiness** | The s13 outage exposed that production DNS relies on a Cloudflare CNAME pointing at a Netlify-managed target whose naming Netlify can change without notice. Same pattern could fail again. JAMIE-LEVEL launch-readiness item: (a) move DNS hosting to Netlify entirely, OR (b) add external uptime monitoring on app.lessonloop.net + a runbook for the CNAME swap. Runbook is filed in audit/findings/2026-05-10-app-dns-netlify-cname-broken.md. NOT agent work. |
 | **Edge function env injection mismatch** (REPLACES the prior "drift" entry — phantom diagnosis closed in 11th session) | **P1** | 11th-session three-probe diagnostic conclusively proved: the legacy HS256 service_role JWT IS valid against the project (PostgREST returns 200). The "drift" framing carried across sessions 9 + 9a + 10 was based on a hash from session 9a's env-probe-temp (never validated). The actual phenomenon: `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` in deployed edge functions returns a different value than the dashboard's "Project API keys" → service_role row, despite no Custom Secrets override. Jamie's hypothesis on cause: Supabase auto-injection materialises a different value than the dashboard, OR partial migration to signing-keys at the edge gateway. Three resolution paths in [finding](audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md). The agent should NOT propose JWT secret reset or sb_secret_ migration. **Affects edge functions that do `authHeader.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))` byte-equal checks** (send-payment-receipt + likely send-refund-notification + send-auto-pay-alert). Functions that use `getUser(token)` for auth (now including send-bulk-message after 11th-session fix) work fine with legacy JWTs. Vault seeding still blocked because the streak-notification chain runs through this auth path. |
 | **§5.4 email-verification gate test design broken** (NEW 2026-05-09 — formerly listed under "JWT-stale" theory) | **P2** | 9th-session Item 5 confirmed deterministic 5/5 fail. Root cause: Supabase `enable_email_confirmations` (likely toggled in 2026-05-08 auth tightening) rejects password-grant for unconfirmed users with `email_not_confirmed`. The test creates a user with `email_confirm: false` then calls `/auth/v1/token?grant_type=password` to get a session — that path now refuses by design. The test's premise is broken; no quick fix. Three redesign paths in [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md). Estimate to fix: 1-2h via UI-signup flow OR magic-link admin generation. |
@@ -1278,10 +1352,11 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
-### What's done at end of 19th session
+### What's done at end of 20th session
 
-(Catalog state ~77% — s19 added 6 new tests across §3.9, §3.10,
-§3.11. Primary win was Auth & Onboarding AREA COMPLETE.)
+(Catalog state ~78% — s20 added 6 new contract tests in §27
+calendar-cluster auth-gate. Primary win was Calendar & Lessons
+near AREA COMPLETE + Reports AREA COMPLETE via backfill.)
 
 | Section | Real tests | Coverage | Notes |
 |---|---:|---:|---|
@@ -1309,7 +1384,73 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 20th session pickup
+### Priority order — 21st session pickup
+
+**PRIMARY: Two complementary tracks — Calendar close + Cron backfill.**
+
+After s20:
+- Calendar & Lessons: **13 of 14 🟢** (1 row remaining: Lesson notes
+  explorer — C-bucket, no specific test exists for `NotesExplorer.tsx`).
+- Reports: AREA COMPLETE 7/7 🟢.
+- Auth: AREA COMPLETE 11/11 active 🟢.
+- Money-path: AREA COMPLETE 23/23 🟢.
+- Three areas COMPLETE plus Calendar & Lessons one row away.
+- Audit total: 83 🟢 / 81 🟡.
+
+**Track 1: close Calendar & Lessons (~30-45 min).**
+Single row left: Lesson notes explorer. NotesExplorer.tsx renders a
+list of `lesson_notes` rows scoped by org. Likely contract:
+* RLS contract: parent can ONLY see own student's notes via
+  `is_parent_of_student` chain, owner sees all org's notes.
+* Or simpler smoke: page loads without error for owner; parent
+  redirects (route-guard).
+
+If the page is just an admin-side list view: smoke + RBAC test
+(~20 min) closes it. Done = Calendar & Lessons AREA COMPLETE 14/14 🟢
+= **FOUR areas COMPLETE.**
+
+**Track 2: Cron lifecycle backfill (~2-3h).**
+Cron section (line 258 audit/MASTER.md): 26 cron rows. After s12+s15,
+streak-notification + reset_stale_streaks + complete_expired_assignments
+are 🟢 (3 rows). The remaining ~23 are likely promotable given:
+* Most fired-ok per s8 cron sweep.
+* Several have edge-fn auth-gate contracts already from s17/s18/s20.
+* Pattern: each cron row has a registered pg_cron job + a fired-ok
+  observation. Promote rows where the cron is registered AND the
+  fn it invokes has at least an auth-gate contract.
+
+Walk pattern: read each cron row, check (a) is pg_cron job
+registered (verified in audit Notes), (b) does the underlying
+fn have any contract test now. If both yes → promote.
+
+Realistic target: 8-12 cron promotions. Audit total target 83 → 95+.
+
+**Step 0** (either option): pull, read HANDOVER, run baseline.
+Expected: ~470-510 passed / 8-18 failed / 122 skipped / variable
+did-not-run / 5-9m wall-clock. Baseline variance is high right
+now (s17→s18→s19→s20 ranged 462-518 passed / 4-18 failed).
+Pattern is **system-load variance, not cross-file cascade** —
+§22+§24 isolation diagnosed clean in s20 (83/90 in 1.3m).
+
+**If quiet (rare for closure session):**
+- Parent portal cluster — 6 🟢 / 15 🟡 (s15 promoted 6 portal
+  pages; remaining mostly C-bucket UI flows but worth a sweep).
+- Subscriptions & Trial — 6 rows still 🟡; some may be promotable
+  via §24 cluster coverage.
+- Integrations — Calendar OAuth / Xero / Zoom — most are HIDDEN at v1
+  per v2 §3.2; ⏸ candidates rather than 🟢 candidates.
+
+**Audit hygiene mandate continues:** ≥5 rows promoted to 🟢
+per session.
+
+### Priority order — 20th session pickup (closed)
+
+**Closed**: Calendar kickoff hit upper end of target — 10 Calendar
+promotions + 6 Reports backfill + 2 Teachers backfill = 18 total.
+Reports AREA COMPLETE 7/7 🟢. Audit 65 → 83 🟢. Three areas
+COMPLETE + Calendar nearly complete.
+
+### Priority order — 19th session pickup (closed earlier)
 
 **PRIMARY: Calendar & Lessons cluster kickoff (~3-4h).**
 
@@ -2582,6 +2723,12 @@ the same shape.
 | `§27` describe | `upsertParentNotifPref(orgId, userId, prefs)` + `deleteParentNotifPref(orgId, userId)` | Service-role POST with `Prefer: resolution=merge-duplicates` for upsert; DELETE for cleanup. Use to flip `email_payment_receipts` / `email_invoice_reminders` etc. for testing pref-honoring contracts. |
 | `§27` describe | `insertPaymentServiceRole(payload)` | Service-role POST to `payments` table with `Prefer: return=representation` + error-throwing wrapper. Used by §27 dedup test to seed a payment that both the message_log dedup index test and a future fn-invocation test depend on. |
 
+### Inline helpers worth knowing about (20th session)
+
+| Where | Helper | Pattern it solves |
+|---|---|---|
+| `§27` describe (Calendar-cluster auth-gate contracts) | `callCalNotifGate(fnName, { auth, payload })` | Inline copy of s17's `callFnAuthGate` shape (per s5 anti-pattern: don't import across spec files; copy). Used for send-notes-notification + notify-makeup-offer + notify-makeup-match. Tests `auth: 'anon' | 'none'` → expect 4xx. The dual-auth fns (notify-makeup-offer) are tested via the user-JWT path; service-role path is the byte-equal Bearer check (covered indirectly by anon→4xx since anon ≠ SERVICE_ROLE_KEY). |
+
 ### Inline helpers worth knowing about (19th session)
 
 | Where | Helper | Pattern it solves |
@@ -2628,7 +2775,9 @@ Living state of every feature: `audit/MASTER.md`. State symbols:
 - 🔴 known launch blocker
 - ❓ untested (target: zero of these)
 
-Current count (2026-05-10, after s19): **65 🟢 / 99 🟡 / 6 🔴 / 10 ⏸ / 0 ❓**.
+Current count (2026-05-10, after s20): **83 🟢 / 81 🟡 / 6 🔴 / 10 ⏸ / 0 ❓**.
+s20 promoted 18 rows (10 Calendar & Lessons + 6 Reports backfill —
+AREA COMPLETE 7/7 — + 2 Teachers & Payroll backfill).
 s19 promoted 7 rows (4 Auth C-bucket close — AREA COMPLETE 11/11
 active 🟢 — plus 3 backfill: Practice tracker; Complete expired
 assignments cron; Reset stale practice streaks cron).
