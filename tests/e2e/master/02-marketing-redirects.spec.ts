@@ -116,3 +116,44 @@ test.describe('Privacy policy — sub-processor disclosure (s25)', () => {
     expect(text).toContain('loopassist');
   });
 });
+
+// ────────────────────────────────────────────────────────────────────
+// §02 — Cloudflare WAF + edge headers (s25)
+// ────────────────────────────────────────────────────────────────────
+//
+// Per s25 Track 2.4: app.lessonloop.net flipped to Cloudflare-proxied.
+// Free plan + 2 Custom Rules: block empty User-Agent, challenge known
+// SEO crawler bots (semrush, ahrefsbot, mj12bot, dotbot).
+//
+// These tests use raw curl via execSync because Playwright's request
+// fixture goes through the configured proxy and may not reflect the
+// real edge response shape. The Bash sub-shell hits the live edge.
+
+import { execSync as ex } from 'child_process';
+
+test.describe('§02 — Cloudflare edge + base WAF rules (s25)', () => {
+  test('app.lessonloop.net responds with cf-ray header (proxied via Cloudflare)', async () => {
+    const headers = ex(
+      `curl -s -o /dev/null -D - https://app.lessonloop.net/`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    expect(headers.toLowerCase()).toContain('server: cloudflare');
+    expect(headers.toLowerCase()).toMatch(/cf-ray:/);
+  });
+
+  test('Empty User-Agent blocked by WAF (403)', async () => {
+    const code = ex(
+      `curl -s -o /dev/null -w "%{http_code}" -H "User-Agent;" https://app.lessonloop.net/`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    ).trim();
+    expect(parseInt(code, 10)).toBe(403);
+  });
+
+  test('Normal User-Agent passes WAF (200)', async () => {
+    const code = ex(
+      `curl -s -o /dev/null -w "%{http_code}" https://app.lessonloop.net/`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    ).trim();
+    expect(parseInt(code, 10)).toBe(200);
+  });
+});
