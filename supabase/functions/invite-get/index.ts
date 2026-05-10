@@ -40,6 +40,19 @@ Deno.serve(async (req) => {
       );
     }
 
+    // invites.token is uuid type; validate format BEFORE the DB query so a
+    // non-UUID input returns 404 (not 500 from PostgreSQL 22P02
+    // invalid_text_representation). Real users always send valid UUIDs;
+    // this guard only fires for bots / fuzzers / typos.
+    // See audit/findings/2026-05-10-invite-get-returns-500-on-non-uuid-token.md
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof token !== "string" || !UUID_RE.test(token)) {
+      return new Response(
+        JSON.stringify({ error: "Invitation not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Fetch invite by token
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from("invites")

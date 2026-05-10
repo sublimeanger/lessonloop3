@@ -1,11 +1,11 @@
 # invite-get returns 500 on non-UUID token (input-validation gap)
 
 **Severity:** low
-**Status:** open
+**Status:** fixed
 **Area:** auth / invites
 **Discovered:** 2026-05-10 (s24)
-**Fixed:** —
-**Fixed in:** —
+**Fixed:** 2026-05-10 (s26)
+**Fixed in:** invite-get edge fn deploy via Supabase CLI in s26
 **Affected components:** supabase/functions/invite-get/index.ts
 
 ## Symptom

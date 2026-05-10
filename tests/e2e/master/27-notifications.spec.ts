@@ -1067,9 +1067,32 @@ test.describe('§27 — Invite cluster un-deferral contracts (s24)', () => {
   test('invite-get — POST non-existent token → 404', async () => {
     const reqFile = `/tmp/sb-iget-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
     const respFile = `/tmp/sb-iget-r-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
-    // Token column is uuid type; must be valid UUID format. See finding
-    // 2026-05-10-invite-get-returns-500-on-non-uuid-token (s24).
     fs.writeFileSync(reqFile, JSON.stringify({ token: '00000000-0000-0000-0000-000000000000' }));
+    const r = randomBytes(3);
+    const fakeIp = `10.${r[0]}.${r[1]}.${r[2]}`;
+    try {
+      const status = execSync(
+        `curl -s -o ${respFile} -w "%{http_code}" -X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/invite-get" ` +
+          `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" -H "X-Forwarded-For: ${fakeIp}" -H "Content-Type: application/json" -d @${reqFile}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+      const code = parseInt(status.trim(), 10);
+      expect(code, `body: ${body.slice(0, 200)}`).toBe(404);
+      expect(body).toMatch(/not found/i);
+    } finally {
+      try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+      try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    }
+  });
+
+  test('invite-get — POST non-UUID token → 404 (was 500 pre-s26 fix)', async () => {
+    // s26 fix per finding 2026-05-10-invite-get-returns-500-on-non-uuid-token:
+    // UUID-format guard runs BEFORE the DB query so PostgreSQL never sees the
+    // bad input + raises 22P02. Bots/fuzzers now get 404 not 500.
+    const reqFile = `/tmp/sb-iget-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+    const respFile = `/tmp/sb-iget-r-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+    fs.writeFileSync(reqFile, JSON.stringify({ token: 'definitely-not-a-uuid' }));
     const r = randomBytes(3);
     const fakeIp = `10.${r[0]}.${r[1]}.${r[2]}`;
     try {
