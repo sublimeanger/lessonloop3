@@ -1,10 +1,19 @@
 # `getUser()` no-args pattern sweep — recurring legacy-JWT silent-failure bug
 
-**Date:** 2026-05-10 (session 12 sweep — Item 3)
+**Date:** 2026-05-10 (session 12 + 13 sweeps)
 **Severity:** **P1** — silent silently-skipped notifications for users on
 legacy HS256 JWT sessions. Affects multiple user-facing flows.
-**Status:** 3 most-critical fixed in this session; remaining 7+ catalogued
-for a follow-up dedicated session.
+**Status:** **13 of ~30 user-facing fns fixed across sessions 12 + 13.**
+S13 added 10 more deploys (csv-import-execute + csv-import-mapping +
+onboarding-setup + profile-ensure + batch-invite-guardians +
+stripe-create-payment-intent + stripe-process-refund +
+stripe-connect-onboard + stripe-connect-status + send-invite-email).
+Remaining ~17 user-facing fns catalogued at the bottom for a follow-up
+session. Note: session 13 baseline was blocked by an unrelated DNS
+outage ([2026-05-10-app-dns-netlify-cname-broken.md](2026-05-10-app-dns-netlify-cname-broken.md))
+so the 10 s13 deploys are unverified-via-E2E; source diffs are clean
+2-line patches matching the s12 proven pattern (commits 11c084b +
+759faa3). Will be verified in session 14 baseline.
 
 ## TL;DR
 
@@ -48,7 +57,7 @@ The recurrence is structural: it's a pattern that's been propagated
 across 40+ edge fns over the project's lifetime. Without a sweep, each
 discovery is one-by-one as users complain.
 
-## Fixed in this session (deployed)
+## Fixed in session 12 (deployed)
 
 | Function | Reason for prioritisation |
 |---|---|
@@ -60,6 +69,24 @@ Each: `getUser()` → `getUser(token)` per session-11 commit `08e66e6`.
 Comment with finding link added inline. Deployed via
 `supabase functions deploy <name>`.
 
+## Fixed in session 13 (deployed; baseline-verification deferred to s14 due to DNS outage)
+
+| Function | Reason for prioritisation |
+|---|---|
+| `csv-import-execute` | Lauren-paramount per v2 §3.1 — bulk student onboarding (~250 students for Lauren's school). Silent failure → bulk import returns 401 → blocks shadow-term setup. |
+| `csv-import-mapping` | Prerequisite for csv-import-execute (column mapping step). Same Lauren impact. |
+| `onboarding-setup` | Onboarding wizard is launch-critical. Silent failure → new owner signups stuck on the "complete onboarding" step. |
+| `profile-ensure` | Auth-adjacent — runs on every dashboard mount. Silent failure → broken dashboard for legacy-session users. |
+| `batch-invite-guardians` | Lauren onboarding — bulk guardian invite during shadow-term setup. |
+| `stripe-create-payment-intent` | Every parent payment goes through this. Silent failure → embedded drawer 401s, parent can't pay. |
+| `stripe-process-refund` | Owner refund flow (from §24.7). Silent failure → refund button does nothing. |
+| `stripe-connect-onboard` | **Launch-critical per v2 §3.1** — Stripe Connect is the architecture that lets studios receive payments to their own bank. |
+| `stripe-connect-status` | Paired with -onboard for the post-onboarding status check. |
+| `send-invite-email` | Staff invite flow. Silent failure → owner can't add teachers/admins to the org. |
+
+Each: `getUser()` → `getUser(token)` two-line patch matching session-12's proven pattern.
+Comment with finding link added inline. Deployed via `supabase functions deploy <name>`.
+
 ## Already fixed in prior sessions (do NOT touch)
 
 | Function | Session | Commit |
@@ -69,7 +96,7 @@ Comment with finding link added inline. Deployed via
 | `send-bulk-message` | 11 | 08e66e6 |
 | `bulk-process-continuation` (auth-passthrough variant) | 10 | (single commit, see HANDOVER) |
 
-## Remaining candidates (not fixed in s12 — needs dedicated session)
+## Remaining candidates (after s13 — needs follow-up session)
 
 User-facing edge fns confirmed buggy by `grep -B5 -A2 "auth.getUser()"`:
 
@@ -77,12 +104,8 @@ User-facing edge fns confirmed buggy by `grep -B5 -A2 "auth.getUser()"`:
 |---|---|---|
 | `send-enrolment-offer` | enrolment offer emails | hidden at v1 launch (not blocking) |
 | `send-notes-notification` | lesson notes emails | live — silent skip on legacy sessions |
-| `send-invite-email` | invite team member email | live — invite flow silently fails for some senders |
 | `invite-accept` | invite acceptance | live — accept flow may fail mid-stream |
 | `account-delete` | self-service account delete | uses different `supabase.auth.getUser()` shape — needs separate analysis |
-| `batch-invite-guardians` | bulk guardian invite | live — silent skip on legacy sessions |
-| `stripe-process-refund` | refunds | live — owner refund flow may fail |
-| `stripe-create-payment-intent` | PI creation for parent payment | live — Stripe drawer may 401 |
 | `stripe-create-checkout` | hosted-checkout fallback | live — fallback path may 401 |
 | `stripe-billing-history` | billing history | live — list may show empty |
 | `stripe-list-payment-methods` | saved cards | live — list may show empty |
@@ -90,25 +113,34 @@ User-facing edge fns confirmed buggy by `grep -B5 -A2 "auth.getUser()"`:
 | `stripe-customer-portal` | customer portal link | live — portal link 401 |
 | `stripe-update-payment-preferences` | toggle auto-pay | live |
 | `stripe-verify-session` | post-checkout return URL | live |
-| `stripe-connect-onboard` / `-status` | Connect onboarding | launch-critical per v2 §3.1 |
 | `stripe-subscription-checkout` | subscription checkout | live |
 | `xero-oauth-start` / `-sync-invoice` / `-sync-payment` / `-disconnect` | Xero | conditional-on-shadow per v2 §3.1 |
 | `zoom-oauth-start` / `-sync-lesson` | Zoom | hidden at v1 |
-| `csv-import-execute` / `-mapping` | CSV import | Lauren-paramount per v2 §3.1 — silent skip on legacy sessions |
 | `gdpr-export` / `gdpr-delete` | GDPR | live |
 | `looopassist-execute` / `-chat` | LoopAssist | scoped-launch |
 | `calendar-oauth-start` / `-sync-lesson` / `-fetch-busy` / `-disconnect` | Calendar | hidden at v1 |
 | `seed-demo-data` / `-solo` / `-agency` / `seed-e2e-data` | Demo seeds | dev-only |
-| `profile-ensure` | profile sanity | live |
-| `onboarding-setup` | onboarding wizard | launch-critical |
 | `notify-makeup-offer` | makeup offer email | guarded by `if (!isServiceRole)` — service-role caller bypasses; user-caller still hits the bug |
 | `process-term-adjustment` | term adjustments | already partially-fixed in s10 (bulk caller path); standalone-call path still buggy |
 | `continuation-respond` | parent continuation responses | unauth flow (verify_jwt=false); needs careful analysis |
 | `create-billing-run` / `create-continuation-run` | run creation | live |
 
-Total: **30+ user-facing edge fns** with the buggy pattern. Three fixed
-this session; remaining ~27 should be batched in a focused 1-2h sweep
-session.
+Total at start: **30+ user-facing edge fns**. Sessions 12 + 13 fixed
+13. Remaining ~17 (counting flow-counted distinct functions including
+the `xero-*` / `calendar-*` / `seed-*` clusters, lower priority each
+since they're hidden / dev-only / conditional). A follow-up session
+(after the s13 DNS outage is resolved + e2e suite is runnable) should
+prioritise:
+- live launch-in-scope: `stripe-create-checkout`,
+  `stripe-list-payment-methods`, `stripe-detach-payment-method`,
+  `stripe-update-payment-preferences`, `stripe-verify-session`,
+  `stripe-subscription-checkout`, `stripe-billing-history`,
+  `stripe-customer-portal`, `gdpr-export`, `gdpr-delete`,
+  `send-notes-notification`, `notify-makeup-offer`,
+  `process-term-adjustment`, `invite-accept`,
+  `create-billing-run`, `create-continuation-run`.
+- conditional-on-shadow: `xero-*` (4 fns).
+- hidden / dev-only: skip during launch sweep.
 
 ## Recommended next-session approach
 

@@ -1,6 +1,6 @@
 # LessonLoop production-readiness — MASTER tracker
 
-**Last updated:** 2026-05-10 (after 12th-session — vault seeded + streak-notification x-cron-secret fix + getUser sweep 3/30 + §17.4 e2e delivery test + §27 RLS test + global-setup ESM fix)
+**Last updated:** 2026-05-10 (after 13th-session — getUser sweep continued: 10 more fns fixed + deployed, cumulative 13/~30; HALTED at baseline due to app.lessonloop.net DNS outage — see audit/findings/2026-05-10-app-dns-netlify-cname-broken.md)
 **Owner:** Jamie McKaye
 **Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
 
