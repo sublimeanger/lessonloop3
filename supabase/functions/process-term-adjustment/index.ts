@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 import {
   getCorsHeaders,
   handleCorsPreflightRequest,
@@ -94,7 +95,7 @@ function generateDatesForDay(
 
 // ── Main Handler ────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
+Deno.serve(wrapEdgeFn("process-term-adjustment", async (req: Request) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -160,7 +161,7 @@ Deno.serve(async (req: Request) => {
       500
     );
   }
-});
+}));
 
 // ── Preview ─────────────────────────────────────────────────────────────
 

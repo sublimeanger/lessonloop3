@@ -6,6 +6,7 @@ import {
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 // ── Interfaces ──────────────────────────────────────────────────────────
 
 interface ContinuationRunRequest {
@@ -403,7 +404,7 @@ async function recalcSummary(client: any, runId: string) {
 // Auth: Use service role key as Bearer token, or configure
 //       pg_cron / Supabase cron to call this edge function.
 
-Deno.serve(async (req: Request) => {
+Deno.serve(wrapEdgeFn("create-continuation-run", async (req: Request) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -505,7 +506,7 @@ Deno.serve(async (req: Request) => {
       500
     );
   }
-});
+}));
 
 // ── Action: create ──────────────────────────────────────────────────────
 

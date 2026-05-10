@@ -5,6 +5,7 @@ import {
 } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 // ── Interfaces ──────────────────────────────────────────────────────────
 
 interface RespondRequest {
@@ -87,7 +88,7 @@ async function recalcSummary(client: any, runId: string) {
 
 // ── Main Handler ────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
+Deno.serve(wrapEdgeFn("continuation-respond", async (req: Request) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -157,7 +158,7 @@ Deno.serve(async (req: Request) => {
       500
     );
   }
-});
+}));
 
 // ── Token-based response (email link) ───────────────────────────────────
 
