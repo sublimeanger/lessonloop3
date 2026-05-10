@@ -22,6 +22,8 @@ import {
   supabaseSelect,
 } from '../supabase-admin';
 import { resetE2ERateLimits } from './_fixtures/stripe-test-helpers';
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
 
 const E2E_ORG_ID = '25b57950-6c4e-42d8-8089-4942d2bba959';
 
@@ -260,6 +262,172 @@ test.describe('§13.7 — RBAC: list page access', () => {
     await assertNoErrorBoundary(page);
     expect(page.url()).toMatch(/\/invoices/);
     await ctx.close();
+  });
+});
+
+// Inline owner JWT minter — send-invoice-email rejects service-role tokens
+// at the getUser(token) gate (no sub claim). Mints via password grant.
+function getOwnerJwt(): string {
+  const tmp = `/tmp/sb-owner-jwt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
+  fs.writeFileSync(tmp, JSON.stringify({ email: process.env.E2E_OWNER_EMAIL!, password: process.env.E2E_OWNER_PASSWORD! }));
+  try {
+    const res = execSync(
+      `curl -s -X POST "${process.env.E2E_SUPABASE_URL}/auth/v1/token?grant_type=password" ` +
+        `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" -H "Content-Type: application/json" -d @${tmp}`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const session = JSON.parse(res);
+    if (!session.access_token) throw new Error(`owner sign-in failed: ${JSON.stringify(session).slice(0, 200)}`);
+    return session.access_token;
+  } finally {
+    try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+  }
+}
+
+test.describe('§13.7.4 — Bulk send drafts via send-invoice-email', () => {
+  test.use({ storageState: AUTH.owner });
+
+  // Catalogue §13.7.4: "Bulk send 3 drafts → send-invoice-email called 3
+  // times → all 3 status=sent → toast '3 invoices sent'." Drives the
+  // edge fn directly with the e2e parent guardian as recipient — the
+  // BulkActionsBar UI loops over selected drafts and calls
+  // send-invoice-email per invoice, so this asserts the DB-shape result
+  // of that loop without the fragile UI selection.
+  test('three drafts → three send-invoice-email calls → all status=sent + 3 message_log rows', async () => {
+    const orgId = process.env.E2E_ORG_ID!;
+    const guardianId = '44821141-05be-4475-ad1f-a9532943a355'; // E2E_PARENT_GUARDIAN_ID
+    const testId = genTestId();
+    const dueDate = new Date(Date.now() + 14 * 24 * 3600_000).toISOString().slice(0, 10);
+    const ownerJwt = getOwnerJwt();
+
+    const drafts = [1, 2, 3].map((n) =>
+      createTestInvoice({
+        dueDate,
+        payerGuardianId: guardianId,
+        notes: `${testId}_bulk${n}`,
+        items: [{ description: `${testId}_b${n}_item`, quantity: 1, unit_price_minor: 1000 }],
+      }),
+    );
+    for (const d of drafts) {
+      expect(d?.id, `seed createTestInvoice failed: ${JSON.stringify(d)}`).toBeTruthy();
+    }
+
+    try {
+      // Loop calls (mirrors BulkActionsBar.handleBulkSend chunks-of-5 logic
+      // with our e2e fixed batch of 3). send-invoice-email expects USER JWT
+      // (validated via getUser(token) post-s12 fix) — service-role rejected.
+      for (const inv of drafts) {
+        const reqFile = `/tmp/sb-bulksend-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
+        fs.writeFileSync(reqFile, JSON.stringify({ invoiceId: inv.id }));
+        try {
+          const status = execSync(
+            `curl -s -o /dev/null -w "%{http_code}" -X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/send-invoice-email" ` +
+              `-H "Authorization: Bearer ${ownerJwt}" ` +
+              `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+              `-H "Content-Type: application/json" -d @${reqFile}`,
+            { encoding: 'utf-8', timeout: 30_000 },
+          );
+          // 200 = email queued + status flipped to sent. Anything else is
+          // an unexpected failure for the test path.
+          expect(parseInt(status.trim(), 10), `invoice ${inv.id} send-invoice-email returned ${status}`).toBe(200);
+        } finally {
+          try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+        }
+      }
+
+      // All three invoices should now be status=sent (server-side flip on
+      // successful send, regardless of email actually delivering).
+      let sentCount = 0;
+      let logCount = 0;
+      for (const inv of drafts) {
+        const after = supabaseSelect(
+          'invoices',
+          `id=eq.${inv.id}&select=status`,
+        );
+        expect(Array.isArray(after) && after.length === 1, `invoice select unexpected shape: ${JSON.stringify(after).slice(0, 200)}`).toBe(true);
+        if (after[0].status === 'sent') sentCount++;
+
+        const logs = supabaseSelect(
+          'message_log',
+          `org_id=eq.${orgId}&related_id=eq.${inv.id}&message_type=eq.invoice&select=id,status`,
+        );
+        if (Array.isArray(logs) && logs.length > 0) logCount += logs.length;
+      }
+      expect(sentCount, 'all 3 invoices should be status=sent after bulk send').toBe(3);
+      expect(logCount, 'one message_log row per successful send').toBeGreaterThanOrEqual(3);
+    } finally {
+      for (const inv of drafts) {
+        supabaseDelete('message_log', `related_id=eq.${inv.id}&message_type=eq.invoice`);
+        // Drafts that successfully flipped to sent need cleanup of payments
+        // first if any exist (none here — fresh drafts).
+        deleteInvoiceById(inv.id);
+      }
+    }
+  });
+});
+
+test.describe('§13.7.5 — Bulk void cascades to installments', () => {
+  test.use({ storageState: AUTH.owner });
+
+  // Catalogue §13.7.5: "Bulk void with void_invoice RPC → status=void;
+  // if any partially_paid → installments also voided (per code comment
+  // in J3-F14b)." This test seeds an invoice with installments, voids
+  // it, and asserts both invoice + all installments transitioned.
+  test('voiding sent invoice with installments cascades void to all installment rows', async () => {
+    const testId = genTestId();
+    const guardianId = getFirstGuardianId();
+    expect(guardianId).toBeTruthy();
+
+    const inv = createTestInvoice({
+      dueDate: new Date(Date.now() + 90 * 24 * 3600_000).toISOString().slice(0, 10),
+      payerGuardianId: guardianId,
+      notes: `${testId}_voidcascade`,
+      items: [{ description: `${testId}_i`, quantity: 1, unit_price_minor: 30_000 }],
+    });
+
+    try {
+      patchInvoiceStatus(inv.id, 'sent');
+      supabaseRpc('generate_installments', {
+        _invoice_id: inv.id,
+        _org_id: E2E_ORG_ID,
+        _count: 3,
+        _frequency: 'monthly',
+        _start_date: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
+        _custom_schedule: null,
+      });
+
+      // Sanity: 3 pending installments before void.
+      const before = supabaseSelect(
+        'invoice_installments',
+        `invoice_id=eq.${inv.id}&select=installment_number,status&order=installment_number`,
+      );
+      expect(before.length).toBe(3);
+      expect(before.every((i: Record<string, string>) => i.status === 'pending')).toBe(true);
+
+      // Void.
+      try {
+        supabaseRpc('void_invoice', { _invoice_id: inv.id, _org_id: E2E_ORG_ID });
+      } catch (err) {
+        if (!String(err).includes('Unexpected end of JSON')) throw err;
+      }
+
+      // Invoice + installments cascaded to void.
+      const inv2 = supabaseSelect('invoices', `id=eq.${inv.id}&select=status`);
+      expect(inv2[0].status).toBe('void');
+
+      const after = supabaseSelect(
+        'invoice_installments',
+        `invoice_id=eq.${inv.id}&select=installment_number,status&order=installment_number`,
+      );
+      expect(after.length).toBe(3);
+      // J3-F14b cascade: pending → void on parent void.
+      for (const i of after) {
+        expect(i.status).toBe('void');
+      }
+    } finally {
+      supabaseDelete('invoice_installments', `invoice_id=eq.${inv.id}`);
+      deleteInvoiceById(inv.id);
+    }
   });
 });
 
