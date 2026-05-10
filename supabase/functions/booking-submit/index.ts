@@ -2,6 +2,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { escapeHtml, sanitiseFromName } from '../_shared/escape-html.ts';
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
@@ -45,7 +46,7 @@ interface BookingRequest {
   notes?: string;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("booking-submit", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -373,4 +374,4 @@ Deno.serve(async (req) => {
     console.error('booking-submit error:', err);
     return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: jsonHeaders });
   }
-});
+}));

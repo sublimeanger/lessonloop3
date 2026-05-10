@@ -4,6 +4,7 @@ import * as jose from "https://deno.land/x/jose@v5.2.0/index.ts";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 interface SendOfferRequest {
@@ -315,4 +316,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(wrapEdgeFn("send-enrolment-offer", handler));

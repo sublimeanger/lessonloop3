@@ -1,5 +1,6 @@
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -20,7 +21,7 @@ interface Slot {
   teacher_first_name: string;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("booking-get-slots", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -241,7 +242,7 @@ Deno.serve(async (req) => {
     console.error('booking-get-slots error:', err);
     return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: jsonHeaders });
   }
-});
+}));
 
 function parseTimeToMinutes(time: string): number {
   const parts = time.split(':');

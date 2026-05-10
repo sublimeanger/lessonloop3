@@ -4,6 +4,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 const BATCH_SIZE = 50;
 
 interface BatchInviteRequest {
@@ -20,7 +21,7 @@ interface InviteResult {
   reason?: string;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(wrapEdgeFn("batch-invite-guardians", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
 
@@ -420,4 +421,4 @@ Deno.serve(async (req) => {
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
-});
+}));
