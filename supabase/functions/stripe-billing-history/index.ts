@@ -4,6 +4,18 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { getStripeClient } from "../_shared/stripe-client.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { classifyAndRespond, type SafeErrorMap } from "../_shared/stripe-error.ts";
+
+const SAFE_MESSAGES: SafeErrorMap = {
+  exact: {
+    "No authorization header": 401,
+    "Unauthorized": 401,
+    "orgId is required": 400,
+    "Only org owners/admins can view billing history": 403,
+    "Organisation not found": 404,
+  },
+};
+
 serve(wrapEdgeFn("stripe-billing-history", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -95,11 +107,6 @@ serve(wrapEdgeFn("stripe-billing-history", async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Billing history error:", message);
-    return new Response(
-      JSON.stringify({ error: message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-    );
+    return classifyAndRespond(error, SAFE_MESSAGES, corsHeaders, "stripe-billing-history");
   }
 }));

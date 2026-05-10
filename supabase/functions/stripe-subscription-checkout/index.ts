@@ -5,6 +5,19 @@ import { getStripeClient } from "../_shared/stripe-client.ts";
 import { PLAN_LIMITS as DB_PLAN_LIMITS, TRIAL_DAYS } from "../_shared/plan-config.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { classifyAndRespond, type SafeErrorMap } from "../_shared/stripe-error.ts";
+
+const SAFE_MESSAGES: SafeErrorMap = {
+  exact: {
+    "No authorization header": 401,
+    "Unauthorized": 401,
+    "orgId and plan are required": 400,
+    "Invalid plan": 400,
+    "Only the organisation owner can manage subscriptions": 403,
+    "Organisation not found": 404,
+    "Invalid plan configuration": 400,
+  },
+};
 // ─── CANONICAL PLAN CONFIG ───────────────────────────────────────
 // DB enum values: solo_teacher, academy, agency
 // User-facing keys: teacher, studio, agency
@@ -246,14 +259,6 @@ serve(wrapEdgeFn("stripe-subscription-checkout", async (req) => {
       }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Stripe subscription checkout error:", message);
-    return new Response(
-      JSON.stringify({ error: message }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
-      }
-    );
+    return classifyAndRespond(error, SAFE_MESSAGES, corsHeaders, "stripe-subscription-checkout");
   }
 }));

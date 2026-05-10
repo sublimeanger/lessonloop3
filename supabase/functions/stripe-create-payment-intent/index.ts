@@ -9,6 +9,27 @@ import {
   PENDING_INSTALLMENT_STATUSES,
 } from "../_shared/invoice-amount-due.ts";
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { classifyAndRespond, type SafeErrorMap } from "../_shared/stripe-error.ts";
+
+const SAFE_MESSAGES: SafeErrorMap = {
+  exact: {
+    "No authorization header": 401,
+    "Unauthorized": 401,
+    "invoiceId is required": 400,
+    "Invoice not found": 404,
+    "Not authorized to pay this invoice": 403,
+    "Invoice is already fully paid": 400,
+    "Installment not found or already paid": 404,
+    "Installment is already fully paid": 400,
+    "All installments are already paid": 400,
+    "Nothing to pay": 400,
+    "Organisation currency not configured": 400,
+    "Online payments are disabled for this organisation.": 400,
+  },
+  prefix: {
+    "Invoice cannot be paid (status: ": 400,
+  },
+};
 
 serve(wrapEdgeFn("stripe-create-payment-intent", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
@@ -370,14 +391,6 @@ serve(wrapEdgeFn("stripe-create-payment-intent", async (req) => {
       }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Stripe create payment intent error:", message);
-    return new Response(
-      JSON.stringify({ error: message }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
-      }
-    );
+    return classifyAndRespond(error, SAFE_MESSAGES, corsHeaders, "stripe-create-payment-intent");
   }
 }));

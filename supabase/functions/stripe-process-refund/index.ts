@@ -7,6 +7,30 @@ import { log } from "../_shared/log.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { recalcWithRetry } from "../_shared/recalc-with-retry.ts";
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { classifyAndRespond, type SafeErrorMap } from "../_shared/stripe-error.ts";
+
+const SAFE_MESSAGES: SafeErrorMap = {
+  exact: {
+    "No authorization header": 401,
+    "Unauthorized": 401,
+    "paymentId is required": 400,
+    "Payment not found": 404,
+    "Only Stripe payments can be refunded through this flow": 400,
+    "Invoice not found": 404,
+    "Cannot refund a voided invoice": 400,
+    "Cannot refund a cancelled invoice": 400,
+    "Cannot refund an unpaid invoice": 400,
+    "Not a member of this organisation": 403,
+    "Organisation not found": 404,
+    "Organisation currency not configured": 400,
+    "Insufficient permissions to process refunds": 403,
+    "This payment has already been fully refunded": 400,
+    "Refund amount must be greater than zero": 400,
+  },
+  prefix: {
+    "Maximum refundable amount is ": 400,
+  },
+};
 
 /**
  * Map LessonLoop refund reason labels to Stripe's 3-value enum.
@@ -309,11 +333,6 @@ serve(wrapEdgeFn("stripe-process-refund", async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Refund error:", message);
-    return new Response(
-      JSON.stringify({ error: message }),
-      { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" }, status: 400 }
-    );
+    return classifyAndRespond(error, SAFE_MESSAGES, getCorsHeaders(req), "stripe-process-refund");
   }
 }));

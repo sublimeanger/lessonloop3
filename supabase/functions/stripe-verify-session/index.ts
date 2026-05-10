@@ -3,6 +3,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { getStripeClient } from "../_shared/stripe-client.ts";
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { classifyAndRespond, type SafeErrorMap } from "../_shared/stripe-error.ts";
+
+const SAFE_MESSAGES: SafeErrorMap = {
+  exact: {
+    "No authorization header": 401,
+    "Unauthorized": 401,
+    "sessionId is required": 400,
+    "Unauthorized — not associated with this session": 403,
+  },
+};
 
 /**
  * Verifies a Stripe Checkout Session or PaymentIntent status.
@@ -113,10 +123,6 @@ serve(wrapEdgeFn("stripe-verify-session", async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return new Response(
-      JSON.stringify({ error: message }),
-      { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" }, status: 400 }
-    );
+    return classifyAndRespond(error, SAFE_MESSAGES, getCorsHeaders(req), "stripe-verify-session");
   }
 }));
