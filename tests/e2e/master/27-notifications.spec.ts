@@ -595,6 +595,91 @@ test.describe('§27 — Multi-area edge fn auth-gate contracts (s22)', () => {
   }
 });
 
+// ────────────────────────────────────────────────────────────────────
+// §27 — Multi-area edge fn auth-gate contracts (s23)
+// ────────────────────────────────────────────────────────────────────
+//
+// Final multi-area sweep — auth-gate contracts for AI/LoopAssist,
+// Calendar (user-JWT), and Xero (user-JWT) clusters. Same pattern as
+// s17 §24 / s18 §3.8 / s20 §27 calendar / s21 §27 cron-lifecycle /
+// s22 §27 multi-area. anon→4xx + no-auth→4xx prove the gate fires.
+//
+// AI cluster (4): looopassist-chat / looopassist-execute (s16 getUser
+//   fix per e13fb0a), parent-loopassist-chat, csv-import-mapping —
+//   all user-JWT auth.
+// Calendar cluster (4 user-JWT fns): calendar-disconnect /
+//   calendar-fetch-busy / calendar-oauth-start / calendar-sync-lesson.
+//   These four still use bare getUser() (LOW priority in s16 sweep
+//   per HANDOVER row 1302; not yet patched). The auth-gate contract
+//   still fires correctly under bare getUser() because anon JWT has
+//   no `sub` claim → /auth/v1/user errors → 401. The contract proves
+//   the gate, independent of getUser implementation.
+// Xero cluster (2 user-JWT promotable): xero-oauth-start /
+//   xero-disconnect (s16 getUser fix per e13fb0a). xero-sync-invoice
+//   and xero-sync-payment have unresolved findings (NOT NULL drift,
+//   FK name, prefix bug) so they stay 🟡 with [CONDITIONAL at v1]
+//   tag. xero-oauth-callback has no user-JWT path.
+
+test.describe('§27 — Multi-area edge fn auth-gate contracts (s23)', () => {
+  for (const fnName of [
+    // AI cluster (4)
+    'looopassist-chat',           // staff LoopAssist
+    'looopassist-execute',        // staff LoopAssist tool execute
+    'parent-loopassist-chat',     // parent portal LoopAssist
+    'csv-import-mapping',         // Gemini-backed CSV column mapping
+    // Calendar cluster — user-JWT fns (4)
+    'calendar-disconnect',        // disconnect provider connection
+    'calendar-fetch-busy',        // fetch busy slots from provider
+    'calendar-oauth-start',       // start OAuth flow
+    'calendar-sync-lesson',       // sync single lesson to provider
+    // Xero cluster — user-JWT promotable (2)
+    'xero-oauth-start',           // start Xero OAuth flow
+    'xero-disconnect',            // disconnect Xero connection
+  ]) {
+    test(`${fnName} — anon JWT rejected`, async () => {
+      const reqFile = `/tmp/sb-s23-${fnName}-req-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+      const respFile = `/tmp/sb-s23-${fnName}-resp-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+      fs.writeFileSync(reqFile, JSON.stringify({ orgId: process.env.E2E_ORG_ID }));
+      try {
+        const status = execSync(
+          `curl -s -o ${respFile} -w "%{http_code}" ` +
+            `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+            `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+            `-H "Content-Type: application/json" -d @${reqFile}`,
+          { encoding: 'utf-8', timeout: 15_000 },
+        );
+        const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+        const code = parseInt(status.trim(), 10);
+        expect(code, `${fnName} body: ${body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+        expect(code).toBeLessThan(500);
+      } finally {
+        try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+        try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+      }
+    });
+
+    test(`${fnName} — no auth rejected`, async () => {
+      const reqFile = `/tmp/sb-s23-${fnName}-req-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+      const respFile = `/tmp/sb-s23-${fnName}-resp-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+      fs.writeFileSync(reqFile, JSON.stringify({ orgId: process.env.E2E_ORG_ID }));
+      try {
+        const status = execSync(
+          `curl -s -o ${respFile} -w "%{http_code}" ` +
+            `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+            `-H "Content-Type: application/json" -d @${reqFile}`,
+          { encoding: 'utf-8', timeout: 15_000 },
+        );
+        const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+        const code = parseInt(status.trim(), 10);
+        expect(code, `${fnName} body: ${body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+      } finally {
+        try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+        try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+      }
+    });
+  }
+});
+
 test.describe('§27 — Cron-lifecycle handler auth-gate contracts', () => {
   for (const fnName of [
     'invoice-overdue-check',
