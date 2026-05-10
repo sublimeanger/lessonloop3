@@ -1,5 +1,7 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+**Last updated:** 2026-05-10 (after 30th-session — PROD-FINDING ROOT CAUSES + REMAINING CLOSEOUTS. Track 1: stripe-list-payment-methods 500 hypothesis WRONG (customers exist in Stripe; halted per HARD RULE; deferred to s31 shadow-term). Track 2: streak-notification 500 root-caused + fixed (idempotent skip on missing student/org). Track 3: §20.7b seedTerms flake CLOSED (deterministic per-testId baseYear). Track 4: rbac-5-4 redesigned via new SECURITY-DEFINER RPC + storage-state patch (3/3 stable). Track 5: send-invoice-email 502 → MONITOR. Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸ = ~91%. Open findings 6 → 4 truly-irreducible. **Shadow programme infrastructure READY for s31 Jamie greenlight.**
+
 **Last updated:** 2026-05-10 (after 29th-session — FINAL HARDENING + OPEN-FINDINGS CLOSEOUT. Track 1: migrated 12 stripe-* fns (9 planned + 3 mid-session-additional) to `_shared/stripe-error.ts` classifyAndRespond helper with explicit SAFE_MESSAGES allow-lists. Caught 2 new prod 5xx events mid-session via Sentry monitoring (stripe-list-payment-methods 3×, streak-notification 1×); filed 2 findings, partial-fixed list-payment-methods. Track 2: 4 finding closeouts — cloudflare-subdomain CLOSED, env-injection DOWNGRADED v1.1+, cron-class-b DOWNGRADED v1.1+, 2 concurrency flakes CLOSED (3/3 stable). Track 3: rbac-5-4 FLOW verified production-correct, test SKIPPED for s30 redesign (Option C). Open findings 12 → 5 (2 new prod + 2 v1.1+ defers + 1 rbac-5-4 redesign + 1 stripe-branding Jamie-action + zoom-tier deferred). Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸ — hardening + closeout, not promotion. Baseline post all fixes pending.
 
 **Last updated:** 2026-05-10 (after 28th-session — CLASS-BUG SWEEP + FLAKE TRIAGE + SENTRY CLOSEOUT. Track 1: systematically fixed the throw-into-outer-catch class-bug across **56 fns** in 8 cluster commits (messaging 8, money-path 18, continuation 6, booking 7, auth 2, calendar/xero 8, AI/CSV 5, misc 2). Pattern was the root cause of all 3 prior prod 5xx incidents. Added §27 parametrised contract test (12 sample fns across clusters, 12/12 pass). Closure finding documents the deferred 9 stripe-* response-body-leak fixes for s29. Track 2: filed 2 P3 findings for s27's intermittent DB-concurrency flakes (test-side, both have documented fix shape). Track 3: Sentry edge wrap +16 high-impact cron fns; coverage 67 → **83/103 (~81%)**. Audit unchanged at 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸ — s28 was hardening + coverage expansion. Baseline 643/3/122/5.2m — same 3 documented fails as s28 setup; no regressions from 72 deployed fns. 3 new findings filed.
@@ -1589,6 +1591,72 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
+### What's done at end of 30th session
+
+(Catalog state ~91% unchanged — s30 was finding closeout, not promotion.
+Audit total: 167 🟢 / 6 🟡 / **0 🔴** / 10 ⏸ = ~91%. Open findings 6
+truly-active → 4 truly-irreducible. **Shadow programme infrastructure
+ready for s31 Jamie greenlight.**)
+
+Per-track outcomes for s30:
+
+- **Track 1 — stripe-list-payment-methods root cause (HALTED per HARD RULE)**:
+  - Hypothesis: stale `stripe_customer_id` in DB for the 2 affected orgs.
+  - Test via direct Stripe API: GET /v1/customers/{cus_UFqLL4spcjxs3o,
+    cus_UEufGdbPZx1t3F} both return 200 OK with `deleted=null`.
+  - Test via direct paymentMethods.list: both return `{object:list,
+    data:[]}` — succeeds with empty PM list.
+  - HYPOTHESIS WRONG. Per HARD RULE: HALT.
+  - Updated `audit/findings/2026-05-10-stripe-list-payment-methods-prod-500.md`
+    with the WRONG-hypothesis evidence + s31 deferral plan (wait for
+    Lauren shadow-term traffic recurrence; with real error in hand,
+    file targeted fix).
+  - No code changes. Sentry issue JAVASCRIPT-REACT-8 stays unresolved.
+
+- **Track 2 — streak-notification root cause (~20 min)**:
+  - Could not extract exact student_id/org_id from Sentry event
+    (wrapEdgeFn doesn't capture request body for PII safety). But the
+    fix is shape-correct regardless of which row was missing.
+  - Replaced 2 `throw new Error("X not found")` paths with idempotent
+    200-skip responses (with logged ID for retrospective debug).
+    Cron fns must be idempotent on stale upstream payloads.
+  - Deployed via Supabase Management API.
+  - Sentry issue JAVASCRIPT-REACT-9 resolved.
+  - Finding `audit/findings/2026-05-10-streak-notification-prod-500.md`
+    status FIXED.
+
+- **Track 3 — §20.7b seedTerms flake (~20 min)**:
+  - Root cause: 6 call sites used `2400 + Math.floor(Math.random() * 500)`
+    for baseYear; ~1/500 pairwise collision odds at workers=4 hit the
+    `check_term_overlap` trigger, silently returning null and tripping
+    `seedTerms failed` throw.
+  - Fix: replaced all 6 with `termsBaseYear(testId)` — deterministic
+    per-testId hash over 10K-year window. Effectively zero collision odds.
+  - 5/5 stable runs at workers=4. Finding CLOSED.
+
+- **Track 4 — rbac-5-4 email-verification test redesign (~30 min)**:
+  - Two-pronged unconfirm strategy:
+    * DB flip via service-role RPC. New migration adds
+      `_e2e_set_user_email_confirmed(user_id, confirmed)`: SECURITY
+      DEFINER + service-role only + safety-guarded by email pattern
+      match against `%@test.lessonloop.net`. Real users cannot be
+      modified even if service role leaks.
+    * Storage-state cached session.user patch. AuthContext reads
+      session.user (cached at sign-in), NOT live getUser(). Test patches
+      storage state JSON to null email_confirmed_at after sign-in.
+  - Helper `setUserEmailConfirmed(userId, confirmed)` added to
+    supabase-admin.ts.
+  - Test re-enabled (no longer .skip). 3/3 stable runs at workers=4.
+  - Finding CLOSED.
+
+- **Track 5 — send-invoice-email 502 (~5 min)**:
+  - Status reclassified: PARTIAL FIX → MONITOR.
+  - Rationale: 500 path closed s27; 502 path unreproducible from
+    synthetic traffic (1451ms + curl UA + BT IPv6 strongly suggests
+    Cloudflare edge or IPv6 transit issue, not application code).
+    Awaiting either live shadow-term recurrence (new actionable
+    finding) or 30d zero-occurrence (implicit closure).
+
 ### What's done at end of 29th session
 
 (Catalog state ~91% unchanged — s29 was hardening + open-findings
@@ -2090,7 +2158,54 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 30th session pickup
+### Priority order — 31st session pickup
+
+After s30, audit posture is unchanged at 167 🟢 / 6 🟡 / **0 🔴** /
+10 ⏸ = ~91%. **Shadow programme infrastructure ready for Jamie
+greenlight.** Open findings 6 → 4 truly-irreducible.
+
+**Recommended s31: Lauren shadow programme DAY 1 — Jamie greenlights,
+agent monitors Sentry continuously.**
+
+Agent should:
+1. **Monitor Sentry continuously** for new prod 5xx events from
+   Lauren's traffic. Each event: file finding, file targeted fix if
+   scope-bounded, escalate if money-path or multi-user.
+2. **stripe-list-payment-methods s30-deferred investigation**: if
+   JAVASCRIPT-REACT-8 recurs in shadow-term traffic, pull the exact
+   Supabase edge fn log at the event timestamp — `console.error`
+   line in the catch will reveal the actual error string. With the
+   real error message in hand, file targeted fix finding.
+   - If NO recurrence in 7d shadow-term: implicitly closed
+     (regression from s29 migration may have fixed the root cause
+     as a side-effect).
+3. **send-invoice-email 502 (MONITOR)** — same approach. Either
+   recurs (new actionable finding) or 30d zero-occurrence (implicit
+   closure).
+
+Jamie should:
+1. **Greenlight Lauren shadow programme** to start traffic flow.
+2. **Subscribe to Sentry email alerts** for `runtime:deno-edge
+   level:error` events (cron Class B workaround per s29 finding
+   downgrade rationale).
+3. Continue carried-over:
+   - **iOS TestFlight + App Store submission**
+   - **Stripe Dashboard paste** (~5 min — file IDs + colors per
+     finding)
+   - **Source Supabase decommission** at 2026-08-19
+   - **Apple OAuth re-enable** post-launch
+
+**Genuinely remaining open findings (post-s30, all 6 🟡 unchanged)**:
+- stripe-list-payment-methods-prod-500 (s31-defer; needs live recurrence)
+- send-invoice-email-prod-502 (MONITOR; same)
+- stripe-branding-platform-account-api-restriction (Jamie Dashboard paste)
+- supabase-captcha-disabled (v1.1+ UX call)
+- cron-net-http-post-5s-timeout (informational only)
+- zoom-tier-3-2-deferred-e2e (HIDDEN at v1)
+
+**No 🔴 launch blockers.** All P0/P1 cleared.
+
+### Priority order — 30th session pickup (closed)
 
 After s29, audit posture is unchanged at 167 🟢 / 6 🟡 / **0 🔴** /
 10 ⏸ = ~91%. s29 was hardening + open-findings closeout, not
