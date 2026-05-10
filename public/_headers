@@ -1,0 +1,7 @@
+# Apple Universal Links — server MUST return application/json for the
+# apple-app-site-association file (no .json extension, no redirect).
+# Apple's CDN that fetches this file from the developer's website rejects
+# any other Content-Type. Netlify serves files in /public verbatim from /.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+  Cache-Control: public, max-age=300

@@ -5,8 +5,11 @@ import { allRoutes } from '@/config/routes';
 /** Pre-compute the set of known top-level path prefixes from the route table */
 const knownPaths = allRoutes.map(r => r.path.split('/').slice(0, 2).join('/'));
 
-/** Returns true if the path is safe to navigate to */
-function isAllowedDeepLink(path: string): boolean {
+/**
+ * Returns true if the path is safe to navigate to.
+ * Exported for unit testing of the path-traversal + allowlist contract.
+ */
+export function isAllowedDeepLink(path: string): boolean {
   // Block path traversal and dangerous URI schemes
   if (path.includes('..') || path.startsWith('javascript:') || path.startsWith('data:')) {
     return false;
