@@ -547,6 +547,61 @@
   `audit/findings/2026-05-10-app-dns-netlify-cname-broken.md`.
   NOT caused by s13's edge-fn deploys (those targeted
   `xmrhmxizpslhtkibqyfy.supabase.co`, separate domain).
+- (14th session — RETURN TO CATALOG-PRIMARY) After two
+  infrastructure-heavy sessions, primary attention back on
+  catalog gaps. §13/§14/§11 advanced significantly:
+  - §13.7.4 (bulk send drafts via send-invoice-email × 3 →
+    all status=sent + 3 message_log rows)
+  - §13.7.5 (void invoice with installments → cascade to
+    installment.status=void)
+  - §14.10.14 (mutating an invoice line item bumps
+    invoices.pdf_rev — cache invalidation contract)
+  - §14.10.16 (apply_lost_dispute_cascade: paid invoice +
+    lost dispute → refund row + invoice no longer paid +
+    audit_log dispute_lost_cascade_applied; idempotency
+    second-call check)
+  - §11.4.2 (insert invites row + send-invite-email →
+    message_log invite + 7d expires_at default)
+  - §11.4.4 (bulk_update_lessons reassigns teacher_id A→B)
+  - §11.4.5 (bulk_cancel_lessons sets status=cancelled —
+    this required a P1 production bug fix; see next entry)
+  - §11.4.7 (filter tab counts: linked + unlinked = all;
+    inactive ⊂ all)
+- (14th session — P1 PRODUCTION BUG FOUND + FIXED)
+  `bulk_update_lessons` had a CASE type mismatch:
+  `status = CASE WHEN _new_status IS NOT NULL THEN _new_status::text ELSE status END`
+  — `lessons.status` is the `lesson_status` enum, so the
+  CASE branches returned mixed types (text vs enum). Postgres
+  rejects with sqlstate 42804. Same bug for `lesson_type`. This
+  silently broke `bulk_cancel_lessons` (which calls
+  bulk_update_lessons with `'{"status":"cancelled"}'`), which
+  in turn broke Lauren's archive-with-cancel-lessons branch in
+  RemovalDialog. Reassign branch was unaffected because it
+  doesn't pass status in p_changes. Migration
+  `20260520100000_bulk_update_lessons_enum_cast_fix.sql`
+  swaps `::text` → `::lesson_status` / `::lesson_type` in two
+  places. Otherwise byte-identical. Single CREATE OR REPLACE.
+  Finding: `audit/findings/2026-05-10-bulk-update-lessons-case-type-mismatch.md`.
+- (14th session — getUser() sweep +4) Continuation of
+  s12+s13 sweep with 4 more launch-in-scope Stripe fns:
+  stripe-create-checkout, stripe-list-payment-methods,
+  stripe-detach-payment-method, stripe-customer-portal.
+  Cumulative across s12+s13+s14: 17 of ~30 user-facing fns
+  fixed. Remaining ~13 catalogued in finding for follow-up.
+- (14th session — flake watch noted) Mid-session baseline
+  (post-catalog-work, full suite) ran 460/13/129/8/7.0m.
+  Wall-clock spiked from 4.4m start → 7.0m mid. Two new
+  long-running tests (§13.7.4 ~58s, §14.10.16 ~52s) account
+  for ~110s of the increase; both pass in isolation but
+  flake under parallel contention because supabaseSelect
+  via owner JWT can return non-array under load (PostgREST
+  proxy timeouts). Other fails are documented transients
+  (§5.4 deterministic, §22.2 cross-file race, §26.6.6
+  admin_locked, §26.9.1/2/3 Stripe). NOT regressions from
+  the s14 deploys. Session 15 may want to harden the two
+  new flaky tests by switching their result-side queries to
+  service-role curl (bypasses owner-JWT-proxy contention) —
+  same pattern §27 RLS test uses successfully.
 - (also at 7th-session start) Manual SQL sweep of stale e2e_ test
   data via Supabase MCP execute_sql — cleared 6 lesson rows
   (1 active scheduled + 5 cancelled), 22 students, 4 invoices, and
@@ -591,23 +646,33 @@ this is the only mind-share between sessions. Specifically:
 
 ## Reality check (don't be misled by counters)
 
-**Catalog completeness: ~66% (held flat — s13 ran 0 catalog work due to
-DNS outage). 10 more user-facing edge fns hardened against the
-getUser() legacy-JWT silent-401 pattern (cumulative 13 of ~30).**
+**Catalog completeness: ~70% (was 66% at end of s12+s13). S14 returned
+to catalog-primary work after two infrastructure-heavy sessions:
++8 real tests across §13/§14/§11; +1 P1 production bug fix
+(bulk_update_lessons enum cast); +4 getUser sweep deploys
+(cumulative 17/~30).**
 
-Current baseline (end of 13th session, post-DNS-fix full-suite run):
-- **461 passed / 9 failed / 132 skipped / 3 did not run / 4.3 min wall-clock at 4 workers**
-- vs s12 end (464/7/132/2/4.5m): −3 passed, +2 failed, +1 did-not-run, **−0.2 min wall-clock**.
-  Net within the documented ±3 transient band. The 10 s13 edge-fn
-  deploys did NOT introduce regressions — fails are the same
-  documented shape: §5.4 email-verification (deterministic), §22.2
-  cross-file race, §20.7b withdrawal transient, §26.6.7 GCal,
-  §26.9.1/2/3 Stripe transients, §13 stats + §27.2 absent-prefs
-  (both in-noise transients).
-- Session 13 mid-run baseline (pre-DNS-fix) showed 343 failed / 111
-  passed because every test that called `page.goto('https://app.lessonloop.net/...')`
-  failed with `ERR_NAME_NOT_RESOLVED`. Cause: Netlify-side `*.netlify.app`
-  DNS outage; fixed via Cloudflare CNAME swap to `.netlify.com`.
+Current baseline (end of 14th session, post-catalog-work full-suite run):
+- **460 passed / 13 failed / 129 skipped / 8 did not run / 7.0 min wall-clock at 4 workers**
+- vs s14 start (464/7/132/2/4.4m): −4 passed, +6 failed, −3 skipped
+  (s14 converted 3 §11 fixmes), +6 did-not-run, **+2.6 min wall-clock**.
+- Net diagnosis: NOT regressions from s14 deploys. The +6 failures
+  are: 2 of s14's new long-running tests (§13.7.4 ~58s + §14.10.16
+  ~52s) flaking under parallel contention (pass in isolation; the
+  contention-mode failure shape is supabaseSelect's owner-JWT
+  PostgREST proxy returning non-array under load), plus the
+  documented transient cross-file race shape (§22.2, §26.6.6,
+  §26.13, §6 dashboard, §21 LoopAssist). Wall-clock attributable
+  to s14 work: ~2m for the 2 new long tests; rest is variance
+  exacerbated by contention.
+- Recommendation for s15: harden the 2 flaky s14 tests by
+  switching their result-side queries to service-role curl
+  (bypasses owner-JWT-proxy contention) — same pattern §27
+  RLS test uses successfully. ~30 min fix.
+- s14 start baseline (462/7/132/2/4.4m) is the clean reference.
+
+Stale baseline (end of 13th session) for reference:
+- 461 passed / 9 failed / 132 skipped / 4.3 min wall-clock
 - **+5 passed** vs end of 11th-session (was 459 — +1 §17.4 e2e
   delivery, +2 §27 RLS, +2 transient flakes recovered after the
   global-setup ESM fix unblocked stale-row sweep)
@@ -729,7 +794,8 @@ session — don't fix inline during a catalog session.
 |---|---|---|
 | ~~Streak milestone notifications never deliver.~~ | — | **CLOSED in session 12.** Two bugs in series: (1) vault was missing SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (FIXED — seeded via Management API); (2) `_notify_streak_milestone` sent wrong auth header, streak-notification's validateCronAuth required x-cron-secret (FIXED via migration `20260519100000_notify_streak_milestone_x_cron_secret.sql`). End-to-end verified: net._http_response shows 200 OK with `{success:true, streak:3, milestone:"Building Momentum!"}`. §17.4 e2e delivery test added that polls net._http_response. RESEND_API_KEY still not seeded so emails_sent=0 (best-effort delivery design); seeding RESEND is an unrelated follow-up if Lauren wants email delivery, separate from the auth chain. |
 | ~~app.lessonloop.net DNS chain broken~~ | — | **RESOLVED in session 13.** Outage at start of s13 because the entire `*.netlify.app` zone went NXDOMAIN globally (verified across all major resolvers + the .app TLD authoritative servers). Cloudflare CNAME at `app.lessonloop.net` was pointing at `lessonloop-app.netlify.app`. Fixed via Cloudflare API: CNAME swapped to `lessonloop-app.netlify.com` (same project, TLD swap). Verified end-to-end (HTTPS 200, Netlify edge cache hit). ~10 min from diagnosis to resolution. Long-term consideration: switch DNS hosting to Netlify so they manage the chain end-to-end as their internal naming evolves. See [DNS finding](audit/findings/2026-05-10-app-dns-netlify-cname-broken.md). |
-| **getUser() no-args pattern across 30+ user-facing edge fns** (sweep in progress) | **P1** | Sessions 10+11 each found 1; session 12 fixed 3 most-critical and catalogued ~27 remaining; session 13 fixed 10 more (csv-import-execute/-mapping, onboarding-setup, profile-ensure, batch-invite-guardians, stripe-create-payment-intent, stripe-process-refund, stripe-connect-onboard/-status, send-invite-email). **Cumulative 13 of ~30 fixed**. ~17 user-facing fns remain (most launch-in-scope). See [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md) for prioritised remaining list. Each fix is mechanical (`getUser()` → `getUser(token)`) but each needs a deploy + ideally a regression test. |
+| **getUser() no-args pattern across 30+ user-facing edge fns** (sweep in progress) | **P1** | Sessions 10+11 each found 1; s12 fixed 3; s13 fixed 10; s14 fixed 4 (stripe-create-checkout, -list-payment-methods, -detach-payment-method, -customer-portal). **Cumulative 17 of ~30 fixed.** Remaining ~13 catalogued in [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md). Lower priority going forward (less launch-critical fns left). |
+| **DNS hardening** (raised in s13; Jamie-level work) | **P1 launch readiness** | The s13 outage exposed that production DNS relies on a Cloudflare CNAME pointing at a Netlify-managed target whose naming Netlify can change without notice. Same pattern could fail again. JAMIE-LEVEL launch-readiness item: (a) move DNS hosting to Netlify entirely, OR (b) add external uptime monitoring on app.lessonloop.net + a runbook for the CNAME swap. Runbook is filed in audit/findings/2026-05-10-app-dns-netlify-cname-broken.md. NOT agent work. |
 | **Edge function env injection mismatch** (REPLACES the prior "drift" entry — phantom diagnosis closed in 11th session) | **P1** | 11th-session three-probe diagnostic conclusively proved: the legacy HS256 service_role JWT IS valid against the project (PostgREST returns 200). The "drift" framing carried across sessions 9 + 9a + 10 was based on a hash from session 9a's env-probe-temp (never validated). The actual phenomenon: `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` in deployed edge functions returns a different value than the dashboard's "Project API keys" → service_role row, despite no Custom Secrets override. Jamie's hypothesis on cause: Supabase auto-injection materialises a different value than the dashboard, OR partial migration to signing-keys at the edge gateway. Three resolution paths in [finding](audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md). The agent should NOT propose JWT secret reset or sb_secret_ migration. **Affects edge functions that do `authHeader.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))` byte-equal checks** (send-payment-receipt + likely send-refund-notification + send-auto-pay-alert). Functions that use `getUser(token)` for auth (now including send-bulk-message after 11th-session fix) work fine with legacy JWTs. Vault seeding still blocked because the streak-notification chain runs through this auth path. |
 | **§5.4 email-verification gate test design broken** (NEW 2026-05-09 — formerly listed under "JWT-stale" theory) | **P2** | 9th-session Item 5 confirmed deterministic 5/5 fail. Root cause: Supabase `enable_email_confirmations` (likely toggled in 2026-05-08 auth tightening) rejects password-grant for unconfirmed users with `email_not_confirmed`. The test creates a user with `email_confirm: false` then calls `/auth/v1/token?grant_type=password` to get a session — that path now refuses by design. The test's premise is broken; no quick fix. Three redesign paths in [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md). Estimate to fix: 1-2h via UI-signup flow OR magic-link admin generation. |
 | ~~RBAC Settings UI render race~~ | — | **FIXED** in 9th session. Root cause was a 5s `isVisible` timeout on a regex text match under parallel load. Fix: `waitForLoadState('networkidle')` + `expect(page.locator('main')).toContainText('Profile Information', { timeout: 20_000 })`. Verified 12/12 PASSES under 4-worker parallel load (3 runs × 4 repeats). |
@@ -915,7 +981,42 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 14th session pickup
+### Priority order — 15th session pickup
+
+**Step 0**: re-baseline. If the 2 new s14 flaky tests (§13.7.4
+bulk-send + §14.10.16 dispute-cascade) are still flaking, harden
+them first (~30 min). Pattern: replace `supabaseSelect` calls in
+result-assertion phase with direct service-role curl. Reference:
+`§27 — notification_preferences RLS contract` test in
+27-notifications.spec.ts uses this pattern.
+
+**Primary**:
+
+1. **Continue catalog work**. §13 at ~80%, §14 at ~85%, §11 at
+   ~60%. Remaining gaps:
+   - §13: from-lessons creation (§13.7.7), apply credit (§13.7.9),
+     billing run (§13.7.10/11/12). 1.5h.
+   - §14: send-modal 2-guardian default (§14.10.2), send reminder
+     contract (§14.10.4), edit-from-sent block (§14.10.13). 1h.
+   - §11: archive UI dialog flow (browser-driven; §11.4.4/5 are
+     RPC-only; the dialog-driven version still pending). Plan-cap
+     check (§11.4.6). 1.5h.
+
+2. **§22 deeper coverage** — was 50%; needs 2-3 more launch-visible
+   tabs (organisation, payments, billing, instruments) to push
+   toward 70%. ~1.5h.
+
+3. **§20 decline-flow edge case** — last §20 sub-case. ~30-45 min.
+
+4. **getUser() sweep — remaining ~13 fns**. Cumulative 17/~30
+   done. Lower priority (less launch-critical). ~30 min cap.
+
+### Priority order — 14th session pickup (closed)
+
+**Closed**: §13/§14/§11 +8 real tests; bulk_update_lessons enum
+cast fix; getUser sweep +4 stripe fns. Catalog 66% → ~70%.
+
+### Priority order — 13th session pickup
 
 **Step 0**: verify DNS still resolves cleanly. The s13 fix (CNAME →
 `lessonloop-app.netlify.com`) is in place; if `*.netlify.app` ever

@@ -1,6 +1,6 @@
 # LessonLoop production-readiness — MASTER tracker
 
-**Last updated:** 2026-05-10 (after 13th-session — getUser sweep continued: 10 more fns fixed + deployed, cumulative 13/~30; production DNS outage (Netlify *.netlify.app zone went NXDOMAIN globally) diagnosed + fixed via Cloudflare CNAME swap to .netlify.com, app restored end-to-end)
+**Last updated:** 2026-05-10 (after 14th-session — catalog primary work: §13/§14/§11 +8 real tests; P1 bulk_update_lessons enum cast bug found + fixed; getUser sweep +4 stripe fns (cumulative 17/~30); catalog 66% → ~70%)
 **Owner:** Jamie McKaye
 **Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
 
@@ -102,7 +102,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Teachers list / CRUD | src/pages/Teachers.tsx | P0 | 🟡 | 2026-05-09 | 6 RLS policies (admin r/w/d, finance r). No USING(true). Smoke 200. [E2E real per 6a0bbab §11.4.1 — unlinked teacher contract: insert teacher with NULL user_id leaves no auto-org_memberships, no invites row, but audit_teachers_changes trigger fires]. UI invite/archive flows still pending browser CRUD test. |
+| Teachers list / CRUD | src/pages/Teachers.tsx | P0 | 🟡 | 2026-05-10 | 6 RLS policies (admin r/w/d, finance r). [E2E real per s14]: §11.4.1 unlinked-teacher contract; §11.4.2 invite-flow (invites row INSERT + send-invite-email message_log); §11.4.4 bulk_update_lessons reassign teacher; §11.4.5 bulk_cancel_lessons → status=cancelled (this branch was P1-broken in production until s14 fix to bulk_update_lessons enum cast — see audit/findings/2026-05-10-bulk-update-lessons-case-type-mismatch.md); §11.4.7 filter tab counts. UI archive-dialog flow pending browser CRUD test. [PROMOTABLE 🟡→🟢] |
 | Locations | src/pages/Locations.tsx | P1 | 🟡 | 2026-05-08 | direct table queries (`locations`, `rooms`, `closure_dates`); every mutation scoped with `.eq('org_id', currentOrg.id)` belt+RLS-suspenders pattern; structural ok |
 | Payroll report | src/pages/reports/Payroll.tsx | P1 | 🟡 | 2026-05-09 | uses `usePayroll` hook, `get_teachers_with_pay` RPC for pay rates + RLS-scoped lessons read; teacher-role auto-filter via teachers.user_id lookup; [E2E data-correctness real per 3e9891b — completed lesson last month → owner teacher row visible in breakdown] |
 | Teacher performance report | src/pages/reports/TeacherPerformance.tsx | P2 | 🟡 | 2026-05-09 | uses `useTeacherPerformanceReport`; FeatureGate('teacher_performance') gates academy/agency/custom plans; RLS-scoped lessons + assignments + invoices reads; [E2E data-correctness real per 3e9891b — completed lesson last month → owner teacher in comparison table] |
