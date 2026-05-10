@@ -69,14 +69,18 @@ Deno.serve(async (req: Request) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify user identity
+    // Verify user identity — getUser(token) accepts legacy HS256 JWTs.
+    // s10 fix patched the internal process-term-adjustment auth-passthrough;
+    // this is the primary auth check at top-of-fn, same bug class.
+    // See: audit/findings/2026-05-10-getuser-noargs-sweep.md
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+    const token = authHeader.replace(/^Bearer\s+/i, "");
     const {
       data: { user },
       error: userError,
-    } = await userClient.auth.getUser();
+    } = await userClient.auth.getUser(token);
     if (userError || !user) {
       return jsonResponse({ error: "Unauthorized" }, corsHeaders, 401);
     }

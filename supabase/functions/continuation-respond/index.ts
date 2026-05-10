@@ -123,8 +123,12 @@ Deno.serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } },
     });
 
+    // getUser(token) — local JWKS verification accepts legacy HS256 JWTs.
+    // Portal-based path (token-based path takes a different branch above).
+    // See: audit/findings/2026-05-10-getuser-noargs-sweep.md
+    const jwtToken = authHeader.replace(/^Bearer\s+/i, "");
     const { data: { user }, error: userError } =
-      await userClient.auth.getUser();
+      await userClient.auth.getUser(jwtToken);
     if (userError || !user) {
       return jsonResponse({ error: "Unauthorized" }, corsHeaders, 401);
     }
