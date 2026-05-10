@@ -27,6 +27,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'node:child_process';
+import fs from 'node:fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -245,13 +246,13 @@ async function sweep(): Promise<void> {
       //     before deleting invoices.
       const tmpNull = `/tmp/sb-null-cn-${Date.now()}.json`;
       try {
-        require('fs').writeFileSync(tmpNull, JSON.stringify({ credit_note_invoice_id: null }));
+        fs.writeFileSync(tmpNull, JSON.stringify({ credit_note_invoice_id: null }));
         execSync(
           `curl -s -X PATCH "${url}/rest/v1/term_adjustments?id=in.${adjIdsIn}" ${headers} -H "Content-Type: application/json" -d @${tmpNull}`,
           { encoding: 'utf-8', timeout: 30_000 },
         );
       } finally {
-        try { require('fs').unlinkSync(tmpNull); } catch { /* ignore */ }
+        try { fs.unlinkSync(tmpNull); } catch { /* ignore */ }
       }
 
       // 5c. Delete credit note invoices + their items.
@@ -265,13 +266,13 @@ async function sweep(): Promise<void> {
       //     (NO ACTION FK would otherwise block delete).
       const tmpNullAdj = `/tmp/sb-null-adj-${Date.now()}.json`;
       try {
-        require('fs').writeFileSync(tmpNullAdj, JSON.stringify({ term_adjustment_id: null }));
+        fs.writeFileSync(tmpNullAdj, JSON.stringify({ term_adjustment_id: null }));
         execSync(
           `curl -s -X PATCH "${url}/rest/v1/term_continuation_responses?term_adjustment_id=in.${adjIdsIn}" ${headers} -H "Content-Type: application/json" -d @${tmpNullAdj}`,
           { encoding: 'utf-8', timeout: 30_000 },
         );
       } finally {
-        try { require('fs').unlinkSync(tmpNullAdj); } catch { /* ignore */ }
+        try { fs.unlinkSync(tmpNullAdj); } catch { /* ignore */ }
       }
 
       // 5e. Delete term_adjustments.
