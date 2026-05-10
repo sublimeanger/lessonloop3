@@ -1129,6 +1129,48 @@ test.describe('§27 — Invite cluster un-deferral contracts (s24)', () => {
   });
 });
 
+// ────────────────────────────────────────────────────────────────────
+// §27 — iCal feed token-validity contracts (s24)
+// ────────────────────────────────────────────────────────────────────
+//
+// calendar-ical-feed is a public GET endpoint (verify_jwt:false) that
+// returns iCal text/calendar content for Apple Calendar / outlook
+// subscribers. Auth via opaque ical_token in ?token query string.
+//
+// Per s24 stance recalibration: iCal feed contract gap closed.
+
+test.describe('§27 — iCal feed token-validity contracts (s24)', () => {
+  test('calendar-ical-feed — missing token → 400 Missing token parameter', async () => {
+    const respFile = `/tmp/sb-ical-r-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+    try {
+      const status = execSync(
+        `curl -s -o ${respFile} -w "%{http_code}" "${process.env.E2E_SUPABASE_URL}/functions/v1/calendar-ical-feed"`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+      expect(parseInt(status.trim(), 10), `body: ${body.slice(0, 200)}`).toBe(400);
+      expect(body).toMatch(/missing token/i);
+    } finally {
+      try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    }
+  });
+
+  test('calendar-ical-feed — invalid token → 404 Invalid or expired feed URL', async () => {
+    const respFile = `/tmp/sb-ical-r-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+    try {
+      const status = execSync(
+        `curl -s -o ${respFile} -w "%{http_code}" "${process.env.E2E_SUPABASE_URL}/functions/v1/calendar-ical-feed?token=definitely-not-a-real-token-${Date.now()}"`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+      expect(parseInt(status.trim(), 10), `body: ${body.slice(0, 200)}`).toBe(404);
+      expect(body).toMatch(/invalid or expired/i);
+    } finally {
+      try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    }
+  });
+});
+
 test.describe('§27 — Cron-lifecycle handler auth-gate contracts', () => {
   for (const fnName of [
     'invoice-overdue-check',
