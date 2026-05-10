@@ -463,12 +463,16 @@ test.describe('§13 — Stats reflect DB', () => {
     const guardianId = getFirstGuardianId();
     expect(guardianId).toBeTruthy();
 
-    // Snapshot count before.
-    const before = supabaseSelect(
+    // s29 fix for concurrency flake (finding 2026-05-10-13-461-draft-count-
+    // concurrency-flake.md): filter by `notes LIKE '${testId}_%'` so only
+    // this test's seeded row is counted. before-count is then a deterministic
+    // 0; after is always 1, irrespective of parallel workers populating
+    // E2E_ORG_ID drafts.
+    const beforeOnlyThisTest = supabaseSelect(
       'invoices',
-      `org_id=eq.${E2E_ORG_ID}&status=eq.draft&select=id&limit=10000`,
+      `org_id=eq.${E2E_ORG_ID}&status=eq.draft&notes=like.${testId}_*&select=id&limit=10`,
     );
-    const beforeCount = before.length;
+    expect(beforeOnlyThisTest.length, 'expected zero pre-existing drafts for this testId').toBe(0);
 
     const result = createTestInvoice({
       dueDate: new Date(Date.now() + 7 * 24 * 3600_000).toISOString().slice(0, 10),
@@ -480,9 +484,9 @@ test.describe('§13 — Stats reflect DB', () => {
     try {
       const after = supabaseSelect(
         'invoices',
-        `org_id=eq.${E2E_ORG_ID}&status=eq.draft&select=id&limit=10000`,
+        `org_id=eq.${E2E_ORG_ID}&status=eq.draft&notes=like.${testId}_*&select=id&limit=10`,
       );
-      expect(after.length).toBe(beforeCount + 1);
+      expect(after.length, 'expected exactly one seeded draft visible to query post-create').toBe(1);
     } finally {
       deleteInvoiceById(result.id);
     }

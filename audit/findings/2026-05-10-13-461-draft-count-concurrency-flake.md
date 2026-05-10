@@ -1,9 +1,10 @@
 # §13:461 Stats-reflect-DB draft count concurrency flake
 
 **Severity:** P3 (test-side concurrency, not production race)
-**Status:** OPEN — investigation only; not blocking launch
+**Status:** CLOSED 2026-05-10 s29 — testId filter applied + verified stable across 3 consecutive runs
 **First observed:** 2026-05-10 s27 (second baseline run)
 **Not observed in:** s27 first run, s28 first run (intermittent)
+**Closed:** 2026-05-10 s29 — applied documented fix (testId filter on count queries)
 
 ## Test
 

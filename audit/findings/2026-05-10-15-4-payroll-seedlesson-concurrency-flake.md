@@ -1,9 +1,10 @@
 # §15.4 Payroll seedLesson concurrency flake
 
 **Severity:** P3 (test-side concurrency, not production race)
-**Status:** OPEN — investigation only; not blocking launch
+**Status:** CLOSED 2026-05-10 s29 — per-testId second offset applied in seedLesson + verified stable across 3 consecutive runs
 **First observed:** 2026-05-10 s27 (second baseline run)
 **Not observed in:** s27 first run, s28 first run (intermittent)
+**Closed:** 2026-05-10 s29 — applied per-testId hash-derived second offset (0-58s) to seedLesson startAt, deconfliciting parallel workers
 
 ## Test
 

@@ -440,12 +440,33 @@ export interface SeedLessonOpts {
   title?: string;
 }
 
-/** Insert a lesson + lesson_participants for each student. */
+/** Insert a lesson + lesson_participants for each student.
+ *
+ * s29 concurrency fix (finding 2026-05-10-15-4-payroll-seedlesson-concurrency-
+ * flake.md): when multiple parallel workers (workers=4) call seedLesson with
+ * the same teacherId + startAt minute, the second INSERT can fail the
+ * teacher-slot-uniqueness constraint silently (returns null). Apply a
+ * deterministic per-testId second offset (0-58s, hash-derived) so parallel
+ * tests for the same teacher land in distinct slots. The +58s is well within
+ * the typical 30-min slot duration so it doesn't change which slot the
+ * lesson appears to belong to for report-bucket purposes (the test's
+ * `midLastMonth()` round-hour startAt + 58s offset is still in that hour).
+ */
+function testIdSecondOffset(testId: string): number {
+  // Simple deterministic hash: sum char codes mod 59 → 0..58 seconds.
+  let h = 0;
+  for (const c of testId) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return Math.abs(h) % 59;
+}
+
 export function seedLesson(opts: SeedLessonOpts): { lessonId: string } {
   const orgId = getOrgId();
   if (!orgId) throw new Error('seedLesson: No org ID');
 
-  const startAt = opts.startAt ?? new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+  const baseStartAt = opts.startAt ?? new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+  // s29: add per-testId second offset for parallel-deconfliction.
+  const offsetSec = testIdSecondOffset(opts.testId);
+  const startAt = new Date(new Date(baseStartAt).getTime() + offsetSec * 1000).toISOString();
   const durMs = (opts.durationMins ?? 30) * 60 * 1000;
   const endAt = new Date(new Date(startAt).getTime() + durMs).toISOString();
 
