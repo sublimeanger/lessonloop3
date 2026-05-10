@@ -54,7 +54,15 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const body: InternalRequestBody = await req.json();
+    let body: InternalRequestBody;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { invoice_id, source, is_reminder = false } = body ?? {};
 
     if (!invoice_id) {

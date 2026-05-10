@@ -81,7 +81,16 @@ serve(wrapEdgeFn("stripe-subscription-checkout", async (req) => {
     }
 
     // Parse request
-    const { orgId, plan, billingInterval, successUrl, cancelUrl } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { orgId, plan, billingInterval, successUrl, cancelUrl } = __body;
     
     if (!orgId || !plan) {
       throw new Error("orgId and plan are required");

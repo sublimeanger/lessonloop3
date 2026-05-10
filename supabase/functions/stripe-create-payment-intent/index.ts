@@ -41,11 +41,20 @@ serve(wrapEdgeFn("stripe-create-payment-intent", async (req) => {
     }
 
     // Parse request
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const {
       invoiceId,
       installmentId: requestedInstallmentId,
       payRemaining,
-    } = await req.json();
+    } = __body;
     if (!invoiceId) throw new Error("invoiceId is required");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);

@@ -107,7 +107,15 @@ Deno.serve(wrapEdgeFn("create-billing-run", async (req: Request) => {
     // Service role client for data operations (bypasses RLS)
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const body: BillingRunRequest = await req.json();
+    let body: BillingRunRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Verify user is finance team for this org
     const { data: membership } = await adminClient

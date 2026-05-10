@@ -77,7 +77,15 @@ serve(wrapEdgeFn("generate-invoice-pdf", async (req) => {
       );
     }
 
-    const body: GenerateRequest = await req.json();
+    let body: GenerateRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { invoice_id, force_regenerate = false, return_bytes = false } = body ?? {};
 
     if (!invoice_id) {

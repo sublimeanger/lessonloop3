@@ -119,7 +119,15 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const body: FailureNotificationRequest = await req.json();
+    let body: FailureNotificationRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const {
       org_id,
       invoice_id,

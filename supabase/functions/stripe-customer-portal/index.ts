@@ -36,7 +36,16 @@ serve(wrapEdgeFn("stripe-customer-portal", async (req) => {
     }
 
     // Parse request
-    const { orgId, returnUrl } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { orgId, returnUrl } = __body;
     
     if (!orgId) {
       throw new Error("orgId is required");

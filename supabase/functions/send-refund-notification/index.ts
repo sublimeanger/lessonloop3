@@ -33,6 +33,15 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
     const {
       refundId,
       paymentId,
@@ -40,7 +49,7 @@ const handler = async (req: Request): Promise<Response> => {
       orgId,
       amountMinor,
       currencyCode,
-    }: RefundNotificationRequest = await req.json();
+    }: RefundNotificationRequest = __body;
 
     if (!paymentId || !invoiceId || !orgId) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {

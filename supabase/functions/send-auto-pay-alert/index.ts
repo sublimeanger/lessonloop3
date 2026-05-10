@@ -47,7 +47,15 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const body: AutoPayAlertRequest = await req.json();
+    let body: AutoPayAlertRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const {
       org_id,
       run_date,

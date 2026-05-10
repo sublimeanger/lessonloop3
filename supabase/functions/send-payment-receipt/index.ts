@@ -34,7 +34,16 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { paymentId, invoiceId, orgId }: ReceiptRequest = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { paymentId, invoiceId, orgId }: ReceiptRequest = __body;
 
     if (!paymentId || !invoiceId || !orgId) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {

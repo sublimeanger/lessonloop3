@@ -58,7 +58,16 @@ serve(wrapEdgeFn("stripe-process-refund", async (req) => {
       return rateLimitResponse(corsHeaders, rlResult);
     }
 
-    const { paymentId, amount, reason } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { paymentId, amount, reason } = __body;
     if (!paymentId) throw new Error("paymentId is required");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);

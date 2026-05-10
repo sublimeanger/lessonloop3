@@ -29,7 +29,16 @@ serve(wrapEdgeFn("stripe-billing-history", async (req) => {
     const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { orgId } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { orgId } = __body;
     if (!orgId) throw new Error("orgId is required");
 
     // Service role client

@@ -48,7 +48,16 @@ serve(wrapEdgeFn("stripe-create-checkout", async (req) => {
     }
 
     // Parse request
-    const { invoiceId, successUrl, cancelUrl, installmentId: requestedInstallmentId, payRemaining } = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { invoiceId, successUrl, cancelUrl, installmentId: requestedInstallmentId, payRemaining } = __body;
     if (!invoiceId) {
       throw new Error("invoiceId is required");
     }

@@ -29,7 +29,16 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { disputeId, orgId, event }: DisputeNotificationRequest = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { disputeId, orgId, event }: DisputeNotificationRequest = __body;
 
     if (!disputeId || !orgId || !event) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
