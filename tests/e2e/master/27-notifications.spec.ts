@@ -1298,3 +1298,72 @@ test.describe('§27 — Class-bug: malformed JSON body must not 500 (s28 sweep)'
     });
   }
 });
+
+// ────────────────────────────────────────────────────────────────────
+// §27 — Stripe error classification (s29 sibling-concern close)
+// ────────────────────────────────────────────────────────────────────
+//
+// 9 stripe-* fns previously echoed raw error.message via
+// `JSON.stringify({error: error.message})` with status 400. This was
+// intentional UX-string control flow for `throw new Error(...)` calls,
+// but it leaked any Stripe SDK / DB error verbatim too. s29 migrated
+// all 9 fns to _shared/stripe-error.ts's classifyAndRespond helper:
+// known business-logic messages → mapped 4xx (frontend UX preserved),
+// unknown messages → generic "An internal error occurred. Please try
+// again." + 500.
+//
+// Asserts: for each fn, hitting it anonymously returns a 4xx with
+// "No authorization header" OR similar known-safe message (NOT an
+// unknown internal-state error message and NOT a 5xx).
+
+function callStripeFn(fnName: string): { status: number; body: string } {
+  const respFile = `/tmp/sb-stripe-${fnName}-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+  try {
+    const status = execSync(
+      `curl -s -o ${respFile} -w "%{http_code}" ` +
+        `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+        `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+        `-H "Content-Type: application/json" ` +
+        `-d '{}'`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+    return { status: parseInt(status.trim(), 10), body };
+  } finally {
+    try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+  }
+}
+
+test.describe('§27 — Stripe error classification (s29 sibling-concern close)', () => {
+  for (const fnName of [
+    'stripe-create-payment-intent',
+    'stripe-customer-portal',
+    'stripe-create-checkout',
+    'stripe-billing-history',
+    'stripe-connect-onboard',
+    'stripe-connect-status',
+    'stripe-process-refund',
+    'stripe-subscription-checkout',
+    'stripe-verify-session',
+  ]) {
+    test(`${fnName} — no-auth call returns 4xx with safe known message (not leaked Stripe/DB)`, async () => {
+      const res = callStripeFn(fnName);
+      // Status must be 4xx (known classification), never 5xx.
+      expect(
+        res.status,
+        `${fnName} returned ${res.status} (body: ${res.body.slice(0, 200)}) — must be 4xx for known-classified errors`,
+      ).toBeGreaterThanOrEqual(400);
+      expect(
+        res.status,
+        `${fnName} returned ${res.status} (body: ${res.body.slice(0, 200)}) — 5xx means classifyAndRespond fell through to generic 500 (or wrap bypassed)`,
+      ).toBeLessThan(500);
+      // Body must NOT contain markers that would indicate a leaked Stripe/DB
+      // error (e.g., "PostgrestError", "stripe_", "PGRST", JSON-parse error
+      // string from Deno runtime, etc.).
+      expect(
+        res.body,
+        `${fnName} body leaked something unexpected: ${res.body.slice(0, 200)}`,
+      ).not.toMatch(/PostgrestError|PGRST\d+|StripeError|stripe_\w+|unexpected token|JSON\.parse/i);
+    });
+  }
+});
