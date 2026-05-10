@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 Deno.serve(async (req) => {
@@ -97,12 +98,12 @@ Deno.serve(async (req) => {
               "Content-Type": "application/json",
               Authorization: `Bearer ${resendApiKey}`,
             },
-            body: JSON.stringify({
+            body: JSON.stringify(await transformEmailForShadow({
               from: "LessonLoop <notifications@lessonloop.net>",
               to: [profile.email],
               subject,
               html,
-            }),
+            }, { orgId: conn.org_id, supabase: supabase })),
           });
 
           if (emailRes.ok) {

@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 interface RefundNotificationRequest {
@@ -232,12 +233,12 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${resendApiKey}`,
       },
-      body: JSON.stringify({
+      body: JSON.stringify(await transformEmailForShadow({
         from: `${sanitiseFromName(org?.name || "LessonLoop")} <billing@lessonloop.net>`,
         to: [recipientEmail],
         subject: `Refund of ${formattedAmount} — ${invoiceNumber}`,
         html: emailHtml,
-      }),
+      }, { orgId: orgId, supabase: supabase })),
     });
 
     if (!emailResponse.ok) {

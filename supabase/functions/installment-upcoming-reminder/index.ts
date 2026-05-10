@@ -5,6 +5,7 @@ import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 serve(wrapEdgeFn("installment-upcoming-reminder", async (req) => {
@@ -169,7 +170,7 @@ serve(wrapEdgeFn("installment-upcoming-reminder", async (req) => {
           const response = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
+            body: JSON.stringify(await transformEmailForShadow({
               from: `${orgName} <billing@lessonloop.net>`,
               to: [recipientEmail],
               subject,
@@ -178,7 +179,7 @@ serve(wrapEdgeFn("installment-upcoming-reminder", async (req) => {
                 'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
                 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
               },
-            }),
+            }, { orgId: invoice.org_id, supabase: supabase })),
           });
           const result = await response.json();
 

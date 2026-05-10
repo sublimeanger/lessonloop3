@@ -4,6 +4,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -33,7 +34,10 @@ async function sendStreakEmail(
   recipientName: string,
   studentName: string,
   milestone: StreakMilestone,
-  orgName: string
+  orgName: string,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  orgId: string,
 ): Promise<boolean> {
   if (!RESEND_API_KEY) {
     console.log("RESEND_API_KEY not configured, skipping email");
@@ -47,7 +51,7 @@ async function sendStreakEmail(
         "Authorization": `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
+      body: JSON.stringify(await transformEmailForShadow({
         from: `${orgName} <notifications@lessonloop.net>`,
         to: [recipientEmail],
         subject: `${milestone.emoji} ${studentName} hit a ${milestone.streak}-day streak!`,
@@ -65,7 +69,7 @@ async function sendStreakEmail(
             </p>
           </div>
         `,
-      }),
+      }, { orgId, supabase })),
     });
 
     if (!response.ok) {
@@ -186,7 +190,9 @@ serve(wrapEdgeFn("streak-notification", async (req) => {
           guardian.full_name || "there",
           studentName,
           milestone,
-          org.name
+          org.name,
+          supabase,
+          org_id,
         );
         if (sent) emailsSent++;
       }

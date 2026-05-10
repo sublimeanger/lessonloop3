@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 const MAX_ORGS_PER_RUN = 50;
 const GUARDIAN_CONCURRENCY = 5;
@@ -422,7 +423,7 @@ async function logAndSend(
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+      body: JSON.stringify(await transformEmailForShadow({
         from: `${sanitiseFromName(opts.orgName)} <notifications@lessonloop.net>`,
         to: [opts.recipientEmail],
         subject: opts.subject,
@@ -431,7 +432,7 @@ async function logAndSend(
           "List-Unsubscribe": `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
           "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         },
-      }),
+      }, { orgId: opts.orgId, supabase })),
     });
 
     const result = await response.json();

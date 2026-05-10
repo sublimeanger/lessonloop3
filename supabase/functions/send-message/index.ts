@@ -5,6 +5,7 @@ import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { log, logError as safeLogError } from "../_shared/log.ts";
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 
 interface SendMessageRequest {
   org_id: string;
@@ -258,17 +259,11 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email via Resend if API key is configured
     if (resendApiKey) {
       try {
-        const resendResponse = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: `${orgName} <notifications@lessonloop.net>`,
-            to: [recipientEmail!],
-            subject: data.subject,
-            html: `
+        const emailPayload = await transformEmailForShadow({
+          from: `${orgName} <notifications@lessonloop.net>`,
+          to: [recipientEmail!],
+          subject: data.subject,
+          html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #333;">${escapeHtml(data.subject)}</h2>
                 <div style="white-space: pre-wrap; color: #555; line-height: 1.6;">
@@ -288,7 +283,14 @@ const handler = async (req: Request): Promise<Response> => {
                 </p>
               </div>
             `,
-          }),
+        }, { orgId: data.org_id, supabase });
+        const resendResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(emailPayload),
         });
 
         if (resendResponse.ok) {

@@ -6,6 +6,7 @@ import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 import { wrapEdgeFn } from "../_shared/sentry.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { logError } from "../_shared/log.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 
 const BATCH_SIZE = 50;
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
@@ -45,25 +46,29 @@ async function sendSingleEmail(
   fromAddress: string,
   guardian: Guardian,
   subject: string,
-  htmlBody: string
+  htmlBody: string,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  orgId: string,
 ): Promise<SendResult> {
   try {
+    const emailPayload = await transformEmailForShadow({
+      from: fromAddress,
+      to: [guardian.email],
+      subject,
+      html: htmlBody,
+      headers: {
+        'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+    }, { orgId, supabase });
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${resendApiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: [guardian.email],
-        subject,
-        html: htmlBody,
-        headers: {
-          'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        },
-      }),
+      body: JSON.stringify(emailPayload),
     });
 
     if (resendResponse.ok) {
@@ -343,7 +348,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         const batchResults = await Promise.allSettled(
           chunk.map((g) =>
-            sendSingleEmail(resendApiKey, fromAddress, g, data.subject, htmlBody)
+            sendSingleEmail(resendApiKey, fromAddress, g, data.subject, htmlBody, supabase, data.org_id)
           )
         );
 

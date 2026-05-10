@@ -6,6 +6,7 @@ import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 interface NotesNotificationRequest {
@@ -216,7 +217,7 @@ const handler = async (req: Request): Promise<Response> => {
           "Authorization": `Bearer ${resendApiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: JSON.stringify(await transformEmailForShadow({
           from: `${orgName} <notifications@lessonloop.net>`,
           to: [guardian.email],
           subject,
@@ -225,7 +226,7 @@ const handler = async (req: Request): Promise<Response> => {
             'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           },
-        }),
+        }, { orgId: orgId, supabase: supabaseService })),
       });
 
       if (response.ok) {

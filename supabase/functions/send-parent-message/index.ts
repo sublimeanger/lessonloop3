@@ -5,6 +5,7 @@ import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 /**
  * Unified edge function for parent-initiated messages.
  * Handles both new conversations and replies to existing threads.
@@ -284,7 +285,7 @@ const handler = async (req: Request): Promise<Response> => {
             "Authorization": `Bearer ${resendApiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
+          body: JSON.stringify(await transformEmailForShadow({
             from: `${orgName} <notifications@lessonloop.net>`,
             to: [staffEmail],
             subject: emailSubject,
@@ -306,7 +307,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </p>
               </div>
             `,
-          }),
+          }, { orgId: data.org_id, supabase: supabase })),
         });
 
         if (resendResponse.ok) {

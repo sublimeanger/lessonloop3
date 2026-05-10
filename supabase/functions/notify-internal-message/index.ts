@@ -4,6 +4,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 interface NotifyInternalRequest {
   org_id: string;
   recipient_user_id: string;
@@ -135,7 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
             "Authorization": `Bearer ${resendApiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
+          body: JSON.stringify(await transformEmailForShadow({
             from: `${orgName} <notifications@lessonloop.net>`,
             to: [recipientProfile.email],
             subject: `[Internal] ${data.subject}`,
@@ -157,7 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </p>
               </div>
             `,
-          }),
+          }, { orgId: data.org_id, supabase: supabase })),
         });
 
         if (resendResponse.ok) {

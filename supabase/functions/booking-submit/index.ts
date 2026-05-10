@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { escapeHtml, sanitiseFromName } from '../_shared/escape-html.ts';
 import { wrapEdgeFn } from "../_shared/sentry.ts";
 
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
 function formatBookingDate(dateStr: string, timeStr: string): { date: string; time: string } {
@@ -277,12 +278,12 @@ Deno.serve(wrapEdgeFn("booking-submit", async (req) => {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${RESEND_API_KEY}`,
           },
-          body: JSON.stringify({
+          body: JSON.stringify(await transformEmailForShadow({
             from: `${sanitiseFromName(orgName)} <noreply@lessonloop.net>`,
             to: [contact.email],
             subject: emailSubject,
             html: emailBody,
-          }),
+          }, { orgId: orgId, supabase: supabase })),
         });
         // Log to message_log
         await supabase.from('message_log').insert({
@@ -361,12 +362,12 @@ Deno.serve(wrapEdgeFn("booking-submit", async (req) => {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${RESEND_API_KEY}`,
             },
-            body: JSON.stringify({
+            body: JSON.stringify(await transformEmailForShadow({
               from: `${sanitiseFromName(orgName)} <noreply@lessonloop.net>`,
               to: adminEmails,
               subject: adminSubject,
               html: adminHtmlBody,
-            }),
+            }, { orgId: orgId, supabase: supabase })),
           });
         }
       }

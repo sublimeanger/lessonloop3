@@ -16,6 +16,7 @@ import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { log, logError } from "../_shared/log.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 Deno.serve(wrapEdgeFn("credit-expiry-warning", async (req) => {
@@ -213,7 +214,7 @@ Deno.serve(wrapEdgeFn("credit-expiry-warning", async (req) => {
               "Content-Type": "application/json",
               Authorization: `Bearer ${resendApiKey}`,
             },
-            body: JSON.stringify({
+            body: JSON.stringify(await transformEmailForShadow({
               from: "LessonLoop <notifications@lessonloop.net>",
               to: [recipientEmail],
               subject,
@@ -222,7 +223,7 @@ Deno.serve(wrapEdgeFn("credit-expiry-warning", async (req) => {
                 'List-Unsubscribe': `<${FRONTEND_URL}/portal/settings?tab=notifications>`,
                 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
               },
-            }),
+            }, { orgId: credit.org_id, supabase: supabase })),
           });
 
           if (emailRes.ok) {

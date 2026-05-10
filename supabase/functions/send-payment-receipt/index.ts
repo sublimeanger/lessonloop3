@@ -4,6 +4,7 @@ import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 import { fetchInvoicePdfAttachment } from "../_shared/invoice-pdf-attachment.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 const log = (msg: string) => console.log(`[send-payment-receipt] ${msg}`);
@@ -343,7 +344,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Authorization": `Bearer ${resendApiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(resendPayload),
+      body: JSON.stringify(await transformEmailForShadow(resendPayload, { orgId, supabase })),
     });
 
     const result = await response.json();

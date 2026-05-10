@@ -7,6 +7,7 @@ import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
+import { transformEmailForShadow } from "../_shared/shadow-email.ts";
 // ── Interfaces ──────────────────────────────────────────────────────────
 
 interface ContinuationRunRequest {
@@ -1020,12 +1021,12 @@ async function handleSend(
             Authorization: `Bearer ${resendApiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
+          body: JSON.stringify(await transformEmailForShadow({
             from: `${orgName} <notifications@lessonloop.net>`,
             to: [guardian.email],
             subject,
             html: htmlContent,
-          }),
+          }, { orgId: orgId, supabase: supabase })),
         });
 
         if (emailResponse.ok) {
@@ -1217,12 +1218,12 @@ async function handleSendReminders(
             Authorization: `Bearer ${resendApiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
+          body: JSON.stringify(await transformEmailForShadow({
             from: `${orgName} <notifications@lessonloop.net>`,
             to: [guardian.email],
             subject,
             html: htmlContent,
-          }),
+          }, { orgId: orgId, supabase: supabase })),
         });
 
         if (emailResponse.ok) sentCount++;
