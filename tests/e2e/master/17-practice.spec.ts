@@ -269,6 +269,65 @@ test.describe('§17.4 — Streak progression (trigger)', () => {
 
 // §17.3 parent-side logging is already covered by §26.7 (parent portal).
 
+// Helper: query Postgres via the Supabase Management API db/query endpoint.
+// `net._http_response` is not exposed via PostgREST, so we round-trip through
+// the Management API. Requires `SUPABASE_ACCESS_TOKEN` (sbp_*) in env — which
+// every Claude session loads from ~/.claude/settings.json. Tests gracefully
+// surface "skip" guidance if the token is missing.
+async function selectNetHttpResponseSince(
+  sinceId: number,
+  contentSubstring: string,
+): Promise<Array<{ id: number; status_code: number | null; created: string; content: string | null; error_msg: string | null }>> {
+  // pg_net removes rows from `http_request_queue` after processing, so a URL
+  // JOIN doesn't work to identify the request. Filter by `id > sinceId` (so
+  // we only see post-test rows) + body shape (`content LIKE %contentSubstring%`)
+  // to disambiguate from concurrent cron callouts.
+  const { execSync } = await import('node:child_process');
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  if (!token) {
+    throw new Error(
+      '[§17.4 e2e delivery] SUPABASE_ACCESS_TOKEN missing — cannot query net._http_response. ' +
+        'Add to ~/.claude/settings.json env block.',
+    );
+  }
+  const sql =
+    `SELECT r.id, r.status_code, r.created::text AS created, r.content, r.error_msg ` +
+    `FROM net._http_response r ` +
+    `WHERE r.id > ${sinceId} ` +
+    `AND r.content LIKE '%${contentSubstring}%' ` +
+    `ORDER BY r.id DESC LIMIT 5`;
+  const body = JSON.stringify({ query: sql });
+  // Pass body via stdin to keep secrets off argv.
+  const out = execSync(
+    `curl -sS -X POST 'https://api.supabase.com/v1/projects/xmrhmxizpslhtkibqyfy/database/query' ` +
+      `-H 'Authorization: Bearer ${token}' ` +
+      `-H 'Content-Type: application/json' ` +
+      `-H 'User-Agent: lessonloop-e2e/1.0' ` +
+      `--data-binary @-`,
+    { input: body, encoding: 'utf-8', timeout: 30_000 },
+  );
+  const parsed = JSON.parse(out);
+  if (!Array.isArray(parsed)) {
+    throw new Error(`[§17.4 e2e delivery] Management API returned non-array: ${out.slice(0, 200)}`);
+  }
+  return parsed;
+}
+
+async function maxNetHttpResponseId(): Promise<number> {
+  const { execSync } = await import('node:child_process');
+  const token = process.env.SUPABASE_ACCESS_TOKEN!;
+  const out = execSync(
+    `curl -sS -X POST 'https://api.supabase.com/v1/projects/xmrhmxizpslhtkibqyfy/database/query' ` +
+      `-H 'Authorization: Bearer ${token}' ` +
+      `-H 'Content-Type: application/json' ` +
+      `-H 'User-Agent: lessonloop-e2e/1.0' ` +
+      `--data-binary @-`,
+    { input: JSON.stringify({ query: 'SELECT COALESCE(max(id), 0) AS m FROM net._http_response' }), encoding: 'utf-8', timeout: 30_000 },
+  );
+  const parsed = JSON.parse(out);
+  return Number(parsed?.[0]?.m ?? 0);
+}
+
 test.describe('§17.4 — Streak milestone (audit + notification side-effect)', () => {
   test.use({ storageState: AUTH.owner });
 
@@ -341,6 +400,84 @@ test.describe('§17.4 — Streak milestone (audit + notification side-effect)', 
       expect(audit[0].entity_type).toBe('practice_streaks');
       expect(audit[0].after?.streak).toBe(3);
       expect(audit[0].after?.student_id).toBe(student.id);
+    } finally {
+      supabaseDelete(
+        'audit_log',
+        `org_id=eq.${orgId}&action=eq.streak_milestone&entity_id=eq.${student.id}`,
+      );
+      supabaseDelete('practice_streaks', `org_id=eq.${orgId}&student_id=eq.${student.id}`);
+      supabaseDelete('practice_logs', `org_id=eq.${orgId}&student_id=eq.${student.id}`);
+      supabaseDelete('students', `id=eq.${student.id}`);
+    }
+  });
+
+  test('milestone triggers streak-notification edge fn end-to-end (200 OK from net._http_response)', async () => {
+    // Session-12 closure: vault SUPABASE_URL + INTERNAL_CRON_SECRET are
+    // seeded; trigger sends `x-cron-secret` header (post-migration
+    // 20260519100000_notify_streak_milestone_x_cron_secret). The edge fn
+    // (verify_jwt=false) accepts and runs to completion. Asserts the full
+    // chain rather than just the audit_log durable record.
+    test.skip(!process.env.SUPABASE_ACCESS_TOKEN, 'SUPABASE_ACCESS_TOKEN missing in env');
+
+    const { supabaseInsert, supabaseSelect, supabaseDelete, getOwnerUserId } =
+      await import('../supabase-admin');
+    const orgId = process.env.E2E_ORG_ID!;
+    const ownerId = getOwnerUserId();
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const sinceId = await maxNetHttpResponseId();
+
+    const student = supabaseInsert('students', {
+      org_id: orgId,
+      first_name: `${testId}_e2edelivery`,
+      last_name: testId,
+      status: 'active',
+    });
+    expect(student?.id).toBeTruthy();
+
+    try {
+      const isoDay = (offsetDays: number) =>
+        new Date(Date.now() - offsetDays * 86400_000).toISOString().slice(0, 10);
+
+      for (const offset of [2, 1, 0]) {
+        const log = supabaseInsert('practice_logs', {
+          org_id: orgId,
+          student_id: student.id,
+          logged_by_user_id: ownerId,
+          practice_date: isoDay(offset),
+          duration_minutes: 25,
+          notes: `${testId}_e2edelivery_d-${offset}`,
+        });
+        expect(log?.id, `insert day -${offset} failed`).toBeTruthy();
+      }
+
+      const streaks = supabaseSelect(
+        'practice_streaks',
+        `org_id=eq.${orgId}&student_id=eq.${student.id}&select=current_streak`,
+      );
+      expect(streaks[0]?.current_streak).toBe(3);
+
+      // pg_net is async — poll up to 30s for the response row. Filter on
+      // id > sinceId (post-test rows) + body content "Building Momentum"
+      // (the milestone string for streak=3) to disambiguate from concurrent
+      // cron callouts.
+      let response: { id: number; status_code: number | null; content: string | null } | undefined;
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        const rows = await selectNetHttpResponseSince(sinceId, 'Building Momentum');
+        if (rows.length > 0) {
+          response = rows[0];
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 2_000));
+      }
+
+      expect(response, 'no net._http_response row found for streak-notification within 30s').toBeTruthy();
+      expect(response!.status_code, `streak-notification returned ${response!.status_code}: ${response!.content}`).toBe(200);
+      // emails_sent may be 0 if RESEND_API_KEY is not seeded (best-effort
+      // delivery); the contract being verified is auth + shape, not Resend.
+      const body = JSON.parse(response!.content || '{}');
+      expect(body.success).toBe(true);
+      expect(body.streak).toBe(3);
     } finally {
       supabaseDelete(
         'audit_log',
