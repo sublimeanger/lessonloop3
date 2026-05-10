@@ -21,8 +21,15 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 ## Summary
 
-- **Total rows:** 180
-- **State:** 128 🟢 verified / 36 🟡 structurally-verified-pending-browser / 6 🔴 launch-blockers / 10 ⏸ deferred-post-launch / **0 ❓ untouched** = **71% complete**
+- **Total rows:** 183 (+3 NEW rows in s24 — Agency tier UI / Recurring billing templates UI / Parent self-reschedule UI / Parent LoopAssist UI added; net +3 because one was an existing row)
+- **State:** 156 🟢 verified / 11 🟡 structurally-verified-pending-browser / 6 🔴 launch-blockers / 10 ⏸ deferred-post-launch / **0 ❓ untouched** = **~85% complete**
+- **s24 promotions (27 rows + 4 NEW rows + 1 finding — STANCE RECALIBRATION + UN-DEFERRAL SWEEP per Jamie's "world class" stance):**
+  * **Item 0 — Launch scope docs**: LESSONLOOP_V2_PLAN.md §3.2 + §3.4 + audit/00-launch-readiness.md updated. Un-deferred Leads/Booking/Waitlist + Parent reschedule + Parent LoopAssist + Agency tier + Recurring billing + Public booking + Xero (CONDITIONAL → DAY-ONE). Only Zoom stays HIDDEN. Mobile → dedicated audit-run track s25-s26+.
+  * **Item 1 — Xero day-one (3)**: xero-oauth-callback, xero-sync-invoice, xero-sync-payment all 🟢. **AREA effectively COMPLETE 5/5 🟢 (7th area).** LL-LL prefix bug fixed (xero-sync-invoice v21 deployed via Supabase Management API). 4 prior fixes verified holding via Supabase MCP execute_sql. Historical 1 invoice retains LL-LL- (cosmetic).
+  * **Item 2 — Leads/Booking/Waitlist (12)**: Public booking page + booking-get-slots + booking-submit (3 via §25 contracts); Leads list + Lead detail (2); Enrolment waitlist + send-enrolment-offer + waitlist-respond (3); Send contact message (1); Send invite email + Invite get + Invite accept (3 + 1 finding). **AREA effectively COMPLETE 12/12 🟢 (8th area).** send-enrolment-offer getUser(token) fix deployed v19.
+  * **Item 3 — Un-deferred features (5 + 4 NEW rows)**: Agency tier UI [NEW] + Recurring billing templates UI [NEW] + Parent self-reschedule UI [NEW] + Parent LoopAssist UI [NEW] + Recurring billing scheduler cron 🟢. UI smokes added in §22.
+  * **Item 4 — Quick wins (7)**: Owner/admin dashboard, Marketing root redirect, External marketing redirects, 404 page, Help page, Trial banner, iCal feed all 🟢. Mostly inline promotions citing existing test coverage; iCal feed +2 new contracts.
+  * Plus **32 new tests** added across §27 + §25 + §22 + §19. New finding filed: 2026-05-10-invite-get-returns-500-on-non-uuid-token (low severity).
 - **s23 promotions (11 rows — final multi-area sweep across AI + Integrations + Cross-cutting):**
   * **AI/LoopAssist (4)** → **AREA effectively COMPLETE 4/4 active 🟢 (6th area; 1 ⏸ marketing-chat is LAUNCH CUT per v2 §3)**: LoopAssist chat (staff); LoopAssist execute (tool calls); Parent LoopAssist chat; CSV import column mapping. All via §27 multi-area auth-gate contracts (s23).
   * **Integrations Calendar (4)**: Google Calendar OAuth (start side; callback verify_jwt finding referenced); Calendar disconnect; Calendar busy fetch; Calendar lesson sync. All via §27 multi-area auth-gate contracts (s23). iCal feed remains 🟡 (token-based; CONTRACT GAP — needs token-validity contract test in v1.1).
