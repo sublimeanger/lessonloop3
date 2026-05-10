@@ -180,15 +180,27 @@ serve(wrapEdgeFn("seed-shadow-org", async (req: Request): Promise<Response> => {
       created_by: jamieUserId,
     }, "org");
 
-    await supabase.from("org_memberships").insert([
-      { org_id: orgId, user_id: jamieUserId, role: "owner", status: "active" },
-      { org_id: orgId, user_id: laurenUserId, role: "admin", status: "active" },
-    ]);
-
-    await supabase.from("profiles").upsert([
+    // Profiles upserted BEFORE memberships in case any audit trigger or RLS
+    // policy joins profiles.id during the membership insert. Both rows are
+    // idempotent via onConflict=id.
+    const { error: profilesErr } = await supabase.from("profiles").upsert([
       { id: jamieUserId, full_name: "Jamie McKaye", has_completed_onboarding: true },
       { id: laurenUserId, full_name: "Lauren Twilley", has_completed_onboarding: true },
     ], { onConflict: "id" });
+    if (profilesErr) throw new Error(`profiles upsert failed: ${profilesErr.message}`);
+
+    // s32: memberships split into per-row inserts with explicit error
+    // checks. s31 used a single multi-row insert with no error inspection;
+    // Lauren's admin row never landed and the failure was silent.
+    const { error: jamieMemErr } = await supabase.from("org_memberships").insert({
+      org_id: orgId, user_id: jamieUserId, role: "owner", status: "active",
+    });
+    if (jamieMemErr) throw new Error(`Jamie owner membership insert failed: ${jamieMemErr.message}`);
+
+    const { error: laurenMemErr } = await supabase.from("org_memberships").insert({
+      org_id: orgId, user_id: laurenUserId, role: "admin", status: "active",
+    });
+    if (laurenMemErr) throw new Error(`Lauren admin membership insert failed: ${laurenMemErr.message}`);
 
     // ─── Cluster 2: teachers + location + rooms ────────────────────
     const teacherIds: string[] = [];
