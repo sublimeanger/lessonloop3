@@ -1,5 +1,7 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+**Last updated:** 2026-05-11 (after 35th-session — DOB CALENDAR UX FIX. Pre-launch UX defect: shadcn Calendar wrapping react-day-picker 8.10.1 had chevron-only month-by-month navigation, requiring ~432 clicks to enter a 1990 DOB from today (May 2026). Phase 1: `src/components/ui/calendar.tsx` extended to forward `captionLayout` to react-day-picker + dropdown styling (caption_dropdowns, dropdown, dropdown_month, dropdown_year, vhidden classnames; static caption_label hidden when dropdowns active). Phase 2: `src/components/ui/date-picker.tsx` extended with opt-in `longRange` prop + `fromYear`/`toYear` overrides. When longRange=true, captionLayout switches to `"dropdown-buttons"`, defaultMonth opens at ~10 years ago (sensible for DOB), year range defaults to current-100 / current+5. Default behaviour byte-identical to pre-change (every existing call site unchanged). Phase 3: wired `longRange` on the 2 DOB DatePicker sites — `StudentInfoStep.tsx` wizard + `StudentInfoCard.tsx` edit view. No other DatePicker site touched. Phase 4: 8 unit tests in `src/test/ui/DatePicker.test.tsx` cover both modes (backwards-compat default, longRange dropdowns, fromYear/toYear overrides, ~10-year-ago default month, value-overrides-defaultMonth). 8/8 pass; full unit suite has only pre-existing csv-parser + DeleteValidation failures unrelated to UI. Phase 5: pushed at dd438d5; Netlify auto-deploy in flight at HANDOVER time. After: DOB entry takes 2 taps (Year dropdown → 1990, Month dropdown → March, click day 15) instead of hundreds of chevrons. Lauren onboarding still paused on Jamie's UI walkthrough — s35 DOB fix is one of the things he'll verify. Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/3.6m (§6 dashboard + §26.9.1 — the latter recurred after skipping s34 baseline, confirming intermittent classification).
+
 **Last updated:** 2026-05-10 (after 34th-session — LESSON_NOTES TEACHER↔INSTRUMENT FIX + LAUREN ONBOARDING READINESS. Post-s33 MCP verification surfaced that 260/402 lesson_notes (65%) had teacher_id pointing to the original s32 teachers (Sarah/James only), leaving Olivia/David/Rachel with zero notes despite being assigned 20/26/8 students. Root cause: s33 derived lesson_notes.teacher_id from lessons.teacher_id (the original lesson scheduling teacher) instead of the student's current primary teacher (per student_teacher_assignments). Phase 1.1: UPDATE 402 rows to current primary teacher via STA. 402/402 valid teacher↔instrument pairs post-fix; notes now distribute David 118 / Olivia 90 / James 80 / Sarah 78 / Rachel 36 (proportional to student counts). Phase 1.2: extended content libraries: keys/strings/woodwinds went 15/10/8 → 25/25/20 content/homework/focus_areas; brass went 15/10/8 → 20/20/15. Phase 1.3: regenerated all 402 notes' content_covered + homework + focus_areas using extended libraries. Unique content jumped 310→364 (90.5%), unique homework 233→361 (89.8%), unique focus_areas 167→358 (89.1%). Engagement/parent_visible/teacher_private_notes preserved untouched. Phase 1.5 spot-check: 10/10 random samples have valid teacher-can-teach-instrument + family-matched content. Phase 2: filed audit/findings/2026-05-10-26-9-1-pay-full-invoice-flake.md as P3 intermittent (didn't recur in s34 baseline). Updated docs/LAUREN_ONBOARDING_CHECKLIST.md §1.3 removing the "past lessons show different teacher" caveat (resolved) and replacing with the realistic "calendar shows original lesson teachers, student profiles show current primary" pattern. scripts/seed-shadow-enrichment.sql Phase 2 block rewritten with corrected STA-derived teacher_id and extended libraries. Phase 3: fresh s34 smoke message af7f2c15... sent successfully (email_sent=true, no error); fresh Jamie magic link minted to /tmp/jamie_magic_link_s34.txt (single-use, ~1hr TTL — Jamie needs to regenerate if expired). **551ca74e is now genuinely Lauren-ready pending Jamie's UI walkthrough.** Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/3.6m (§6 dashboard + §13.7.4 send-invoice-email — both documented pre-existing).
 
 **Last updated:** 2026-05-10 (after 33rd-session — SHADOW ENRICHMENT + ONBOARDING READINESS. Phase 0: Resend smoke test re-fired successfully (status=sent, sent_at 22:13Z); message_log row 709c9306... created cleanly, Resend POST returned 200, shadow-email transformEmailForShadow ran in-line per the code path. Phase 1: added 3 new teachers (Olivia Hartley strings / David Okonkwo woodwinds / Rachel Chen piano), narrowed Sarah's specialisation to piano/trumpet and James's to cello/flute, redistributed all 90 students across 5 teachers with realistic uneven loads (Rachel 8 / Sarah 17 / James 19 / Olivia 20 / David 26), added 11 doubler students with secondary instruments. Phase 2: 402 lesson_notes seeded (35% of 1124 past lessons) with instrument-family-aware content libraries; engagement distribution 5/10/30/35/20% near-perfect; 310/402 unique content_covered strings (77%); parent_visible 80% TRUE; 133 notes have teacher_private_notes. Phase 3: shadow_mode lookup index-scans in 0.088ms; auto-deploy still healthy at 6ee13c3; minted Jamie magic link (not committed — single-use ~1hr TTL, captured locally); wrote docs/LAUREN_ONBOARDING_CHECKLIST.md with full daily-review SQL + reset paths + s34 deferral list. **551ca74e is now Lauren-ready.** Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/3.5m (§6 dashboard pre-existing fail held; §26.9.1 Pay full invoice new flake — investigate s34 if recurs).
@@ -1598,6 +1600,113 @@ failures, check `.env.test` and the storage states first.
 Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
+
+### What's done at end of 35th session
+
+(Catalog state ~91% unchanged. Audit total: 167 🟢 / 6 🟡 / **0 🔴** /
+10 ⏸ = ~91%. **DOB calendar UX fix shipped.** Baseline 665/2/122/3.6m —
+§6 dashboard pre-existing + §26.9.1 intermittent recurred this run.)
+
+Per-phase outcomes for s35:
+
+- **Phase 1 — Calendar.tsx captionLayout pass-through (~10 min)**:
+  - Accepts `captionLayout` from props with default `"buttons"`
+    (backwards-compat). Forwarded to underlying DayPicker.
+  - New classNames: `caption_dropdowns`, `dropdown`, `dropdown_month`,
+    `dropdown_year`, `vhidden`. Static `caption_label` is now hidden
+    via Tailwind `hidden` modifier when captionLayout != "buttons"
+    (otherwise it would render alongside the dropdowns).
+  - All existing classnames preserved; existing call sites render
+    identically.
+
+- **Phase 2 — DatePicker.tsx longRange mode (~15 min)**:
+  - New opt-in props:
+    * `longRange?: boolean` (default false)
+    * `fromYear?: number` (default `currentYear - 100` when longRange)
+    * `toYear?: number` (default `currentYear + 5` when longRange)
+  - When longRange=true:
+    * Calendar receives `captionLayout="dropdown-buttons"` → Month +
+      Year render as clickable native `<select>` dropdowns inline
+      with the prev/next chevrons.
+    * `defaultMonth` opens on ~10 years ago when no value is set
+      (sensible for DOB; most students 5-15 yrs old).
+  - When longRange=false (default): byte-identical to pre-s35.
+    Critical invariant: `fromYear`/`toYear` are passed to Calendar as
+    `undefined` in non-longRange mode, so no behaviour change for
+    due-date or lesson-date pickers.
+
+- **Phase 3 — Wire DOB sites (~5 min)**:
+  - `src/components/students/wizard/StudentInfoStep.tsx`: added
+    `longRange` to the wizard DOB DatePicker.
+  - `src/components/students/StudentInfoCard.tsx`: added `longRange`
+    to the edit-mode DOB DatePicker.
+  - No other DatePicker site touched (verified via grep: ~20 other
+    DatePicker call sites exist for due dates, lesson dates, billing
+    dates — all unchanged).
+  - `npx tsc --noEmit` succeeds with 0 errors.
+
+- **Phase 4 — Test coverage (~20 min)**:
+  - Created `src/test/ui/DatePicker.test.tsx` with 8 tests:
+    * Default mode renders no `<select>` dropdowns.
+    * Default mode shows placeholder when empty.
+    * Default mode formats existing ISO value as "d MMM yyyy".
+    * longRange renders ≥2 native `<select>` dropdowns (Month + Year).
+    * longRange defaults fromYear to current-100, toYear to current+5.
+    * Custom fromYear/toYear overrides drive year-option range.
+    * longRange opens on ~10 years ago when no value is set.
+    * longRange does NOT override defaultMonth when value is provided
+      (existing value's month wins).
+  - All 8 pass. Full unit-test suite: 457 pass / 5 fail (csv-parser +
+    DeleteValidation, both pre-existing and unrelated to s35 — verified
+    by `git stash && vitest run`).
+  - Skipped a dedicated e2e smoke per the prompt's escape-hatch
+    ("If e2e infra not easily reachable from a clean auth state,
+    unit-test-only is acceptable"). The unit tests cover the
+    react-day-picker integration contract; visual verification falls
+    to Jamie's UI walkthrough.
+
+- **Phase 5 — Deploy + verify (~5 min)**:
+  - Pushed at commit `dd438d5`. Netlify auto-deploy fires; build
+    duration typically 2-4 min. scripts/check-deploy-sync.sh shows
+    Netlify catching up at HANDOVER time.
+
+### s35 impact summary
+
+| Before s35 | After s35 |
+| --- | --- |
+| Enter DOB for 1990-born from May 2026 = ~432 chevron clicks | 2 taps: Year dropdown → 1990, Month dropdown → March |
+| Calendar opens on current month for any picker | DOB calendar opens on ~10 years ago (sensible default) |
+| Year range limited to chevron navigation | Year dropdown covers 1926-2031 by default (100-year span) |
+| Non-DOB DatePicker call sites | Unchanged — opt-in invariant preserved |
+
+### Outstanding Jamie actions (s36 unblock)
+
+Unchanged from s34. Jamie's UI walkthrough still pending:
+
+1. Click magic link → 551ca74e dashboard.
+2. Run 7-section sanity walkthrough per `docs/LAUREN_ONBOARDING_CHECKLIST.md` §1.2.
+3. **NEW for s35:** click into a student profile → click "Edit" →
+   click DOB field → confirm Month + Year dropdowns appear and the
+   calendar opens on ~May 2016 (10 years ago). Tap Year dropdown,
+   pick 1990, tap Month dropdown, pick March. Verify the trigger
+   shows "15 Mar 1990" after picking the day.
+4. Verify the s34 smoke email landed in inbox with `[SHADOW: 551ca74e]`
+   subject.
+5. Greenlight Lauren — mint Lauren magic link per checklist Step 3.
+
+### s36+ plan (deferred from s35)
+
+- Typed-input fallback in DatePicker trigger (parse "15/03/1990")
+  — separate v1.1 UX initiative.
+- UK vs US date locale settings — v1.1.
+- Teacher tier / Agency tier seed variants — post-Lauren-shadow.
+- Leads / booking / waitlist / AI conversation history seed.
+- Calendar UX (the calendar page, not the input) — post-shadow-term.
+- Import XLSX support — post-shadow-term.
+- API keys / MCP wrapper — post-shadow-term.
+- Re-investigate §26.9.1 if it surfaces in 2+ consecutive baselines
+  (recurred in s35 baseline after skipping s34, classifies as
+  intermittent matching the filed finding).
 
 ### What's done at end of 34th session
 
