@@ -20,6 +20,8 @@
  *   status without it.
  */
 
+import { markRequestAsShadow } from "./sentry.ts";
+
 const SHADOW_RECIPIENTS = (Deno.env.get("SHADOW_RECIPIENTS") || "")
   .split(",")
   .map((s) => s.trim())
@@ -39,6 +41,10 @@ export interface ShadowContext {
   orgId: string | null | undefined;
   // deno-lint-ignore no-explicit-any
   supabase: any; // service-role client
+  /** Optional Request object — if provided, will be marked as shadow
+   *  (via _shared/sentry.ts markRequestAsShadow) when interception
+   *  occurs, so Sentry events tag shadow:true. */
+  req?: Request;
 }
 
 /** Returns true if shadow recipients are configured (helper for callers
@@ -79,6 +85,10 @@ export async function transformEmailForShadow(
   }
 
   if (!isShadow) return payload;
+
+  // Mark the request as shadow so wrapEdgeFn tags Sentry events
+  // shadow:true for this invocation.
+  if (ctx.req) markRequestAsShadow(ctx.req);
 
   const orgPrefix = String(ctx.orgId).slice(0, 8);
   const originalTo = payload.to.join(", ");

@@ -63,6 +63,27 @@ function parseDsn(dsn: string): ParsedDsn | null {
 const DSN_RAW = (typeof Deno !== "undefined" && Deno.env.get("SENTRY_EDGE_DSN")) || "";
 const DSN = parseDsn(DSN_RAW);
 
+/**
+ * Per-request shadow-mode marker. Populated by `_shared/shadow-email.ts`
+ * when it routes an email to SHADOW_RECIPIENTS (i.e., when the request's
+ * org is in shadow mode). wrapEdgeFn reads this on event capture to add
+ * `shadow:true` tag to Sentry events. WeakMap so entries are GC'd when
+ * the Request object goes out of scope (per-invocation, no cross-request
+ * contamination).
+ */
+const SHADOW_REQUESTS = new WeakMap<Request, true>();
+
+/** Mark the current request as shadow-mode. Idempotent. Called by
+ *  shadow-email.ts when it intercepts an outbound email. */
+export function markRequestAsShadow(req: Request): void {
+  SHADOW_REQUESTS.set(req, true);
+}
+
+/** Check whether a request was marked as shadow during its lifecycle. */
+function isShadowRequest(req: Request): boolean {
+  return SHADOW_REQUESTS.get(req) === true;
+}
+
 /** UUID v4 without external deps. */
 function uuid(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -119,6 +140,7 @@ function buildEvent(
       }],
     }
     : undefined;
+  const shadow = isShadowRequest(context.request);
   return {
     timestamp: Date.now() / 1000,
     platform: "javascript",
@@ -132,6 +154,7 @@ function buildEvent(
       "fn_name": context.fnName,
       "request.method": context.request.method,
       ...(url ? { "request.path": url.pathname } : {}),
+      ...(shadow ? { "shadow": "true" } : {}),
     },
     request: url
       ? {
