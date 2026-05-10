@@ -43,7 +43,7 @@ export default function Privacy() {
               Privacy Policy
             </h1>
             <p className="text-muted-foreground mb-8">
-              Last updated: January 2025
+              Last updated: 10 May 2026
             </p>
 
             <div className="prose prose-slate dark:prose-invert max-w-none">
@@ -132,6 +132,49 @@ export default function Privacy() {
                 <li><strong>Service providers:</strong> Third-party services that help us operate our platform (e.g., payment processing, email delivery, cloud hosting)</li>
                 <li><strong>Within your organisation:</strong> Other members of your music school or teaching organisation as required for the service</li>
                 <li><strong>Legal requirements:</strong> When required by law or to protect our rights</li>
+              </ul>
+
+              <h3 className="text-xl font-semibold text-foreground mt-6 mb-3">5.1 Sub-processors</h3>
+              <p className="text-muted-foreground mb-4">
+                LessonLoop uses the following sub-processors. Each is bound by a Data Processing Agreement and is selected for its security and compliance posture.
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground mb-4 space-y-2">
+                <li>
+                  <strong>Supabase, Inc.</strong> (970 Toa Payoh North #07-04, Singapore) — database, authentication, storage, and edge compute. Hosted in EU (Frankfurt).
+                </li>
+                <li>
+                  <strong>Stripe, Inc.</strong> (354 Oyster Point Blvd, South San Francisco, CA 94080, USA) — payment processing. Card data is never stored on LessonLoop's systems; it goes directly to Stripe via their tokenised checkout.
+                </li>
+                <li>
+                  <strong>Resend, Inc.</strong> (USA) — transactional email delivery (lesson reminders, invoices, password resets).
+                </li>
+                <li>
+                  <strong>Anthropic, PBC</strong> (1 Letterman Drive, Suite D4700, San Francisco, CA 94129, USA) — powers <em>LoopAssist</em>, our AI-assisted teaching helper. When you use LoopAssist, your queries and relevant context (student names, lesson notes, schedules within your organisation) are sent to Anthropic's Claude models for processing. Anthropic processes this data under their{" "}
+                  <a
+                    href="https://www.anthropic.com/legal/commercial-terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Commercial Terms of Service
+                  </a>
+                  {" "}and does not use it to train their models. LoopAssist features can be disabled at the organisation level by an admin.
+                </li>
+                <li>
+                  <strong>Sentry (Functional Software, Inc.)</strong> (45 Fremont Street, San Francisco, CA 94105, USA) — error reporting and crash diagnostics. Aggregated, not linked to individual user identifiers in production.
+                </li>
+                <li>
+                  <strong>Netlify, Inc.</strong> (USA) — web application hosting and CDN.
+                </li>
+                <li>
+                  <strong>Cloudflare, Inc.</strong> (USA) — DNS, edge security, DDoS mitigation.
+                </li>
+                <li>
+                  <strong>Xero Ltd</strong> (Wellington, New Zealand) — <em>optional</em> accounting integration. Only enabled per-organisation and only sends invoice + payment data when an admin connects the integration.
+                </li>
+                <li>
+                  <strong>Google LLC</strong> (USA) — <em>optional</em> Google Calendar integration and Sign in with Google. Only enabled per-user.
+                </li>
               </ul>
 
               <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">6. Data Retention</h2>

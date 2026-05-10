@@ -88,3 +88,31 @@ test.describe('Authed root redirects (parent)', () => {
     await page.waitForURL(/\/portal\/home/, { timeout: 15_000 });
   });
 });
+
+// ────────────────────────────────────────────────────────────────────
+// §02 — Privacy policy sub-processor disclosure (s25)
+// ────────────────────────────────────────────────────────────────────
+//
+// GDPR / UK DPA require disclosure of sub-processors that handle EU
+// personal data. The s25 update adds Anthropic + 8 other sub-processors
+// to /privacy. This contract guards against accidental removal.
+//
+// /privacy is a SPA route handled by ExternalRedirect → lessonloop.net.
+// In SSG/prerender mode the marketing site serves the page directly;
+// in CSR the redirect happens client-side. We assert the rendered text
+// after waiting for either path to land.
+
+test.describe('Privacy policy — sub-processor disclosure (s25)', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test('GET /privacy contains Anthropic sub-processor mention', async ({ page }) => {
+    await page.goto('/privacy');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2_000);
+    const text = (await page.locator('body').textContent())?.toLowerCase() ?? '';
+    expect(text).toContain('anthropic');
+    expect(text).toContain('sub-processor');
+    // LoopAssist mention is the trigger context for Anthropic disclosure
+    expect(text).toContain('loopassist');
+  });
+});
