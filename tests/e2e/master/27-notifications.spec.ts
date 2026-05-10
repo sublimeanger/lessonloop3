@@ -985,6 +985,150 @@ test.describe('§27 — Leads/Booking/Waitlist un-deferral contracts (s24)', () 
   });
 });
 
+// ────────────────────────────────────────────────────────────────────
+// §27 — Invite cluster un-deferral contracts (s24)
+// ────────────────────────────────────────────────────────────────────
+//
+// Per s24 stance recalibration: invite cluster (send-invite-email,
+// invite-get, invite-accept) were 🟡 from prior structural-only audit.
+// Three contracts each prove the gate / public-token surface fires.
+//
+// - send-invite-email: user-JWT auth (anon → 401, no auth → 401).
+// - invite-get: public POST {token: <jwt>}, IP rate limit (5/min);
+//   missing token → 400, non-existent token → 404.
+// - invite-accept: user-JWT auth + jwtToken renamed to avoid collision
+//   with invite token from req.json (per s16 fix); auth-gate proves
+//   anon → 401, no auth → 401.
+
+test.describe('§27 — Invite cluster un-deferral contracts (s24)', () => {
+  // send-invite-email — user-JWT auth-gate
+  test('send-invite-email — anon JWT rejected', async () => {
+    const reqFile = `/tmp/sb-inv-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+    const respFile = `/tmp/sb-inv-r-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+    fs.writeFileSync(reqFile, JSON.stringify({ orgId: process.env.E2E_ORG_ID, email: 'test@example.com', role: 'teacher' }));
+    try {
+      const status = execSync(
+        `curl -s -o ${respFile} -w "%{http_code}" -X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/send-invite-email" ` +
+          `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" -H "Content-Type: application/json" -d @${reqFile}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+      const code = parseInt(status.trim(), 10);
+      expect(code, `body: ${body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+      expect(code).toBeLessThan(500);
+    } finally {
+      try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+      try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    }
+  });
+
+  test('send-invite-email — no auth rejected', async () => {
+    const reqFile = `/tmp/sb-inv-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+    const respFile = `/tmp/sb-inv-r-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+    fs.writeFileSync(reqFile, JSON.stringify({ orgId: process.env.E2E_ORG_ID, email: 'test@example.com', role: 'teacher' }));
+    try {
+      const status = execSync(
+        `curl -s -o ${respFile} -w "%{http_code}" -X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/send-invite-email" ` +
+          `-H "Content-Type: application/json" -d @${reqFile}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+      const code = parseInt(status.trim(), 10);
+      expect(code, `body: ${body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+    } finally {
+      try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+      try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    }
+  });
+
+  // invite-get — public POST with token; verify_jwt:true requires anon Bearer
+  test('invite-get — POST missing token → 400', async () => {
+    const reqFile = `/tmp/sb-iget-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+    const respFile = `/tmp/sb-iget-r-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+    fs.writeFileSync(reqFile, JSON.stringify({}));
+    const r = randomBytes(3);
+    const fakeIp = `10.${r[0]}.${r[1]}.${r[2]}`;
+    try {
+      const status = execSync(
+        `curl -s -o ${respFile} -w "%{http_code}" -X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/invite-get" ` +
+          `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" -H "X-Forwarded-For: ${fakeIp}" -H "Content-Type: application/json" -d @${reqFile}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+      const code = parseInt(status.trim(), 10);
+      expect(code, `body: ${body.slice(0, 200)}`).toBe(400);
+      expect(body).toMatch(/token/i);
+    } finally {
+      try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+      try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    }
+  });
+
+  test('invite-get — POST non-existent token → 404', async () => {
+    const reqFile = `/tmp/sb-iget-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+    const respFile = `/tmp/sb-iget-r-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+    // Token column is uuid type; must be valid UUID format. See finding
+    // 2026-05-10-invite-get-returns-500-on-non-uuid-token (s24).
+    fs.writeFileSync(reqFile, JSON.stringify({ token: '00000000-0000-0000-0000-000000000000' }));
+    const r = randomBytes(3);
+    const fakeIp = `10.${r[0]}.${r[1]}.${r[2]}`;
+    try {
+      const status = execSync(
+        `curl -s -o ${respFile} -w "%{http_code}" -X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/invite-get" ` +
+          `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" -H "X-Forwarded-For: ${fakeIp}" -H "Content-Type: application/json" -d @${reqFile}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+      const code = parseInt(status.trim(), 10);
+      expect(code, `body: ${body.slice(0, 200)}`).toBe(404);
+      expect(body).toMatch(/not found/i);
+    } finally {
+      try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+      try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    }
+  });
+
+  // invite-accept — user-JWT auth-gate (s16 jwtToken-rename fix per 7c37115)
+  test('invite-accept — anon JWT rejected', async () => {
+    const reqFile = `/tmp/sb-iacc-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+    const respFile = `/tmp/sb-iacc-r-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+    fs.writeFileSync(reqFile, JSON.stringify({ token: 'placeholder' }));
+    try {
+      const status = execSync(
+        `curl -s -o ${respFile} -w "%{http_code}" -X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/invite-accept" ` +
+          `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" -H "Content-Type: application/json" -d @${reqFile}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+      const code = parseInt(status.trim(), 10);
+      expect(code, `body: ${body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+      expect(code).toBeLessThan(500);
+    } finally {
+      try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+      try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    }
+  });
+
+  test('invite-accept — no auth rejected', async () => {
+    const reqFile = `/tmp/sb-iacc-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+    const respFile = `/tmp/sb-iacc-r-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+    fs.writeFileSync(reqFile, JSON.stringify({ token: 'placeholder' }));
+    try {
+      const status = execSync(
+        `curl -s -o ${respFile} -w "%{http_code}" -X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/invite-accept" ` +
+          `-H "Content-Type: application/json" -d @${reqFile}`,
+        { encoding: 'utf-8', timeout: 15_000 },
+      );
+      const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+      const code = parseInt(status.trim(), 10);
+      expect(code, `body: ${body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+    } finally {
+      try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+      try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    }
+  });
+});
+
 test.describe('§27 — Cron-lifecycle handler auth-gate contracts', () => {
   for (const fnName of [
     'invoice-overdue-check',
