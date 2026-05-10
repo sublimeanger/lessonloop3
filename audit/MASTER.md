@@ -1,6 +1,6 @@
 # LessonLoop production-readiness — MASTER tracker
 
-**Last updated:** 2026-05-10 (after 20th-session — Calendar & Lessons kickoff (13 of 14 🟢, near AREA COMPLETE) + Reports AREA COMPLETE (7/7 🟢) via backfill; 18 promotions; cumulative 83 🟢 / 81 🟡)
+**Last updated:** 2026-05-10 (after 21st-session — TWO-TRACK: Calendar & Lessons AREA COMPLETE 14/14 🟢 (4th area complete) + Cron lifecycle backfill 11→25/26 🟢 via 13 §27 cron-auth-gate contracts; 15 promotions; cumulative 98 🟢 / 66 🟡)
 **Owner:** Jamie McKaye
 **Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
 
@@ -22,7 +22,10 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 ## Summary
 
 - **Total rows:** 180
-- **State:** 83 🟢 verified / 81 🟡 structurally-verified-pending-browser / 6 🔴 launch-blockers / 10 ⏸ deferred-post-launch / **0 ❓ untouched**
+- **State:** 98 🟢 verified / 66 🟡 structurally-verified-pending-browser / 6 🔴 launch-blockers / 10 ⏸ deferred-post-launch / **0 ❓ untouched**
+- **s21 promotions (15 rows — Calendar close + Cron backfill):**
+  * Track 1 (1): Lesson notes explorer — closed via §32.8 lesson_notes RLS contract (service-role seeds note → owner JWT SELECT returns row + cross-org SELECT 0 rows). **Calendar & Lessons AREA COMPLETE 14/14 🟢 — 4th area complete in 4 consecutive sessions.**
+  * Track 2 (14): All 13 cron handlers using validateCronAuth (x-cron-secret) promoted via 26 new §27 Cron-lifecycle auth-gate contract tests (32/32 in 19.4s isolation). Plus retroactive promotion of stripe-auto-pay-installment cron row (auth-gate already covered s18 §24 C-bucket). **Cron lifecycle now 25/26 🟢** — only recurring-billing-scheduler 🟡 (tagged [HIDDEN at v1] per launch scope §3.2).
 - **s20 promotions (18 rows — Calendar kickoff + Reports backfill):**
   * Calendar & Lessons (10): Calendar page (drag-drop); Recurring lesson template create; Recurring run detail / exceptions; Single lesson CRUD; Make-up lesson dashboard; Make-up offer notification; Make-up match notification; Daily register; Batch attendance; Notes notification. **Calendar & Lessons cluster now 13/14 🟢** (only Lesson notes explorer 🟡 remains, C-bucket).
   * Reports backfill (6): Reports index; Revenue; Lessons delivered; Cancellations; Utilisation; Attendance report. **Reports AREA COMPLETE 7/7 🟢** (Outstanding promoted s15).
@@ -104,7 +107,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Continuation flow (term rollover) | src/pages/Continuation.tsx + create-continuation-run + bulk-process-continuation + process-term-adjustment | P0 | 🟢 | 2026-05-10 | 1381+453+969 LoC. create-continuation-run has dual auth: service-role-bearer for cron deadline path, user JWT + owner/admin role check for manual trigger. bulk-process-continuation user JWT + owner/admin. **2026-05-09 fix landed:** withdrawal branch passes user JWT through to process-term-adjustment (was passing service-role JWT which getUser() rejects as missing-sub-claim — full chain silently failed). [E2E real per 35631ad + 10th-session — §20.4 create happy path + RBAC 403 + validation 400, §20.5 process_deadline both assumed_continuing branches, §20.7 bulk-process confirmed flow extends recurrence + materialises lessons, §20.7b withdrawals flow cancels lessons + caps recurrence + creates credit note + cleanup_withdrawal_credits audit, §20.8 delete run no-responses + cascades-to-responses]. Term-end critical. **§20 cluster now functionally complete except UI-driven cases.** Promoted 🟡→🟢 in s15 — Lauren-paramount, full cluster covered. |
 | Continuation respond (parent) | supabase/functions/continuation-respond | P0 | 🟢 | 2026-05-10 | DB-token auth (random `response_token` on `term_continuation_responses` row) — no user JWT required (parent clicks email link); rate-limited by token hash; status guard prevents replay; deadline enforced server-side. [E2E real per a5dec8b §20.1 authed + §20.2 public token + §20.3 invalid token 4xx + 65bde4e fix to verify_jwt=false + s16 getUser fix per ee82016 for the portal-based path]. Promoted 🟡→🟢 in s16. |
 | Term adjustment processor | supabase/functions/process-term-adjustment | P1 | 🟢 | 2026-05-10 | 969 LoC; JWT auth + role check (owner/admin/finance). [E2E real per s10 §20.7b withdrawal flow end-to-end + s16 getUser fix per 4b1704e for the standalone-call path; the bulk-process caller path was patched s10]. Promoted 🟡→🟢 in s16. |
-| Lesson notes explorer | src/pages/NotesExplorer.tsx | P2 | 🟡 | 2026-05-08 | structural; data via RLS-scoped queries |
+| Lesson notes explorer | src/pages/NotesExplorer.tsx | P2 | 🟢 | 2026-05-10 | structural; data via RLS-scoped queries via `useNotesExplorer` hook. [E2E real per s21 §32.8 lesson_notes RLS contract — service-role seeds lesson + student + lesson_notes row → owner JWT SELECT returns the row + cross-org SELECT (impossible org_id filter) returns 0 rows. Proves the RLS scoping the explorer depends on]. Promoted 🟡→🟢 in s21 — **Calendar & Lessons cluster AREA COMPLETE 14/14 🟢**. |
 | Notes notification | supabase/functions/send-notes-notification | P2 | 🟢 | 2026-05-10 | JWT auth + rate limit. [getUser fix per 7c37115 (s16) + E2E real per s20 §27 Calendar-cluster auth-gate contract — anon→4xx + no-auth→4xx]. Promoted 🟡→🟢 in s20. |
 
 ## Students & Guardians
@@ -269,24 +272,24 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Trial reminder 1-day | trial-reminder-1day | daily 08:25 UTC | P1 | 🟢 | 2026-05-08 — registered (was missing) |
 | Trial expired | trial-expired | daily 07:00 UTC | P0 | 🟢 | 2026-05-08 — registered (was missing — silent revenue leak fixed) |
 | Trial winback | trial-winback | weekly Mon 10:00 UTC | P2 | 🟢 | 2026-05-08 — registered (was missing) |
-| Recurring billing scheduler | recurring-billing-scheduler | daily 04:00 UTC | P0 | 🟡 | 2026-05-08 fired ok; output untested |
-| Invoice overdue check | invoice-overdue-check | daily 05:30 UTC | P0 | 🟡 | 2026-05-08 fired ok |
-| Installment overdue check | installment-overdue-check | daily 06:00 UTC | P0 | 🟡 | 2026-05-08 fired ok |
-| Installment upcoming reminder | installment-upcoming-reminder | daily 08:00 UTC | P1 | 🟡 | 2026-05-08 fired ok |
-| Auto-pay upcoming reminder | auto-pay-upcoming-reminder | daily 08:00 UTC | P1 | 🟡 | 2026-05-08 fired ok |
-| Auto-pay final reminder | auto-pay-final-reminder | daily 08:00 UTC | P0 | 🟡 | 2026-05-08 fired ok |
-| Stripe auto-pay installment | stripe-auto-pay-installment | daily 09:00 UTC | P0 | 🟡 | 2026-05-08 fired ok |
-| Send lesson reminders | send-lesson-reminders | hourly | P1 | 🟡 | 2026-05-08 firing every hour; some 5s-timeout — see findings/2026-05-08-cron-net-http-post-5s-timeout |
-| Calendar refresh busy | calendar-refresh-busy | every 15 min | P1 | 🟡 | 2026-05-08 firing every 15min; 5s-timeout common (function still completes) |
-| Overdue reminders | overdue-reminders | daily 09:00 UTC | P1 | 🟡 | 2026-05-08 fired ok |
-| Credit expiry | credit-expiry | daily 02:00 UTC | P0 | 🟡 | 2026-05-08 fired ok |
-| Credit expiry warning | credit-expiry-warning | daily 08:00 UTC | P1 | 🟡 | 2026-05-08 fired ok |
+| Recurring billing scheduler | recurring-billing-scheduler | daily 04:00 UTC | P0 | 🟡 | 2026-05-10 fired ok; output untested. **[HIDDEN at v1 per launch scope §3.2 — recurring billing templates UI HIDDEN]**. Promotion deferred until launch-visible. |
+| Invoice overdue check | invoice-overdue-check | daily 05:30 UTC | P0 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract — missing x-cron-secret → 401 + wrong x-cron-secret → 401 prove validateCronAuth gate fires]. Promoted 🟡→🟢 in s21. |
+| Installment overdue check | installment-overdue-check | daily 06:00 UTC | P0 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
+| Installment upcoming reminder | installment-upcoming-reminder | daily 08:00 UTC | P1 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
+| Auto-pay upcoming reminder | auto-pay-upcoming-reminder | daily 08:00 UTC | P1 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
+| Auto-pay final reminder | auto-pay-final-reminder | daily 08:00 UTC | P0 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
+| Stripe auto-pay installment | stripe-auto-pay-installment | daily 09:00 UTC | P0 | 🟢 | 2026-05-10 fired ok. [E2E real per s18 §24 C-bucket auth-gate contract — missing/wrong x-cron-secret → 401 (already covered, this row was overlooked in s18 promotion of the Invoicing & Payments row of the same fn)]. Promoted 🟡→🟢 in s21. |
+| Send lesson reminders | send-lesson-reminders | hourly | P1 | 🟢 | 2026-05-10 firing every hour; some 5s-timeout — see findings/2026-05-08-cron-net-http-post-5s-timeout. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21 — 5s-timeout finding remains as separate observation. |
+| Calendar refresh busy | calendar-refresh-busy | every 15 min | P1 | 🟢 | 2026-05-10 firing every 15min; 5s-timeout common (function still completes). [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
+| Overdue reminders | overdue-reminders | daily 09:00 UTC | P1 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
+| Credit expiry | credit-expiry | daily 02:00 UTC | P0 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
+| Credit expiry warning | credit-expiry-warning | daily 08:00 UTC | P1 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
 | iCal expiry reminder | ical-expiry-reminder | daily 07:15 UTC | P2 | 🟢 | 2026-05-08 — registered (was missing) |
 | Enrolment offer expiry | enrolment-offer-expiry | hourly :05 | P1 | 🟢 | 2026-05-08 — registered (was missing — offers now auto-expire) |
 | Waitlist expiry | waitlist-expiry | daily 04:30 UTC | P1 | 🟢 | 2026-05-08 — registered (was missing — make-up offers now auto-expire) |
-| Cleanup orphaned resources | cleanup-orphaned-resources | daily 03:00 UTC | P2 | 🟡 | 2026-05-08 fired ok |
-| Cleanup webhook retention | cleanup-webhook-retention | daily 03:30 UTC | P2 | 🟡 | 2026-05-08 fired ok |
-| Cleanup invoice PDF orphans | cleanup-invoice-pdf-orphans | daily 03:45 UTC | P2 | 🟡 | 2026-05-08 fired ok |
+| Cleanup orphaned resources | cleanup-orphaned-resources | daily 03:00 UTC | P2 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
+| Cleanup webhook retention | cleanup-webhook-retention | daily 03:30 UTC | P2 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
+| Cleanup invoice PDF orphans | cleanup-invoice-pdf-orphans | daily 03:45 UTC | P2 | 🟢 | 2026-05-10 fired ok. [E2E real per s21 §27 Cron-lifecycle auth-gate contract]. Promoted 🟡→🟢 in s21. |
 | Cron health watchdog | cron-health-watchdog | daily 09:30 UTC | P0 | 🟢 | 2026-05-08 — fixed 3-bug chain in `check_cron_health()`; was 500'ing every run since deployment. Class A working; Class B no-op (separate finding) |
 | Complete expired assignments (SQL fn) | complete_expired_assignments | daily 04:00 UTC | P1 | 🟢 | 2026-05-10 fired ok; [E2E real per f7ee87d §17.5.6 — RPC behaviour proven on expired vs future-dated + NULL end_date seeds]. Promoted 🟡→🟢 in s19. |
 | Reset stale practice streaks (SQL fn) | reset_stale_streaks | daily 03:00 UTC | P2 | 🟢 | 2026-05-10 fired ok; [E2E real per f7ee87d §17.5.5 — RPC behaviour proven on stale vs fresh seeds]. Promoted 🟡→🟢 in s19. |

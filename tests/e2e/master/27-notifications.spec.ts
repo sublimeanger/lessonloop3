@@ -485,3 +485,70 @@ test.describe('§27 — Calendar-cluster notification fn auth-gate contracts', (
     });
   }
 });
+
+// ────────────────────────────────────────────────────────────────────
+// §27 — Cron-lifecycle handler auth-gate contracts (s21)
+// ────────────────────────────────────────────────────────────────────
+//
+// 13 cron handlers verified to use `validateCronAuth(req)` (x-cron-
+// secret header pattern). Same shape as s18 callFnCronAuthGate from
+// §24. Auth-gate proof: missing x-cron-secret → 401; wrong x-cron-
+// secret → 401. Happy path requires the real INTERNAL_CRON_SECRET
+// (vault-only, not in .env.test); negatives are sufficient proof of
+// the gate.
+//
+// admin-backfill-default-pm and stripe-auto-pay-installment already
+// have these tests in §24 C-bucket (s18) — not duplicated here.
+
+function callCronGate(fnName: string, opts: { secret: 'wrong' | 'none' }): { status: number; body: string } {
+  const respFile = `/tmp/sb-cron-${fnName}-resp-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+  const reqFile = `/tmp/sb-cron-${fnName}-req-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+  fs.writeFileSync(reqFile, JSON.stringify({}));
+  let cronHeader = '';
+  if (opts.secret === 'wrong') {
+    cronHeader = `-H "x-cron-secret: definitely-not-the-real-secret-${Date.now()}" `;
+  }
+  try {
+    const status = execSync(
+      `curl -s -o ${respFile} -w "%{http_code}" ` +
+        `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+        `${cronHeader}` +
+        `-H "Content-Type: application/json" ` +
+        `-d @${reqFile}`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+    return { status: parseInt(status.trim(), 10), body };
+  } finally {
+    try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+  }
+}
+
+test.describe('§27 — Cron-lifecycle handler auth-gate contracts', () => {
+  for (const fnName of [
+    'invoice-overdue-check',
+    'installment-overdue-check',
+    'installment-upcoming-reminder',
+    'auto-pay-upcoming-reminder',
+    'auto-pay-final-reminder',
+    'send-lesson-reminders',
+    'calendar-refresh-busy',
+    'overdue-reminders',
+    'credit-expiry',
+    'credit-expiry-warning',
+    'cleanup-orphaned-resources',
+    'cleanup-webhook-retention',
+    'cleanup-invoice-pdf-orphans',
+  ]) {
+    test(`${fnName} — missing x-cron-secret rejected (401)`, async () => {
+      const res = callCronGate(fnName, { secret: 'none' });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBe(401);
+    });
+
+    test(`${fnName} — wrong x-cron-secret rejected (401)`, async () => {
+      const res = callCronGate(fnName, { secret: 'wrong' });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBe(401);
+    });
+  }
+});

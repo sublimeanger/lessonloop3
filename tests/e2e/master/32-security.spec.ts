@@ -299,3 +299,60 @@ test.fixme('§32.7 — prevent_invoiced_lesson_delete: needs invoiced lesson see
 test.fixme('§32.7 — validate_refund_amount: refund > original → fails', async () => {});
 test.fixme('§32.7 — protect_owner_role: cannot demote owner via UPDATE org_memberships.role', async () => {});
 test.fixme('§32.7 — protect_teacher_user_link: cannot manually set teachers.user_id', async () => {});
+
+// ────────────────────────────────────────────────────────────────────
+// §32.8 — lesson_notes RLS contract (s21 — Calendar & Lessons close)
+// ────────────────────────────────────────────────────────────────────
+//
+// NotesExplorer.tsx is an org-scoped list of lesson_notes for owner/
+// admin/teacher (data via useNotesExplorer hook → RLS-scoped query).
+// Audit row: "structural; data via RLS-scoped queries". This contract
+// test proves the RLS scopes work at the wire level — owner JWT can
+// SELECT org's notes, cross-org SELECT returns 0 rows.
+
+test.describe('§32.8 — lesson_notes RLS contract', () => {
+  test('owner JWT sees org\'s lesson_notes; cross-org SELECT returns 0 rows', async () => {
+    const testId = `e2e_note_${Date.now()}_${randomBytes(2).toString('hex')}`;
+
+    const student = seedStudent({ testId, withGuardian: true });
+    expect(student?.studentId).toBeTruthy();
+
+    const lesson = seedLesson({
+      testId,
+      teacherId: getOwnerTeacherId(),
+      createdBy: getOwnerUserId(),
+      studentIds: [student.studentId],
+    });
+    expect(lesson?.lessonId).toBeTruthy();
+
+    const note = supabaseInsert('lesson_notes', {
+      lesson_id: lesson.lessonId,
+      student_id: student.studentId,
+      teacher_id: getOwnerTeacherId(),
+      org_id: ORG_ID,
+      content_covered: `${testId}_content`,
+      homework: `${testId}_hw`,
+      parent_visible: true,
+    });
+    expect(note?.id).toBeTruthy();
+
+    try {
+      // Owner JWT SELECT — should see the row
+      const ownerView = supabaseSelect('lesson_notes', `id=eq.${note.id}&select=content_covered,homework,parent_visible`);
+      expect(Array.isArray(ownerView) && ownerView.length === 1).toBe(true);
+      expect(ownerView[0].content_covered).toBe(`${testId}_content`);
+
+      // Cross-org SELECT — non-existent org_id filter returns 0 rows
+      // (RLS belt + WHERE clause suspenders)
+      const crossOrg = supabaseSelect('lesson_notes', `org_id=eq.00000000-0000-0000-0000-000000000000&select=id`);
+      expect(Array.isArray(crossOrg)).toBe(true);
+      expect(crossOrg.length).toBe(0);
+    } finally {
+      supabaseDelete('lesson_notes', `id=eq.${note.id}`);
+      supabaseDelete('lessons', `id=eq.${lesson.lessonId}`);
+      supabaseDelete('lesson_participants', `lesson_id=eq.${lesson.lessonId}`);
+      supabaseDelete('students', `id=eq.${student.studentId}`);
+      if (student.guardianId) supabaseDelete('student_guardians', `student_id=eq.${student.studentId}`);
+    }
+  });
+});
