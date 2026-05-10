@@ -38,7 +38,11 @@ const handler = async (req: Request): Promise<Response> => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    // Pass token explicitly — getUser() no-args calls /auth/v1/user which on
+    // this project rejects legacy HS256 JWTs. Same pattern as
+    // send-bulk-message (08e66e6) + send-message:57.
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
