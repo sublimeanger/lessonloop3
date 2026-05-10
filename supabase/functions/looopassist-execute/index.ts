@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 /** Fire-and-forget calendar sync for lesson mutations (non-critical). */
 function syncLessonToCalendar(lessonId: string, action: 'create' | 'update' | 'delete') {
   fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/calendar-sync-lesson`, {
@@ -53,7 +54,7 @@ interface BasicInvoice {
   students?: any;
 }
 
-serve(async (req) => {
+serve(wrapEdgeFn("looopassist-execute", async (req) => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -452,7 +453,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));
 
 // Tool 1: Generate Billing Run
 async function executeGenerateBillingRun(

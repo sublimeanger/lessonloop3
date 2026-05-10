@@ -4,6 +4,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
 import { matchHeaderToField, detectSourceSoftware, type SourceSoftware } from "../_shared/csv-field-aliases.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 // ─── Target fields for import mapping (expanded: 17 → 32) ───
 
 const STUDENT_FIELDS = [
@@ -118,7 +119,7 @@ Respond with ONLY a JSON object:
   "detected_source": "mymusicstaff" | "opus1" | "teachworks" | null
 }`;
 
-serve(async (req) => {
+serve(wrapEdgeFn("csv-import-mapping", async (req) => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -356,4 +357,4 @@ Analyze the headers and sample values to determine the best mapping.`;
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));

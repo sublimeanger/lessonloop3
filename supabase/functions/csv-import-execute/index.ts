@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 /** Fire-and-forget calendar sync for lesson mutations (non-critical). */
 function syncLessonToCalendar(lessonId: string, action: 'create' | 'update' | 'delete') {
   fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/calendar-sync-lesson`, {
@@ -448,7 +449,7 @@ function buildRowStatuses(
   });
 }
 
-serve(async (req) => {
+serve(wrapEdgeFn("csv-import-execute", async (req) => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -1347,4 +1348,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));
