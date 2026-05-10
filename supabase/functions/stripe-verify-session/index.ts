@@ -2,13 +2,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { getStripeClient } from "../_shared/stripe-client.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 /**
  * Verifies a Stripe Checkout Session or PaymentIntent status.
  * Called by the frontend after redirect-based payment to prevent URL spoofing.
  * Returns { verified: boolean, status: string, invoiceId?: string }
  */
-serve(async (req) => {
+serve(wrapEdgeFn("stripe-verify-session", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -109,4 +110,4 @@ serve(async (req) => {
       { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" }, status: 400 }
     );
   }
-});
+}));

@@ -6,6 +6,7 @@ import { getStripeClient } from "../_shared/stripe-client.ts";
 import { log } from "../_shared/log.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { recalcWithRetry } from "../_shared/recalc-with-retry.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 /**
  * Map LessonLoop refund reason labels to Stripe's 3-value enum.
@@ -27,7 +28,7 @@ function mapToStripeReason(reasonText: string | null | undefined): Stripe.Refund
  * Auth: owner/admin, or any role in solo_teacher orgs (canManageBilling equivalent).
  * Body: { paymentId: string, amount?: number (minor), reason?: string }
  */
-serve(async (req) => {
+serve(wrapEdgeFn("stripe-process-refund", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -306,4 +307,4 @@ serve(async (req) => {
       { headers: { ...getCorsHeaders(req), "Content-Type": "application/json" }, status: 400 }
     );
   }
-});
+}));

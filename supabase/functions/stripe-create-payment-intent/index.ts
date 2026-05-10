@@ -8,8 +8,9 @@ import {
   installmentOutstanding,
   PENDING_INSTALLMENT_STATUSES,
 } from "../_shared/invoice-amount-due.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
-serve(async (req) => {
+serve(wrapEdgeFn("stripe-create-payment-intent", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -370,4 +371,4 @@ serve(async (req) => {
       }
     );
   }
-});
+}));

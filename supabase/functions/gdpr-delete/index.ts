@@ -2,8 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
-serve(async (req) => {
+serve(wrapEdgeFn("gdpr-delete", async (req) => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -209,4 +210,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));

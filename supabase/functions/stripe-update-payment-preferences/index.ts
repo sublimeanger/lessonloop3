@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { getStripeClient } from "../_shared/stripe-client.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 
 /**
  * Updates guardian payment preferences (auto-pay toggle, default payment method).
@@ -14,7 +15,7 @@ import { getStripeClient } from "../_shared/stripe-client.ts";
  * function is now the only path for parents to mutate their preferences
  * (the other being stripe-detach-payment-method which already validates).
  */
-serve(async (req) => {
+serve(wrapEdgeFn("stripe-update-payment-preferences", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -130,4 +131,4 @@ serve(async (req) => {
       }
     );
   }
-});
+}));
