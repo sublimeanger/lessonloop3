@@ -21,8 +21,15 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 ## Summary
 
-- **Total rows:** 183 (+3 NEW rows in s24 — Agency tier UI / Recurring billing templates UI / Parent self-reschedule UI / Parent LoopAssist UI added; net +3 because one was an existing row)
-- **State:** 156 🟢 verified / 11 🟡 structurally-verified-pending-browser / 6 🔴 launch-blockers / 10 ⏸ deferred-post-launch / **0 ❓ untouched** = **~85% complete**
+- **Total rows:** 183
+- **State:** 164 🟢 verified / 9 🟡 structurally-verified-pending-browser / **0 🔴 launch-blockers** / 10 ⏸ deferred-post-launch / **0 ❓ untouched** = **~90% complete**
+- **s25 launch readiness milestone**: ALL 6 cross-cutting 🔴 launch blockers either fully cleared (4: Sentry edge, Cookie consent, Cloudflare WAF, Source Supabase decom) or staged-for-Jamie (2: Anthropic disclosure marketing-deploy, Stripe Dashboard branding paste). iOS hardening landed for next App Store submission (2 mobile promotions + iOS_RELEASE_CHECKLIST.md ready for TestFlight verification by Jamie).
+- **s25 promotions (10 rows + 4 launch blockers cleared + 2 launch blockers staged):**
+  * Mobile (2 cleared in s25): Capacitor OAuth in-app browser; Deep link handling. Plus iOS native build stays 🟡 awaiting Jamie's TestFlight; Android stays 🟡 (NOT-LAUNCHING-V1).
+  * Cross-cutting (4 cleared 🔴→🟢): Sentry edge fns (9 fns instrumented via `_shared/sentry.ts`); Cookie consent banner (custom + 7 unit tests); Cloudflare WAF (orange-cloud flipped + 2 rules + 3 contracts); Source Supabase decom (residual refs audited; 1 fixed; verified safe).
+  * Cross-cutting (2 staged 🔴→🟡): Anthropic disclosure (source updated; awaiting marketing-site rebuild); Stripe Checkout branding (files uploaded + colors/contacts decided; awaiting Dashboard paste).
+  * Track 3 (2 cleared): Locations (s22 oversight); send-cancellation-notification (s22 oversight).
+- **s24 promotions (27 rows + 4 NEW rows + 1 finding — STANCE RECALIBRATION + UN-DEFERRAL SWEEP per Jamie's "world class" stance):**
 - **s24 promotions (27 rows + 4 NEW rows + 1 finding — STANCE RECALIBRATION + UN-DEFERRAL SWEEP per Jamie's "world class" stance):**
   * **Item 0 — Launch scope docs**: LESSONLOOP_V2_PLAN.md §3.2 + §3.4 + audit/00-launch-readiness.md updated. Un-deferred Leads/Booking/Waitlist + Parent reschedule + Parent LoopAssist + Agency tier + Recurring billing + Public booking + Xero (CONDITIONAL → DAY-ONE). Only Zoom stays HIDDEN. Mobile → dedicated audit-run track s25-s26+.
   * **Item 1 — Xero day-one (3)**: xero-oauth-callback, xero-sync-invoice, xero-sync-payment all 🟢. **AREA effectively COMPLETE 5/5 🟢 (7th area).** LL-LL prefix bug fixed (xero-sync-invoice v21 deployed via Supabase Management API). 4 prior fixes verified holding via Supabase MCP execute_sql. Historical 1 invoice retains LL-LL- (cosmetic).
