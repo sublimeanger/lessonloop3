@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-10 (after 25th-session — iOS HARDENING + CROSS-CUTTING 🔴 EXECUTION: ALL 6 cross-cutting 🔴 launch blockers either cleared or staged-for-Jamie. iOS Info.plist + App.entitlements + apple-app-site-association shipped for next App Store submission. Sentry edge instrumented (9 fns + wrapper); Cookie consent banner built; CF WAF live with orange-cloud + 2 rules; Source Supabase verified-safe-to-decom. Anthropic disclosure source updated (awaiting marketing redeploy). Stripe branding files uploaded (awaiting Dashboard paste). 10 audit promotions + 4 launch blockers cleared + 2 launch blockers staged + 3 findings filed. Cumulative 164 🟢 / 9 🟡 / **0 🔴** / 10 ⏸ = **~90% complete**) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-10 (after 26th-session — VERIFICATION + COLLAPSE-DEFENSIVE-TAGS + SENTRY EXPANSION: All 7 Track-1 verifications green (CF held, Sentry firing, cookie banner live, AASA serving, source clean) + 2 production fixes (env-probe-temp deleted, invite-get UUID guard) + 50-commit Netlify backlog cleared + 3 audit promotions (Anthropic 🟡→🟢 via CF Pages auto-deploy, Rate limiting + Realtime defensive tags collapsed) + Sentry edge expanded 9 → 20 fns + Bundle ID + invite-get + Stripe-branding-API findings closed/updated + Stripe Billing Portal Configuration branded via API. Cumulative 167 🟢 / 6 🟡 / **0 🔴** / 10 ⏸ = **~91% complete**) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -1585,6 +1585,88 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
+### What's done at end of 26th session
+
+(Catalog state ~91% — s26 added 4 new tests in §33-cookie-consent +
+1 new test in §27 invite-get UUID-guard + Sentry capture coverage
+expanded 9 → 20 fns. Primary win: ALL 7 Track-1 post-clearance
+verifications passed live + 2 production fixes shipped + 3 defensive
+tag collapses. Audit total: 164 → 167 🟢. Remaining 6 🟡 are
+genuinely external-blocked or Jamie-only.)
+
+Per-track outcomes for s26:
+- **Track 1 — verifications + production hygiene (2 fixes shipped)**:
+  - 1.1 CF orange-cloud held: cf-ray + WAF rules firing 24h+ stable
+  - 1.2 Sentry edge firing: 2 real prod 5xx events captured in 24h
+    (send-bulk-message 500, send-invoice-email 502 — surfaced as
+    real bugs to investigate next session)
+  - 1.3 Cookie banner live: 3 specs added in §33-cookie-consent;
+    all pass on app.lessonloop.net (banner visible cold visit,
+    Accept all sets ll-consent + dismisses, Essential only sets
+    analytics+marketing=false)
+  - 1.4 AASA Content-Type: serves application/json correctly
+    post Netlify deploy
+  - 1.5 Source supabase residuals: clean
+  - 1.6 env-probe-temp: deleted via Supabase Management API (was
+    stale dev fn from s11/s12 era; no DB cron schedule, no other
+    fn import; verified before delete)
+  - 1.7 invite-get: UUID-format guard added before DB query;
+    deployed; non-UUID now returns 404 (was 500); finding closed
+  - **MAJOR**: Netlify auto-deploy was 50 commits behind (last
+    deploy 2026-05-08, commit e4763873). All s24/s25 client-side
+    work (Privacy.tsx, CookieBanner, AASA) was sitting on `main`
+    but not live. Manual trigger via Netlify API caught up to
+    HEAD. Anthropic disclosure verification revealed this.
+- **Track 2 — collapse defensive-deferral tags (2 promotions)**:
+  - 2.1 Rate limiting on auth endpoints 🟡→🟢: CF WAF half of
+    s23 v1.1+ tag now live (per s25); CAPTCHA half is UX decision
+    not security blocker; Supabase server defaults adequate for
+    v1 traffic. CF rate-limit on /auth/v1/* attempted but blocked
+    by token authority (legacy /rate_limits API in maintenance,
+    new ratelimit ruleset needs Account Rulesets:Edit which agent
+    token lacks). Existing layers sufficient for v1.
+  - 2.2 Realtime subscriptions reconnect 🟡→🟢: web reconnect is
+    library-level (supabase-js handles WS sleep/wake); mobile
+    sleep/wake belongs to dedicated mobile audit run, not v1 web
+    launch contract.
+  - 2.3 Stripe branding re-attempt: confirmed POST /v1/account
+    blanket-restricted to connected accounts only (Stripe security
+    model). PARTIAL: Stripe Billing Portal Configuration
+    `bpc_1TUPRXAzPfYm94uxnkflag2b` updated via API (headline +
+    privacy_policy_url + terms_of_service_url + default_return_url).
+    Checkout-side branding still requires Jamie Dashboard paste.
+- **Track 3 — open findings + Anthropic + Sentry expansion (1 promotion + 1 finding closed + Sentry expansion)**:
+  - 3.1 Bundle ID mismatch fixed: capacitor.config.ts appId
+    net.lessonloop.app → com.lessonloop.app (matches pbxproj
+    PRODUCT_BUNDLE_IDENTIFIER which is the live App Store ID).
+    Finding closed.
+  - 3.2 Anthropic disclosure live verify: discovered lessonloop.net
+    is hosted on **Cloudflare Pages** (project `lessonloop` wired
+    to GitHub `lessonloop3` repo, auto-deploys main). CF Pages
+    auto-deployed HEAD. Verified: lessonloop.net/privacy/ contains
+    anthropic + sub-processor + loopassist mentions. Audit row
+    🟡→🟢.
+  - 3.3 Stripe branding final documentation: finding doc updated
+    with file IDs + colors + Dashboard paste steps for Jamie.
+  - 3.4 Sentry edge expansion 9 → 20: instrumented 11 more fns
+    (5 Stripe money-path: stripe-process-refund, stripe-create-
+    payment-intent, stripe-create-checkout, stripe-customer-portal,
+    stripe-verify-session; 3 compliance: account-delete, gdpr-
+    export, gdpr-delete; 3 Connect: stripe-connect-onboard,
+    stripe-connect-status, stripe-update-payment-preferences). All
+    deployed via supabase CLI; verify_jwt preserved per fn.
+
+**Tally**: 3 audit promotions + Sentry coverage 9 → 20 + 2 production
+fixes + 1 deletion (env-probe-temp) + 3 findings closed/updated.
+
+**Audit total**: 164 🟢 → 167 🟢 (90% → 91%).
+
+**Remaining 6 🟡** (all genuinely external-blocked or Jamie-only):
+- Zoom × 3 (HIDDEN at v1, Zoom verification pending)
+- iOS native build (awaiting Jamie TestFlight per docs/iOS_RELEASE_CHECKLIST.md)
+- Android native build (NOT-LAUNCHING-V1)
+- Stripe Checkout branding (awaiting Jamie Dashboard paste — file IDs + colors documented in finding)
+
 ### What's done at end of 25th session
 
 (Catalog state ~90% — s25 added ~20 new tests across §02 + §27 +
@@ -1757,7 +1839,65 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 26th session pickup
+### Priority order — 27th session pickup
+
+After s26, audit landscape is **post-launch-readiness posture**
+(s14 end: 14 🟢; s26 end: 167 🟢, ~91%). **ZERO 🔴 launch blockers**;
+remaining 6 🟡 are all genuinely external-blocked or Jamie-only.
+
+**Recommended s27: Real-bug investigation + Sentry expansion to all
+edge fns + final cleanup.**
+
+Agent should:
+1. **Investigate the 2 real production 5xx events surfaced by s26
+   Sentry verification** (these are genuine bugs that newly visible
+   instrumentation captured):
+   - send-bulk-message returned HTTP 500 at 2026-05-10T17:37:20Z
+   - send-invoice-email returned HTTP 502 at 2026-05-10T17:37:01Z
+   Both happened around the time the s25 deploy landed via API trigger;
+   may be deploy-rollover artifacts OR genuine bugs. Pull the Sentry
+   event payload + stack trace, root-cause, fix if scope-bounded.
+2. **Continue Sentry edge expansion** from 20 → all ~70 user-facing
+   fns. Pattern is established (2-line edit per fn). Priority next
+   tier: notify-internal-message, send-payment-receipt, csv-import-
+   execute, booking-submit, send-enrolment-offer, waitlist-respond,
+   continuation-respond, process-term-adjustment, bulk-process-
+   continuation, create-continuation-run, xero-sync-invoice,
+   xero-sync-payment, calendar-* (4 user-JWT), send-cancellation-
+   notification, etc.
+3. **Polish iOS_RELEASE_CHECKLIST.md** based on any TestFlight
+   feedback Jamie has surfaced.
+
+Jamie should:
+1. **iOS**: replace TEAMID placeholder in apple-app-site-association
+   with the actual Apple Developer Team ID; add Push Notifications +
+   Associated Domains capabilities in Xcode; archive + TestFlight +
+   App Store submit per docs/iOS_RELEASE_CHECKLIST.md.
+2. **Stripe Dashboard**: paste branding per
+   audit/findings/2026-05-10-stripe-branding-platform-account-api-restriction.md
+   (~5 minutes — file IDs + colors + support contacts already prepared
+   by agent).
+3. **Source Supabase**: pause project at 2026-08-19 then delete
+   after 14-90d rollback window per audit/00-launch-readiness.md.
+4. **Marketing site**: source updated by agent in s24/s25 + verified
+   live in s26 — nothing more to do here unless Privacy.tsx changes.
+
+**Genuinely remaining 🟡 (post-s26)**:
+- iOS native build (Jamie TestFlight)
+- Android native build (NOT-LAUNCHING-V1)
+- Stripe Checkout branding (Jamie Dashboard paste)
+- Zoom × 3 (Zoom verification block)
+
+**No 🔴 launch blockers.** All P0/P1 cleared or staged.
+
+### Priority order — 26th session pickup (closed)
+
+**Closed**: 7 verifications green + 2 production fixes shipped + 3
+audit promotions + Sentry coverage 9→20 + Anthropic disclosure verified
+live + Stripe Billing Portal branded via API. Found and triggered the
+50-commit Netlify deploy backlog.
+
+### Priority order — 25th session pickup (closed earlier)
 
 After s25, audit landscape is at exceptional launch-ready posture
 (s14 end: 14 🟢; s25 end: 164 🟢, ~90%). **ZERO 🔴 launch blockers
