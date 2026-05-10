@@ -16,9 +16,16 @@ import fs from 'fs';
  * If the onboarding reset is too risky, the entire suite is skipped.
  */
 
-const SUPABASE_URL = 'https://ximxgnkpcswbvfrkkmjq.supabase.co';
-const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpbXhnbmtwY3N3YnZmcmtrbWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NTI4MDcsImV4cCI6MjA4NDQyODgwN30.cA56tVd1UVtwEKGBwXajOpm-gLmCeD_QUzoMwiX8d0M';
+// Source project (ximxgnkpcswbvfrkkmjq) was decommissioned post-cutover.
+// Read from env (matches auth.setup.ts pattern) so this test points at the
+// destination (xmrhmxizpslhtkibqyfy) — see audit/findings/2026-05-10-source-
+// supabase-residual-refs.md (s25).
+const SUPABASE_URL = process.env.E2E_SUPABASE_URL
+  || process.env.SUPABASE_URL
+  || 'https://xmrhmxizpslhtkibqyfy.supabase.co';
+const SUPABASE_ANON_KEY = process.env.E2E_SUPABASE_ANON_KEY
+  || process.env.SUPABASE_ANON_KEY
+  || '';
 
 function getOwnerToken(): string {
   const email = process.env.E2E_OWNER_EMAIL || 'e2e-owner@test.lessonloop.net';
