@@ -21,7 +21,11 @@ serve(async (req) => {
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    // getUser(token) — local JWKS verification accepts legacy HS256 JWTs.
+    // No-args form hits /auth/v1/user which rejects them on this project.
+    // See: audit/findings/2026-05-10-getuser-noargs-sweep.md
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
     if (userError || !user) throw new Error("Unauthorized");
 
     const { orgId } = await req.json();
