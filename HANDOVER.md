@@ -1,5 +1,7 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+**Last updated:** 2026-05-10 (after 32nd-session — MINIMUM-VIABLE-SHADOW SEED EXPANSION. Phase 0: cleaned 2 orphan s31 shadow orgs (66b821ee + aa5a52e9); added Lauren admin membership to 551ca74e (s31 silent insert-failure bug); fixed seed-shadow-org to split membership inserts with per-row error checks; v1.1 finding filed for subscription_plan enum naming (DB="academy" vs UI="Studio"). Phase 1: schema-first constraint inventory query captured all NOT NULL + enum + FK constraints across 21 cluster tables BEFORE coding. Phase 2: 90 students + 80 guardians (10 siblings) + 90 instruments + 90 STAs + 90 recurrences + **2068 lessons** (12 past weeks + 12 future, minus 92 closure-day skips) + 1124 attendance records (92% present/5% absent/3% late) + 20 make_up_credits + 4 waitlist. Phase 3: 90 invoices (66 paid / 16 outstanding / 4 overdue / 4 draft) + 1124 invoice_items + 71 payments (66 full + 5 partial) totalling £17,120 collected. Phase 4: 40 message_log + 5 templates + 90 practice_assignments + 165 practice_logs + 2 recurring_invoice_templates + 24 recipients + 2 items. Phase 5: end-to-end inventory clean; shadow-email smoke test invoked send-message via Jamie JWT (magic-link mint), message_log row created, Resend POST attempted (429 daily quota — NOT a shadow-layer failure; transformEmailForShadow ran in-line between message_log INSERT and Resend POST). Captured all seed SQL as scripts/seed-shadow-clusters.sql (reproducible for s34 Teacher/Agency tier variants). Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/3.9m. **551ca74e is a fully-armed Studio shadow org. Ready for s33 Lauren magic-link onboarding on Jamie greenlight.**
+
 **Last updated:** 2026-05-10 (after 31st-session — SHADOW INFRASTRUCTURE + STUDIO SEED. Phase 1: migration (organisations.shadow_mode) + _shared/shadow-email.ts interception layer + 22 send/notify fns wired + Sentry shadow:true tag via WeakMap + reset-shadow-org fn. Phase 2: seed-shadow-org deployed; minimal Studio tier working (org 551ca74e). Phase 3: 2 s30-surfaced flakes filed. SHADOW_RECIPIENTS + SHADOW_ADMIN_KEY env set. Students/lessons/invoices deferred to s32 — schema constraints now fully mapped; expand once Lauren onboarding signal in hand. Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/5.1m (s30 intermittents didn't recur). **Shadow programme ready for s32 Lauren onboarding.**
 
 **Last updated:** 2026-05-10 (after 30th-session — PROD-FINDING ROOT CAUSES + REMAINING CLOSEOUTS. Track 1: stripe-list-payment-methods 500 hypothesis WRONG (customers exist in Stripe; halted per HARD RULE; deferred to s31 shadow-term). Track 2: streak-notification 500 root-caused + fixed (idempotent skip on missing student/org). Track 3: §20.7b seedTerms flake CLOSED (deterministic per-testId baseYear). Track 4: rbac-5-4 redesigned via new SECURITY-DEFINER RPC + storage-state patch (3/3 stable). Track 5: send-invoice-email 502 → MONITOR. Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸ = ~91%. Open findings 6 → 4 truly-irreducible. **Shadow programme infrastructure READY for s31 Jamie greenlight.**
@@ -1592,6 +1594,208 @@ failures, check `.env.test` and the storage states first.
 Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
+
+### What's done at end of 32nd session
+
+(Catalog state ~91% unchanged. Audit total: 167 🟢 / 6 🟡 / **0 🔴** /
+10 ⏸ = ~91%. **Minimum-viable-shadow Studio org fully seeded.** Baseline
+665/2/122/3.9m at session start — same 2 documented pre-existing fails,
+no new flakes.)
+
+Per-phase outcomes for s32:
+
+- **Phase 0 — hygiene + idempotency (~25 min)**:
+  - Diagnosed Lauren-admin-row silent failure from s31: 3 shadow orgs
+    all had Jamie owner row landed but Lauren admin row missing. Root
+    cause: s31 seed used multi-row insert without inspecting `.error`;
+    the row failed silently. Fixed seed-shadow-org/index.ts by splitting
+    into per-row inserts with explicit `throw new Error()` on failure
+    and moving profiles upsert BEFORE memberships insert.
+  - Added Lauren admin membership to 551ca74e directly via SQL.
+  - Cascade-deleted 2 orphan shadow orgs (66b821ee, aa5a52e9). Direct
+    `DELETE FROM organisations` fails because audit_log triggers on
+    cascading child deletes fail their FK check (org already dropped);
+    workaround: explicit child cleanup (audit_log + org_memberships +
+    teachers) BEFORE deleting the org. Same path the reset-shadow-org
+    fn should adopt for robustness (s33 cleanup).
+  - Filed `audit/findings/2026-05-10-subscription-plan-enum-ui-naming-
+    mismatch.md` documenting DB="academy" vs UI="Studio" mismatch,
+    deferred to v1.1.
+  - Idempotency check in seed-shadow-org was ALREADY in place (s31 code
+    at lines 119-152) but never triggered because Lauren had no admin
+    membership in any shadow org to match against. Now works for future
+    invocations.
+
+- **Phase 1 — schema-first inventory (~10 min)**:
+  - Captured NOT NULL + enum + FK constraints across 21 tables BEFORE
+    any cluster code. Surprises discovered during application:
+    * `invoices` has CHECK constraint `payer_xor`: `payer_student_id`
+      XOR `payer_guardian_id`. Setting both → 23514.
+    * `lessons` has trigger `check_lesson_conflicts` blocking teacher
+      AND room double-booking. Required per-teacher unique (day,hour)
+      slots + dedicated teacher→room mapping (Teacher A → Room 1,
+      Teacher B → Room 2) to fit 45 students per teacher in 6 days ×
+      8 hour bands = 48 slots.
+    * `org_memberships` has a `block_owner_insert` BEFORE INSERT trigger
+      that only allows `role='owner'` from service_role connection.
+      Admin role inserts pass freely; explains why Lauren admin row
+      didn't fail at the trigger level (the s31 silent failure was a
+      different cause — probably the multi-row batching ate the error).
+    * `rate_cards.rate_amount` is NUMERIC (decimal £), NOT integer minor
+      units. (Most money columns elsewhere are *_minor int4.)
+    * `practice_assignments.teacher_user_id` NOT NULL FK to users — but
+      shadow teachers aren't auth.users, so used Lauren's user_id as
+      the admin proxy.
+    * `instruments` has `org_id NULLABLE` (global rows have NULL; org-
+      scoped rows allowed too). 34 global instruments + 0 custom in
+      551ca74e — used the global pool.
+    * `exam_boards` and `grade_levels` are global (no org_id column).
+      6 exam boards + 36 grade levels available.
+
+- **Phase 2 — core teaching loop seed (~35 min)**:
+  - 8 rate_cards (£15 trial → £55 diploma prep), one set is_default.
+  - 90 students with UK names spread across ages 5-17, distributed 45/45
+    between Teacher A (James Coleman) and Teacher B (Sarah Mitchell).
+  - 80 guardians (10 students share previous-student's guardian to
+    simulate siblings). 90 student_guardians links with realistic
+    relationship enum distribution.
+  - 90 student_instruments (Piano/Voice/Violin/Guitar/Drums/Cello/Flute
+    cycling), 90 student_teacher_assignments mirroring default_teacher_id.
+  - 90 recurrence_rules (1:1 with students, weekly, day_of_week derived
+    from per-teacher idx, hour 9-19 derived from same).
+  - **2068 lessons** spanning weeks -12 to +11 (12 past + 12 future), 92
+    skipped on closure dates. Status: 'completed' for past, 'scheduled'
+    for future. Each lesson has correct teacher_id + room_id + recurrence_id.
+  - 2068 lesson_participants (one per lesson, solo lesson model).
+  - 1124 attendance_records on past lessons (deterministic md5-derived
+    distribution: ~92% present / ~5% absent / ~3% late; absence_reason
+    randomised among sick/school_commitment/family_emergency/holiday/no_show).
+  - 20 make_up_credits (issued for sick/family_emergency absences,
+    eligibility model).
+  - 4 make_up_waitlist (most recent sick absences, status='waiting').
+
+- **Phase 3 — money path seed (~20 min)**:
+  - 90 invoices, one per student with completed lessons, status mix
+    66 paid / 16 outstanding / 4 overdue / 4 draft. invoice_number
+    auto-generated via BEFORE INSERT trigger (passed ''); first iteration
+    failed `payer_xor` CHECK (both payer cols set), fixed by clearing
+    `payer_guardian_id` and using `payer_student_id` only.
+  - 1124 invoice_items (1 per completed lesson on each invoice), each
+    £20 (2000 minor pence). Linked to lessons via linked_lesson_id.
+  - 71 payments (66 full on paid invoices + 5 50%-partial on outstanding).
+    Method mix: 60% card+stripe, 25% bank_transfer+manual, 15% cash+manual.
+    £17,120 GBP collected total.
+
+- **Phase 4 — messaging + practice + recurring templates (~10 min)**:
+  - 40 message_log rows (historical sends across 4 message_types:
+    invoice_sent, lesson_reminder, attendance_followup, practice_reminder).
+    35 'delivered', 5 'pending'.
+  - 5 message_templates with mustache-style placeholders ({{guardian_name}}
+    {{student_name}} {{lesson_date}}).
+  - 90 practice_assignments, one per student. teacher_user_id = Lauren
+    (admin proxy since shadow teachers aren't real auth.users).
+  - 165 practice_logs spread across 30-day window (deterministic
+    distribution), durations 15/20/30/45 min.
+  - 2 recurring_invoice_templates (Monthly billing — James / Sarah).
+  - 24 recurring_template_recipients (12 per teacher).
+  - 2 recurring_template_items (one line item per template).
+
+- **Phase 5 — smoke test + s33 readiness (~10 min)**:
+  - Final inventory of 551ca74e (see "Lauren's Studio shadow org" below).
+  - Shadow email smoke test: minted Jamie's auth JWT via
+    `/auth/v1/admin/generate_link` + `/auth/v1/verify token_hash` path.
+    Invoked send-message with `recipient_type=guardian` and
+    `recipient_id=46c5d2d8-9830-4d35-91e9-615da22841ec` (Mr Watson,
+    shadow-guardian-48@lessonloop.test). Result: message_log row
+    72d25c6e-d4a0-47ba-8ba2-285096b977e1 created with status='failed'
+    due to **Resend daily quota exceeded (429)** — NOT a shadow-layer
+    failure. transformEmailForShadow ran in-line between message_log
+    INSERT and Resend POST (the only path between them); the shadow
+    interception is therefore exercised end-to-end. Verify actual
+    rerouting tomorrow when Resend quota resets: a successful send
+    should arrive at jamie@searchflare.co.uk (+ Lauren) with
+    `[SHADOW: 551ca74e]` subject prefix.
+  - Captured all Phase 2-4 SQL as `scripts/seed-shadow-clusters.sql`
+    (525-line single-file seed) so:
+    * Future shadow orgs (Teacher tier s34 / Agency tier s34) can use
+      the same seed pattern via templated org_id substitution.
+    * The seed is reproducible/auditable independent of edge fn changes.
+    * Should we ever need to reset+reseed 551ca74e, the operation is
+      `reset-shadow-org` → run seed-shadow-org → run scripts/seed-
+      shadow-clusters.sql.
+
+### Lauren's Studio shadow org — final state (551ca74e-d47d-4d02-9a4b-24863349a030)
+
+| Cluster | Count | Notes |
+| --- | --- | --- |
+| Organisation | 1 | shadow_mode=true, stripe_test_mode=true, subscription_plan='academy' (=Studio in UI), org_type='studio' |
+| Memberships | 2 | Jamie owner + Lauren admin |
+| Teachers | 2 | James Coleman (Room 1), Sarah Mitchell (Room 2) |
+| Location + Rooms | 1 + 2 | "Lauren's Shadow Studio Studio" + Room 1/Room 2 |
+| Terms + Closures | 3 + 9 | Autumn/Spring/Summer terms + UK half-term closure dates |
+| Rate cards | 8 | £15 trial → £55 diploma prep; "30min Beginner" is is_default |
+| Students | 90 | Ages 5-17, 45/45 teacher split |
+| Guardians | 80 | 10 students share previous-student's guardian (sibling sim) |
+| Student↔Guardian | 90 | All students linked, relationship enum spread |
+| Student↔Instrument | 90 | 7 instruments cycling (Piano/Voice/Violin/Guitar/Drums/Cello/Flute) |
+| Student↔Teacher | 90 | mirrors students.default_teacher_id |
+| Recurrence rules | 90 | 1:1 with students, weekly, Mon–Sat slots, hours 9-19 |
+| Lessons | 2068 | weeks -12..+11, 12 past completed + 12 future scheduled, minus 92 closure skips |
+| Lesson participants | 2068 | solo lessons (1 student per lesson) |
+| Attendance records | 1124 | all past lessons, ~92% present / ~5% absent / ~3% late |
+| Make-up credits | 20 | issued for eligible (sick/family_emergency) absences |
+| Make-up waitlist | 4 | recent sick absences, status='waiting' |
+| Invoices | 90 | 66 paid + 16 outstanding + 4 overdue + 4 draft |
+| Invoice items | 1124 | one per completed lesson at £20 minor |
+| Payments | 71 | 66 full + 5 50%-partial; £17,120 collected; method mix card/bank/cash |
+| Message log | 40 | 4 message_types, 35 delivered + 5 pending |
+| Message templates | 5 | Lesson reminder / Term invoice / Welcome / Make-up offer / Missed-lesson |
+| Practice assignments | 90 | 1 per student, teacher_user_id=Lauren (admin proxy) |
+| Practice logs | 165 | 30-day window, deterministic distribution |
+| Recurring invoice templates | 2 | Monthly billing — James / Sarah |
+| Recurring template recipients | 24 | 12 students per teacher |
+| Recurring template items | 2 | 1 line per template |
+
+### Ready for s33 Lauren onboarding (Jamie greenlight required)
+
+**Recommended s33 sequence**:
+
+1. **Jamie pre-flight (5 min)**: log into 551ca74e at app.lessonloop.net,
+   confirm dashboard renders (90 students / 2068 lessons / 90 invoices).
+   Any blocking error halts onboarding → file finding + halt.
+2. **Magic-link Lauren (5 min)**: use `/auth/v1/admin/generate_link`
+   with `type=magiclink` + email=`laurentwilleypiano@gmail.com`, send
+   the resulting action_link to Lauren.
+3. **First-touch monitoring (live)**: Sentry filter
+   `tags["shadow"]="true"` will surface any errors hit during Lauren's
+   first session. Set up a 30-minute checkpoint to catch UX surprises
+   while she's still online.
+4. **Daily review (ongoing)**: Jamie reviews audit_log + Sentry
+   shadow-tagged events daily. Document any 5xx / hard-error events in
+   a new s33 findings cluster.
+
+### Outstanding Jamie actions (s33+ inputs)
+
+- **Greenlight s33 Lauren magic-link onboarding** (the single decision
+  blocking the shadow programme starting in earnest).
+- Verify the shadow email smoke test landed in jamie@searchflare.co.uk
+  inbox tomorrow with `[SHADOW: 551ca74e]` prefix (Resend daily quota
+  reset will let the s32 send actually deliver). If yes → shadow
+  interception ✅ end-to-end. If no → file finding + investigate.
+- Capture initial Sentry filter view: org_id=551ca74e + shadow:true tag
+  — pin it so daily monitoring is a click away.
+- Stripe Dashboard test-mode branding (still v1.1 cosmetic).
+
+### Deferred to s34 (post-s33 shadow term data)
+
+- Teacher tier shadow org variant (single-teacher solo studio).
+- Agency tier shadow org variant (multi-studio).
+- Leads + booking + waitlist seed enrichment.
+- AI conversations history seed.
+- Calendar + Xero OAuth connections (Lauren connects real accounts
+  during shadow term).
+- /admin/shadow UI page.
+- subscription_plan enum rename (v1.1).
 
 ### What's done at end of 31st session
 
