@@ -53,7 +53,16 @@ serve(wrapEdgeFn("send-invite-email", async (req: Request): Promise<Response> =>
       return rateLimitResponse(corsHeaders, rlResult);
     }
 
-    const { inviteId, guardianId }: InviteEmailRequest = await req.json();
+    let __body: any;
+    try {
+      __body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { inviteId, guardianId }: InviteEmailRequest = __body;
 
     if (!inviteId) {
       return new Response(

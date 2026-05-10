@@ -64,7 +64,15 @@ Deno.serve(wrapEdgeFn("batch-invite-guardians", async (req) => {
     }
 
     // --- Parse body ---
-    const body: BatchInviteRequest = await req.json();
+    let body: BatchInviteRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { org_id, import_batch_id, guardian_ids } = body;
 
     if (!org_id) {

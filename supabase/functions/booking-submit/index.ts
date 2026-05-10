@@ -74,7 +74,15 @@ Deno.serve(wrapEdgeFn("booking-submit", async (req) => {
       );
     }
 
-    const body: BookingRequest = await req.json();
+    let body: BookingRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { slug, enquiry_only, slot, contact, children, notes } = body;
 
     // Validate required fields — slot is optional for enquiry-only submissions

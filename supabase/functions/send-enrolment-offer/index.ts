@@ -70,7 +70,15 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const body: SendOfferRequest = await req.json();
+    let body: SendOfferRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { waitlist_id, org_id } = body;
 
     if (!waitlist_id || !org_id) {
