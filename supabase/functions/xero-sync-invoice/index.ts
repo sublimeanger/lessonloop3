@@ -199,7 +199,12 @@ Deno.serve(async (req) => {
       Contact: { ContactID: xeroContactId },
       Date: toXeroDate(invoice.created_at),
       DueDate: toXeroDate(invoice.due_date),
-      Reference: `LL-${invoice.invoice_number}`,
+      // invoice_number is already prefixed `LL-` at issue time (e.g.
+      // `LL-2026-00010`); concatenating another `LL-` would produce
+      // `LL-LL-...`. See finding 2026-05-07-xero-sync-invoice-ll-prefix-bug.
+      // s24 fix: use invoice_number directly. Historical Xero invoices
+      // synced pre-fix retain their LL-LL- references (acceptable cosmetic).
+      Reference: invoice.invoice_number,
       Status: mapInvoiceStatus(invoice.status),
       LineItems: invoiceItems.map((item: any) => ({
         Description: item.description,

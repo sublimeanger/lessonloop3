@@ -680,6 +680,147 @@ test.describe('§27 — Multi-area edge fn auth-gate contracts (s23)', () => {
   }
 });
 
+// ────────────────────────────────────────────────────────────────────
+// §27 — Xero day-one contracts (s24)
+// ────────────────────────────────────────────────────────────────────
+//
+// Per s24 stance recalibration: Xero promoted from CONDITIONAL → DAY-ONE
+// LAUNCH. This describe block covers the 3 remaining 🟡 Xero rows that
+// weren't covered by s23 multi-area auth-gate (xero-oauth-start +
+// xero-disconnect were promoted in s23 12240c4).
+//
+// xero-oauth-callback: verify_jwt=false; OAuth redirect entry point.
+//   Three deterministic contracts:
+//   - missing/invalid state param → 400 "Invalid state parameter"
+//   - state present + error param → 302 redirect to redirect_uri
+//     with ?xero_error=<error>
+//   - state present + no code → 302 redirect with ?xero_error=no_code
+//   The save_failed UNIQUE-conflict path (s7 fix) requires real Xero
+//   token exchange to reach; auth-gate negatives are sufficient proof
+//   for the agent-tagable contract (full E2E happens via real OAuth
+//   in production).
+//
+// xero-sync-invoice + xero-sync-payment: user-JWT auth-gate. Same
+//   shape as s23 multi-area (anon→4xx, no-auth→4xx). Real Xero API
+//   side effects (creating invoices/payments) deferred to production
+//   verification.
+
+function callXeroOauthCallback(opts: {
+  state?: string;
+  code?: string;
+  error?: string;
+}): { status: number; body: string; location: string | null } {
+  const params = new URLSearchParams();
+  if (opts.state !== undefined) params.set('state', opts.state);
+  if (opts.code !== undefined) params.set('code', opts.code);
+  if (opts.error !== undefined) params.set('error', opts.error);
+  const url = `${process.env.E2E_SUPABASE_URL}/functions/v1/xero-oauth-callback?${params.toString()}`;
+  const respFile = `/tmp/sb-xero-cb-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+  const headerFile = `/tmp/sb-xero-cb-h-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+  try {
+    const status = execSync(
+      `curl -s -o ${respFile} -D ${headerFile} -w "%{http_code}" "${url}"`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+    const headers = fs.existsSync(headerFile) ? fs.readFileSync(headerFile, 'utf-8') : '';
+    const locMatch = headers.match(/^location:\s*(.+?)\r?$/im);
+    return { status: parseInt(status.trim(), 10), body, location: locMatch ? locMatch[1].trim() : null };
+  } finally {
+    try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    try { fs.unlinkSync(headerFile); } catch { /* ignore */ }
+  }
+}
+
+test.describe('§27 — Xero day-one contracts (s24)', () => {
+  test('xero-oauth-callback — missing state → 400 Invalid state parameter', async () => {
+    const res = callXeroOauthCallback({});
+    expect(res.status, `body: ${res.body.slice(0, 200)}`).toBe(400);
+    expect(res.body).toMatch(/invalid state/i);
+  });
+
+  test('xero-oauth-callback — invalid base64 state → 400 Invalid state parameter', async () => {
+    const res = callXeroOauthCallback({ state: 'not-valid-base64-json!!!' });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatch(/invalid state/i);
+  });
+
+  test('xero-oauth-callback — valid state + error param → redirect with ?xero_error=', async () => {
+    const stateData = {
+      user_id: '00000000-0000-0000-0000-000000000000',
+      org_id: process.env.E2E_ORG_ID,
+      redirect_uri: 'https://app.lessonloop.net/settings',
+      nonce: 'test-nonce',
+    };
+    const state = Buffer.from(JSON.stringify(stateData)).toString('base64');
+    const res = callXeroOauthCallback({ state, error: 'access_denied' });
+    expect(res.status).toBe(302);
+    expect(res.location).toMatch(/xero_error=access_denied/);
+  });
+
+  test('xero-oauth-callback — valid state + no code → redirect with ?xero_error=no_code', async () => {
+    const stateData = {
+      user_id: '00000000-0000-0000-0000-000000000000',
+      org_id: process.env.E2E_ORG_ID,
+      redirect_uri: 'https://app.lessonloop.net/settings',
+      nonce: 'test-nonce',
+    };
+    const state = Buffer.from(JSON.stringify(stateData)).toString('base64');
+    const res = callXeroOauthCallback({ state });
+    expect(res.status).toBe(302);
+    expect(res.location).toMatch(/xero_error=no_code/);
+  });
+
+  // Xero sync fns — user-JWT auth-gate (same shape as s23 multi-area)
+  for (const fnName of ['xero-sync-invoice', 'xero-sync-payment']) {
+    test(`${fnName} — anon JWT rejected`, async () => {
+      const reqFile = `/tmp/sb-xero-s24-${fnName}-req-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+      const respFile = `/tmp/sb-xero-s24-${fnName}-resp-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+      fs.writeFileSync(reqFile, JSON.stringify({ invoice_id: '00000000-0000-0000-0000-000000000000', payment_id: '00000000-0000-0000-0000-000000000000' }));
+      try {
+        const status = execSync(
+          `curl -s -o ${respFile} -w "%{http_code}" ` +
+            `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+            `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+            `-H "Content-Type: application/json" -d @${reqFile}`,
+          { encoding: 'utf-8', timeout: 15_000 },
+        );
+        const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+        const code = parseInt(status.trim(), 10);
+        expect(code, `${fnName} body: ${body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+        expect(code).toBeLessThan(500);
+      } finally {
+        try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+        try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+      }
+    });
+
+    test(`${fnName} — no auth rejected`, async () => {
+      const reqFile = `/tmp/sb-xero-s24-${fnName}-req-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+      const respFile = `/tmp/sb-xero-s24-${fnName}-resp-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+      fs.writeFileSync(reqFile, JSON.stringify({ invoice_id: '00000000-0000-0000-0000-000000000000', payment_id: '00000000-0000-0000-0000-000000000000' }));
+      try {
+        const status = execSync(
+          `curl -s -o ${respFile} -w "%{http_code}" ` +
+            `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+            `-H "Content-Type: application/json" -d @${reqFile}`,
+          { encoding: 'utf-8', timeout: 15_000 },
+        );
+        const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+        const code = parseInt(status.trim(), 10);
+        expect(code, `${fnName} body: ${body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+      } finally {
+        try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+        try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+      }
+    });
+  }
+
+  // LL-LL prefix fix verification — read deployed source via Management API
+  // is out of test scope; the fix landed in xero-sync-invoice v21 (s24);
+  // see audit/findings/2026-05-07-xero-sync-invoice-ll-prefix-bug.md.
+});
+
 test.describe('§27 — Cron-lifecycle handler auth-gate contracts', () => {
   for (const fnName of [
     'invoice-overdue-check',
