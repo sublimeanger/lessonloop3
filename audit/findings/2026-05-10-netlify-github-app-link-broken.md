@@ -1,9 +1,10 @@
 # Netlify auto-deploy integration broken — pushes silently not building
 
-**Severity:** P1 (would block shadow-term-day frontend hotfixes — currently masked because s26+s27 changes are all server-side)
-**Status:** OPEN (mitigation in place; root-cause repair is Jamie-level)
+**Severity:** P1 (would have blocked shadow-term-day frontend hotfixes)
+**Status:** CLOSED 2026-05-10 — Jamie reconnected Netlify GitHub App; auto-deploy verified working end-to-end (push of `a42bec9e` at ~18:50 UTC → Netlify auto-build commit_ref=`a42bec9e`, state=ready at 18:54:48 UTC; `manual_deploy=false`).
 **First reproduced:** 2026-05-10 (s27)
 **Initial cleanup:** 2026-05-10 s26 (50-commit-backlog clearance — turned out to be a one-off manual trigger, not a real fix)
+**Closed:** 2026-05-10 s27 (Jamie reconnect → verified auto-deploy fires; mitigation infrastructure retained for safety)
 
 ## Symptom
 
@@ -77,4 +78,15 @@ Expected when healthy: `✓ All deploy targets in sync` and exit 0.
 
 ## Status
 
-OPEN — mitigation in place, root cause requires Jamie to reconnect Netlify GitHub App. Reassess at start of s28.
+**CLOSED 2026-05-10** — Jamie reconnected the Netlify GitHub App later in the same session. Verified end-to-end:
+
+1. Pushed s27 commit chain `2d02032..a42bec9e` (10 commits) to origin/main at ~18:50 UTC
+2. Netlify auto-detected the push and built `a42bec9e`
+3. Deploy reached `state=ready` at 2026-05-10T18:54:48Z (~4 min latency, normal for a Vite build)
+4. `manual_deploy=false` — confirms this was a webhook-triggered build, not an API trigger
+5. `scripts/check-deploy-sync.sh` exits 0 with "✓ All deploy targets in sync"
+
+Retained mitigation infrastructure for future failure-mode recurrence:
+- Build hook `shadow-term-emergency-redeploy` (id `6a00ced887eb236b680b1df4`) remains active — useful for emergency redeploys without touching git
+- `scripts/check-deploy-sync.sh` stays in repo — run any time to detect drift
+- This finding stays in the audit as a closed reference for the failure pattern

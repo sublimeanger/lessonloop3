@@ -1970,13 +1970,11 @@ Agent should:
 5. **Polish iOS_RELEASE_CHECKLIST.md** based on any TestFlight
    feedback Jamie has surfaced.
 
-Jamie should (new in s27 + carried from s26):
-1. **Netlify**: reconnect the GitHub App for the Netlify integration
-   per `audit/findings/2026-05-10-netlify-github-app-link-broken.md`.
-   Until done, every session must run
-   `scripts/check-deploy-sync.sh --rebuild` to ship frontend
-   changes to Netlify. Once reconnected, verify with the script
-   that auto-deploy fires on a fresh push.
+Jamie should (carried from s26 — Netlify item DONE in s27 close):
+1. ~~**Netlify**: reconnect the GitHub App for the Netlify integration~~
+   **DONE 2026-05-10 s27** — Jamie reconnected during s27 close;
+   end-to-end verified: push of `a42bec9e` auto-built to ready at
+   18:54:48 UTC, manual_deploy=false. Finding closed.
 2. **iOS**: replace TEAMID placeholder in apple-app-site-association
    with the actual Apple Developer Team ID; add Push Notifications +
    Associated Domains capabilities in Xcode; archive + TestFlight +
