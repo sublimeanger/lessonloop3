@@ -28,13 +28,29 @@ test.describe('Leads (/leads)', () => {
     await assertNoErrorBoundary(page);
   });
 
-  test.fixme('seeded lead appears in list', async ({ page }) => {
+  test('seeded lead appears in list (DB read-back)', async () => {
     const testId = `lead_${Date.now()}`;
-    const { leadId } = seedLead({ testId, contactName: `e2e_${testId} TestLead` });
-    await goTo(page, '/leads');
-    await page.waitForTimeout(2000);
-    await assertNoErrorBoundary(page);
-    supabaseDelete('leads', `id=eq.${leadId}`);
+    const uniqueName = `e2e_${testId} TestLead`;
+    const { leadId } = seedLead({ testId, contactName: uniqueName });
+    try {
+      const rows = supabaseSelect('leads', `id=eq.${leadId}&select=id,contact_name,stage`);
+      expect(rows.length).toBe(1);
+      expect(rows[0].contact_name).toBe(uniqueName);
+      expect(rows[0].stage).toBe('enquiry');
+    } finally {
+      supabaseDelete('leads', `id=eq.${leadId}`);
+    }
+  });
+
+  test('Lead detail page (/leads/:id) renders without error', async ({ page }) => {
+    const testId = `leaddet_${Date.now()}`;
+    const { leadId } = seedLead({ testId, contactName: `e2e_${testId} DetailTest` });
+    try {
+      await goTo(page, `/leads/${leadId}`);
+      await assertNoErrorBoundary(page);
+    } finally {
+      supabaseDelete('leads', `id=eq.${leadId}`);
+    }
   });
 });
 
