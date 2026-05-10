@@ -423,3 +423,65 @@ test.describe('§27 RBAC — service-role auth gate', () => {
 // TODO §27.1 — sending invoice writes message_log row (UI flow)
 // TODO §27.1 — overdue cron writes N reminders per overdue_reminder_days
 // TODO §27.3 — push token lifecycle: login registers, logout removes
+
+// ────────────────────────────────────────────────────────────────────
+// §27 — Calendar-cluster notification edge fn auth-gate contracts (s20)
+// ────────────────────────────────────────────────────────────────────
+//
+// Three Calendar & Lessons cluster notification fns lacked auth-gate
+// coverage in audit/MASTER.md. Same shape as s17 §24 / s18 §3.8 /
+// §24 C-bucket: anon→4xx + no-auth→4xx prove the gate fires.
+//
+// * notify-makeup-offer: dual auth (user JWT or service-role bearer).
+//   s16 getUser fix per 4b1704e — user-JWT path was bare getUser().
+//   Test the user-JWT path (anon JWT rejected); service-role path
+//   covered by the byte-equal Bearer check.
+// * notify-makeup-match: service-role-only invoke (Bearer ===
+//   SERVICE_ROLE_KEY exact match). Called by pg_net trigger. Test
+//   the byte-equal gate.
+// * send-notes-notification: user JWT + rate limit; getUser fix
+//   per 7c37115 (s16). Test the user-JWT gate.
+
+function callCalNotifGate(fnName: string, opts: { auth: 'anon' | 'none'; payload?: Record<string, unknown> }): { status: number; body: string } {
+  const respFile = `/tmp/sb-cal-${fnName}-resp-${Date.now()}-${randomBytes(4).toString('hex')}.txt`;
+  const reqFile = `/tmp/sb-cal-${fnName}-req-${Date.now()}-${randomBytes(4).toString('hex')}.json`;
+  fs.writeFileSync(reqFile, JSON.stringify(opts.payload ?? {}));
+  let authHeader = '';
+  if (opts.auth === 'anon') {
+    authHeader = `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" `;
+  }
+  try {
+    const status = execSync(
+      `curl -s -o ${respFile} -w "%{http_code}" ` +
+        `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+        `${authHeader}` +
+        `-H "Content-Type: application/json" ` +
+        `-d @${reqFile}`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+    return { status: parseInt(status.trim(), 10), body };
+  } finally {
+    try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+  }
+}
+
+test.describe('§27 — Calendar-cluster notification fn auth-gate contracts', () => {
+  for (const fnName of [
+    'send-notes-notification',  // user-JWT (s16 fix per 7c37115)
+    'notify-makeup-offer',      // dual auth — user-JWT path tested
+    'notify-makeup-match',      // service-role-only (byte-equal Bearer)
+  ]) {
+    test(`${fnName} — anon JWT rejected`, async () => {
+      const res = callCalNotifGate(fnName, { auth: 'anon', payload: { lesson_id: '00000000-0000-0000-0000-000000000000', waitlist_id: '00000000-0000-0000-0000-000000000000' } });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBeLessThan(500);
+    });
+
+    test(`${fnName} — no auth rejected`, async () => {
+      const res = callCalNotifGate(fnName, { auth: 'none' });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+    });
+  }
+});
