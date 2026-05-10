@@ -394,19 +394,23 @@ test.describe('§14.10.16 — apply_lost_dispute_cascade', () => {
     } catch { return []; }
   }
 
-  // Poll-with-backoff wrapper — used for assertions on rows that the
-  // RPC writes via AFTER trigger or async commit (audit_log is the
-  // common case). Retries up to ~3s before returning whatever it last
-  // saw, so a transient zero-row read doesn't immediately fail the test.
+  // Poll-with-backoff wrapper — used for assertions on rows the RPC
+  // writes inside its transaction body (audit_log is the common case).
+  // The row IS committed by the time the RPC returns, but PostgREST
+  // visibility under cross-file parallel contention occasionally lags
+  // by 1-3s as the proxy fans out fresh reads against an overloaded
+  // pool. 10s deadline gives plenty of headroom for the worst-case
+  // contention seen in baselines without slowing the happy path
+  // (which returns on the first poll).
   function selectServiceRoleWithPoll(
     table: string, query: string, predicate: (rows: any[]) => boolean,
   ): any[] {
-    const deadline = Date.now() + 3_000;
+    const deadline = Date.now() + 10_000;
     let last: any[] = [];
     while (Date.now() < deadline) {
       last = selectServiceRole(table, query);
       if (predicate(last)) return last;
-      execSync('sleep 0.2');
+      execSync('sleep 0.25');
     }
     return last;
   }
