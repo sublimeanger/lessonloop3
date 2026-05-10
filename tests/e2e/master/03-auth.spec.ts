@@ -14,6 +14,8 @@
  */
 
 import { test, expect } from './_fixtures/auth-refresh';
+import { execSync } from 'child_process';
+import fs from 'fs';
 
 test.describe('Login (/login)', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -196,9 +198,6 @@ test.fixme('§3.7 — zoom OAuth callback happy path', async () => {});
 //
 // Same `callFnAuthGate` pattern as §24 — copied inline rather than
 // imported across spec files (per s5 anti-pattern guidance).
-
-import { execSync } from 'child_process';
-import fs from 'fs';
 
 function callAuthFnGate(fnName: string, opts: { auth: 'anon' | 'none'; payload?: Record<string, unknown> }): { status: number; body: string } {
   const respFile = `/tmp/sb-auth-${fnName}-resp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.txt`;

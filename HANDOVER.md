@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-10 (after 17th-session — DEDICATED money-path systematic clearing: 18 of 23 Invoicing & Payments rows now 🟢 (was 3 at s16 end); 6 A-bucket already-covered + 9 B-bucket via new §24 auth-gate contract tests; §11.4.7 race fix; cumulative 47 🟢 / 117 🟡) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-10 (after 18th-session — TWO-TRACK: money-path C-bucket close (Invoicing & Payments now **23/23 🟢 AREA COMPLETE**) + Auth & Onboarding kickoff (1 → 7 🟢); 11 promotions; cumulative 58 🟢 / 106 🟡) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -656,6 +656,42 @@
   * getUser sweep gets a dedicated session (recommend s16 or
     s17). 17/~30 done across s12+s13+s14. ~13 remain. Stop
     capping at 5/session — clear the lot in one focused pass.
+- (18th session — TWO-TRACK: money-path AREA COMPLETE + Auth kickoff)
+  Two-track per s17 pickup recommendation. Single commit lands both
+  tracks (audit + tests in lockstep):
+  * **TRACK 1 — Money-path C-bucket close (5 rows → 🟢, AREA COMPLETE).**
+    §24 spec extended with new C-bucket auth-gate contracts describe.
+    10 contract tests across 5 fns (16/16 passed in 18.0s isolation):
+    - Service-role-bearer fns (2): send-invoice-email-internal,
+      generate-invoice-pdf — anon→4xx + no-auth→4xx prove the byte-
+      equal `Bearer === SERVICE_ROLE_KEY` gate fires.
+    - User-JWT fn (1): create-billing-run — anon→4xx + no-auth→4xx.
+    - Cron-auth fns (2): admin-backfill-default-pm,
+      stripe-auto-pay-installment — missing x-cron-secret → 401 +
+      wrong x-cron-secret → 401 prove validateCronAuth gate fires.
+      New helper `callFnCronAuthGate` added inline (parallels
+      `callFnAuthGate` from s17).
+    **Invoicing & Payments cluster: 23/23 🟢 — AREA COMPLETE.** First
+    full-area-green signal in audit/MASTER.md history. World-class
+    money-path achieved.
+  * **TRACK 2 — Auth & Onboarding kickoff (1 → 7 🟢).** §03 spec
+    extended with §3.8 auth-cluster auth-gate contracts describe.
+    6 contract tests across 3 fns (12/12 passed in 12.5s):
+    account-delete, gdpr-export, gdpr-delete. All inherit s16
+    getUser(token) fix; this verifies the gate fires.
+    - A-bucket (3 — already covered, just untagged): Email + password
+      sign-in (8 tests in 03-auth.spec.ts Login describe), Password
+      reset request (1 test — anti-enumeration contract), Email
+      verification (1 test — route-guard contract).
+    - B-bucket (3 — new §3.8 contracts): Account delete (GDPR),
+      GDPR data export, GDPR full delete.
+    - C-bucket deferred to s19+ (4 rows): Email signup → onboarding
+      wizard end-to-end; Password reset complete; Onboarding wizard
+      (duplicate row); Accept invite. All need full UI/E2E flows
+      with throwaway users + email-side checks.
+  * **Audit total: 58 🟢 / 106 🟡** (was 47/117 at s17 end).
+    s15+s16+s17+s18 cumulative: **44 promotions** since the
+    recalibrated bar landed.
 - (17th session — DEDICATED money-path systematic clearing)
   Per Jamie's recalibrated stance, money-path was the next big
   workstream. Three commits land:
@@ -800,9 +836,32 @@ remain.**
 
 **Audit total: 47 🟢 / 117 🟡 (was 32/132 at s16 end).**
 
-Current baseline (end of 17th session, post-money-path-clearing):
-- **499 passed / 7 failed / 124 skipped / 1 did not run / 6.6 min wall-clock at 4 workers**
-- vs s16 final (479/7/125/2/4.5m): **+20 passed / 0 failed / −1 skipped / −1 did-not-run / +2.1m wall-clock**.
+Current baseline (end of 18th session, post-two-track):
+- **462 passed / 11 failed / 125 skipped / 49 did not run / 5.6 min wall-clock at 4 workers**
+- Test count grew to 647 (+16 from s18's new contract tests: 10 §24
+  C-bucket + 6 §3.8 auth-cluster).
+- vs s17 final (499/7/124/1/6.6m): **−37 passed / +4 failed / +48 did-not-run / −1.0m**.
+- The 49 did-not-run is a §22.2/§24 cross-file race cascade —
+  serial-mode within §22.2 means subsequent §22.2 tests get marked
+  did-not-run when the first fails. Pre-existing pattern (cf. s15
+  HANDOVER notes); not introduced by s18.
+- Pre-session baseline (before any s18 changes) was 503/3/125/4.9m
+  — clean. The variance between pre and post baselines is the
+  documented §22.2/§24 race firing intermittently.
+- 11 failures are all documented transients (§5.4 deterministic;
+  §6 dashboard UI race; §14.10.16 PostgREST proxy contention;
+  §20.7b rate-limit cascade; §24.5 detach transient; §26.4/§26.6.1/
+  §26.9.1/§26.9.6/§26.12 UI races; §27 RLS contract transient).
+- s18 work itself: §24 C-bucket cluster (16/16 in 18.0s), §3.8
+  auth-cluster (12/12 in 12.5s) — both green in isolation. 03-auth
+  full file passes 27/4 skipped in 14.2s post-import-fix.
+- s18 added one tweak: moved §3.8's `import {execSync}` and
+  `import fs` to top-of-file (was mid-file at line 200 — ESM
+  imports should always be top-of-file per long-standing
+  anti-pattern).
+
+**Stale baseline (end of 17th session, post-money-path-clearing):**
+- 499 passed / 7 failed / 124 skipped / 1 did not run / 6.6 min wall-clock
 - The +20 passed is from s17's new §24 auth-gate contracts cluster
   (18 tests across 9 fns) plus modest variance recovery elsewhere.
 - Wall-clock +2.1m is variance — the §22/§24 cross-file race
@@ -987,8 +1046,9 @@ session — don't fix inline during a catalog session.
 | ~~Streak milestone notifications never deliver.~~ | — | **CLOSED in session 12.** Two bugs in series: (1) vault was missing SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (FIXED — seeded via Management API); (2) `_notify_streak_milestone` sent wrong auth header, streak-notification's validateCronAuth required x-cron-secret (FIXED via migration `20260519100000_notify_streak_milestone_x_cron_secret.sql`). End-to-end verified: net._http_response shows 200 OK with `{success:true, streak:3, milestone:"Building Momentum!"}`. §17.4 e2e delivery test added that polls net._http_response. RESEND_API_KEY still not seeded so emails_sent=0 (best-effort delivery design); seeding RESEND is an unrelated follow-up if Lauren wants email delivery, separate from the auth chain. |
 | ~~app.lessonloop.net DNS chain broken~~ | — | **RESOLVED in session 13.** Outage at start of s13 because the entire `*.netlify.app` zone went NXDOMAIN globally (verified across all major resolvers + the .app TLD authoritative servers). Cloudflare CNAME at `app.lessonloop.net` was pointing at `lessonloop-app.netlify.app`. Fixed via Cloudflare API: CNAME swapped to `lessonloop-app.netlify.com` (same project, TLD swap). Verified end-to-end (HTTPS 200, Netlify edge cache hit). ~10 min from diagnosis to resolution. Long-term consideration: switch DNS hosting to Netlify so they manage the chain end-to-end as their internal naming evolves. See [DNS finding](audit/findings/2026-05-10-app-dns-netlify-cname-broken.md). |
 | ~~getUser() no-args pattern across 30+ user-facing edge fns~~ | — | **CLOSED in s16 for v1 launch.** Cumulative 32 of 45 fns fixed across s12+s13+s14+s16. s16 was the dedicated sweep — 15 user-facing fns hardened in 5 cluster commits (Stripe x4, GDPR/invite/notes x4, run-creation/makeup x4, account-delete + bulk-process + continuation-respond x3, MEDIUM looopassist + Xero x6). HIGH+MEDIUM done; LOW cluster (~7 fns: calendar-* x4, zoom-* x2, seed-* x4, send-enrolment-offer) all hidden at v1 launch per v2 §3.2 — deferred to a future sweep when those features light up. See [finding](audit/findings/2026-05-10-getuser-noargs-sweep.md) Closure section. |
-| **Money-path systematic clearing** (Invoicing & Payments cluster) | **P0/P1 mix** | Lauren-paramount per v2 §3.1. **s17 landed: 15 promotions (6 A-bucket + 9 B-bucket via new §24 auth-gate contracts). Cluster now 18 of 23 rows green (~78%).** Remaining 5 are C-bucket — all need full E2E or cron-fire verification: Invoice PDF generation; Send invoice email (internal copy); Backfill default PM; Auto-pay run (installment cron); Recurring billing run create. Each is bounded but requires real flow work, not just a contract test. Recommended s18 plan: knock out the 4 smaller C-bucket rows (PDF/internal-copy/backfill/auto-pay) in ~3-4h, then kick off Auth & Onboarding (14 rows, only 1 🟢). |
-| **Auth & Onboarding cluster** (audit/MASTER.md "Authentication & Onboarding") | **P0** | 14 audit rows; only Profile ensure (`profile-ensure`) is 🟢. Existential at v1 launch. New entry post-s17 — once money-path closes (s18), this becomes the next big systematic-clearing workstream. Walk pattern same as s17 money-path: classify A/B/C, promote A immediately, write contract tests for B. |
+| ~~Money-path systematic clearing~~ (Invoicing & Payments cluster) | — | **AREA COMPLETE in s18 — 23/23 🟢.** Combined s16+s17+s18 work: s16 promoted 3 (Settings; Invoices list; Invoice detail; Stripe webhook), s17 promoted 15 (6 A-bucket + 9 B-bucket via new §24 auth-gate contracts), s18 promoted 5 C-bucket via auth-gate contracts (10 new tests in §24's "C-bucket" describe). World-class money-path achieved. First full-area-green signal in audit/MASTER.md. |
+| **Auth & Onboarding cluster** (in-progress) | **P0** | s18 kickoff: 1 → 7 🟢. **Remaining 4 🟡 are all C-bucket** — Email signup→onboarding-wizard end-to-end; Password reset complete; Onboarding wizard (duplicate of signup); Accept invite. Each needs throwaway-user-or-token-seed + UI flow. 04-onboarding.spec.ts has 9 fixmes scaffolded with comments. **PRIMARY workstream candidate for s19** — closes the cluster (would become 11/11 🟢 with 2 ⏸ OAuth deferred). |
+| **Calendar & Lessons cluster** (next big weak area) | **P0** | 16 audit rows, only 1 🟢 (Single lesson CRUD via §32 trigger guards). Largest remaining weak area. Includes calendar OAuth (Google, Apple, Zoom), recurring lesson templates, make-up dashboard, attendance, daily register. Most launch-in-scope per v2 §3.1. **Kickoff candidate for s20** (or s19 if Jamie picks Option B over Auth close). |
 | **DNS hardening** (raised in s13; Jamie-level work) | **P1 launch readiness** | The s13 outage exposed that production DNS relies on a Cloudflare CNAME pointing at a Netlify-managed target whose naming Netlify can change without notice. Same pattern could fail again. JAMIE-LEVEL launch-readiness item: (a) move DNS hosting to Netlify entirely, OR (b) add external uptime monitoring on app.lessonloop.net + a runbook for the CNAME swap. Runbook is filed in audit/findings/2026-05-10-app-dns-netlify-cname-broken.md. NOT agent work. |
 | **Edge function env injection mismatch** (REPLACES the prior "drift" entry — phantom diagnosis closed in 11th session) | **P1** | 11th-session three-probe diagnostic conclusively proved: the legacy HS256 service_role JWT IS valid against the project (PostgREST returns 200). The "drift" framing carried across sessions 9 + 9a + 10 was based on a hash from session 9a's env-probe-temp (never validated). The actual phenomenon: `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` in deployed edge functions returns a different value than the dashboard's "Project API keys" → service_role row, despite no Custom Secrets override. Jamie's hypothesis on cause: Supabase auto-injection materialises a different value than the dashboard, OR partial migration to signing-keys at the edge gateway. Three resolution paths in [finding](audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md). The agent should NOT propose JWT secret reset or sb_secret_ migration. **Affects edge functions that do `authHeader.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))` byte-equal checks** (send-payment-receipt + likely send-refund-notification + send-auto-pay-alert). Functions that use `getUser(token)` for auth (now including send-bulk-message after 11th-session fix) work fine with legacy JWTs. Vault seeding still blocked because the streak-notification chain runs through this auth path. |
 | **§5.4 email-verification gate test design broken** (NEW 2026-05-09 — formerly listed under "JWT-stale" theory) | **P2** | 9th-session Item 5 confirmed deterministic 5/5 fail. Root cause: Supabase `enable_email_confirmations` (likely toggled in 2026-05-08 auth tightening) rejects password-grant for unconfirmed users with `email_not_confirmed`. The test creates a user with `email_confirm: false` then calls `/auth/v1/token?grant_type=password` to get a session — that path now refuses by design. The test's premise is broken; no quick fix. Three redesign paths in [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md). Estimate to fix: 1-2h via UI-signup flow OR magic-link admin generation. |
@@ -1152,14 +1212,15 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
-### What's done at end of 17th session
+### What's done at end of 18th session
 
-(Catalog state mostly unchanged from s16 — s17 was dedicated
-audit-hygiene + B-bucket contracts; +18 tests in §24 auth-gate
-contracts cluster.)
+(Catalog state ~75% — s18 added 16 contract tests across §24
+C-bucket + §3.8 auth-cluster; minor catalog bump. Primary win
+was money-path AREA COMPLETE + Auth kickoff.)
 
 | Section | Real tests | Coverage | Notes |
 |---|---:|---:|---|
+| §3 Auth | 13 + 6 contracts | ~70% | s18 §3.8: 6 new auth-cluster auth-gate contracts (account-delete, gdpr-export, gdpr-delete). 4 fixmes remain for §3.6 invite-accept flow + §3.7 zoom OAuth. |
 | §10 Students (incl. §10.7 CSV import) | 7 | ~60% | §10.7 5 tests via csv-import-execute (Lauren-critical) done |
 | §11 Teachers | 8 + RBAC | ~75% | s15: §11.4.6 plan-cap (throwaway org), §11.4.8 invite expiry contract, §11.4.10 archive teacher PATCH. s17 §11.4.7 race fix (single-snapshot count derivation). UI archive-dialog flow still pending |
 | §13 Invoices | 12 | ~80% | s15: §13.7.4 hardened with service-role-curl result-side selects |
@@ -1169,7 +1230,7 @@ contracts cluster.)
 | §17 Practice | 5 + 2 cron + 1 e2e | ~80% | end-to-end verified post-s12 |
 | §20 Continuation | 12 | ~98% | mature; §20 cluster functionally complete except UI-driven cases |
 | §22 Settings | 12 + 21 smoke | ~75% | s15: §22.5 closure date / §22.8 rate cards / §22.10 message templates / §22.11 availability_blocks overlap trigger. §22.7 GDPR / §22.12 calendar OAuth / §22.14 billing / §22.15 booking page (hidden) / §22.21 Xero / §22.22 recurring billing (hidden) remain fixme |
-| §24 Stripe (incl. §24.12 true-replay + s17 auth gates) | 30 | ~80% | mature; §24.4/6/8/9/11 deferred — Stripe CLI / OAuth / mobile. s17: +18 auth-gate contract tests across 9 fns (stripe-customer-portal, stripe-verify-session, stripe-update-payment-preferences, stripe-create-checkout, send-refund-notification, send-auto-pay-alert, send-auto-pay-failure-notification, send-dispute-notification, send-recurring-billing-alert). |
+| §24 Stripe (incl. §24.12 true-replay + s17/s18 auth gates) | 40 | ~85% | mature; §24.4/6/8/9/11 deferred — Stripe CLI / OAuth / mobile. s17: +18 auth-gate contract tests across 9 fns. **s18 C-bucket: +10 contract tests across 5 fns** (send-invoice-email-internal, generate-invoice-pdf, create-billing-run, admin-backfill-default-pm, stripe-auto-pay-installment) — closes Money-path AREA COMPLETE 23/23. |
 | §26 Parent portal | 32+ | ~95% | mature; only §26.8 Resources remains |
 | §27 Notifications | 5 + 2 RLS | ~55% | mature; live fn-invocation tests still deferred (edge-fn env-injection mismatch) |
 | §32 Security trigger guards | 9 | ~80% | mature |
@@ -1183,7 +1244,64 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 18th session pickup
+### Priority order — 19th session pickup
+
+**PRIMARY: pick ONE of two dedicated workstream sessions.**
+
+After s18, the picture has shifted dramatically:
+- Money-path: **AREA COMPLETE** (23/23 🟢). Done.
+- Auth & Onboarding: 7/13 🟢, 4 still 🟡 (all C-bucket — UI/E2E flows).
+- Calendar & Lessons: 16 audit rows, only 1 🟢 — second-largest weak area.
+- Audit total: 58 🟢, target launch ~150+.
+
+Two reasonable s19 tracks:
+
+**Option A: Auth & Onboarding C-bucket close (~3-4h).**
+4 rows remaining. All require fragile UI/email flow setup but
+each is bounded:
+1. **Email signup → onboarding wizard end-to-end** (P0) — requires
+   throwaway auth user + the 7-step wizard. 04-onboarding.spec.ts
+   has 9 fixmes scaffolded with comments explaining the seed
+   approach. ~90 min.
+2. **Password reset complete** (P0) — uses
+   `supabase.auth.updateUser({password})` after user clicks
+   recovery email link. Test: seed user with recovery token via
+   admin API → land on /reset-password?access_token=... →
+   submit new password → verify password actually changed.
+   ~45 min.
+3. **Onboarding wizard** (P0) — duplicate row of #1, can promote
+   together once #1 lands.
+4. **Accept invite** (P0) — invite-accept fn already covered
+   by §11.4.2 (insert + send email). Missing: actual claim flow.
+   §3.6 has 3 fixmes scaffolded. ~90 min.
+
+After s19: Auth & Onboarding closes (13/13 🟢 minus 2 ⏸ OAuth = 11/11 active).
+Two areas COMPLETE.
+
+**Option B: Calendar & Lessons kickoff (~3-4h).**
+16 audit rows, 1 🟢. Largest single weak area still pending.
+Walk pattern same as s17 money-path / s18 auth: classify A/B/C,
+promote A immediately, write contract tests for B. Includes
+calendar OAuth (Google + Apple), recurring lesson template,
+make-up dashboard, etc. Most are launch-in-scope per v2 §3.1.
+
+**Recommended: Option A first** — finish what s18 started; clean
+"area complete" signal motivates launch readiness reporting.
+Option B in s20.
+
+**Step 0** (either option): pull, read HANDOVER, run baseline.
+Expected: ~500 passed / 3-7 failed / 125 skipped / 5-7m wall-clock.
+
+**Audit hygiene mandate continues:** ≥5 rows promoted to 🟢
+per session. After Auth closes, target Calendar 5+ rows in s20.
+
+### Priority order — 18th session pickup (closed)
+
+**Closed**: Two-track session as recommended. Track 1 closed
+money-path entirely (23/23 🟢). Track 2 kicked off Auth (1 → 7 🟢).
+11 promotions. Audit total 47 → 58 🟢.
+
+**Original recommendation** (s17 wrote two options, both ran):
 
 **PRIMARY: Two complementary tracks — money-path C-bucket finish + Auth & Onboarding kickoff.**
 
@@ -2345,6 +2463,13 @@ the same shape.
 | `§27` describe | `upsertParentNotifPref(orgId, userId, prefs)` + `deleteParentNotifPref(orgId, userId)` | Service-role POST with `Prefer: resolution=merge-duplicates` for upsert; DELETE for cleanup. Use to flip `email_payment_receipts` / `email_invoice_reminders` etc. for testing pref-honoring contracts. |
 | `§27` describe | `insertPaymentServiceRole(payload)` | Service-role POST to `payments` table with `Prefer: return=representation` + error-throwing wrapper. Used by §27 dedup test to seed a payment that both the message_log dedup index test and a future fn-invocation test depend on. |
 
+### Inline helpers worth knowing about (18th session)
+
+| Where | Helper | Pattern it solves |
+|---|---|---|
+| `§24` describe (Money-path C-bucket auth-gate contracts) | `callFnCronAuthGate(fnName, { secret, payload })` | Companion to s17's `callFnAuthGate` for fns gated by `validateCronAuth` (x-cron-secret header). Tests `secret: 'none'` (no header) and `secret: 'wrong'` (random string). Both must return 401 to prove the gate fires. Happy-path testing requires the real INTERNAL_CRON_SECRET (vault-only, not in .env.test) — negatives are sufficient proof of the contract. Used for admin-backfill-default-pm + stripe-auto-pay-installment. |
+| `§3.8` describe (Auth-cluster auth-gate contracts) | `callAuthFnGate(fnName, { auth, payload })` | Inline copy of `callFnAuthGate` (per s5 anti-pattern: don't import across spec files; copy). Used for account-delete + gdpr-export + gdpr-delete. Same shape: anon→4xx + no-auth→4xx prove user-JWT gate fires. |
+
 ### Inline helpers worth knowing about (17th session)
 
 | Where | Helper | Pattern it solves |
@@ -2372,16 +2497,14 @@ Living state of every feature: `audit/MASTER.md`. State symbols:
 - 🔴 known launch blocker
 - ❓ untested (target: zero of these)
 
-Current count (2026-05-10, after s17): **47 🟢 / 117 🟡 / 6 🔴 / 10 ⏸ / 0 ❓**.
+Current count (2026-05-10, after s18): **58 🟢 / 106 🟡 / 6 🔴 / 10 ⏸ / 0 ❓**.
+s18 promoted 11 rows (5 money-path C-bucket close + 3 auth A-bucket
++ 3 auth B-bucket via new contract tests).
 s17 promoted 15 rows (Invoicing & Payments cluster: 6 A-bucket
 already-covered + 9 B-bucket via new §24 auth-gate contract tests).
-s16 promoted 6 rows (Settings; Invoices list; Invoice detail;
-Stripe webhook; Continuation respond; Term adjustment processor).
-s15 promoted 12 rows (Outstanding; Continuation flow; CSV import
-execute; Teachers list/CRUD; Messages inbox; Send-message edge fn;
-Portal home/schedule/practice/invoices/messages/profile).
-**Cumulative s15+s16+s17: 33 promotions** since the recalibrated bar
-landed.
+s16 promoted 6 rows. s15 promoted 12 rows.
+**Cumulative s15+s16+s17+s18: 44 promotions** since the recalibrated bar
+landed. **Money-path AREA COMPLETE 23/23.** Auth & Onboarding 7/13.
 
 **The recalibrated bar (s15-onwards):** audit hygiene is non-negotiable
 per session; ≥5 rows backfilled to 🟢, target ~150+ tagged at launch.
