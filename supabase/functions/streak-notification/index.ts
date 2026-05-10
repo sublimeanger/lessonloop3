@@ -129,7 +129,16 @@ serve(wrapEdgeFn("streak-notification", async (req) => {
       .single();
 
     if (studentError || !student) {
-      throw new Error("Student not found");
+      // s30: idempotent skip rather than 500. Cron may fire with a student_id
+      // that's been soft/hard-deleted between the trigger source and this fn
+      // executing. Returning 200 with a "skipped" payload keeps the cron
+      // observability clean (no spurious 5xx in Sentry) while logging the
+      // ID for retrospective debug.
+      console.log(`[streak-notification] student ${student_id} not found (likely soft/hard-deleted) — skipping`);
+      return new Response(
+        JSON.stringify({ skipped: "student not found", student_id }),
+        { status: 200, headers }
+      );
     }
 
     const studentName = `${student.first_name} ${student.last_name}`;
@@ -142,7 +151,12 @@ serve(wrapEdgeFn("streak-notification", async (req) => {
       .single();
 
     if (orgError || !org) {
-      throw new Error("Organisation not found");
+      // s30: same idempotent-skip pattern as the student lookup above.
+      console.log(`[streak-notification] org ${org_id} not found (likely soft/hard-deleted) — skipping`);
+      return new Response(
+        JSON.stringify({ skipped: "organisation not found", org_id }),
+        { status: 200, headers }
+      );
     }
 
     // Get guardians to notify

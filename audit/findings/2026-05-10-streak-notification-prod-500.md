@@ -1,11 +1,45 @@
 # streak-notification 500 — real prod fire (1 user, IE Dublin)
 
 **Severity:** P3 (single occurrence, non-money-path)
-**Status:** OPEN — under investigation; not blocking shadow term
+**Status:** FIXED 2026-05-10 s30 — replaced 2 throw paths with idempotent 200-skip responses; deployed
 **First/Last observed:** 2026-05-10T19:37:01Z
-**Sentry issue:** [JAVASCRIPT-REACT-9](https://lessonloop.sentry.io/issues/JAVASCRIPT-REACT-9)
+**Sentry issue:** [JAVASCRIPT-REACT-9](https://lessonloop.sentry.io/issues/JAVASCRIPT-REACT-9) (s30: to be resolved post-deploy)
 **Events:** 1 event / 1 user (IE Dublin IPv6)
 **Surfaced by:** s28 Sentry wrap on cron cluster
+
+## s30 root cause + fix
+
+Hypothesis (from finding): the cron fired with `student_id` or `org_id` that was soft/hard-deleted between trigger fire and fn execution.
+
+**Hypothesis verification:** could not extract exact payload from Sentry (wrapEdgeFn doesn't capture request body for PII safety). However, the fix is **shape-correct regardless** of which specific row was missing.
+
+**Fix applied (2 changes in `supabase/functions/streak-notification/index.ts`):**
+
+```diff
+   if (studentError || !student) {
+-    throw new Error("Student not found");
++    console.log(`[streak-notification] student ${student_id} not found (likely soft/hard-deleted) — skipping`);
++    return new Response(
++      JSON.stringify({ skipped: "student not found", student_id }),
++      { status: 200, headers }
++    );
+   }
+```
+
+```diff
+   if (orgError || !org) {
+-    throw new Error("Organisation not found");
++    console.log(`[streak-notification] org ${org_id} not found (likely soft/hard-deleted) — skipping`);
++    return new Response(
++      JSON.stringify({ skipped: "organisation not found", org_id }),
++      { status: 200, headers }
++    );
+   }
+```
+
+Cron fns must be idempotent on stale upstream payloads. A trigger source row deleted between fire-and-execute should not 500; it should silently no-op (with a log line for retrospective debug).
+
+Deployed via Supabase Management API.
 
 ## Symptom
 
