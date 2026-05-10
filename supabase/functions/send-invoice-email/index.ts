@@ -53,7 +53,16 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { invoiceId, isReminder, customMessage, preview }: InvoiceEmailRequest = await req.json();
+    let body: InvoiceEmailRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { invoiceId, isReminder, customMessage, preview } = body;
 
     if (!invoiceId) {
       return new Response(JSON.stringify({ error: "invoiceId is required" }), {

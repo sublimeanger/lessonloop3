@@ -138,7 +138,26 @@ const handler = async (req: Request): Promise<Response> => {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
-    const data: BulkMessageRequest = await req.json();
+    let data: BulkMessageRequest;
+    try {
+      data = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate required fields before any DB work — prevents the outer
+    // catch from masking validation errors as 500 (same pattern as the
+    // session-24 send-message missing-fields fix).
+    if (!data.org_id || !data.subject || !data.body || !data.name) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: org_id, name, subject, body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const shouldSendEmail = data.send_email !== false;
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -157,10 +176,6 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ error: "Only admins can send bulk messages" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-    }
-
-    if (!data.org_id || !data.subject || !data.body || !data.name) {
-      throw new Error("Missing required fields: org_id, name, subject, body");
     }
 
     // Fail early if email sending is requested but RESEND_API_KEY is not configured
