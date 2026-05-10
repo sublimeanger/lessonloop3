@@ -30,8 +30,11 @@ serve(async (req) => {
     // Service role client for admin operations
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Get current user — getUser(token) accepts legacy HS256 JWTs (no-args
+    // form rejects them via /auth/v1/user). See:
+    // audit/findings/2026-05-10-getuser-noargs-sweep.md
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,

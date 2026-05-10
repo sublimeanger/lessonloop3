@@ -31,7 +31,11 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } }
     );
 
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    // getUser(jwtToken) — `token` already used for the invite token in this
+    // fn (req.json()). Local JWKS verification accepts legacy HS256 JWTs.
+    // See: audit/findings/2026-05-10-getuser-noargs-sweep.md
+    const jwtToken = authHeader.replace(/^Bearer\s+/i, "");
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser(jwtToken);
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Invalid or expired session" }),
