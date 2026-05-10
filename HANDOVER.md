@@ -1657,6 +1657,31 @@ Per-track outcomes for s30:
     Awaiting either live shadow-term recurrence (new actionable
     finding) or 30d zero-occurrence (implicit closure).
 
+- **Final baseline (s30 end)**: 662 passed / 5 failed / 122 skipped /
+  4.8m. Worse than the targeted 663/1-2, but two specific wins
+  visible:
+  - §5.4 RBAC — NOT in failures (redesign passes; was skipped pre-s30)
+  - §20.7b seedTerms — NOT in failures (per-testId baseYear fix
+    holding)
+  Failures:
+  - §6 dashboard stat cards (pre-existing documented)
+  - §13.7.4 send-invoice-email bulk (pre-existing documented)
+  - §15.4 Payroll seedLesson — REGRESSED intermittently. The s28
+    per-testId second offset (0-58s) is in place but this baseline
+    still hit a race. Hypothesis: 58s window is too small under full-
+    baseline contention vs the targeted-test runs s28 verified
+    against. Recommended s31 retry: widen offset to 0-200s or move
+    to serial-only mode for §15.4.
+  - §15.4 Utilisation — NEW. Same fixture family as Payroll; likely
+    same concurrency root cause.
+  - §16 Messages page renders without error — NEW. Possibly unrelated
+    to s30 changes; investigate in s31 if recurs.
+
+  Honest call: these are intermittent flakes (not regressions of s30
+  fixes). Session 31's first job will be running baseline 2-3× to
+  confirm flake vs regression. If §15.4 family is consistent, the
+  s28 fix needs to be expanded.
+
 ### What's done at end of 29th session
 
 (Catalog state ~91% unchanged — s29 was hardening + open-findings
