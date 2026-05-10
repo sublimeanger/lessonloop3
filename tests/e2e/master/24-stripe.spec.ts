@@ -795,3 +795,103 @@ test.describe('§24 — Embedded drawer UI smoke', () => {
     expect(errorBoundary).toBe(false);
   });
 });
+
+// ────────────────────────────────────────────────────────────────────
+// §24 — Money-path edge fn auth-gate contracts (s17 B-bucket)
+// ────────────────────────────────────────────────────────────────────
+//
+// Audit/MASTER.md "Invoicing & Payments" section has several rows that
+// lack any test coverage but are user-facing edge fns (gated by JWT)
+// or service-role-only (gated by Bearer === SERVICE_ROLE_KEY). The
+// fn-invocation happy paths require Stripe API setup that's already
+// covered for the more critical fns (process-refund, list-payment-
+// methods etc.) above; what's missing for these less-critical fns is
+// the auth-gate negative — does the fn correctly reject anon / wrong-
+// role callers?
+//
+// One-shot contract test per fn. Asserts:
+//   - anon JWT → 401 (or non-200 reject)
+//   - no-auth → 401
+//
+// Service-role-only fns use a different gate; we just verify the
+// non-service callers can't trip it.
+//
+// These tests don't seed/cleanup any Stripe-side state — they POST
+// to the fn URL with a deliberately-invalid auth header and verify
+// rejection. Pure auth-gate contract.
+
+function callFnAuthGate(fnName: string, opts: { auth: 'anon' | 'none'; payload?: Record<string, unknown> }): { status: number; body: string } {
+  const respFile = `/tmp/sb-${fnName}-resp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.txt`;
+  const reqFile = `/tmp/sb-${fnName}-req-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
+  fs.writeFileSync(reqFile, JSON.stringify(opts.payload ?? {}));
+  let authHeader = '';
+  if (opts.auth === 'anon') {
+    authHeader = `-H "Authorization: Bearer ${process.env.E2E_SUPABASE_ANON_KEY}" `;
+  }
+  try {
+    const status = execSync(
+      `curl -s -o ${respFile} -w "%{http_code}" ` +
+        `-X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/${fnName}" ` +
+        `${authHeader}` +
+        `-H "Content-Type: application/json" ` +
+        `-d @${reqFile}`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const body = fs.existsSync(respFile) ? fs.readFileSync(respFile, 'utf-8') : '';
+    return { status: parseInt(status.trim(), 10), body };
+  } finally {
+    try { fs.unlinkSync(respFile); } catch { /* ignore */ }
+    try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+  }
+}
+
+test.describe('§24 — Money-path edge fn auth-gate contracts', () => {
+  // User-JWT fns — anon Bearer should be rejected (the fn calls
+  // getUser(token) and the anon JWT has no user; getUser fails).
+  // No-auth → fn never reaches the user check; reject at outer gate.
+
+  for (const fnName of [
+    'stripe-customer-portal',
+    'stripe-verify-session',
+    'stripe-update-payment-preferences',
+    'stripe-create-checkout',
+  ]) {
+    test(`${fnName} — anon JWT rejected`, async () => {
+      const res = callFnAuthGate(fnName, { auth: 'anon', payload: { orgId: process.env.E2E_ORG_ID } });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBeLessThan(500);
+    });
+
+    test(`${fnName} — no auth rejected`, async () => {
+      const res = callFnAuthGate(fnName, { auth: 'none' });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+    });
+  }
+
+  // Service-role-only fns — Bearer === SERVICE_ROLE_KEY check. anon
+  // and no-auth both rejected. The byte-equal check for the service-
+  // role variant means even owner JWT 401s (covered in §27 for
+  // send-payment-receipt as the canonical case).
+
+  for (const fnName of [
+    'send-refund-notification',
+    'send-auto-pay-alert',
+    'send-auto-pay-failure-notification',
+    'send-dispute-notification',
+    'send-recurring-billing-alert',
+  ]) {
+    test(`${fnName} — anon JWT rejected (service-role-only fn)`, async () => {
+      const res = callFnAuthGate(fnName, { auth: 'anon', payload: { paymentId: '00000000-0000-0000-0000-000000000000' } });
+      // Service-role check rejects with 401, but some fns return 400 if
+      // they parse body before auth. Accept any 4xx as proof the gate
+      // fired (the fn didn't accept anon as a valid invoker).
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBeLessThan(500);
+    });
+
+    test(`${fnName} — no auth rejected`, async () => {
+      const res = callFnAuthGate(fnName, { auth: 'none' });
+      expect(res.status, `${fnName} body: ${res.body.slice(0, 200)}`).toBeGreaterThanOrEqual(400);
+    });
+  }
+});
