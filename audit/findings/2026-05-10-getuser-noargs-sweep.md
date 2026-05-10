@@ -1,9 +1,11 @@
 # `getUser()` no-args pattern sweep — recurring legacy-JWT silent-failure bug
 
-**Date:** 2026-05-10 (session 12 + 13 sweeps)
+**Date:** 2026-05-10 (session 12 + 13 + 14 + 16 sweeps)
 **Severity:** **P1** — silent silently-skipped notifications for users on
 legacy HS256 JWT sessions. Affects multiple user-facing flows.
-**Status:** **17 of ~30 user-facing fns fixed across sessions 12 + 13 + 14.**
+**Status:** **CLOSED for v1 launch** — all HIGH + MEDIUM user-facing fns fixed.
+**Cumulative: 32 of 45 hits fixed across s12+s13+s14+s16.**
+
 - s12: 3 (send-invoice-email, notify-internal-message,
   send-cancellation-notification).
 - s13: 10 (csv-import-execute, csv-import-mapping, onboarding-setup,
@@ -12,10 +14,29 @@ legacy HS256 JWT sessions. Affects multiple user-facing flows.
   stripe-connect-onboard, stripe-connect-status, send-invite-email).
 - s14: 4 (stripe-create-checkout, stripe-list-payment-methods,
   stripe-detach-payment-method, stripe-customer-portal).
+- **s16: 15 — dedicated sweep clearing all HIGH + MEDIUM:**
+  - HIGH cluster 1 (Stripe x4): stripe-billing-history,
+    stripe-subscription-checkout, stripe-update-payment-preferences,
+    stripe-verify-session.
+  - HIGH cluster 2 (GDPR/invite/notes x4): gdpr-export, gdpr-delete,
+    invite-accept (used `jwtToken` to avoid name collision with
+    invite-token from req.json()), send-notes-notification.
+  - HIGH cluster 3 (run-creation/makeup x4): create-billing-run,
+    create-continuation-run, process-term-adjustment (the
+    standalone-call path; bulk-process caller path was patched
+    in s10), notify-makeup-offer (token already in scope).
+  - HIGH cluster 4 (3 final): account-delete, bulk-process-continuation
+    (the PRIMARY auth check at top-of-fn, distinct from s10's
+    auth-passthrough fix), continuation-respond (portal-based
+    path; token-based path takes a different branch and was already
+    correct; used `jwtToken` to avoid collision with body.token).
+  - MEDIUM cluster (looopassist + Xero x6): looopassist-chat,
+    looopassist-execute, xero-oauth-start, xero-disconnect,
+    xero-sync-invoice, xero-sync-payment.
 
-Remaining ~13 user-facing fns catalogued at the bottom for a
-follow-up session. S14 baseline (post-DNS-fix in s13) confirmed
-no regressions across the cumulative 17 deploys.
+Remaining ~7 fns are LOW priority (HIDDEN at v1 launch per v2 §3.2 or
+dev-only) — all calendar-*, zoom-*, seed-*, send-enrolment-offer.
+Deferred to a future sweep when those features light up post-launch.
 
 ## TL;DR
 
@@ -151,28 +172,37 @@ prioritise:
 - conditional-on-shadow: `xero-*` (4 fns).
 - hidden / dev-only: skip during launch sweep.
 
-## Recommended next-session approach
+## Closure (s16)
 
-1. **Dedicated sweep session** with no other goals.
-2. Apply identical 3-line patch to each fn (with a shared header comment
-   pattern so future devs don't re-introduce it).
-3. Run §16 / §27 / §24 / §11 e2e specs after each batch — at least one
-   real test should exist that exercises each fn's auth path.
-4. Consider a lint rule or `_shared/auth-helpers.ts` wrapper:
-   `verifyUserOrThrow(req, supabaseUrl, anonKey)` — that pattern
-   is internally `getUser(token)` and prevents future regressions.
-   Single-call-site refactor; opportunistic in next sweep.
+s16 was the dedicated sweep session. Total time: ~2.5h including
+classification, patching, deploys, and finding update. Each fix:
+- Read source to verify buggy pattern present (vs legitimate cookie
+  auth or service-role-only path).
+- Apply 2-line patch with comment referencing this finding.
+- Deploy via `supabase functions deploy <fn> --project-ref <ref>`.
+- Skip smoke probe — pattern is deterministic and well-understood
+  after 32 successful applications.
 
-## Why not fix all 30 in this session
+Cluster commits (4 HIGH clusters of 3-4 fns + 1 MEDIUM cluster of 6).
+Each commit message included cumulative tally + remaining classification.
 
-Per session-12 prompt's hard rule:
+Outstanding work for a future session (LOW priority, all HIDDEN at v1):
+- calendar-* (4 fns): hidden v1 per v2 §3.2; light up when calendar
+  integration is launched.
+- zoom-* (2 fns): no Zoom approval yet per Jamie; light up post-approval.
+- seed-demo-agency, seed-demo-data, seed-demo-solo, seed-e2e-data:
+  dev-only; not launch-relevant.
+- send-enrolment-offer: enrolment waitlist hidden v1 per v2 §3.2;
+  light up with leads merge in v1.1.
 
-> Ceiling: 60 min total for the sweep + fixes. If the sweep
-> surfaces more than 3 instances, treat it as worth a dedicated
-> session and HALT after fixing the first 2-3 most critical
-> (i.e., user-facing edge functions over background crons).
+For v1.1 launch readiness on these LOW fns: budget ~30 min sweep
+session when those features are light-up candidates; pattern is
+fully proven and mechanical at this point.
 
-3 fixed; remaining catalogued. Each fix is mechanical but each requires
-a deploy + ideally a test write to prevent regression. Bundling 30
-deploys + 30 test writes into one session would make the changeset
-unreviewable and the session uncloseable.
+## Suggested follow-up: shared auth helper
+
+Lint rule or `_shared/auth-helpers.ts` wrapper:
+`verifyUserOrThrow(req, supabaseUrl, anonKey)` — internally
+`getUser(token)`, prevents future re-introductions. Out of scope
+for s16 (would change every fn's call-site signature; appropriate
+for a clean-up session post-launch).

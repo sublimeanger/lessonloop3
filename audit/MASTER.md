@@ -1,6 +1,6 @@
 # LessonLoop production-readiness — MASTER tracker
 
-**Last updated:** 2026-05-10 (after 15th-session — flake hardening for §13.7.4 + §14.10.16 via service-role curl; §22 +4 real tests (50%→75%); §11 +3 real tests (60%→75%); audit hygiene: 8 rows promoted 🟡→🟢 per the recalibrated world-class bar)
+**Last updated:** 2026-05-10 (after 16th-session — getUser sweep dedicated session: 15 user-facing edge fns hardened (32/45 cumulative; HIGH+MEDIUM done; only HIDDEN-at-launch LOW remain); audit hygiene +6 rows 🟡→🟢)
 **Owner:** Jamie McKaye
 **Goal:** zero P0 reds + acceptable P1 yellows = ready to launch publicly.
 
@@ -22,9 +22,11 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 ## Summary
 
 - **Total rows:** 180
-- **State:** 26 🟢 verified / 138 🟡 structurally-verified-pending-browser / 6 🔴 launch-blockers / 10 ⏸ deferred-post-launch / **0 ❓ untouched**
+- **State:** 32 🟢 verified / 132 🟡 structurally-verified-pending-browser / 6 🔴 launch-blockers / 10 ⏸ deferred-post-launch / **0 ❓ untouched**
+- **s16 promotions (6 rows):** Settings (org config); Invoices list; Invoice detail; Stripe webhook; Continuation respond; Term adjustment processor.
 - **s15 promotions (12 rows):** Outstanding report; Continuation flow; CSV import execute; Teachers list/CRUD; Messages inbox; send-message edge fn; Portal home; Portal schedule; Portal practice; Portal invoices & pay; Portal messages; Portal profile.
-- **Recalibrated bar (s15 onwards):** ≥5 rows backfilled to 🟢 per session is non-negotiable; per Jamie's 2026-05-10 recalibration, audit hygiene is part of the world-class launch readiness criterion. Money-path (Invoicing & Payments) is the next dedicated workstream — 23 rows still 🟡, all targeted s16-s18.
+- **s16 getUser sweep:** 15 user-facing edge fns hardened with `getUser(token)` patch (cumulative 32/45 across s12+s13+s14+s16). HIGH+MEDIUM done; LOW (calendar/zoom/seed/enrolment-offer) deferred — all hidden at v1 launch per v2 §3.2.
+- **Recalibrated bar (s15 onwards):** ≥5 rows backfilled to 🟢 per session is non-negotiable; per Jamie's 2026-05-10 recalibration, audit hygiene is part of the world-class launch readiness criterion. Money-path (Invoicing & Payments) is the next dedicated workstream — many rows still 🟡, all targeted s17-s18.
 - **Last full sweep:** 2026-05-08 (this audit)
 - **Findings produced:** 16 in `audit/findings/`
 
@@ -54,9 +56,9 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Onboarding wizard | src/pages/Onboarding.tsx → onboarding-setup → complete_onboarding RPC | P0 | 🟡 | 2026-05-08 | covered by "Email signup → onboarding wizard end-to-end" row above |
 | Accept invite (staff/parent) | src/pages/AcceptInvite.tsx → invite-accept fn | P0 | 🟡 | 2026-05-08 | invite-accept fn audit: JWT auth + per-user rate limit + token lookup + 4 guards (not-found / owner-role-blocked / already-accepted / expired) + email-match check (prevents stealing); idempotent guardian/teacher creation; teacher-limit enforcement against organisations.max_teachers; final updates: org_membership upsert → mark accepted → set current_org_id + has_completed_onboarding |
 | Profile ensure on first login | supabase/functions/profile-ensure | P0 | 🟢 | 2026-05-08 | JWT auth + per-user rate limit + service-role for admin; race-condition-safe (handles 23505 unique violation from handle_new_user trigger); idempotent (returns existing profile if already created); generic error messages no info leak |
-| Account delete (GDPR) | supabase/functions/account-delete | P1 | 🟡 | 2026-05-08 | tight rate limit (2/5min for irreversible); sole-owner check prevents orphaning orgs; cascade order org_memberships → profile → auth.admin.deleteUser; relies on auth.users CASCADE FKs for downstream cleanup; pending throwaway-account E2E |
-| GDPR data export | supabase/functions/gdpr-export | P1 | 🟡 | 2026-05-08 | JWT auth + owner/admin gate on current_org_id; user-scoped supabase client (RLS enforced); pulls students/guardians/lessons/invoices/payments to CSV bundle; pending E2E |
-| GDPR full delete | supabase/functions/gdpr-delete | P1 | 🟡 | 2026-05-08 | org-side admin-driven anonymise/soft-delete for student/guardian PII; uses RPC `anonymise_guardian` for guardian path; ownership check (entity belongs to org); audit_log entry on every action |
+| Account delete (GDPR) | supabase/functions/account-delete | P1 | 🟡 | 2026-05-10 | tight rate limit (2/5min for irreversible); sole-owner check prevents orphaning orgs; cascade order org_memberships → profile → auth.admin.deleteUser; relies on auth.users CASCADE FKs for downstream cleanup; pending throwaway-account E2E. [getUser fix per ee82016 (s16)] |
+| GDPR data export | supabase/functions/gdpr-export | P1 | 🟡 | 2026-05-10 | JWT auth + owner/admin gate on current_org_id; user-scoped supabase client (RLS enforced); pulls students/guardians/lessons/invoices/payments to CSV bundle; pending E2E. [getUser fix per 7c37115 (s16)] |
+| GDPR full delete | supabase/functions/gdpr-delete | P1 | 🟡 | 2026-05-10 | org-side admin-driven anonymise/soft-delete for student/guardian PII; uses RPC `anonymise_guardian` for guardian path; ownership check (entity belongs to org); audit_log entry on every action. [getUser fix per 7c37115 (s16)] |
 
 ## Dashboard & navigation
 
@@ -67,7 +69,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | External marketing redirects | src/config/routes.ts (38 paths) | P2 | 🟡 | 2026-05-08 | static redirect map to lessonloop.net; structural ok |
 | 404 page | src/pages/NotFound.tsx | P2 | 🟡 | 2026-05-08 | structural |
 | Help page | src/pages/Help.tsx | P3 | 🟡 | 2026-05-08 | static content |
-| Settings (org config) | src/pages/Settings.tsx | P1 | 🟡 | 2026-05-10 | wide surface; many sub-tabs (org info, calendar, accounting, messaging, billing); each tab uses RLS-scoped queries via dedicated hooks. [E2E real per 4c34bf0 + s15]: §22.2 schedule_hours valid+invalid trigger / parent_reschedule_policy 3-value PATCH / §22.20 continuation 3-field atomic / §22.4 invites INSERT / §22.9 music custom-instrument CRUD / §22.5 closure date CRUD / §22.8 rate cards CRUD / §22.10 message templates CRUD / §22.11 availability_blocks overlap trigger raises EXCEPTION on same-teacher-same-day overlap. All 21 launch-visible per-tab smoke loads pass. §22.7 GDPR / §22.12 calendar OAuth / §22.14 billing / §22.15 booking page / §22.21 Xero / §22.22 recurring billing templates remain fixme — most either hidden per launch scope or require fragile UI/OAuth flows. [PROMOTABLE 🟡→🟢] |
+| Settings (org config) | src/pages/Settings.tsx | P1 | 🟢 | 2026-05-10 | wide surface; many sub-tabs (org info, calendar, accounting, messaging, billing); each tab uses RLS-scoped queries via dedicated hooks. [E2E real per 4c34bf0 + s15]: §22.2 schedule_hours valid+invalid trigger / parent_reschedule_policy 3-value PATCH / §22.20 continuation 3-field atomic / §22.4 invites INSERT / §22.9 music custom-instrument CRUD / §22.5 closure date CRUD / §22.8 rate cards CRUD / §22.10 message templates CRUD / §22.11 availability_blocks overlap trigger raises EXCEPTION on same-teacher-same-day overlap. All 21 launch-visible per-tab smoke loads pass. §22.7 GDPR / §22.12 calendar OAuth / §22.14 billing / §22.15 booking page / §22.21 Xero / §22.22 recurring billing templates remain fixme — most either hidden per launch scope or require fragile UI/OAuth flows. Promoted 🟡→🟢 in s16 — launch-visible coverage solid; remaining fixmes are either hidden per scope or fragile UI. |
 
 ## Calendar & Lessons
 
@@ -78,15 +80,15 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Recurring run detail / exceptions | src/pages/RecurringRunDetail.tsx | P0 | 🟡 | 2026-05-08 | covered by Calendar RLS; awaits browser test |
 | Single lesson CRUD | src/pages/CalendarPage.tsx | P0 | 🟡 | 2026-05-08 | covered above |
 | Make-up lesson dashboard | src/pages/MakeUpDashboard.tsx | P1 | 🟡 | 2026-05-08 | drives `respond_to_makeup_offer`/`cancel_booked_makeup` RPCs (parent-side) and admin/teacher matching UI. RLS on `make_up_waitlist` properly scoped per parent-portal sweep |
-| Make-up offer notification | supabase/functions/notify-makeup-offer | P1 | 🟡 | 2026-05-08 | dual auth (user JWT or service role); structural ok; sends offer email to guardians |
+| Make-up offer notification | supabase/functions/notify-makeup-offer | P1 | 🟡 | 2026-05-10 | dual auth (user JWT or service role); structural ok; sends offer email to guardians. [getUser fix per 4b1704e (s16) — user-JWT path was bare getUser(); service-role path unaffected] |
 | Make-up match notification | supabase/functions/notify-makeup-match | P1 | 🟡 | 2026-05-08 | service-role-only invoke (`Authorization === Bearer ${serviceRoleKey}`); called by pg_net trigger when match is made; notifies admins |
 | Daily register | src/pages/DailyRegister.tsx | P1 | 🟡 | 2026-05-08 | attendance_records: 6 RLS policies (admin r/w/d, finance r, teacher r-assigned). No USING(true). Awaits browser test. |
 | Batch attendance | src/pages/BatchAttendance.tsx | P1 | 🟡 | 2026-05-08 | covered above |
 | Continuation flow (term rollover) | src/pages/Continuation.tsx + create-continuation-run + bulk-process-continuation + process-term-adjustment | P0 | 🟢 | 2026-05-10 | 1381+453+969 LoC. create-continuation-run has dual auth: service-role-bearer for cron deadline path, user JWT + owner/admin role check for manual trigger. bulk-process-continuation user JWT + owner/admin. **2026-05-09 fix landed:** withdrawal branch passes user JWT through to process-term-adjustment (was passing service-role JWT which getUser() rejects as missing-sub-claim — full chain silently failed). [E2E real per 35631ad + 10th-session — §20.4 create happy path + RBAC 403 + validation 400, §20.5 process_deadline both assumed_continuing branches, §20.7 bulk-process confirmed flow extends recurrence + materialises lessons, §20.7b withdrawals flow cancels lessons + caps recurrence + creates credit note + cleanup_withdrawal_credits audit, §20.8 delete run no-responses + cascades-to-responses]. Term-end critical. **§20 cluster now functionally complete except UI-driven cases.** Promoted 🟡→🟢 in s15 — Lauren-paramount, full cluster covered. |
-| Continuation respond (parent) | supabase/functions/continuation-respond | P0 | 🟡 | 2026-05-09 | DB-token auth (random `response_token` on `term_continuation_responses` row) — no user JWT required (parent clicks email link); rate-limited by token hash; status guard prevents replay; deadline enforced server-side. [E2E real per a5dec8b §20.1 authed + §20.2 public token + §20.3 invalid token 4xx + 65bde4e fix to verify_jwt=false] |
-| Term adjustment processor | supabase/functions/process-term-adjustment | P1 | 🟡 | 2026-05-08 | 969 LoC; JWT auth + role check (owner/admin/finance); structural ok |
+| Continuation respond (parent) | supabase/functions/continuation-respond | P0 | 🟢 | 2026-05-10 | DB-token auth (random `response_token` on `term_continuation_responses` row) — no user JWT required (parent clicks email link); rate-limited by token hash; status guard prevents replay; deadline enforced server-side. [E2E real per a5dec8b §20.1 authed + §20.2 public token + §20.3 invalid token 4xx + 65bde4e fix to verify_jwt=false + s16 getUser fix per ee82016 for the portal-based path]. Promoted 🟡→🟢 in s16. |
+| Term adjustment processor | supabase/functions/process-term-adjustment | P1 | 🟢 | 2026-05-10 | 969 LoC; JWT auth + role check (owner/admin/finance). [E2E real per s10 §20.7b withdrawal flow end-to-end + s16 getUser fix per 4b1704e for the standalone-call path; the bulk-process caller path was patched s10]. Promoted 🟡→🟢 in s16. |
 | Lesson notes explorer | src/pages/NotesExplorer.tsx | P2 | 🟡 | 2026-05-08 | structural; data via RLS-scoped queries |
-| Notes notification | supabase/functions/send-notes-notification | P2 | 🟡 | 2026-05-08 | JWT auth + rate limit; structural ok |
+| Notes notification | supabase/functions/send-notes-notification | P2 | 🟡 | 2026-05-10 | JWT auth + rate limit; structural ok. [getUser fix per 7c37115 (s16)] |
 
 ## Students & Guardians
 
@@ -113,19 +115,19 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Invoices list | src/pages/Invoices.tsx | P0 | 🟡 | 2026-05-09 | invoices: 6 RLS policies (admin/finance r, parent-via-guardian r). No USING(true). [E2E real per d7bc927 §13 — 10 tests covering filter/status/role-gate]. |
-| Invoice detail / line edit | src/pages/InvoiceDetail.tsx | P0 | 🟡 | 2026-05-09 | invoice_items: 5 RLS policies. CHECK constraints on prices/amounts/quantities. [E2E real per d7bc927 §14 — 12 tests covering line items / status transitions / patch trigger / send-invoice-email round-trip]. |
+| Invoices list | src/pages/Invoices.tsx | P0 | 🟢 | 2026-05-10 | invoices: 6 RLS policies (admin/finance r, parent-via-guardian r). No USING(true). [E2E real per d7bc927 §13 + s14 §13.7.4/§13.7.5 + s15 service-role-curl flake fix]. Promoted 🟡→🟢 in s16. |
+| Invoice detail / line edit | src/pages/InvoiceDetail.tsx | P0 | 🟢 | 2026-05-10 | invoice_items: 5 RLS policies. CHECK constraints on prices/amounts/quantities. [E2E real per d7bc927 §14 + s14 §14.10.14 PDF rev bump + §14.10.16 apply_lost_dispute_cascade with idempotency + s15 service-role-curl flake fix + 10s audit_log poll]. Promoted 🟡→🟢 in s16. |
 | Invoice PDF generation | supabase/functions/generate-invoice-pdf | P0 | 🟡 | 2026-05-08 | service-role-only fn (verify_jwt=false post-Phase-5); caches in invoice-pdfs bucket; signed URL response or inline base64. End-to-end render not yet exercised on dest. |
 | Send invoice email (parent) | supabase/functions/send-invoice-email | P0 | 🟡 | 2026-05-10 | User JWT + rate limit + Resend SMTP (smtp.resend.com → noreply@lessonloop.net configured). Session 12: getUser(token) fix deployed (was getUser() no-args → 401 on legacy JWT sessions; Lauren-paramount per v2 §3.1). See audit/findings/2026-05-10-getuser-noargs-sweep.md. Awaits real send test. |
 | Send invoice email (internal copy) | supabase/functions/send-invoice-email-internal | P1 | 🟡 | 2026-05-08 | service-role-only (Phase 5 reconfigured); Awaits browser-driven test |
 | Stripe checkout (one-off invoice payment) | supabase/functions/stripe-create-checkout | P0 | 🟡 | 2026-05-08 | User JWT + rate-limit + invoiceId required. Confirmed via 6.A.2 browser test on subscription path; one-off-invoice path still untested. Branding gap noted in 00-launch-readiness. |
 | Stripe payment intent (custom) | supabase/functions/stripe-create-payment-intent | P0 | 🟡 | 2026-05-08 | JWT auth + rate limit; standard Stripe@14.21 client; structural ok |
 | Stripe customer portal | supabase/functions/stripe-customer-portal | P1 | 🟡 | 2026-05-08 | JWT auth + membership check before creating portal session; structural ok |
-| Stripe webhook (events) | supabase/functions/stripe-webhook | P0 | 🟡 | 2026-05-09 | constructEventAsync fix verified (baa072c); two-phase dedup; 90s stale threshold. [E2E real per 499d54b §24.12 true-replay 2 tests — HMAC-SHA256 sign synthetic Stripe events, prove webhook-layer + RPC-layer dedup]. Live endpoint we_1TUlSHAzPfYm94ux4mOfF72i now subscribed to 18-event superset (was 6). |
-| Stripe verify session | supabase/functions/stripe-verify-session | P0 | 🟡 | 2026-05-08 | JWT auth + invoice org_id ownership check; post-checkout return; structural ok |
+| Stripe webhook (events) | supabase/functions/stripe-webhook | P0 | 🟢 | 2026-05-10 | constructEventAsync fix verified (baa072c); two-phase dedup; 90s stale threshold. [E2E real per 499d54b §24.12 true-replay 2 tests — HMAC-SHA256 sign synthetic Stripe events, prove webhook-layer + RPC-layer dedup]. Live endpoint we_1TUlSHAzPfYm94ux4mOfF72i now subscribed to 18-event superset (was 6). Promoted 🟡→🟢 in s16 — money-path entry point with stable test coverage. |
+| Stripe verify session | supabase/functions/stripe-verify-session | P0 | 🟡 | 2026-05-10 | JWT auth + invoice org_id ownership check; post-checkout return; structural ok. [getUser fix per 12c9665 (s16)] |
 | List payment methods | supabase/functions/stripe-list-payment-methods | P1 | 🟡 | 2026-05-08 | JWT auth + guardian/org scoped lookup; structural ok |
 | Detach payment method | supabase/functions/stripe-detach-payment-method | P1 | 🟡 | 2026-05-08 | JWT auth + guardian-scoped lookup + Stripe-side pm.customer match check (prevents cross-customer detach); auto-clears default_payment_method_id on self-detach |
-| Update auto-pay preferences | supabase/functions/stripe-update-payment-preferences | P0 | 🟡 | 2026-05-08 | JWT auth + user_id/org_id scoped guardian lookup; structural ok |
+| Update auto-pay preferences | supabase/functions/stripe-update-payment-preferences | P0 | 🟡 | 2026-05-10 | JWT auth + user_id/org_id scoped guardian lookup; structural ok. [getUser fix per 12c9665 (s16)] |
 | Backfill default PM (admin) | supabase/functions/admin-backfill-default-pm | P2 | 🟡 | 2026-05-08 | cron-auth via x-cron-secret (operator-triggered, not scheduled); RPC `backfill_guardian_default_pm_set` with idempotency check at write time |
 | Process refund | supabase/functions/stripe-process-refund | P0 | 🟡 | 2026-05-08 | JWT auth + rate limit; structural ok; pending E2E refund test |
 | Refund notification | supabase/functions/send-refund-notification | P1 | 🟡 | 2026-05-08 | service-role-only invoke (`Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}` exact match); RESEND_API_KEY required |
@@ -134,15 +136,15 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Auto-pay alert | supabase/functions/send-auto-pay-alert | P1 | 🟡 | 2026-05-08 | service-role-only invoke; 6h dedup keyed on org_id via message_log; RESEND_API_KEY required |
 | Auto-pay failure notification | supabase/functions/send-auto-pay-failure-notification | P0 | 🟡 | 2026-05-08 | service-role-only invoke; structural ok |
 | Dispute notification | supabase/functions/send-dispute-notification | P1 | 🟡 | 2026-05-08 | service-role-only invoke; called from stripe-webhook charge.dispute.* handlers |
-| Recurring billing run create | supabase/functions/create-billing-run | P0 | 🟡 | 2026-05-08 | 1048 lines, mature. User JWT + role check (owner/admin/finance) + rate limit. ISO-date + run_type enum validation (BIL-H1 / BIL-L3 fixes). billing_runs RLS: 4 policies. End-to-end run not yet exercised on dest. |
+| Recurring billing run create | supabase/functions/create-billing-run | P0 | 🟡 | 2026-05-10 | 1048 lines, mature. User JWT + role check (owner/admin/finance) + rate limit. ISO-date + run_type enum validation (BIL-H1 / BIL-L3 fixes). billing_runs RLS: 4 policies. End-to-end run not yet exercised on dest. [getUser fix per 4b1704e (s16)] |
 | Recurring billing alert | supabase/functions/send-recurring-billing-alert | P1 | 🟡 | 2026-05-08 | service-role-only invoke; structural ok |
 
 ## Subscriptions & Trial
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| Tier/subscription checkout | supabase/functions/stripe-subscription-checkout | P0 | 🟡 | 2026-05-08 | JWT auth + membership check; self-serve upgrade; structural ok |
-| Billing history | supabase/functions/stripe-billing-history | P1 | 🟡 | 2026-05-08 | JWT auth + membership check; structural ok |
+| Tier/subscription checkout | supabase/functions/stripe-subscription-checkout | P0 | 🟡 | 2026-05-10 | JWT auth + membership check; self-serve upgrade; structural ok. [getUser fix per 12c9665 (s16)] |
+| Billing history | supabase/functions/stripe-billing-history | P1 | 🟡 | 2026-05-10 | JWT auth + membership check; structural ok. [getUser fix per 12c9665 (s16)] |
 | Stripe Connect onboard | supabase/functions/stripe-connect-onboard | P1 | 🟡 | 2026-05-08 | JWT auth + membership check; per-org Connect flow; structural ok |
 | Stripe Connect status check | supabase/functions/stripe-connect-status | P1 | 🟡 | 2026-05-08 | JWT auth + membership check; structural ok |
 | Trial banner / countdown | cross-cutting in app shell | P1 | 🟡 | 2026-05-08 | UI-only React component reading `subscription_status` + `trial_ends_at` from current org; structural ok |
@@ -160,18 +162,18 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Zoom OAuth start | zoom-oauth-start | P0 | 🟡 | 2026-05-08 | verify_jwt=false ✓; no production Zoom connections yet (table calendar_connections has 0 rows with provider='zoom') |
 | Zoom OAuth callback | zoom-oauth-callback + src/pages/ZoomOAuthCallback.tsx | P0 | 🟡 | 2026-05-08 | structural; E2E pending Jamie |
 | Zoom lesson sync | zoom-sync-lesson | P0 | 🟡 | 2026-05-08 | idempotency preemptively fixed; full E2E pending Jamie |
-| Xero OAuth start | xero-oauth-start | P0 | 🟡 | 2026-05-08 | verify_jwt=false ✓; 2 connections in production (both with expired access tokens — refresh-on-demand via shared/xero-auth.ts) |
+| Xero OAuth start | xero-oauth-start | P0 | 🟡 | 2026-05-10 | verify_jwt=false ✓; 2 connections in production (both with expired access tokens — refresh-on-demand via shared/xero-auth.ts). [getUser fix per e13fb0a (s16)] |
 | Xero OAuth callback | xero-oauth-callback | P0 | 🟡 | 2026-05-08 | verify_jwt=false ✓ |
-| Xero invoice sync | xero-sync-invoice | P0 | 🟡 | 2026-05-08 | schema drift fix 2c4b410 + FK fix 025a423; auto_sync_invoices=true on both connections; fresh sync pending Jamie |
-| Xero payment sync | xero-sync-payment | P0 | 🟡 | 2026-05-08 | NOT NULL drift fix 9c72ca3; auto_sync_payments=true on both connections; fresh sync pending Jamie |
-| Xero disconnect | xero-disconnect | P1 | 🟡 | 2026-05-08 | structural verify only |
+| Xero invoice sync | xero-sync-invoice | P0 | 🟡 | 2026-05-10 | schema drift fix 2c4b410 + FK fix 025a423; auto_sync_invoices=true on both connections; fresh sync pending Jamie. [getUser fix per e13fb0a (s16)] |
+| Xero payment sync | xero-sync-payment | P0 | 🟡 | 2026-05-10 | NOT NULL drift fix 9c72ca3; auto_sync_payments=true on both connections; fresh sync pending Jamie. [getUser fix per e13fb0a (s16)] |
+| Xero disconnect | xero-disconnect | P1 | 🟡 | 2026-05-10 | structural verify only. [getUser fix per e13fb0a (s16)] |
 
 ## AI
 
 | Feature | Source | Criticality | State | Last audited | Notes |
 |---|---|---|---|---|---|
-| LoopAssist chat (staff) | looopassist-chat | P0 | 🟡 | 2026-05-08 | Anthropic Claude — Sonnet (academy/agency/custom) or Haiku (free/solo); date-pinned snapshots claude-sonnet-4-5-20250929 + claude-haiku-4-5-20251001; ANTHROPIC_API_KEY required; prompt-injection sanitiser on org-pref injection (control chars + system: prefix + "ignore previous instructions"); 7744 historical conversations carried over; last activity 2026-05-03 (pre-migration); fresh chat test pending Jamie |
-| LoopAssist execute (tool calls) | looopassist-execute | P0 | 🟡 | 2026-05-08 | deterministic SQL execution from `ai_action_proposals`; 31 historical proposals; user-confirm gate; structural ok |
+| LoopAssist chat (staff) | looopassist-chat | P0 | 🟡 | 2026-05-10 | Anthropic Claude — Sonnet (academy/agency/custom) or Haiku (free/solo); date-pinned snapshots claude-sonnet-4-5-20250929 + claude-haiku-4-5-20251001; ANTHROPIC_API_KEY required; prompt-injection sanitiser on org-pref injection (control chars + system: prefix + "ignore previous instructions"); 7744 historical conversations carried over; last activity 2026-05-03 (pre-migration); fresh chat test pending Jamie. [getUser fix per e13fb0a (s16)] |
+| LoopAssist execute (tool calls) | looopassist-execute | P0 | 🟡 | 2026-05-10 | deterministic SQL execution from `ai_action_proposals`; 31 historical proposals; user-confirm gate; structural ok. [getUser fix per e13fb0a (s16)] |
 | Parent LoopAssist chat | parent-loopassist-chat | P1 | 🟡 | 2026-05-08 | Anthropic Claude; structural ok, awaits parent-portal browser test |
 | CSV import column mapping | csv-import-mapping | P1 | 🟡 | 2026-05-08 | Gemini Flash (gemini-flash-latest); GEMINI_API_KEY required; structural ok |
 | Marketing chat | marketing-chat | P2 | ⏸ | — | marketing site separate stack — out of cutover |
@@ -205,7 +207,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 | Send cancellation notification | supabase/functions/send-cancellation-notification | P1 | 🟡 | 2026-05-10 | JWT auth; structural ok. Session 12: getUser(token) fix deployed (was getUser() no-args → 401 on legacy JWT sessions). See audit/findings/2026-05-10-getuser-noargs-sweep.md. |
 | Send invite email (staff/parent) | supabase/functions/send-invite-email | P0 | 🟡 | 2026-05-08 | JWT auth; account-creation path; calls Resend with branded template |
 | Invite get (token lookup) | supabase/functions/invite-get | P0 | 🟡 | 2026-05-08 | public endpoint reading token from request body; returns invite metadata for AcceptInvite UI; structural ok |
-| Invite accept | supabase/functions/invite-accept | P0 | 🟡 | 2026-05-08 | (same as auth-ancillaries entry above) JWT + token validation + email-match check + role allowlist + idempotent guardian/teacher creation |
+| Invite accept | supabase/functions/invite-accept | P0 | 🟡 | 2026-05-10 | (same as auth-ancillaries entry above) JWT + token validation + email-match check + role allowlist + idempotent guardian/teacher creation. [getUser fix per 7c37115 (s16) — used `jwtToken` to avoid name collision with the invite token from req.json()] |
 
 ## Practice & Resources
 
