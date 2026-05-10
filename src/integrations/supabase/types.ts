@@ -4458,7 +4458,7 @@ export type Database = {
           is_default: boolean
           name: string
           org_id: string
-          rate_amount: number
+          rate_amount_minor: number
           updated_at: string
         }
         Insert: {
@@ -4469,7 +4469,7 @@ export type Database = {
           is_default?: boolean
           name: string
           org_id: string
-          rate_amount: number
+          rate_amount_minor: number
           updated_at?: string
         }
         Update: {
@@ -4480,7 +4480,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           org_id?: string
-          rate_amount?: number
+          rate_amount_minor?: number
           updated_at?: string
         }
         Relationships: [

@@ -328,15 +328,16 @@ Deno.serve(async (req) => {
     // 10. RATE CARDS
     // ═══════════════════════════════════════════════════════════════
     const rcDefs = [
-      { name: "Private 30-min", duration_mins: 30, rate_amount: 38, is_default: true },
-      { name: "Private 45-min", duration_mins: 45, rate_amount: 52, is_default: false },
-      { name: "Private 60-min", duration_mins: 60, rate_amount: 65, is_default: false },
-      { name: "Group 60-min", duration_mins: 60, rate_amount: 22, is_default: false },
-      { name: "Online 30-min", duration_mins: 30, rate_amount: 32, is_default: false },
-      { name: "Online 60-min", duration_mins: 60, rate_amount: 55, is_default: false },
+      // rate_amount_minor in pence: 3800 = £38.00
+      { name: "Private 30-min", duration_mins: 30, rate_amount_minor: 3800, is_default: true },
+      { name: "Private 45-min", duration_mins: 45, rate_amount_minor: 5200, is_default: false },
+      { name: "Private 60-min", duration_mins: 60, rate_amount_minor: 6500, is_default: false },
+      { name: "Group 60-min", duration_mins: 60, rate_amount_minor: 2200, is_default: false },
+      { name: "Online 30-min", duration_mins: 30, rate_amount_minor: 3200, is_default: false },
+      { name: "Online 60-min", duration_mins: 60, rate_amount_minor: 5500, is_default: false },
     ];
     for (const rc of rcDefs) {
-      await findOrInsert("rate_cards", { org_id: ORG_ID, name: rc.name }, { duration_mins: rc.duration_mins, rate_amount: rc.rate_amount, is_default: rc.is_default });
+      await findOrInsert("rate_cards", { org_id: ORG_ID, name: rc.name }, { duration_mins: rc.duration_mins, rate_amount_minor: rc.rate_amount_minor, is_default: rc.is_default });
     }
     L("10. Rate cards done");
 

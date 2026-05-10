@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
@@ -56,14 +57,14 @@ const DURATION_OPTIONS = [
 interface RateCardFormData {
   name: string;
   duration_mins: number;
-  rate_amount: number; // In pounds for input, converted to pence on save
+  rate_amount_minor: number; // Minor units (pence) — matches DB column directly
   is_default: boolean;
 }
 
 const defaultFormData: RateCardFormData = {
   name: '',
   duration_mins: 30,
-  rate_amount: 30,
+  rate_amount_minor: 3000, // £30.00 default
   is_default: false,
 };
 
@@ -92,7 +93,7 @@ export function RateCardsTab() {
     setFormData({
       name: card.name,
       duration_mins: card.duration_mins,
-      rate_amount: card.rate_amount / 100, // Convert pence to pounds for display
+      rate_amount_minor: card.rate_amount_minor, // Already minor units — MoneyInput handles display
       is_default: card.is_default,
     });
     setIsDialogOpen(true);
@@ -102,7 +103,7 @@ export function RateCardsTab() {
     const payload = {
       name: formData.name,
       duration_mins: formData.duration_mins,
-      rate_amount: Math.round(formData.rate_amount * 100), // Convert pounds to pence
+      rate_amount_minor: formData.rate_amount_minor, // Already minor units — no conversion
       is_default: formData.is_default,
       currency_code: currency,
     };
@@ -176,7 +177,7 @@ export function RateCardsTab() {
                   <TableRow key={card.id}>
                     <TableCell className="font-medium">{card.name}</TableCell>
                     <TableCell>{card.duration_mins} mins</TableCell>
-                    <TableCell>{formatCurrencyMinor(card.rate_amount, card.currency_code)}</TableCell>
+                    <TableCell>{formatCurrencyMinor(card.rate_amount_minor, card.currency_code)}</TableCell>
                     <TableCell>
                       {card.is_default && (
                         <Badge variant="secondary">Default</Badge>
@@ -256,17 +257,16 @@ export function RateCardsTab() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="rate">Rate (£)</Label>
-              <Input
+              <Label htmlFor="rate">Rate</Label>
+              <MoneyInput
                 id="rate"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="30.00"
-                value={formData.rate_amount}
-                onChange={(e) =>
-                  setFormData((f) => ({ ...f, rate_amount: parseFloat(e.target.value) || 0 }))
+                valueMinor={formData.rate_amount_minor}
+                onChangeMinor={(minor) =>
+                  setFormData((f) => ({ ...f, rate_amount_minor: minor }))
                 }
+                currencyCode={currency || 'GBP'}
+                placeholder="30.00"
+                helpText="Enter the price as you'd write it. 35 or 35.00 both mean thirty-five pounds. 3500 means three thousand five hundred pounds."
               />
             </div>
 
@@ -290,7 +290,7 @@ export function RateCardsTab() {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={isSaving || !formData.name || formData.rate_amount <= 0}
+              disabled={isSaving || !formData.name || formData.rate_amount_minor <= 0}
             >
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingCard ? 'Save changes' : 'Create Rate Card'}

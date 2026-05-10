@@ -273,13 +273,14 @@ Deno.serve(async (req) => {
     // 9. RATE CARDS
     // ═══════════════════════════════════════════════════════════════
     const rateCardDefs = [
-      { name: "Standard 30-min", duration_mins: 30, rate_amount: 35, is_default: true },
-      { name: "Standard 45-min", duration_mins: 45, rate_amount: 48, is_default: false },
-      { name: "Standard 60-min", duration_mins: 60, rate_amount: 60, is_default: false },
-      { name: "Group 60-min", duration_mins: 60, rate_amount: 20, is_default: false },
+      // rate_amount_minor in pence: 3500 = £35.00
+      { name: "Standard 30-min", duration_mins: 30, rate_amount_minor: 3500, is_default: true },
+      { name: "Standard 45-min", duration_mins: 45, rate_amount_minor: 4800, is_default: false },
+      { name: "Standard 60-min", duration_mins: 60, rate_amount_minor: 6000, is_default: false },
+      { name: "Group 60-min", duration_mins: 60, rate_amount_minor: 2000, is_default: false },
     ];
     for (const rc of rateCardDefs) {
-      await findOrInsert("rate_cards", { org_id: ORG_ID, name: rc.name }, { duration_mins: rc.duration_mins, rate_amount: rc.rate_amount, is_default: rc.is_default });
+      await findOrInsert("rate_cards", { org_id: ORG_ID, name: rc.name }, { duration_mins: rc.duration_mins, rate_amount_minor: rc.rate_amount_minor, is_default: rc.is_default });
     }
     L("9. Rate cards done");
 

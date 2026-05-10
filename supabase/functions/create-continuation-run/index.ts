@@ -26,7 +26,7 @@ interface ContinuationRunRequest {
 interface RateCard {
   id: string;
   duration_mins: number;
-  rate_amount: number;
+  rate_amount_minor: number;
   is_default: boolean;
 }
 
@@ -39,10 +39,10 @@ function findRateForDuration(
 ): number {
   if (!rateCards.length) return fallbackMinor;
   const exact = rateCards.find((r) => r.duration_mins === durationMins);
-  if (exact) return exact.rate_amount;
+  if (exact) return exact.rate_amount_minor;
   const def = rateCards.find((r) => r.is_default);
-  if (def) return def.rate_amount;
-  return rateCards[0]?.rate_amount || fallbackMinor;
+  if (def) return def.rate_amount_minor;
+  return rateCards[0]?.rate_amount_minor || fallbackMinor;
 }
 
 function jsonResponse(
@@ -156,7 +156,7 @@ async function buildResponseRows(
   // Fetch rate cards
   const { data: rateCards } = await client
     .from("rate_cards")
-    .select("id, duration_mins, rate_amount, is_default")
+    .select("id, duration_mins, rate_amount_minor, is_default")
     .eq("org_id", orgId);
 
   // Fetch teachers
@@ -259,7 +259,7 @@ async function buildResponseRows(
           (rc: any) => rc.id === student.default_rate_card_id
         );
         rate = studentCard
-          ? studentCard.rate_amount
+          ? studentCard.rate_amount_minor
           : findRateForDuration(durationMins, rateCards || []);
       } else {
         rate = findRateForDuration(durationMins, rateCards || []);

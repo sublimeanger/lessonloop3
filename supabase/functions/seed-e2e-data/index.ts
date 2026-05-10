@@ -583,7 +583,7 @@ Deno.serve(async (req) => {
         .insert({
           org_id: orgId,
           name: "Standard 30-min",
-          rate_amount: 35.00,
+          rate_amount_minor: 3500, // £35.00 in pence
           currency_code: "GBP",
           duration_mins: 30,
           is_default: true,

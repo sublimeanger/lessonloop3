@@ -174,12 +174,12 @@ export function findRateForDuration(
 
   // First try exact match
   const exactMatch = rateCards.find((r) => r.duration_mins === durationMins);
-  if (exactMatch) return exactMatch.rate_amount;
+  if (exactMatch) return exactMatch.rate_amount_minor;
 
   // Then try default
   const defaultCard = rateCards.find((r) => r.is_default);
-  if (defaultCard) return defaultCard.rate_amount;
+  if (defaultCard) return defaultCard.rate_amount_minor;
 
   // Fall back to first card or fallback value
-  return rateCards[0]?.rate_amount || fallbackMinor;
+  return rateCards[0]?.rate_amount_minor || fallbackMinor;
 }

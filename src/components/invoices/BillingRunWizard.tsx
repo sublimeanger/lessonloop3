@@ -412,7 +412,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                 <div className="mt-2 flex flex-wrap gap-1">
                   {rateCards.map((card) => (
                     <Badge key={card.id} variant="outline" className="text-xs">
-                      {card.duration_mins}min: {formatCurrencyMinor(card.rate_amount, card.currency_code)}
+                      {card.duration_mins}min: {formatCurrencyMinor(card.rate_amount_minor, card.currency_code)}
                       {card.is_default && ' (default)'}
                     </Badge>
                   ))}

@@ -26,7 +26,7 @@ interface Teacher {
 interface RateCard {
   id: string;
   name: string;
-  rate_amount: number;
+  rate_amount_minor: number;
   duration_mins: number;
   currency_code: string;
 }
@@ -72,7 +72,7 @@ export function TeachingDefaultsStep({ data, onChange }: TeachingDefaultsStepPro
       // Fetch rate cards
       const { data: rates } = await supabase
         .from('rate_cards')
-        .select('id, name, rate_amount, duration_mins, currency_code')
+        .select('id, name, rate_amount_minor, duration_mins, currency_code')
         .eq('org_id', currentOrg.id)
         .order('name');
       
@@ -90,7 +90,7 @@ export function TeachingDefaultsStep({ data, onChange }: TeachingDefaultsStepPro
   };
   
   const formatRate = (rate: RateCard) => {
-    const amount = rate.rate_amount / 100;
+    const amount = rate.rate_amount_minor / 100;
     return `${rate.name} - £${amount.toFixed(2)} / ${rate.duration_mins} mins`;
   };
   

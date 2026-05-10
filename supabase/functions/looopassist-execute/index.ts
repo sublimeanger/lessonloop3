@@ -482,7 +482,7 @@ async function executeGenerateBillingRun(
   // Fetch ALL rate cards for the org (not just the default)
   const { data: rateCards, error: rateCardsError } = await supabase
     .from("rate_cards")
-    .select("id, rate_amount, duration_mins, is_default")
+    .select("id, rate_amount_minor, duration_mins, is_default")
     .eq("org_id", orgId);
 
   if (rateCardsError) throw rateCardsError;
@@ -493,14 +493,13 @@ async function executeGenerateBillingRun(
     );
   }
 
-  // Build lookup structures
-  // rate_amount is stored as decimal major units (e.g. 30.00 = £30)
-  // Convert to minor units (pence) for invoice calculations
+  // Build lookup structures. rate_amount_minor is stored in MINOR units (pence) —
+  // see DB CHECK rate_amount_minor_is_minor_units. Pass through directly.
   const rateByDuration = new Map<number, number>();
   let defaultRate: number | null = null;
 
   for (const rc of rateCards) {
-    const amountMinor = Math.round(Number(rc.rate_amount) * 100);
+    const amountMinor = Math.round(Number(rc.rate_amount_minor));
     rateByDuration.set(rc.duration_mins, amountMinor);
     if (rc.is_default) {
       defaultRate = amountMinor;
@@ -509,13 +508,13 @@ async function executeGenerateBillingRun(
 
   // If no card is explicitly marked as default, use the first one
   if (defaultRate === null) {
-    defaultRate = Math.round(Number(rateCards[0].rate_amount) * 100);
+    defaultRate = Math.round(Number(rateCards[0].rate_amount_minor));
   }
 
   // Build a map of rate_card id → amount (minor) for student-specific lookups
   const rateById = new Map<string, number>();
   for (const rc of rateCards) {
-    rateById.set(rc.id, Math.round(Number(rc.rate_amount) * 100));
+    rateById.set(rc.id, Math.round(Number(rc.rate_amount_minor)));
   }
 
   // Fetch lessons with participants and student details
@@ -1069,7 +1068,7 @@ async function executeCancelLesson(
   // Fetch all rate cards for duration-aware credit calculation
   const { data: rateCards } = await supabase
     .from("rate_cards")
-    .select("id, duration_mins, rate_amount, is_default")
+    .select("id, duration_mins, rate_amount_minor, is_default")
     .eq("org_id", orgId)
     .order("duration_mins", { ascending: true });
 
@@ -1109,8 +1108,8 @@ async function executeCancelLesson(
           rateCards.find((rc: { is_default: boolean }) => rc.is_default) ||
           rateCards[0];
         
-        if (matchingCard?.rate_amount) {
-          creditValue = Math.round(Number(matchingCard.rate_amount) * 100);
+        if (matchingCard?.rate_amount_minor) {
+          creditValue = Math.round(Number(matchingCard.rate_amount_minor));
         }
       }
 

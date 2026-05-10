@@ -891,11 +891,11 @@ serve(wrapEdgeFn("csv-import-execute", async (req) => {
     // Fetch rate_cards once for the import, used to snapshot rate_minor
     // on each new lesson_participants row so mid-term rate changes
     // don't retroactively affect billing.
-    let importRateCards: Array<{ duration_mins: number; rate_amount: number; is_default: boolean }> = [];
+    let importRateCards: Array<{ duration_mins: number; rate_amount_minor: number; is_default: boolean }> = [];
     try {
       const { data: cards, error: cardsError } = await supabase
         .from("rate_cards")
-        .select("duration_mins, rate_amount, is_default")
+        .select("duration_mins, rate_amount_minor, is_default")
         .eq("org_id", orgId)
         .order("duration_mins", { ascending: true });
       if (cardsError) throw cardsError;
@@ -1274,7 +1274,7 @@ serve(wrapEdgeFn("csv-import-execute", async (req) => {
                 if (importRateCards.length > 0) {
                   const exact = importRateCards.find(r => r.duration_mins === duration);
                   const def = importRateCards.find(r => r.is_default);
-                  rateLookup = exact?.rate_amount ?? def?.rate_amount ?? importRateCards[0]?.rate_amount ?? null;
+                  rateLookup = exact?.rate_amount_minor ?? def?.rate_amount_minor ?? importRateCards[0]?.rate_amount_minor ?? null;
                 }
                 // Add student as participant
                 await supabase.from("lesson_participants").insert({

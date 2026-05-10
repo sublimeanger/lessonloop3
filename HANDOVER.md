@@ -1,5 +1,7 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+**Last updated:** 2026-05-11 (after 36th-session — RATE_AMOUNT CONVENTION ENFORCEMENT + WORLD-CLASS MONEY INPUT UX. Launch-blocker money bug surfaced during Jamie's s35 UI walkthrough: `rate_cards.rate_amount` was named without `_minor` suffix and stored ambiguously — 36 of 63 cards were pence-shaped (correct per UI convention), 27 cards across 6 orgs were pound-shaped. LoopAssist edge fn + 3 of 4 PL/pgSQL functions ALSO had the Convention B `* 100` contradiction (rate_amount as pounds). Had Lauren onboarded onto a pence-shaped org + run LoopAssist billing, invoices would have been 100× too cheap. Fix in 5 phases. Phase 0: confirmed LoopAssist `* 100` bug at looopassist-execute/index.ts lines 485-518 AND 1071-1112; verified 27-row pound-shaped count (under 100-row HALT threshold); chose **Option A** (column rename). Phase 1: migration `rate_amount_to_minor_pence_convention` — UPDATE pound-shaped × 100, ADD CHECK constraint (rate_amount_minor >= 100 OR = 0), RENAME column to `rate_amount_minor`, COMMENT documenting the convention. Phase 2: recreated 4 PL/pgSQL fns (auto_issue_credit_on_absence, confirm_makeup_booking, generate_invoices_from_template, retry_failed_recipients) via 2 follow-up migrations — column rename + 7 total `* 100` removals across the 3 affected functions; 18 application files renamed via perl regex; 5 seed scripts updated to pence-shaped literals (3000 = £30). Phase 3: built `src/components/ui/money-input.tsx` (135 lines) — text input with inputMode=decimal, accepts `35` or `35.00` interchangeably (both → 3500 minor units), strips non-numeric, caps decimals at 2, on-blur pads to 2dp, live preview below input, tooltip helpText. Wired into `RateCardsTab.tsx` — removed `/100` `*100` dance, form state now matches DB directly. 14 unit tests in `src/test/ui/MoneyInput.test.tsx` cover typing intuition + sanitisation + state sync + accessibility. 14/14 pass. Phase 4: filed `audit/findings/2026-05-11-rate-amount-convention-enforcement.md` (P1 → RESOLVED). Verified 63 cards / 13 orgs / 0 pound-shaped / £8.75 min / £65 max / npx tsc --noEmit clean / 4 live PL/pgSQL fns reference rate_amount_minor only. **9 other numeric money inputs in invoices/ deferred to v1.1 UX polish per HARD RULE — they use already-correctly-named columns and aren't broken.** Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline still running at HANDOVER time.
+
 **Last updated:** 2026-05-11 (after 35th-session — DOB CALENDAR UX FIX. Pre-launch UX defect: shadcn Calendar wrapping react-day-picker 8.10.1 had chevron-only month-by-month navigation, requiring ~432 clicks to enter a 1990 DOB from today (May 2026). Phase 1: `src/components/ui/calendar.tsx` extended to forward `captionLayout` to react-day-picker + dropdown styling (caption_dropdowns, dropdown, dropdown_month, dropdown_year, vhidden classnames; static caption_label hidden when dropdowns active). Phase 2: `src/components/ui/date-picker.tsx` extended with opt-in `longRange` prop + `fromYear`/`toYear` overrides. When longRange=true, captionLayout switches to `"dropdown-buttons"`, defaultMonth opens at ~10 years ago (sensible for DOB), year range defaults to current-100 / current+5. Default behaviour byte-identical to pre-change (every existing call site unchanged). Phase 3: wired `longRange` on the 2 DOB DatePicker sites — `StudentInfoStep.tsx` wizard + `StudentInfoCard.tsx` edit view. No other DatePicker site touched. Phase 4: 8 unit tests in `src/test/ui/DatePicker.test.tsx` cover both modes (backwards-compat default, longRange dropdowns, fromYear/toYear overrides, ~10-year-ago default month, value-overrides-defaultMonth). 8/8 pass; full unit suite has only pre-existing csv-parser + DeleteValidation failures unrelated to UI. Phase 5: pushed at dd438d5; Netlify auto-deploy in flight at HANDOVER time. After: DOB entry takes 2 taps (Year dropdown → 1990, Month dropdown → March, click day 15) instead of hundreds of chevrons. Lauren onboarding still paused on Jamie's UI walkthrough — s35 DOB fix is one of the things he'll verify. Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/3.6m (§6 dashboard + §26.9.1 — the latter recurred after skipping s34 baseline, confirming intermittent classification).
 
 **Last updated:** 2026-05-10 (after 34th-session — LESSON_NOTES TEACHER↔INSTRUMENT FIX + LAUREN ONBOARDING READINESS. Post-s33 MCP verification surfaced that 260/402 lesson_notes (65%) had teacher_id pointing to the original s32 teachers (Sarah/James only), leaving Olivia/David/Rachel with zero notes despite being assigned 20/26/8 students. Root cause: s33 derived lesson_notes.teacher_id from lessons.teacher_id (the original lesson scheduling teacher) instead of the student's current primary teacher (per student_teacher_assignments). Phase 1.1: UPDATE 402 rows to current primary teacher via STA. 402/402 valid teacher↔instrument pairs post-fix; notes now distribute David 118 / Olivia 90 / James 80 / Sarah 78 / Rachel 36 (proportional to student counts). Phase 1.2: extended content libraries: keys/strings/woodwinds went 15/10/8 → 25/25/20 content/homework/focus_areas; brass went 15/10/8 → 20/20/15. Phase 1.3: regenerated all 402 notes' content_covered + homework + focus_areas using extended libraries. Unique content jumped 310→364 (90.5%), unique homework 233→361 (89.8%), unique focus_areas 167→358 (89.1%). Engagement/parent_visible/teacher_private_notes preserved untouched. Phase 1.5 spot-check: 10/10 random samples have valid teacher-can-teach-instrument + family-matched content. Phase 2: filed audit/findings/2026-05-10-26-9-1-pay-full-invoice-flake.md as P3 intermittent (didn't recur in s34 baseline). Updated docs/LAUREN_ONBOARDING_CHECKLIST.md §1.3 removing the "past lessons show different teacher" caveat (resolved) and replacing with the realistic "calendar shows original lesson teachers, student profiles show current primary" pattern. scripts/seed-shadow-enrichment.sql Phase 2 block rewritten with corrected STA-derived teacher_id and extended libraries. Phase 3: fresh s34 smoke message af7f2c15... sent successfully (email_sent=true, no error); fresh Jamie magic link minted to /tmp/jamie_magic_link_s34.txt (single-use, ~1hr TTL — Jamie needs to regenerate if expired). **551ca74e is now genuinely Lauren-ready pending Jamie's UI walkthrough.** Audit unchanged 167 🟢 / 6 🟡 / 0 🔴 / 10 ⏸. Baseline 665/2/122/3.6m (§6 dashboard + §13.7.4 send-invoice-email — both documented pre-existing).
@@ -1600,6 +1602,146 @@ failures, check `.env.test` and the storage states first.
 Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
+
+### What's done at end of 36th session
+
+(Catalog state ~91% unchanged. Audit total: 167 🟢 / 6 🟡 / **0 🔴** /
+10 ⏸ = ~91%. **Launch-blocker money bug resolved.** Baseline still
+running at HANDOVER write time; will follow up.)
+
+Per-phase outcomes for s36:
+
+- **Phase 0 — scope verification (~10 min)**:
+  - Confirmed LoopAssist Convention-B `* 100` bug live at
+    `supabase/functions/looopassist-execute/index.ts:485-518` (comment
+    + 3 `Math.round(Number(rc.rate_amount) * 100)` sites) AND at
+    `index.ts:1071-1112` (rate-card lookup + credit-value calc).
+  - SQL diagnostic: 63 rate_cards across 13 orgs. 27 pound-shaped
+    (3 different orgs named "Crescendo Music Agency" with 6 cards
+    each + LTP Music 4 of 5 + Ms Taylor's all 3 + E2E Test 1).
+    Below the 100-row HALT threshold.
+  - **Architecture decision: Option A (column rename)** per prompt
+    recommendation. World-class end-state; mechanical 18-file edit;
+    eliminates the landmine permanently.
+
+- **Phase 1 — DB migration (~10 min)**:
+  - Migration `rate_amount_to_minor_pence_convention` applied via
+    `apply_migration`:
+    * Pre-flight HALT check (count > 100 → RAISE EXCEPTION; was 27)
+    * `UPDATE rate_cards SET rate_amount = rate_amount * 100
+       WHERE rate_amount < 200` (multiplied 27 pound rows × 100)
+    * Post-flight HALT (any rows still < 200 → RAISE EXCEPTION; was 0)
+    * `ADD CONSTRAINT rate_amount_is_minor_units CHECK
+       (rate_amount >= 100 OR rate_amount = 0)` — DB-level enforcement
+    * `RENAME COLUMN rate_amount TO rate_amount_minor`
+    * `RENAME CONSTRAINT ... TO rate_amount_minor_is_minor_units`
+    * `COMMENT ON COLUMN rate_amount_minor IS '...'` — documentation
+  - Post-state: 63 cards / 0 pound-shaped / 13 orgs / £8.75 min /
+    £65 max.
+
+- **Phase 2 — app-side propagation (~50 min)**:
+  - Discovered 4 live PL/pgSQL functions referencing the old column
+    name. 3 of them ALSO had the Convention-B `* 100` bug:
+    * `confirm_makeup_booking` — rename only (was already correct)
+    * `auto_issue_credit_on_absence` — rename + 2× `* 100` removal
+    * `generate_invoices_from_template` — rename + 2× `* 100` removal
+    * `retry_failed_recipients` — rename + 2× `* 100` removal
+    Recreated via 2 follow-up migrations
+    (`rate_amount_minor_propagate_to_plpgsql` and
+    `_to_template_runners` and `_retry_failed`). Post-verify:
+    zero live functions reference the old column name.
+  - LoopAssist edge fn fixed at both `* 100` sites:
+    `Math.round(Number(rc.rate_amount) * 100)` →
+    `Math.round(Number(rc.rate_amount_minor))`. Comment updated to
+    reflect Convention A.
+  - 18 application files renamed via
+    `perl -i -pe 's/\brate_amount\b/rate_amount_minor/g'` (macOS sed
+    doesn't support `\b`; perl was the reliable substitute).
+    Files: see audit finding for full list.
+  - 5 seed scripts updated to pence-shaped literals (e.g. seed-demo-
+    agency's `38` → `3800`; seed-shadow-clusters' `20.00` → `2000`).
+    Comments added: `// rate_amount_minor in pence: 3000 = £30.00`.
+  - `npx tsc --noEmit` clean after every batch.
+
+- **Phase 3 — world-class money input UX (~45 min)**:
+  - Created `src/components/ui/money-input.tsx` (135 lines).
+    Key design choices:
+    * `inputMode="decimal"` + `type="text"` (not `type="number"` —
+      mobile keyboards hide decimal point on some platforms).
+    * State stored in parent as MINOR units (pence) — clean contract.
+    * Raw text held locally so users can type "35.0" without losing
+      trailing dot.
+    * Live preview below input: "= £35.00 GBP" via formatCurrencyMinor.
+    * Optional helpText with Info icon below.
+    * On blur: pads to 2 decimals.
+    * Strips non-numeric chars, collapses multiple dots to first,
+      truncates to 2 decimal places.
+  - Wired into `RateCardsTab.tsx`:
+    * Removed the `/100` on-load + `*100` on-save dance.
+    * Form state now stores `rate_amount_minor` directly as minor units.
+    * Help text: "Enter the price as you'd write it. 35 or 35.00
+      both mean thirty-five pounds. 3500 means three thousand five
+      hundred pounds."
+  - **9 other numeric money inputs in `src/components/invoices/`
+    deferred to v1.1 UX polish** per HARD RULE that other money
+    columns (`amount_minor`, `unit_price_minor`) are already correctly
+    named and not broken. List in the audit finding.
+  - 14 unit tests in `src/test/ui/MoneyInput.test.tsx`:
+    * typing `35` → 3500
+    * typing `35.00` → 3500
+    * typing `3500` → 350000 (intentional, no auto-truncate)
+    * typing `35.5` → 3550
+    * stripping non-numeric chars
+    * stripping second decimal point
+    * 2-decimal cap
+    * initial value rendering
+    * external prop change resync
+    * preview hidden / shown / format
+    * currency symbol matches currencyCode prop
+    * `inputMode="decimal"` set
+    * `type="text"` (not number)
+    All 14 pass.
+
+- **Phase 4 — verification + finding + handover (~20 min)**:
+  - SQL diagnostic post-fix: 63 / 0 pound-shaped / 13 orgs.
+  - Live PL/pgSQL scan: 0 functions reference old column name.
+  - `npx tsc --noEmit`: 0 errors.
+  - Filed `audit/findings/2026-05-11-rate-amount-convention-
+    enforcement.md` (P1 → RESOLVED, with full root cause + scope +
+    fix narrative + v1.1 follow-up list).
+
+### Migration list (applied via apply_migration)
+
+1. `rate_amount_to_minor_pence_convention` — data + CHECK + rename
+2. `rate_amount_minor_propagate_to_plpgsql` — auto_issue_credit_on_absence + confirm_makeup_booking
+3. `rate_amount_minor_propagate_to_template_runners` — generate_invoices_from_template
+4. `rate_amount_minor_propagate_retry_failed` — retry_failed_recipients
+
+### Outstanding Jamie actions (s37 unblock)
+
+Unchanged from s35. Plus now:
+
+1. (Existing) Click magic link → 551ca74e dashboard.
+2. Run the 7-section sanity walkthrough including DOB calendar.
+3. **NEW for s36:** open Settings → Rate Cards. Verify all 8 cards
+   show correct prices (£15, £20, £22, £30, £35, £40, £45, £55).
+   Click "Add Rate Card" — confirm MoneyInput renders with £ prefix,
+   live preview below, helpText explaining the input convention.
+4. Verify s35 smoke email landed (still pending Jamie confirmation).
+5. Greenlight Lauren onboarding.
+
+### s37+ plan (deferred from s36)
+
+- Wire MoneyInput into the 9 remaining numeric money inputs in
+  `src/components/invoices/` (BillingRunWizard custom amount,
+  CreateInvoiceModal items, EditInvoiceModal items, PaymentPlanSetup
+  override, PaymentPlanToggle, RecordPaymentModal, RefundDialog).
+- v1.1 sweep of other `numeric` money columns without `_minor` suffix.
+- Teacher tier / Agency tier seed variants — post-Lauren-shadow.
+- Leads / booking / waitlist / AI conversation history seed.
+- Typed-input fallback in DatePicker (defer from s35).
+- UK vs US date locale settings.
+- Calendar UX, import XLSX, API keys / MCP wrapper — post-shadow-term.
 
 ### What's done at end of 35th session
 

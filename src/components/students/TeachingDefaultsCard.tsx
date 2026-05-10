@@ -63,7 +63,7 @@ export function TeachingDefaultsCard({
     if (!defaultRateCardId) return null;
     const rate = rateCards.find(r => r.id === defaultRateCardId);
     if (!rate) return null;
-    return `${rate.name} - £${(rate.rate_amount / 100).toFixed(2)} / ${rate.duration_mins} mins`;
+    return `${rate.name} - £${(rate.rate_amount_minor / 100).toFixed(2)} / ${rate.duration_mins} mins`;
   }, [rateCards, defaultRateCardId]);
   
   const handleSave = async () => {
@@ -188,7 +188,7 @@ export function TeachingDefaultsCard({
                   <SelectItem value="none">No default</SelectItem>
                   {rateCards.map(rate => (
                     <SelectItem key={rate.id} value={rate.id}>
-                      {rate.name} - {formatCurrencyMinor(rate.rate_amount, currentOrg?.currency_code)}
+                      {rate.name} - {formatCurrencyMinor(rate.rate_amount_minor, currentOrg?.currency_code)}
                     </SelectItem>
                   ))}
                 </SelectContent>

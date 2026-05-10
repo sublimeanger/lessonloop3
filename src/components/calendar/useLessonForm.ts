@@ -539,13 +539,13 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
               try {
                 const { data: rateCards } = await supabase
                   .from('rate_cards')
-                  .select('rate_amount, duration_mins, is_default')
+                  .select('rate_amount_minor, duration_mins, is_default')
                   .eq('org_id', currentOrg.id)
                   .order('duration_mins', { ascending: true });
                 if (rateCards && rateCards.length > 0) {
                   const exact = rateCards.find(r => r.duration_mins === durationMins);
                   const def = rateCards.find(r => r.is_default);
-                  newStudentRate = exact?.rate_amount ?? def?.rate_amount ?? rateCards[0]?.rate_amount ?? null;
+                  newStudentRate = exact?.rate_amount_minor ?? def?.rate_amount_minor ?? rateCards[0]?.rate_amount_minor ?? null;
                 } else {
                   logger.error('rate_cards lookup returned no rows when snapshotting rate_minor on lesson edit', {
                     org_id: currentOrg.id,
@@ -746,13 +746,13 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
             try {
               const { data: rateCards } = await supabase
                 .from('rate_cards')
-                .select('rate_amount, duration_mins, is_default')
+                .select('rate_amount_minor, duration_mins, is_default')
                 .eq('org_id', currentOrg.id)
                 .order('duration_mins', { ascending: true });
               if (rateCards && rateCards.length > 0) {
                 const exact = rateCards.find(r => r.duration_mins === durationMins);
                 const def = rateCards.find(r => r.is_default);
-                rateLookup = exact?.rate_amount ?? def?.rate_amount ?? rateCards[0]?.rate_amount ?? null;
+                rateLookup = exact?.rate_amount_minor ?? def?.rate_amount_minor ?? rateCards[0]?.rate_amount_minor ?? null;
               } else {
                 logger.error('rate_cards lookup returned no rows when snapshotting rate_minor on lesson creation', {
                   org_id: currentOrg.id,

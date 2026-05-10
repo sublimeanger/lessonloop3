@@ -67,7 +67,7 @@ interface AttendanceRecord {
 
 interface RateCard {
   name: string;
-  rate_amount: number;
+  rate_amount_minor: number;
   duration_mins: number;
   is_default: boolean;
 }

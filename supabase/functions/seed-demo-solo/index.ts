@@ -205,9 +205,10 @@ Deno.serve(async (req) => {
     // ═══════════════════════════════════════════════════════════════
     // 8. RATE CARDS + CLOSURES
     // ═══════════════════════════════════════════════════════════════
-    await findOrInsert("rate_cards", { org_id: ORG_ID, name: "30-min Private" }, { duration_mins: 30, rate_amount: 30, is_default: true });
-    await findOrInsert("rate_cards", { org_id: ORG_ID, name: "45-min Private" }, { duration_mins: 45, rate_amount: 42, is_default: false });
-    await findOrInsert("rate_cards", { org_id: ORG_ID, name: "Online 30-min" }, { duration_mins: 30, rate_amount: 25, is_default: false });
+    // rate_amount_minor in pence: 3000 = £30.00
+    await findOrInsert("rate_cards", { org_id: ORG_ID, name: "30-min Private" }, { duration_mins: 30, rate_amount_minor: 3000, is_default: true });
+    await findOrInsert("rate_cards", { org_id: ORG_ID, name: "45-min Private" }, { duration_mins: 45, rate_amount_minor: 4200, is_default: false });
+    await findOrInsert("rate_cards", { org_id: ORG_ID, name: "Online 30-min" }, { duration_mins: 30, rate_amount_minor: 2500, is_default: false });
 
     const closureRanges = [
       { start: "2025-10-27", end: "2025-10-31", reason: "October Half Term" },

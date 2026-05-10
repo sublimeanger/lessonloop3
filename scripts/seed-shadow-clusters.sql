@@ -28,7 +28,9 @@
 --     pass '' or NULL), issue_date, due_date, subtotal_minor, total_minor,
 --     tax_minor, vat_rate, currency_code. CHECK constraint payer_xor:
 --     payer_student_id XOR payer_guardian_id (exactly one must be non-null).
---   - rate_cards: rate_amount is NUMERIC (decimal pounds, not minor units).
+--   - rate_cards: rate_amount_minor is NUMERIC in MINOR units (pence/cents).
+--     Enforced by CHECK rate_amount_minor_is_minor_units (>= 100 OR = 0).
+--     s36 renamed from rate_amount + migrated all pound-shaped data.
 --   - make_up_waitlist NOT NULL: lesson_duration_minutes, lesson_title,
 --     absence_reason (enum), missed_lesson_date, status='waiting' default.
 --   - practice_assignments: teacher_user_id NOT NULL (FK to auth.users).
@@ -45,15 +47,16 @@
 -- PHASE 2.2 — Rate cards (8 cards, org-scoped, no teacher FK)
 -- =============================================================================
 
-INSERT INTO rate_cards (org_id, name, duration_mins, rate_amount, currency_code, is_default) VALUES
-  ('551ca74e-d47d-4d02-9a4b-24863349a030', '30min Beginner',     30, 20.00, 'GBP', true),
-  ('551ca74e-d47d-4d02-9a4b-24863349a030', '30min Standard',     30, 22.00, 'GBP', false),
-  ('551ca74e-d47d-4d02-9a4b-24863349a030', '45min Intermediate', 45, 30.00, 'GBP', false),
-  ('551ca74e-d47d-4d02-9a4b-24863349a030', '60min Advanced',     60, 40.00, 'GBP', false),
-  ('551ca74e-d47d-4d02-9a4b-24863349a030', '60min Adult',        60, 45.00, 'GBP', false),
-  ('551ca74e-d47d-4d02-9a4b-24863349a030', '30min Trial Lesson', 30, 15.00, 'GBP', false),
-  ('551ca74e-d47d-4d02-9a4b-24863349a030', '45min Exam Prep',    45, 35.00, 'GBP', false),
-  ('551ca74e-d47d-4d02-9a4b-24863349a030', '60min Diploma Prep', 60, 55.00, 'GBP', false);
+-- rate_amount_minor in pence: 2000 = £20.00
+INSERT INTO rate_cards (org_id, name, duration_mins, rate_amount_minor, currency_code, is_default) VALUES
+  ('551ca74e-d47d-4d02-9a4b-24863349a030', '30min Beginner',     30, 2000, 'GBP', true),
+  ('551ca74e-d47d-4d02-9a4b-24863349a030', '30min Standard',     30, 2200, 'GBP', false),
+  ('551ca74e-d47d-4d02-9a4b-24863349a030', '45min Intermediate', 45, 3000, 'GBP', false),
+  ('551ca74e-d47d-4d02-9a4b-24863349a030', '60min Advanced',     60, 4000, 'GBP', false),
+  ('551ca74e-d47d-4d02-9a4b-24863349a030', '60min Adult',        60, 4500, 'GBP', false),
+  ('551ca74e-d47d-4d02-9a4b-24863349a030', '30min Trial Lesson', 30, 1500, 'GBP', false),
+  ('551ca74e-d47d-4d02-9a4b-24863349a030', '45min Exam Prep',    45, 3500, 'GBP', false),
+  ('551ca74e-d47d-4d02-9a4b-24863349a030', '60min Diploma Prep', 60, 5500, 'GBP', false);
 
 -- =============================================================================
 -- PHASE 2.3 — Students + guardians + relationships + instruments + assignments

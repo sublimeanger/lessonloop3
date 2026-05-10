@@ -32,7 +32,7 @@ interface BillingRunRequest {
 interface RateCard {
   id: string;
   duration_mins: number;
-  rate_amount: number;
+  rate_amount_minor: number;
   is_default: boolean;
 }
 
@@ -55,10 +55,10 @@ function findRateForDuration(
 ): number {
   if (!rateCards.length) return fallbackMinor;
   const exact = rateCards.find((r) => r.duration_mins === durationMins);
-  if (exact) return exact.rate_amount;
+  if (exact) return exact.rate_amount_minor;
   const def = rateCards.find((r) => r.is_default);
-  if (def) return def.rate_amount;
-  return rateCards[0]?.rate_amount || fallbackMinor;
+  if (def) return def.rate_amount_minor;
+  return rateCards[0]?.rate_amount_minor || fallbackMinor;
 }
 
 Deno.serve(wrapEdgeFn("create-billing-run", async (req: Request) => {
@@ -503,7 +503,7 @@ async function executeBillingLogic(
   // Fetch rate cards
   const { data: rateCards } = await client
     .from("rate_cards")
-    .select("id, duration_mins, rate_amount, is_default")
+    .select("id, duration_mins, rate_amount_minor, is_default")
     .eq("org_id", orgId);
 
   // Determine status filter
