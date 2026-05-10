@@ -88,7 +88,7 @@ The previous ✅ flags are now in the row's "Notes" column for context — usefu
 - **s16 getUser sweep:** 15 user-facing edge fns hardened (cumulative 32/45). HIGH+MEDIUM done; LOW (calendar/zoom/seed/enrolment-offer) deferred per v2 §3.2.
 - **Recalibrated bar (s15 onwards):** ≥5 rows backfilled to 🟢 per session is non-negotiable; per Jamie's 2026-05-10 recalibration, audit hygiene is part of the world-class launch readiness criterion. After s18, money-path is COMPLETE and Auth & Onboarding is ~64% green. Next major weak area: Calendar & Lessons (16 rows, 1 🟢) — kickoff candidate for s19+.
 - **Last full sweep:** 2026-05-08 (this audit)
-- **Findings produced:** 24 in `audit/findings/` (s29 +2: stripe-list-payment-methods prod 500 [PARTIAL FIX], streak-notification prod 500 [OPEN P3]); s29 closed/downgraded 6: throw-into-outer-catch sibling-concern subsection [CLOSED], cloudflare-subdomain [CLOSED], 13:461 flake [CLOSED], 15.4 Payroll flake [CLOSED], env-injection [DOWNGRADED v1.1+], cron-class-b [DOWNGRADED v1.1+]; rbac-5-4 [downgraded P2→P3, test skipped].
+- **Findings produced:** 25 in `audit/findings/` (s29 +3: stripe-list-payment-methods prod 500 [PARTIAL FIX], streak-notification prod 500 [OPEN P3], 20.7b seedTerms flake [OPEN P3]); s29 closed/downgraded 6: throw-into-outer-catch sibling-concern subsection [CLOSED], cloudflare-subdomain [CLOSED], 13:461 flake [CLOSED], 15.4 Payroll flake [CLOSED], env-injection [DOWNGRADED v1.1+], cron-class-b [DOWNGRADED v1.1+]; rbac-5-4 [downgraded P2→P3, test skipped].
 
 ## Known launch blockers (tracked separately in `audit/00-launch-readiness.md`)
 

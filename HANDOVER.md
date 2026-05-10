@@ -1663,6 +1663,22 @@ Per-track outcomes for s29:
     - Both verified stable: 3 consecutive workers=4 runs, both
       tests pass each run.
 
+- **Baseline (final s29)**: 663 passed / 3 failed / 123 skipped / 4.7m.
+  Fails:
+  - §6 dashboard stat cards (pre-existing, not in s29 scope)
+  - §13.7.4 send-invoice-email bulk send (pre-existing, not in s29 scope)
+  - §20.7b bulk-process-continuation seedTerms — NEW intermittent
+    flake surfaced in the final run only (not present in setup or
+    Track 2.4 verification runs). Filed
+    `audit/findings/2026-05-10-20-7b-seedterms-concurrency-flake.md`
+    as P3 OPEN. Same family as Track 2.4 (parallel-worker fixture
+    races on E2E_ORG_ID). s30 to apply documented fix shape.
+  - §5.4 RBAC: SKIPPED (s29 Track 3 — FLOW verified production-
+    correct; test redesign deferred s30).
+  Net pre-existing-fails count: 3 (matches s28 baseline). One was
+  swapped (§5.4 skipped → §20.7b appeared). Audit posture not
+  affected.
+
 - **Track 3 — rbac-5-4 (~15 min, not the 90 min planned)**:
   - Investigated per finding's recommendation. Manual code review of
     `src/components/auth/RouteGuard.tsx:150-153` confirmed FLOW is
