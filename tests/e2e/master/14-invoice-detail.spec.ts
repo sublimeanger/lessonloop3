@@ -374,6 +374,43 @@ test.describe('§14.10.14 — PDF rev bump trigger', () => {
 });
 
 test.describe('§14.10.16 — apply_lost_dispute_cascade', () => {
+  // Service-role-curl SELECT — replaces supabaseSelect's owner JWT path
+  // which returned non-array shapes under parallel contention in s14
+  // (PostgREST proxy timeout). Same pattern as §27 / §26.11. Always
+  // returns an array even if PostgREST responded with an error object
+  // (e.g. transient timeout) so callers can rely on `.length`.
+  function selectServiceRole(table: string, query: string): any[] {
+    const url = process.env.E2E_SUPABASE_URL!;
+    const key = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+    if (!key) throw new Error('E2E_SUPABASE_SERVICE_ROLE_KEY required');
+    const result = execSync(
+      `curl -s "${url}/rest/v1/${table}?${query}" ` +
+        `-H "apikey: ${key}" -H "Authorization: Bearer ${key}"`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    try {
+      const parsed = JSON.parse(result);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  }
+
+  // Poll-with-backoff wrapper — used for assertions on rows that the
+  // RPC writes via AFTER trigger or async commit (audit_log is the
+  // common case). Retries up to ~3s before returning whatever it last
+  // saw, so a transient zero-row read doesn't immediately fail the test.
+  function selectServiceRoleWithPoll(
+    table: string, query: string, predicate: (rows: any[]) => boolean,
+  ): any[] {
+    const deadline = Date.now() + 3_000;
+    let last: any[] = [];
+    while (Date.now() < deadline) {
+      last = selectServiceRole(table, query);
+      if (predicate(last)) return last;
+      execSync('sleep 0.2');
+    }
+    return last;
+  }
+
   // Catalog §14.10.16: "apply_lost_dispute_cascade cascades correctly."
   // The RPC is service-role only (rejects auth.uid() != NULL — see
   // pg_proc body verified 2026-05-10). Stripe webhook calls it when
@@ -396,7 +433,8 @@ test.describe('§14.10.16 — apply_lost_dispute_cascade', () => {
 
     try {
       patchInvoiceStatus(inv.id, 'sent');
-      const totalRow = supabaseSelect('invoices', `id=eq.${inv.id}&select=total_minor`);
+      const totalRow = selectServiceRole('invoices', `id=eq.${inv.id}&select=total_minor`);
+      expect(Array.isArray(totalRow) && totalRow.length === 1, `total_minor select shape: ${JSON.stringify(totalRow).slice(0, 200)}`).toBe(true);
       const total = totalRow[0].total_minor as number;
 
       // Pay it via record_manual_payment so paid_minor reflects + status=paid.
@@ -408,10 +446,11 @@ test.describe('§14.10.16 — apply_lost_dispute_cascade', () => {
         p_reference: `${testId}_pay_ref`,
         p_installment_id: null,
       });
-      const paid = supabaseSelect('invoices', `id=eq.${inv.id}&select=status`);
+      const paid = selectServiceRole('invoices', `id=eq.${inv.id}&select=status`);
+      expect(Array.isArray(paid) && paid.length === 1, `paid select shape: ${JSON.stringify(paid).slice(0, 200)}`).toBe(true);
       expect(paid[0].status).toBe('paid');
 
-      const payments = supabaseSelect('payments', `invoice_id=eq.${inv.id}&select=id`);
+      const payments = selectServiceRole('payments', `invoice_id=eq.${inv.id}&select=id`);
       expect(payments.length).toBe(1);
       const paymentId = payments[0].id;
 
@@ -467,7 +506,7 @@ test.describe('§14.10.16 — apply_lost_dispute_cascade', () => {
       expect(cascadeResult.refund_id).toBeTruthy();
 
       // Refund row exists with status=succeeded + linked to dispute.
-      const refunds = supabaseSelect(
+      const refunds = selectServiceRole(
         'refunds',
         `payment_id=eq.${paymentId}&select=amount_minor,status,refund_from_dispute_id`,
       );
@@ -478,15 +517,19 @@ test.describe('§14.10.16 — apply_lost_dispute_cascade', () => {
 
       // Invoice no longer 'paid' (recalculate_invoice_paid runs inside the
       // RPC). Should be 'sent' or 'overdue' depending on due_date.
-      const after = supabaseSelect('invoices', `id=eq.${inv.id}&select=status`);
+      const after = selectServiceRole('invoices', `id=eq.${inv.id}&select=status`);
+      expect(Array.isArray(after) && after.length === 1, `invoice select after cascade: ${JSON.stringify(after).slice(0, 200)}`).toBe(true);
       expect(['sent', 'overdue'], `invoice status after cascade: ${after[0].status}`).toContain(after[0].status);
 
       // Audit log: dispute_lost_cascade_applied row keyed on the invoice.
-      const audit = supabaseSelect(
+      // Poll briefly — the RPC writes audit_log inside its body; PostgREST
+      // visibility under proxy contention occasionally lags by 100-300ms.
+      const audit = selectServiceRoleWithPoll(
         'audit_log',
         `org_id=eq.${orgId}&entity_type=eq.invoice&entity_id=eq.${inv.id}&action=eq.dispute_lost_cascade_applied&select=action,after`,
+        (rows) => rows.length >= 1,
       );
-      expect(audit.length).toBeGreaterThanOrEqual(1);
+      expect(audit.length, `audit_log dispute_lost_cascade_applied not visible after 3s; got: ${JSON.stringify(audit).slice(0, 200)}`).toBeGreaterThanOrEqual(1);
       expect(audit[0].after?.dispute_id).toBe(disputeId);
 
       // Idempotency: second call returns already_applied:true.

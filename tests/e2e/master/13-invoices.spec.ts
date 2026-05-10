@@ -287,6 +287,27 @@ function getOwnerJwt(): string {
 test.describe('§13.7.4 — Bulk send drafts via send-invoice-email', () => {
   test.use({ storageState: AUTH.owner });
 
+  // Result-side selects use service-role curl rather than supabaseSelect's
+  // owner JWT path — under parallel contention the PostgREST proxy can
+  // return a non-array shape via owner JWT, which made this test flaky
+  // in s14. Pattern is the same as §27 selectNotifPrefServiceRole and
+  // §26.11 selectServiceRole. Service-role bypasses RLS so the full
+  // post-edge-fn state is always visible deterministically.
+  function selectServiceRole(table: string, query: string): any[] {
+    const url = process.env.E2E_SUPABASE_URL!;
+    const key = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY!;
+    if (!key) throw new Error('E2E_SUPABASE_SERVICE_ROLE_KEY required');
+    const result = execSync(
+      `curl -s "${url}/rest/v1/${table}?${query}" ` +
+        `-H "apikey: ${key}" -H "Authorization: Bearer ${key}"`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    try {
+      const parsed = JSON.parse(result);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  }
+
   // Catalogue §13.7.4: "Bulk send 3 drafts → send-invoice-email called 3
   // times → all 3 status=sent → toast '3 invoices sent'." Drives the
   // edge fn directly with the e2e parent guardian as recipient — the
@@ -337,17 +358,20 @@ test.describe('§13.7.4 — Bulk send drafts via send-invoice-email', () => {
 
       // All three invoices should now be status=sent (server-side flip on
       // successful send, regardless of email actually delivering).
+      // Use service-role curl for both selects — owner JWT under
+      // parallel contention can return a non-array, which made this
+      // assertion flake in s14.
       let sentCount = 0;
       let logCount = 0;
       for (const inv of drafts) {
-        const after = supabaseSelect(
+        const after = selectServiceRole(
           'invoices',
           `id=eq.${inv.id}&select=status`,
         );
         expect(Array.isArray(after) && after.length === 1, `invoice select unexpected shape: ${JSON.stringify(after).slice(0, 200)}`).toBe(true);
         if (after[0].status === 'sent') sentCount++;
 
-        const logs = supabaseSelect(
+        const logs = selectServiceRole(
           'message_log',
           `org_id=eq.${orgId}&related_id=eq.${inv.id}&message_type=eq.invoice&select=id,status`,
         );
