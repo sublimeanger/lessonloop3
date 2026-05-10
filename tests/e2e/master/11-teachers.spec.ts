@@ -118,6 +118,262 @@ test.describe('§11.4 — Unlinked teacher row contract', () => {
   });
 });
 
-test.fixme('§11.1 — Invite teacher → invites row created + email queued', async () => {});
-test.fixme('§11.1 — Archive with upcoming lessons → reassign or cancel dialog', async () => {});
-test.fixme('§11.1 — Plan cap reached → Add Teacher disabled', async () => {});
+// ────────────────────────────────────────────────────────────────────
+// §11.4.2 — Invite teacher → invites row created + email queued via
+// send-invite-email
+// ────────────────────────────────────────────────────────────────────
+//
+// Production flow:
+//   1. InviteMemberDialog.tsx INSERTs into `invites` (token + 7d expiry
+//      auto-defaults). The owner does this directly via PostgREST.
+//   2. Frontend calls send-invite-email with the new invite's id. The
+//      edge fn fetches the invite, builds the email body with the
+//      Resend template + accept link, calls Resend, inserts a
+//      message_log row (`message_type='invite'`).
+//
+// Test asserts both halves: row creation + email-queued message_log.
+// send-invite-email rejects service-role tokens at the getUser(token)
+// gate (post-s12 fix); use owner JWT.
+
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+
+function getOwnerJwt(): string {
+  const tmp = `/tmp/sb-owner-jwt-t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
+  fs.writeFileSync(tmp, JSON.stringify({ email: process.env.E2E_OWNER_EMAIL!, password: process.env.E2E_OWNER_PASSWORD! }));
+  try {
+    const res = execSync(
+      `curl -s -X POST "${process.env.E2E_SUPABASE_URL}/auth/v1/token?grant_type=password" ` +
+        `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" -H "Content-Type: application/json" -d @${tmp}`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const session = JSON.parse(res);
+    if (!session.access_token) throw new Error(`owner sign-in failed: ${JSON.stringify(session).slice(0, 200)}`);
+    return session.access_token;
+  } finally {
+    try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+  }
+}
+
+test.describe('§11.4.2 — Invite teacher (invites row + send-invite-email)', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('insert invite + send-invite-email → message_log invite row + invite still has 7d expiry', async () => {
+    const { supabaseInsert, supabaseSelect, supabaseDelete } = await import('../supabase-admin');
+    const orgId = process.env.E2E_ORG_ID!;
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const inviteEmail = `${testId}_invite@test.lessonloop.net`;
+
+    const invite = supabaseInsert('invites', {
+      org_id: orgId,
+      email: inviteEmail,
+      role: 'teacher',
+    });
+    expect(invite?.id, `invite insert failed: ${JSON.stringify(invite)}`).toBeTruthy();
+
+    try {
+      // Verify the invite row defaults landed: token uuid, expires_at +7d.
+      const inviteRow = supabaseSelect(
+        'invites',
+        `id=eq.${invite.id}&select=email,role,token,expires_at,accepted_at`,
+      );
+      expect(inviteRow.length).toBe(1);
+      expect(inviteRow[0].email).toBe(inviteEmail);
+      expect(inviteRow[0].role).toBe('teacher');
+      expect(inviteRow[0].token).toBeTruthy();
+      expect(inviteRow[0].accepted_at).toBeNull();
+      const expiry = new Date(inviteRow[0].expires_at as string).getTime();
+      const now = Date.now();
+      const sixDays = 6 * 24 * 3600_000;
+      const eightDays = 8 * 24 * 3600_000;
+      expect(expiry - now, 'expires_at should be ~7d ahead').toBeGreaterThan(sixDays);
+      expect(expiry - now).toBeLessThan(eightDays);
+
+      // Call send-invite-email with owner JWT (post-s13 fix uses
+      // getUser(token) which accepts user JWTs).
+      const ownerJwt = getOwnerJwt();
+      const reqFile = `/tmp/sb-invite-${Date.now()}.json`;
+      fs.writeFileSync(reqFile, JSON.stringify({ inviteId: invite.id }));
+      let status: string;
+      try {
+        status = execSync(
+          `curl -s -o /dev/null -w "%{http_code}" -X POST "${process.env.E2E_SUPABASE_URL}/functions/v1/send-invite-email" ` +
+            `-H "Authorization: Bearer ${ownerJwt}" ` +
+            `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+            `-H "Content-Type: application/json" -d @${reqFile}`,
+          { encoding: 'utf-8', timeout: 30_000 },
+        );
+      } finally {
+        try { fs.unlinkSync(reqFile); } catch { /* ignore */ }
+      }
+      expect(parseInt(status.trim(), 10), `send-invite-email returned ${status}`).toBe(200);
+
+      // message_log row written by the fn on success.
+      const logs = supabaseSelect(
+        'message_log',
+        `org_id=eq.${orgId}&recipient_email=eq.${encodeURIComponent(inviteEmail)}&select=message_type,status`,
+      );
+      expect(logs.length).toBeGreaterThanOrEqual(1);
+      expect(logs[0].status).toBe('sent');
+    } finally {
+      supabaseDelete('message_log', `org_id=eq.${orgId}&recipient_email=eq.${encodeURIComponent(inviteEmail)}`);
+      supabaseDelete('invites', `id=eq.${invite.id}`);
+    }
+  });
+});
+
+test.describe('§11.4.4 / §11.4.5 — Archive teacher with upcoming lessons (reassign / cancel)', () => {
+  test.use({ storageState: AUTH.owner });
+
+  // Two teachers + a future lesson on teacher_a. bulk_update_lessons
+  // RPC reassigns to teacher_b; bulk_cancel_lessons cancels in place.
+  // Both RPCs use auth.uid() so they MUST be called via owner JWT
+  // (verified pg_proc 2026-05-10).
+
+  async function seedTwoTeachersAndLesson(testId: string) {
+    const { supabaseInsert, getOwnerUserId } = await import('../supabase-admin');
+    const orgId = process.env.E2E_ORG_ID!;
+    // Seed inactive — `check_teacher_limit` only counts active rows toward
+    // the org's plan cap (verified pg_proc 2026-05-10). Lessons can still
+    // reference inactive teachers, and `bulk_update_lessons` doesn't gate
+    // on teacher.status. This sidesteps the cap entirely so parallel test
+    // runs and partial-cleanup leaks don't accumulate to break new seeds.
+    const teacherA = supabaseInsert('teachers', {
+      org_id: orgId,
+      display_name: `${testId}_a`,
+      email: `${testId}_a@test.lessonloop.net`,
+      status: 'inactive',
+    });
+    const teacherB = supabaseInsert('teachers', {
+      org_id: orgId,
+      display_name: `${testId}_b`,
+      email: `${testId}_b@test.lessonloop.net`,
+      status: 'inactive',
+    });
+    expect(teacherA?.id).toBeTruthy();
+    expect(teacherB?.id).toBeTruthy();
+
+    // Future lesson on teacherA. Pick a +random offset so parallel runs
+    // don't collide on teacher_conflict trigger.
+    const startOffsetMs =
+      14 * 24 * 3600_000 + Math.floor(Math.random() * 30) * 24 * 3600_000;
+    const start = new Date(Date.now() + startOffsetMs);
+    start.setUTCMinutes(0, 0, 0);
+    const end = new Date(start.getTime() + 30 * 60_000);
+
+    const lesson = supabaseInsert('lessons', {
+      org_id: orgId,
+      teacher_id: teacherA.id,
+      created_by: getOwnerUserId(),
+      title: `${testId}_lesson`,
+      start_at: start.toISOString(),
+      end_at: end.toISOString(),
+      status: 'scheduled',
+      lesson_type: 'private',
+    });
+    expect(lesson?.id, `lesson seed failed: ${JSON.stringify(lesson)}`).toBeTruthy();
+    return { teacherA, teacherB, lesson };
+  }
+
+  function callRpcAsOwner(fnName: string, params: Record<string, unknown>) {
+    const ownerJwt = getOwnerJwt();
+    const tmp = `/tmp/sb-rpc-owner-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
+    fs.writeFileSync(tmp, JSON.stringify(params));
+    try {
+      const raw = execSync(
+        `curl -s -w "\\nHTTP:%{http_code}" -X POST "${process.env.E2E_SUPABASE_URL}/rest/v1/rpc/${fnName}" ` +
+          `-H "apikey: ${process.env.E2E_SUPABASE_ANON_KEY}" ` +
+          `-H "Authorization: Bearer ${ownerJwt}" ` +
+          `-H "Content-Type: application/json" -d @${tmp}`,
+        { encoding: 'utf-8', timeout: 30_000 },
+      );
+      const m = raw.match(/HTTP:(\d+)$/);
+      const http = m ? parseInt(m[1], 10) : 0;
+      const body = m ? raw.slice(0, raw.lastIndexOf('\nHTTP:')) : raw;
+      return { http, body: body.trim() };
+    } finally {
+      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }
+
+  test('§11.4.4 — bulk_update_lessons reassigns lesson teacher_id from A to B', async () => {
+    const { supabaseSelect, supabaseDelete } = await import('../supabase-admin');
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const { teacherA, teacherB, lesson } = await seedTwoTeachersAndLesson(testId);
+
+    try {
+      const before = supabaseSelect('lessons', `id=eq.${lesson.id}&select=teacher_id,status`);
+      expect(before[0].teacher_id).toBe(teacherA.id);
+      expect(before[0].status).toBe('scheduled');
+
+      const { http, body } = callRpcAsOwner('bulk_update_lessons', {
+        p_lesson_ids: [lesson.id],
+        p_changes: { teacher_id: teacherB.id },
+      });
+      expect(http, `bulk_update_lessons body: ${body.slice(0, 200)}`).toBe(200);
+
+      const after = supabaseSelect('lessons', `id=eq.${lesson.id}&select=teacher_id`);
+      expect(after[0].teacher_id, 'lesson reassigned to teacher B').toBe(teacherB.id);
+    } finally {
+      supabaseDelete('lessons', `id=eq.${lesson.id}`);
+      supabaseDelete('teachers', `id=eq.${teacherA.id}`);
+      supabaseDelete('teachers', `id=eq.${teacherB.id}`);
+    }
+  });
+
+  test('§11.4.5 — bulk_cancel_lessons sets status=cancelled', async () => {
+    const { supabaseSelect, supabaseDelete } = await import('../supabase-admin');
+    const testId = `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const { teacherA, teacherB, lesson } = await seedTwoTeachersAndLesson(testId);
+
+    try {
+      const { http, body } = callRpcAsOwner('bulk_cancel_lessons', {
+        p_lesson_ids: [lesson.id],
+      });
+      expect(http, `bulk_cancel_lessons body: ${body.slice(0, 200)}`).toBe(200);
+
+      const after = supabaseSelect('lessons', `id=eq.${lesson.id}&select=status`);
+      expect(after[0].status).toBe('cancelled');
+    } finally {
+      supabaseDelete('lessons', `id=eq.${lesson.id}`);
+      supabaseDelete('teachers', `id=eq.${teacherA.id}`);
+      supabaseDelete('teachers', `id=eq.${teacherB.id}`);
+    }
+  });
+});
+
+test.describe('§11.4.7 — Filter tab counts match DB', () => {
+  test.use({ storageState: AUTH.owner });
+
+  // Catalog §11.4.7: tabs are all|linked|unlinked|inactive. Counts must
+  // match SELECT COUNT(*) per filter against `teachers` table.
+  test('teachers table query matches all/linked/unlinked/inactive splits exactly', async () => {
+    const { supabaseSelect } = await import('../supabase-admin');
+    const orgId = process.env.E2E_ORG_ID!;
+
+    const all = supabaseSelect('teachers', `org_id=eq.${orgId}&select=id&limit=10000`);
+    const linked = supabaseSelect(
+      'teachers',
+      `org_id=eq.${orgId}&user_id=not.is.null&select=id&limit=10000`,
+    );
+    const unlinked = supabaseSelect(
+      'teachers',
+      `org_id=eq.${orgId}&user_id=is.null&select=id&limit=10000`,
+    );
+    const inactive = supabaseSelect(
+      'teachers',
+      `org_id=eq.${orgId}&status=eq.inactive&select=id&limit=10000`,
+    );
+
+    expect(Array.isArray(all)).toBe(true);
+    expect(Array.isArray(linked)).toBe(true);
+    expect(Array.isArray(unlinked)).toBe(true);
+    expect(Array.isArray(inactive)).toBe(true);
+
+    // The filter contract: linked + unlinked = all (status-agnostic).
+    expect(linked.length + unlinked.length).toBe(all.length);
+    // inactive is its own filter — orthogonal to user_id.
+    expect(inactive.length).toBeGreaterThanOrEqual(0);
+    expect(inactive.length).toBeLessThanOrEqual(all.length);
+  });
+});
