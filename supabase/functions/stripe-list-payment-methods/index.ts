@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { getStripeClient } from "../_shared/stripe-client.ts";
 
-serve(async (req) => {
+import { wrapEdgeFn } from "../_shared/sentry.ts";
+serve(wrapEdgeFn("stripe-list-payment-methods", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -107,4 +108,4 @@ serve(async (req) => {
       }
     );
   }
-});
+}));

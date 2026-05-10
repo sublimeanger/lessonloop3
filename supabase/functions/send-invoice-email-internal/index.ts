@@ -12,6 +12,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 import {
   sendInvoiceEmailCore,
   type InvoiceRow,
@@ -150,4 +151,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(wrapEdgeFn("send-invoice-email-internal", handler));

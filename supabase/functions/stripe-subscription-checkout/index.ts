@@ -4,6 +4,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { getStripeClient } from "../_shared/stripe-client.ts";
 import { PLAN_LIMITS as DB_PLAN_LIMITS, TRIAL_DAYS } from "../_shared/plan-config.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 // ─── CANONICAL PLAN CONFIG ───────────────────────────────────────
 // DB enum values: solo_teacher, academy, agency
 // User-facing keys: teacher, studio, agency
@@ -49,7 +50,7 @@ const DB_PLAN_MAP: Record<string, string> = {
   agency: 'agency',
 };
 
-serve(async (req) => {
+serve(wrapEdgeFn("stripe-subscription-checkout", async (req) => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -246,4 +247,4 @@ serve(async (req) => {
       }
     );
   }
-});
+}));

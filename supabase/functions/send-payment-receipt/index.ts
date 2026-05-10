@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 import { fetchInvoicePdfAttachment } from "../_shared/invoice-pdf-attachment.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 const log = (msg: string) => console.log(`[send-payment-receipt] ${msg}`);
@@ -364,4 +365,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(wrapEdgeFn("send-payment-receipt", handler));

@@ -28,6 +28,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { renderInvoicePdf, type InvoicePdfInput } from "../_shared/invoice-pdf.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 interface GenerateRequest {
   invoice_id: string;
   force_regenerate?: boolean;
@@ -58,7 +59,7 @@ function flat<T>(v: T | T[] | null | undefined): T | null {
   return Array.isArray(v) ? (v[0] ?? null) : v;
 }
 
-serve(async (req) => {
+serve(wrapEdgeFn("generate-invoice-pdf", async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
   const corsHeaders = getCorsHeaders(req);
@@ -295,4 +296,4 @@ serve(async (req) => {
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
-});
+}));

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml, sanitiseFromName } from "../_shared/escape-html.ts";
 
+import { wrapEdgeFn } from "../_shared/sentry.ts";
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 interface FailureSample {
@@ -273,4 +274,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(wrapEdgeFn("send-auto-pay-alert", handler));
