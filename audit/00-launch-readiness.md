@@ -180,9 +180,32 @@ These are NOT launch blockers — they're known issues we'll ship with:
 
 - Apple Sign-In on web (not configured at destination — graceful error message in place)
 - Push notifications on iOS/Android (deferred per claude.md)
-- LL-LL- prefix bug on Xero invoice references (cosmetic, see `audit/findings/2026-05-07-xero-sync-invoice-ll-prefix-bug.md`)
+- LL-LL- prefix bug on HISTORICAL Xero invoice references (cosmetic, see `audit/findings/2026-05-07-xero-sync-invoice-ll-prefix-bug.md`). **s24: code fixed; new invoices going forward use correct LL- prefix. Historical invoices retain LL-LL- (acceptable cosmetic).**
 - Marketing chat using Gemini (out of cutover scope; marketing site separate stack)
 - Some P2 reports may have ❓ untested state (acceptable if all P0/P1 are green)
+
+## Launch scope un-deferrals (s24 recalibration 2026-05-10)
+
+Per Jamie's stance ("world class, regardless of anything else"), the
+following features were **un-deferred** from v2 plan §3.2 "Hide behind
+feature flag" → §3.1 "Core operating loop — must launch":
+
+- **Leads pipeline** + Lead detail
+- **Enrolment waitlist**
+- **Lead funnel chart**
+- **Recurring billing templates UI**
+- **Public booking page** (with rate-limit + honeypot + required-fields contracts)
+- **Parent reschedule self-service** (full UI in PortalSchedule.tsx)
+- **Parent LoopAssist** (already covered by §27 multi-area auth-gate s23)
+- **Agency tier** (visible at launch alongside Teacher + Studio)
+- **Xero integration** — moved from CONDITIONAL → DAY-ONE LAUNCH
+
+Only **Zoom integration** stays HIDDEN (genuine external block: pending
+Zoom verification review).
+
+**Mobile (Capacitor)** is moved to its own dedicated audit-run track
+(s25-s26+); it's not deferred from launch but tested separately because
+of Capacitor-specific testing surface needs.
 
 ---
 
