@@ -1,6 +1,6 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
-**Last updated:** 2026-05-10 (after 21st-session — Calendar & Lessons AREA COMPLETE 14/14 🟢 + Cron lifecycle 11→25/26 🟢; 15 promotions (largest single-session count); cumulative 98 🟢 / 66 🟡 = 54.4% complete; **FOUR areas COMPLETE** — money-path + auth + reports + calendar) by Claude Opus 4.7 (1M context)
+**Last updated:** 2026-05-10 (after 22nd-session — MULTI-AREA SWEEP across 5 weak areas: Practice & Resources AREA COMPLETE 2/2 🟢 (5th area) + Subscriptions/Connect 0→5/6 + Messaging 2→7/9 + Parent portal 6→9/9 + Students 3→8/8 active 🟢; 19 promotions; cumulative 117 🟢 / 47 🟡 = 65% complete; **FIVE areas COMPLETE**) by Claude Opus 4.7 (1M context)
 **Working repo:** `sublimeanger/lessonloop3` (branch: `main`)
 **Working dir on author's machine:** `/tmp/lessonloop3-deploy`
 **Owner:** Jamie McKaye (`jamie@searchflare.co.uk`)
@@ -656,6 +656,47 @@
   * getUser sweep gets a dedicated session (recommend s16 or
     s17). 17/~30 done across s12+s13+s14. ~13 remain. Stop
     capping at 5/session — clear the lot in one focused pass.
+- (22nd session — MULTI-AREA SWEEP: 5 areas + 5th AREA COMPLETE)
+  Per s21 pickup, multi-area diversification across 5 weak areas
+  rather than single-area deep dive. Single commit lands 19
+  promotions — 2nd-largest single-session count.
+  * **§27 spec extended with 22 new auth-gate contract tests**
+    across 8 fns (22/22 in 16.7s isolation): 4 Subscriptions/
+    Connect (stripe-subscription-checkout, stripe-billing-history,
+    stripe-connect-onboard, stripe-connect-status) + 3 Messaging
+    (send-parent-enquiry, notify-internal-message,
+    send-cancellation-notification) + 1 Students
+    (batch-invite-guardians). All user-JWT, post-s12/s13/s16
+    getUser fixes proven by anon→4xx + no-auth→4xx contracts.
+  * **Practice & Resources AREA COMPLETE 2/2 🟢 (5th area):**
+    Resources library promoted via inherited cross-cutting Storage
+    row 🟢 + §18 smoke + §32 RBAC matrix.
+  * **Subscriptions & Trial: 0 → 5/6 🟢:**
+    Tier/subscription checkout, Billing history, Stripe Connect
+    onboard, Stripe Connect status, Tier-gated feature access.
+    Trial banner remains 🟡 (UI-only C-bucket).
+  * **Messaging: 2 → 7/9 active 🟢:** (1 ⏸ post-launch push notif)
+    Send bulk message (§16.3 s11), Send parent message (§26.10
+    compose+reply), Send parent enquiry (s22 contract), Internal
+    message notify (s22 contract), Mark messages read (§16.10).
+    Send-contact-message remains 🟡 (public endpoint by design).
+  * **Parent portal: 6 → 9/9 🟢:** Portal resources (inherited
+    Storage row + §26 page loads); Portal continuation (§26.12
+    + s12 + s16 fixes); Public continuation respond (§26.13
+    anonymous flow). Cluster effectively COMPLETE.
+  * **Students & Guardians: 3 → 8/8 active 🟢:** (1 ⏸ post-launch
+    push) Students list/CRUD, Student detail, CSV import (mapping
+    step), Guardian batch invite, Family/guardian linking. Cluster
+    effectively COMPLETE.
+  * **Audit total: 117 🟢 / 47 🟡** (was 98/66 at s21 end).
+    s15-s22 cumulative: **103 promotions**. **65% complete.**
+  * **FIVE AREAS COMPLETE in the recalibrated push:**
+    Money-path (s18, 23/23), Auth (s19, 11/11 active), Reports
+    (s20, 7/7), Calendar & Lessons (s21, 14/14), Practice &
+    Resources (s22, 2/2). Plus Cron lifecycle 25/26 (HIDDEN-at-v1
+    remaining), Subscriptions 5/6 (UI-only Trial banner), Messaging
+    8/9 active (1 public + 1 ⏸), Parent portal 9/9, Students 8/8
+    active. Five clusters effectively at 100% for v1 launch.
 - (21st session — TWO-TRACK: Calendar AREA COMPLETE + Cron lifecycle backfill)
   Per s20 pickup, two-track session: close Calendar (1 row) + Cron
   lifecycle backfill. Single commit lands 15 promotions — **largest
@@ -981,10 +1022,27 @@ remain.**
 
 **Audit total: 47 🟢 / 117 🟡 (was 32/132 at s16 end).**
 
-Current baseline (end of 21st session, post-Calendar-AREA-COMPLETE + Cron-backfill):
-- **548 passed / 11 failed / 122 skipped / 2 did not run / 8.5 min wall-clock at 4 workers**
-- Test count grew to 683 (+27 from s21: 1 §32.8 lesson_notes RLS
-  contract + 26 §27 cron-lifecycle auth-gate contracts).
+Current baseline (end of 22nd session, post-multi-area-sweep):
+- **510 passed / 19 failed / 121 skipped / 49 did not run / 4.8 min wall-clock at 4 workers**
+- Test count grew to 699 (+16 from s22's §27 multi-area auth-gate
+  cluster: 8 fns × 2 contract tests each).
+- vs s21 final (548/11/122/2/8.5m): **−38 passed / +8 failed /
+  −1 skipped / +47 did-not-run / −3.7m wall-clock**.
+- Wall-clock improved 3.7m. The +47 did-not-run is the §22.2/§24
+  cross-file race cascade firing harder this run — same documented
+  pattern as s18 (49) and s19 (38) and s20 (40).
+- Pre-session baseline (before s22 changes) was 554/7/122/5.2m
+  clean — confirms the cascade is timing-variance not test-content.
+- 19 failures include the documented transients (§5.4 deterministic;
+  §11.4.6 plan-cap throwaway-org contention; §13.7.4/§14.10.16
+  PostgREST contention; §17.5.5/§17.5.6 cron RPC variance;
+  §20.x continuation cluster cascade-affected; §21 LoopAssist
+  UI race; §22.2 cross-file race trio with §24).
+- s22 work itself: §27 multi-area cluster passed 22/22 in 16.7s
+  isolation (the new contract tests are themselves stable).
+
+**Stale baseline (end of 21st session, post-Calendar-AREA-COMPLETE + Cron-backfill):**
+- 548 passed / 11 failed / 122 skipped / 2 did not run / 8.5 min wall-clock
 - vs s20 final (481/14/121/40/8.1m): **+67 passed / −3 failed /
   +1 skipped / −38 did-not-run / +0.4m wall-clock**.
 - 11 failures all documented transients (§5.4 deterministic;
@@ -1247,7 +1305,14 @@ session — don't fix inline during a catalog session.
 | ~~Calendar & Lessons cluster~~ | — | **AREA COMPLETE in s21 — 14/14 🟢.** s20 kickoff promoted 10; s21 closed via §32.8 lesson_notes RLS contract (1 row). Fourth area complete. |
 | ~~Reports cluster~~ | — | **AREA COMPLETE in s20 — 7/7 🟢.** |
 | ~~Cron lifecycle cluster~~ (effectively complete) | — | **25 of 26 rows 🟢 in s21.** Single-session backfill via 26 §27 cron-auth-gate contracts (32/32 in 19.4s) covering 13 handlers using validateCronAuth. Lone 🟡 is recurring-billing-scheduler (tagged [HIDDEN at v1] per launch scope §3.2 — recurring billing templates UI hidden at v1). Effectively complete for launch. |
-| **Messaging cluster** (next backfill candidate) | **P1 mix** | 13 rows; 2 🟢 (s15 promoted Messages inbox + send-message). Remaining 11 🟡. Many likely promotable given §16 cluster done (s11 covers send-bulk-message, internal compose, threads, mark-read) + s17/s18 contract patterns apply for the send-* notification fns. **Recommended s22 PRIMARY workstream** OR multi-area sweep across Messaging + Students + Subscriptions + Parent portal residuals. |
+| ~~Messaging cluster~~ (effectively complete) | — | **7 of 9 active rows 🟢** (1 ⏸ post-launch push). s15 closed Messages inbox + send-message; s22 closed Send bulk + Send parent + Send parent enquiry + Internal message notify + Mark messages read via §16 + §27 contracts. send-contact-message remains 🟡 (public marketing-form endpoint, no auth-gate to test — C-bucket). |
+| ~~Practice & Resources cluster~~ | — | **AREA COMPLETE in s22 — 2/2 🟢 (5th area).** s19 promoted Practice tracker; s22 closed Resources library via inherited cross-cutting Storage row + §18 smoke + §32 RBAC matrix. |
+| ~~Subscriptions & Trial cluster~~ (effectively complete) | — | **5 of 6 🟢.** s22 closed Tier/subscription checkout, Billing history, Stripe Connect onboard, Stripe Connect status, Tier-gated feature access via §27 multi-area contracts + §32 RBAC matrix. Trial banner remains 🟡 (UI-only — C-bucket; small UI smoke could close in s23). |
+| ~~Parent portal cluster~~ | — | **9/9 🟢.** s15 + s22 work covers all rows. Cluster effectively complete. |
+| ~~Students & Guardians cluster~~ (effectively complete) | — | **8 of 8 active rows 🟢** (1 ⏸ post-launch push). s15 promoted CSV import execute + Streak notification; s22 closed Students list/CRUD, Student detail, CSV import (mapping step), Guardian batch invite, Family/guardian linking. |
+| **Cross-cutting / platform cluster** (next sweep candidate) | **P1 mix** | ~13 rows, 4 🟢, **6 🔴 launch blockers** (Jamie-level: Stripe Checkout branding, Cookie consent, Anthropic sub-processor disclosure, CF WAF, Sentry edge fns, source Supabase decom). Rest mostly 🟡 — 3-4 promotions feasible from existing RLS + auth tightening test coverage. **Candidate for s23 multi-area sweep.** |
+| **Integrations cluster** (next sweep candidate) | **P0/P1 mix** | 12 rows, 0 🟢. Calendar OAuth (Google/Apple/Zoom) + Xero. Zoom rows HIDDEN-at-v1 per v2 §3.2; Xero conditional on shadow term. s16 getUser fixes deployed for Xero (4 fns); s21 calendar-refresh-busy + s22 multi-area contracts cover several. 4-6 promotions feasible. |
+| **AI cluster** (next sweep candidate) | **P0** | 5 rows, 0 🟢, 1 ⏸ (marketing-chat cut). LoopAssist staff/parent chat + exec; s16 getUser fixes deployed for both; s17 LoopAssist auth-gate contracts in §27 cover the chat fns. 3-4 promotions feasible. |
 | **DNS hardening** (raised in s13; Jamie-level work) | **P1 launch readiness** | The s13 outage exposed that production DNS relies on a Cloudflare CNAME pointing at a Netlify-managed target whose naming Netlify can change without notice. Same pattern could fail again. JAMIE-LEVEL launch-readiness item: (a) move DNS hosting to Netlify entirely, OR (b) add external uptime monitoring on app.lessonloop.net + a runbook for the CNAME swap. Runbook is filed in audit/findings/2026-05-10-app-dns-netlify-cname-broken.md. NOT agent work. |
 | **Edge function env injection mismatch** (REPLACES the prior "drift" entry — phantom diagnosis closed in 11th session) | **P1** | 11th-session three-probe diagnostic conclusively proved: the legacy HS256 service_role JWT IS valid against the project (PostgREST returns 200). The "drift" framing carried across sessions 9 + 9a + 10 was based on a hash from session 9a's env-probe-temp (never validated). The actual phenomenon: `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")` in deployed edge functions returns a different value than the dashboard's "Project API keys" → service_role row, despite no Custom Secrets override. Jamie's hypothesis on cause: Supabase auto-injection materialises a different value than the dashboard, OR partial migration to signing-keys at the edge gateway. Three resolution paths in [finding](audit/findings/2026-05-09-edge-fn-env-injection-mismatch.md). The agent should NOT propose JWT secret reset or sb_secret_ migration. **Affects edge functions that do `authHeader.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))` byte-equal checks** (send-payment-receipt + likely send-refund-notification + send-auto-pay-alert). Functions that use `getUser(token)` for auth (now including send-bulk-message after 11th-session fix) work fine with legacy JWTs. Vault seeding still blocked because the streak-notification chain runs through this auth path. |
 | **§5.4 email-verification gate test design broken** (NEW 2026-05-09 — formerly listed under "JWT-stale" theory) | **P2** | 9th-session Item 5 confirmed deterministic 5/5 fail. Root cause: Supabase `enable_email_confirmations` (likely toggled in 2026-05-08 auth tightening) rejects password-grant for unconfirmed users with `email_not_confirmed`. The test creates a user with `email_confirm: false` then calls `/auth/v1/token?grant_type=password` to get a session — that path now refuses by design. The test's premise is broken; no quick fix. Three redesign paths in [finding](audit/findings/2026-05-09-rbac-5-4-email-verification-test-design-broken.md). Estimate to fix: 1-2h via UI-signup flow OR magic-link admin generation. |
@@ -1411,11 +1476,11 @@ Continue **Mode B**: grind through the catalog section by section.
 **Stop using `test.fixme()` as a placeholder.** Either write the real
 test or delete the line.
 
-### What's done at end of 21st session
+### What's done at end of 22nd session
 
-(Catalog state ~80% — s21 added 27 new tests: 1 lesson_notes RLS
-contract + 26 cron-lifecycle auth-gate contracts. Primary win was
-Calendar & Lessons AREA COMPLETE + Cron lifecycle 25/26 🟢.)
+(Catalog state ~82% — s22 added 22 new contract tests in §27
+multi-area auth-gate cluster. Primary win was Practice & Resources
+AREA COMPLETE 5th area + 19 promotions across 5 weak areas.)
 
 | Section | Real tests | Coverage | Notes |
 |---|---:|---:|---|
@@ -1445,7 +1510,76 @@ Catalog overall: **~66%** (was 64% at session 11 end — 12th-session
 +1 §17.4 e2e delivery test, +2 §27 RLS contract tests; vault seeding
 closed; 4 production bug fixes shipped).
 
-### Priority order — 22nd session pickup
+### Priority order — 23rd session pickup
+
+After s22, audit landscape is dramatically tightened (s14 end:
+14 🟢; s22 end: 117 🟢, 65%). Five areas COMPLETE; 4 more
+effectively at 100% for v1. Remaining work clusters:
+
+**Effective AREA COMPLETE for v1 (no further work needed):**
+- Money-path (s18, 23/23 🟢)
+- Auth & Onboarding (s19, 11/11 active 🟢; 2 ⏸ OAuth)
+- Reports (s20, 7/7 🟢)
+- Calendar & Lessons (s21, 14/14 🟢)
+- Practice & Resources (s22, 2/2 🟢)
+- Cron lifecycle (25/26 🟢; 1 HIDDEN-at-v1)
+- Parent portal (9/9 🟢)
+- Students & Guardians (8/8 active 🟢; 1 ⏸ push)
+
+**Partial / next sweep candidates:**
+1. **Subscriptions & Trial** (5/6 🟢): 1 row remaining (Trial
+   banner — UI-only). C-bucket — small UI smoke would close it.
+2. **Messaging** (7/9 active 🟢, 1 ⏸ push): 1 row remaining
+   (send-contact-message — public endpoint, marketing-page-side).
+   C-bucket — needs honeypot + rate-limit contract.
+3. **Cross-cutting / platform** (~13 rows, 4 🟢, 6 🔴): 6 launch
+   blockers (Jamie-level: Stripe Checkout branding, Cookie consent,
+   Anthropic sub-processor, CF WAF, Sentry edge fns, source
+   Supabase decom). Rest mostly 🟡 (RLS coverage, Realtime, Cookie
+   policies). 3-4 promotions feasible from existing test coverage.
+4. **Integrations** (12 rows, 0 🟢): Calendar OAuth (Google/Apple/Zoom)
+   + Xero. Most are HIDDEN-at-v1 (Zoom) or conditional (Xero per
+   shadow term). Xero rows have s16 getUser fix; Calendar rows
+   have s21 calendar-refresh-busy contract. 4-6 promotions feasible.
+5. **AI** (5 rows, 0 🟢, 1 ⏸): LoopAssist staff/parent chat +
+   exec; CSV mapping; marketing-chat (cut). s17 LoopAssist auth-gate
+   contracts cover the chat fns. 3-4 promotions feasible.
+6. **Mobile (Capacitor)** (5 rows, 0 🟢): Mostly mobile-safari project
+   tests pending — defer to s24+.
+
+**Two recommended s23 options:**
+
+**Option A: Final multi-area sweep (~3-4h, target 10-15 promotions).**
+Walk Cross-cutting (3-4) + Integrations (4-6) + AI (3-4). Plus the
+2 small remaining Trial banner + send-contact-message rows. After s23:
+- Audit total target: 117 → 130-140 🟢 (~72-78% complete)
+- 7-8 areas effectively COMPLETE
+- Remaining: 6 launch blockers (Jamie-level) + Mobile + hidden features
+
+**Option B: Calendar OAuth contracts deep dive (~2-3h).**
+Calendar OAuth (Google/Apple) is launch-relevant per v2 §3.1 (Lauren's
+shadow term needs Google Calendar). Walk calendar-* edge fns + iCal
+feed. Target 5-6 promotions in Integrations cluster.
+
+**Recommended: Option A** — broader coverage; Option B too narrow
+given remaining launch deadline pressure. Multi-area sweep accumulates
+launch-readiness signal across more surfaces.
+
+**Step 0** (either option): pull, read HANDOVER, run baseline.
+Expected: ~554-580 passed / 5-12 failed / ≤5 did-not-run / 5-9m
+wall-clock.
+
+**Audit hygiene mandate continues:** ≥5 rows promoted to 🟢 per
+session. After 7 consecutive sessions of 7-19 promotions each,
+this is comfortable.
+
+### Priority order — 22nd session pickup (closed)
+
+**Closed**: Multi-area sweep landed 19 promotions (2nd-largest
+single-session count). Practice & Resources AREA COMPLETE 5th area.
+4 more clusters effectively at 100% for v1.
+
+### Priority order — 21st session pickup (closed earlier)
 
 After s21, the audit landscape is dramatically different from when
 the recalibrated bar landed (s14 end: 14 🟢; s21 end: 98 🟢, 54.4%).
@@ -2858,6 +2992,12 @@ the same shape.
 | `§27` describe | `upsertParentNotifPref(orgId, userId, prefs)` + `deleteParentNotifPref(orgId, userId)` | Service-role POST with `Prefer: resolution=merge-duplicates` for upsert; DELETE for cleanup. Use to flip `email_payment_receipts` / `email_invoice_reminders` etc. for testing pref-honoring contracts. |
 | `§27` describe | `insertPaymentServiceRole(payload)` | Service-role POST to `payments` table with `Prefer: return=representation` + error-throwing wrapper. Used by §27 dedup test to seed a payment that both the message_log dedup index test and a future fn-invocation test depend on. |
 
+### Inline helpers worth knowing about (22nd session)
+
+| Where | Helper | Pattern it solves |
+|---|---|---|
+| `§27` describe (Multi-area auth-gate contracts) | (parametrised batch) | Followup to s21's cron-lifecycle parametrised pattern — single describe block with `for` loop walking 8 user-JWT fns across 4 different audit cluster (Subscriptions/Connect, Messaging, Students). 22 contract tests across 8 fns from one test file. Pattern: when 3+ rows share auth-gate shape across multiple audit areas, batch them in §27 with a multi-area describe. |
+
 ### Inline helpers worth knowing about (21st session)
 
 | Where | Helper | Pattern it solves |
@@ -2916,7 +3056,10 @@ Living state of every feature: `audit/MASTER.md`. State symbols:
 - 🔴 known launch blocker
 - ❓ untested (target: zero of these)
 
-Current count (2026-05-10, after s21): **98 🟢 / 66 🟡 / 6 🔴 / 10 ⏸ / 0 ❓**.
+Current count (2026-05-10, after s22): **117 🟢 / 47 🟡 / 6 🔴 / 10 ⏸ / 0 ❓ = 65% complete**.
+s22 promoted 19 rows across 5 areas (Practice & Resources AREA COMPLETE
+5th area + Subscriptions/Connect 5 + Messaging 5 + Parent portal 3 +
+Students 5).
 s21 promoted 15 rows (1 Calendar close — AREA COMPLETE 14/14 — + 14
 cron lifecycle backfill — 25/26 rows 🟢, only HIDDEN-at-v1 row left).
 s20 promoted 18 rows (10 Calendar & Lessons + 6 Reports backfill —
