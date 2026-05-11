@@ -1,0 +1,173 @@
+# PLAN — Path Y full-app audit sweep
+
+Canonical plan for the Path Y full-app audit. Created s39 (2026-05-11). For live audit state see [`STATUS.md`](STATUS.md); for the feature inventory see [`CENSUS.md`](CENSUS.md).
+
+## 1. Why Path Y
+
+LessonLoop entered May 2026 with LoopAssist as the headline launch feature. In session s38, while wiring the end-to-end LoopAssist execution flow, a routine reschedule proposal returned a UUID for "William Lewis" — the model had fabricated the ID. The real William Lewis exists; his UUID is `2b021243-bd7c-4e78-9001-6576d38ed3da`, not the hallucinated `b2155883-3c1a-43ed-a08e-329f5e66d6be`. The surface-level fix is to pin tools to return UUIDs alongside names. The deeper question — _what other class bugs are sitting under the surface?_ — triggered a two-feature audit (billing/invoicing + lessons/scheduling) that turned up 17 distinct findings spanning five cross-cutting patterns: money-unit mixing (PI-01), status enum gaps (PI-02), bookkeeping drift (PI-03/PI-04), tracked DB state with no UI surface (PI-05), and silent error swallowing in webhooks and crons (PI-06/PI-07).
+
+These 17 are not isolated bugs. They are evidence that the app shipped feature-by-feature without a systemic sweep, and that LoopAssist sitting on top of this foundation amplifies every latent defect into a user-visible failure. The decision: **shelve LoopAssist; audit the entire app; fix what's found; only then resume the AI layer.** No scope reduction. Every feature listed in `CENSUS.md` is in. Time horizon: 3–5 months. The contract is discipline — separate phases for audit and fix, no overlap, no exceptions.
+
+## 2. Phases
+
+Six phases, A through F. Each phase has a goal, an explicit allowed/forbidden boundary, an EXIT condition, and a transition gate to the next.
+
+### Phase A — Census + Plan
+
+- **Goal:** Establish the documentation spine (PLAN, CENSUS, STATUS) and capture pre-investigation evidence from s38.
+- **Allowed:** Creating files under `audit/sweep/`; one-paragraph reconciliation note on `audit/README.md`; a new entry in `HANDOVER.md`.
+- **Forbidden:** Any code change, any migration, any deploy, any fix work, any new findings investigation.
+- **EXIT:** All three docs exist; 17 PI findings captured in STATUS.md; commit pushed to `main`.
+- **Gate to B:** Jamie confirms scaffolds read clean; STATUS.md banner reads `AUDIT IN PROGRESS — DO NOT FIX YET`.
+
+### Phase B — Systematic Audit
+
+- **Goal:** Walk all 20 batches in order. Per batch, read every file in scope, run a live trace, and document findings with severity and reproduction evidence into `audit/sweep/findings/NN-batch.md`. Audit-only — no code touched.
+- **Allowed:** Reading source; reading DB state via Supabase MCP; writing finding files; updating STATUS.md trackers; appending HANDOVER entries.
+- **Forbidden:** **ANY fix work, ANY migration, ANY code change outside `audit/sweep/` and `HANDOVER.md`. New findings discovered mid-batch are documented, never fixed.** This is the cardinal rule of Phase B. A "tiny fix while I'm here" is a discipline failure.
+- **EXIT:** All 20 batches complete; `findings/00-summary.md` aggregates the catalogue; every finding has an `F-NN-NNN` ID, a severity, and a reproduction.
+- **Gate to C:** Jamie reviews the summary; Phase C is authorised only on explicit go-ahead.
+
+### Phase C — Fix Sprints
+
+- **Goal:** Triage findings into sprints; fix critical-first, gated. Each sprint is one focused theme (e.g. money convention, RLS gaps, conflict checks).
+- **Allowed:** Code edits, migrations, edge function deploys — all scoped to the active sprint.
+- **Forbidden:** Picking up new findings during a sprint; expanding scope; touching unrelated areas; resuming LoopAssist work.
+- **EXIT:** All critical and high severity findings closed; medium/low triaged into v1.1 backlog or accepted-as-is with explicit annotation.
+- **Gate to D:** Sprint closure log clean; STATUS.md banner can drop from "AUDIT IN PROGRESS" once Phase C is underway.
+
+### Phase D — Cohesion Sweep
+
+- **Goal:** End-to-end UX walkthroughs covering the journeys defined in batch 20-ux-flows. Catch the seams between features that were fixed in isolation.
+- **Allowed:** Polish-level code edits; copy fixes; navigation fixes.
+- **Forbidden:** Feature additions; architectural refactors; fixes that should have been caught in Phase C.
+- **EXIT:** Every batch-20 journey walked end-to-end on staging without surprise failure.
+- **Gate to E:** Cohesion log clean; Jamie signs off on demo readiness.
+
+### Phase E — Lauren Shadow Term
+
+- **Goal:** Real-usage validation. Lauren's shadow studio runs a full term cycle: enrol, schedule, deliver, invoice, pay, attend, credit, continue. Issues surface only under real load and real edge cases.
+- **Allowed:** Targeted fixes for issues Lauren surfaces; observability work; Sentry triage.
+- **Forbidden:** Treating Lauren's term as a beta program for new features. Path Y still holds.
+- **EXIT:** A full term completed end-to-end with no critical incidents; outstanding issues non-blocking.
+- **Gate to F:** Lauren sign-off; commercial launch readiness confirmed.
+
+### Phase F — LoopAssist Rebuild
+
+- **Goal:** Resume the AI layer (Path B from the s38 LoopAssist conversation). Tools return UUIDs alongside names; execution paths route through the same conflict checks and money-handling rules the rest of the app uses; no shortcuts.
+- **Allowed:** LoopAssist code; prompts; tool definitions; LoopAssist edge functions.
+- **Forbidden:** Bypassing app-layer checks; new "AI-only" code paths that duplicate logic; deploying without test coverage for the new tool contracts.
+- **EXIT:** LoopAssist live on staging, passing all 20 batch-derived integration scenarios.
+- **Gate:** Full launch.
+
+## 3. Discipline rules
+
+These rules are non-negotiable. They reinforce the phase boundaries in Section 2 and exist because the most common failure mode of a long sweep is the "tiny fix while I'm here" that quietly bleeds audit-phase discipline into fix work.
+
+1. **No fix work during Phase B.** None. Findings get written; code does not get touched. If a one-line fix looks "obvious", it still waits for Phase C. Mixing audit and fix loses the catalogue.
+2. **No new feature work during any audit phase.** v1 scope is locked. v1.1+ items live in the legacy `audit/MASTER.md` and wait their turn.
+3. **LoopAssist is shelved through Phases B, C, D, and E.** It surfaces only in F. Batch 17 records state; it does not deepen.
+4. **Every Claude Code session follows the 11-section prompt contract** defined in Section 10. Any prompt arriving missing a section is a discipline failure — halt and surface to Jamie.
+5. **Every session updates `HANDOVER.md` and `STATUS.md` at exit.** No exceptions. STATUS.md is the canonical ledger; HANDOVER.md is the chronological narrative.
+6. **New findings discovered mid-batch are documented, never fixed.** They get an `F-NN-NNN` ID, a severity, and a slot in the relevant batch's findings file. They do not trigger a code change. This is the same rule as #1, restated because it is the most common failure mode.
+
+## 4. Severity rubric
+
+Each finding gets exactly one severity. No "high-ish", no "low-medium". If torn between two levels, pick the higher one and note the ambiguity in the finding body.
+
+- **Critical** — financial loss, data loss, security exposure, marketed feature fundamentally broken, or a defect that would erode user trust on first encounter. Anchors: PI-01 (payroll 100× error), PI-11 (conflict trigger gap), the William Lewis class bug.
+- **High** — feature works but in a degraded, surprising, or unsupported way; silent failure modes; broken edge cases; missing UI surfaces for tracked DB state. Anchors: PI-05 (overpayment hidden), PI-07 (failed-payment webhook silence).
+- **Medium** — cosmetic but visible inconsistency; timezone-edge issues; non-critical race conditions; minor UX dead-ends. Anchor: PI-17 (credit-expiry UTC off by ±12h for non-UTC orgs).
+- **Low** — code-hygiene drift; stale comments; minor docstring/API inconsistency; legacy artefacts.
+
+## 5. Batches
+
+Twenty-one batches, locked as of s39 (batch 21 added during Phase A to separate the marketing surface from operational user journeys). Splits or merges require explicit Jamie approval recorded in the session log. Each batch's one-line description below is the canonical scope; expanded scope lives in the batch's findings file once Phase B opens it.
+
+- **01-auth-sessions-rls** — Login, session refresh, JWT handling, magic links, password reset, route guards, RLS coverage across all tables.
+- **02-org-management** — Organisation creation, multi-org switching, membership, roles (`useCan`), permissions, invitations.
+- **03-calendar-core** — Single-lesson creation, recurring lessons, drag-and-resize, slot generator, conflict detection (all 7), cancel/edit "this only" vs "this & future".
+- **04-lessons-scheduling-deep** — Group lessons, online lessons, lesson notes (shared/private), bulk operations, calendar filters.
+- **05-billing-invoicing** — Invoice creation (manual + billing run + RPC `create_invoice_with_items`), status lifecycle, refunds, credit notes, VAT, currency handling, payment plans, installments.
+- **06-payments-stripe-connect** — Stripe Connect onboarding/status/payouts, manual + Stripe payment recording, webhook coverage (all event types), refund + dispute lifecycle, auto-pay.
+- **07-payment-plans-installments** — Plan creation, installment generation, installment overdue handling, auto-pay installment, parent-side plan visibility.
+- **08-attendance-credits-waitlists** — Attendance recording, make-up credit lifecycle (issue/redeem/void/expire), make-up waitlist matching, credit caps per term.
+- **09-term-continuation** — Term-continuation runs, parent response collection, deadline handling, term-adjustment processing (withdrawal + day_change).
+- **10-reports-analytics-payroll** — All reports, analytics dashboards, payroll calculation (PI-01 lives here), CSV exports.
+- **11-parent-portal** — Parent auth (separate surface from staff), invoice viewing, payment history, payment plans, make-up booking, attendance visibility.
+- **12-messages-notifications** — In-app messages, internal threads, email delivery (Resend), notification preferences, draft/queued/sent lifecycle.
+- **13-practice-resources** — Practice assignments, practice logs, streak tracking, resource library, student-facing surfaces.
+- **14-bookings-leads-enrolment** — Booking page, lead capture, enrolment waitlist, offer expiry, conversion path.
+- **15-calendar-sync-zoom-xero** — Google Calendar OAuth + busy-fetch + sync, Zoom integration, Xero connection + invoice/payment sync.
+- **16-subscription-tiers** — Stripe Subscriptions for the LessonLoop product itself, tier enforcement (Teacher/Studio/Academy/Agency), trial handling, plan downgrade UX.
+- **17-loopassist** — Existing audit at `audit/feature-catalogues/loopassist.md` is the starting point. **SHELVED** — record state, do not deepen. Path F rebuild covers.
+- **18-settings-tabs** — All 24 settings tabs (per V2 plan §5 PR3 — pre-IA-pass). Each tab's functionality + data wiring + RLS reachability (PI-10 lives here).
+- **19-cross-cutting** — Timezones (PI-13, PI-17), money convention (`_minor` everywhere + CHECK constraints), status enum exhaustiveness (PI-02), RLS gap sweep, Sentry coverage, audit log coverage, migration-replay safety (PI-09).
+- **20-ux-flows** — Not code: end-to-end user journeys. Sign-up → first lesson → first invoice → first payment → first absence → first make-up → end-of-term continuation. Audit dimension is cohesion across the journey, not the individual surfaces (those are audited in their primary batch). Journey list is enumerated in `CENSUS.md` §11.B. World-class bar test.
+- **21-marketing-surface** — All content under `src/pages/marketing/*` — landing pages, pricing, blog posts, feature pages, use-case pages. Audit dimensions: claim accuracy vs shipped features (does `FeatureLoopAssist` describe what LoopAssist actually does?), content consistency, branding, dead-route detection, redirect health to `lessonloop.net` static site, blog post freshness. Production routes are redirects to the external static site; SSG mode renders the components directly.
+
+## 6. Finding ID scheme
+
+Format: `F-{batch:02}-{seq:03}`. Example: `F-05-007` is batch 5, finding 7.
+
+Pre-investigation findings retain their `PI-NN` IDs while parked in `STATUS.md`. When re-verified in their target batch during Phase B, each receives an `F-NN-NNN` ID and the mapping (e.g. `PI-03 → F-05-002`) is recorded in the batch's findings file and in STATUS.md's pre-investigation table.
+
+A finding's severity, batch, and ID are immutable once the batch closes. If understanding changes later, write a new finding and cross-reference; do not edit the original.
+
+## 7. Sprint ID scheme
+
+Format: `S-{seq:02}-{kebab-name}`. Example: `S-01-money-convention`.
+
+Sprints are defined at the start of Phase C, not earlier. Phase B does not pre-bucket findings into sprints — the catalogue is the source, and Phase C reads the full catalogue to define sprints once the picture is complete.
+
+## 8. Doc backbone
+
+```
+audit/sweep/
+├── PLAN.md            this file — canonical plan
+├── CENSUS.md          every feature in the app, batch-tagged
+├── STATUS.md          running ledger — every session reads this FIRST
+├── findings/
+│   ├── 00-summary.md  Phase B aggregate, created when the first batch closes
+│   └── NN-{batch}.md  one per batch
+└── sprints/
+    ├── 00-roadmap.md  Phase C roadmap, created at C kickoff
+    └── S-NN-*.md      one per sprint
+```
+
+Pre-existing `audit/` content — `MASTER.md`, `findings/`, `active/`, `archive/`, `feature-catalogues/`, `reports/`, `00-launch-readiness.md` — is preserved as legacy reference and remains the home for v1.1+ items not in v1 scope.
+
+## 9. STATUS.md front-matter contract
+
+Every session writes/updates a front-matter block at the top of `STATUS.md`, immediately under the `# STATUS` heading, as a markdown table with the following fields:
+
+| Field | Meaning |
+|---|---|
+| Phase | A through F. |
+| Active batch | Batch ID + name, or `(none)` between batches. |
+| Last session | Session ID and absolute date (YYYY-MM-DD). |
+| Next session must | One-sentence directive for the very first action of the next session. |
+| Total findings | Integer count, including pre-investigation entries. |
+| By severity | Critical / High / Medium / Low / deferred-shelved breakdown. |
+| Closed | Integer count of findings with `Status: closed`. |
+| Banner | Literal text `AUDIT IN PROGRESS — DO NOT FIX YET` whenever Phase < C. Removed once Phase C is authorised. |
+
+The banner is load-bearing. While Phase < C, anyone reading STATUS.md — Claude Code, a new Claude chat, Jamie's own future self — sees the banner before reading anything else.
+
+## 10. The 11-section Claude Code prompt contract
+
+Every Claude Code session executing Path Y work runs from a prompt with exactly these eleven sections, in this order:
+
+1. **Session header** — session ID, date, phase, this-session goal, prev session, next session.
+2. **Setup steps** — exact bash commands to bring the working tree to the expected baseline, with expected HEAD and halt conditions.
+3. **Token & secret locations** — canonical list of where credentials live (`.env.test`, `~/.claude/settings.json`, Supabase secrets). Hard rule on never echoing production secrets.
+4. **Project IDs** — repo, working tree path, branch, expected HEAD, Supabase project refs, key UUIDs.
+5. **READ-FIRST list** — files Claude Code must view before any other action, in order.
+6. **Pre-investigation findings** — evidence captured from prior sessions, NOT to be re-investigated or fixed; tagged to target batches.
+7. **Scope** — IN/OUT scope this session; existing-doc reconciliation policy.
+8. **Phase-by-phase plan** — every phase of this session has a goal, an EXIT condition, allowed/forbidden boundaries, and a halt point.
+9. **Hard rules** — non-negotiable rules for this session (audit-only mode, no migrations, no deploys, no force push, halt-before-commit on every Phase EXIT).
+10. **Required updates at session end** — checklist of every file that must be created or updated before EXIT.
+11. **EXIT report template** — the canonical EXIT report block to paste back to Jamie at session end.
+
+If any Claude Code prompt arrives missing one of these 11 sections, halt and surface to Jamie — that is a discipline failure.

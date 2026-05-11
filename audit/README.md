@@ -1,5 +1,7 @@
 # `/audit/` — production readiness sweep
 
+> **As of 2026-05-11:** Path Y full-app sweep is live under `audit/sweep/`. The legacy framework here remains for historical reference and v1.1+ items not in v1 scope. See `audit/sweep/STATUS.md` for current audit state.
+
 This directory is the **single source of truth** for whether LessonLoop is launch-ready and what's blocking it.
 
 ## Open this file first if…
