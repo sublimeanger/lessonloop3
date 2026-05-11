@@ -18,6 +18,7 @@ interface UpcomingLesson {
   end_at: string;
   student_name: string | null;
   location_name: string | null;
+  teacher_name: string | null;
 }
 
 interface RecentAttendance {
@@ -26,13 +27,20 @@ interface RecentAttendance {
 }
 
 function useUpcomingWeekData() {
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
   const { user } = useAuth();
 
+  // Owners / admins / finance see the whole org's upcoming week. Teachers see
+  // only the lessons they're scheduled to teach. The previous behaviour
+  // (always filter by teacher_user_id = user.id) showed an empty card for
+  // every non-teacher viewing the dashboard — including the org owner
+  // looking at a freshly-seeded org where teachers don't have auth accounts.
+  const isOrgWideViewer = ['owner', 'admin', 'finance'].includes(currentRole || '');
+
   return useQuery({
-    queryKey: ['upcoming-week-solo', currentOrg?.id, user?.id],
+    queryKey: ['upcoming-week-solo', currentOrg?.id, user?.id, isOrgWideViewer ? 'org' : 'self'],
     queryFn: async () => {
-      if (!currentOrg || !user) return { upcoming: [], recentAttendance: [] };
+      if (!currentOrg || !user) return { upcoming: [], recentAttendance: [], scope: 'self' as const };
 
       const tz = currentOrg.timezone || 'Europe/London';
       const now = new Date();
@@ -40,23 +48,30 @@ function useUpcomingWeekData() {
       const weekEndUtc = fromZonedTime(endOfDay(endOfWeek(now, { weekStartsOn: 1 })), tz).toISOString();
       const fiveDaysAgoUtc = fromZonedTime(startOfDay(subDays(now, 14)), tz).toISOString();
 
+      let lessonsQuery = supabase
+        .from('lessons')
+        .select(`
+          id, title, start_at, end_at,
+          teacher:teachers!lessons_teacher_id_fkey(display_name),
+          location:locations!lessons_location_id_fkey(name),
+          participants:lesson_participants(student:students!lesson_participants_student_id_fkey(first_name, last_name))
+        `)
+        .eq('org_id', currentOrg.id)
+        .in('status', ['scheduled'])
+        .gte('start_at', todayStartUtc)
+        .lte('start_at', weekEndUtc)
+        .order('start_at', { ascending: true })
+        .limit(5);
+
+      if (!isOrgWideViewer) {
+        lessonsQuery = lessonsQuery.eq('teacher_user_id', user.id);
+      }
+
       const [lessonsRes, attendanceRes] = await Promise.all([
-        // Next 5 upcoming lessons this week
-        supabase
-          .from('lessons')
-          .select(`
-            id, title, start_at, end_at,
-            location:locations!lessons_location_id_fkey(name),
-            participants:lesson_participants(student:students!lesson_participants_student_id_fkey(first_name, last_name))
-          `)
-          .eq('org_id', currentOrg.id)
-          .eq('teacher_user_id', user.id)
-          .in('status', ['scheduled'])
-          .gte('start_at', todayStartUtc)
-          .lte('start_at', weekEndUtc)
-          .order('start_at', { ascending: true })
-          .limit(5),
-        // Recent attendance for last 5 completed lessons
+        lessonsQuery,
+        // Recent attendance for last 5 completed lessons — keep self-scoped
+        // since the "Recent:" dots reflect what THIS user has been marking,
+        // even when the upcoming list shows the whole org.
         (supabase as any)
           .from('attendance_records')
           .select('lesson_id, attendance_status, lesson:lessons!attendance_records_lesson_id_fkey(start_at)')
@@ -69,6 +84,7 @@ function useUpcomingWeekData() {
 
       const upcoming: UpcomingLesson[] = ((lessonsRes.data || []) as any[]).map((l) => {
         const loc = l.location as { name: string } | null;
+        const teacher = l.teacher as { display_name: string } | null;
         const parts = l.participants as Array<{ student: { first_name: string; last_name: string } | null }> | null;
         const studentName = parts?.[0]?.student
           ? `${parts[0].student.first_name} ${parts[0].student.last_name}`.trim()
@@ -80,6 +96,7 @@ function useUpcomingWeekData() {
           end_at: l.end_at,
           student_name: studentName,
           location_name: loc?.name || null,
+          teacher_name: teacher?.display_name || null,
         };
       });
 
@@ -88,7 +105,7 @@ function useUpcomingWeekData() {
         status: a.attendance_status,
       }));
 
-      return { upcoming, recentAttendance };
+      return { upcoming, recentAttendance, scope: isOrgWideViewer ? 'org' as const : 'self' as const };
     },
     enabled: !!currentOrg && !!user,
     staleTime: 30_000,
@@ -143,21 +160,31 @@ export function UpcomingWeekWidget({ className }: UpcomingWeekWidgetProps) {
     );
   }
 
-  const { upcoming = [], recentAttendance = [] } = data || {};
+  const { upcoming = [], recentAttendance = [], scope = 'self' } = data || {};
+  const isOrgWide = scope === 'org';
 
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarDays className="h-4 w-4 text-primary" />
-          This Week
-        </CardTitle>
+        <div>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            This Week
+          </CardTitle>
+          {isOrgWide && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Next 5 lessons across all teachers
+            </p>
+          )}
+        </div>
         <AttendanceDots records={recentAttendance} />
       </CardHeader>
       <CardContent>
         {upcoming.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            No more lessons this week 🎉
+            {isOrgWide
+              ? 'No more lessons scheduled this week.'
+              : 'No more lessons this week 🎉'}
           </p>
         ) : (
           <div className="space-y-1">
@@ -195,6 +222,7 @@ export function UpcomingWeekWidget({ className }: UpcomingWeekWidgetProps) {
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {format(startDate, 'H:mm')}–{format(endDate, 'H:mm')}
+                      {isOrgWide && lesson.teacher_name && ` · ${lesson.teacher_name}`}
                       {lesson.location_name && ` · ${lesson.location_name}`}
                     </p>
                   </div>
