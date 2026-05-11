@@ -412,7 +412,22 @@ serve(wrapEdgeFn("looopassist-execute", async (req) => {
       } catch (execError) {
         console.error("Execution error:", execError);
         newStatus = "failed";
-        result = { error: execError instanceof Error ? execError.message : "Execution failed" };
+        // PostgrestError objects thrown by `if (rpcError) throw rpcError` are
+        // plain objects, not Error instances — falling through to "Execution
+        // failed" would swallow the underlying { message, code, details, hint }.
+        // Surface the real diagnostic info so the audit_log + chat result
+        // accurately describe what went wrong.
+        const formatError = (err: unknown): string => {
+          if (err instanceof Error) return err.message;
+          if (typeof err === 'object' && err !== null) {
+            const e = err as { message?: string; code?: string; details?: string; hint?: string };
+            const parts = [e.message, e.code, e.details, e.hint].filter(Boolean);
+            if (parts.length > 0) return parts.join(' | ');
+          }
+          if (typeof err === 'string') return err;
+          return "Execution failed (unknown error shape)";
+        };
+        result = { error: formatError(execError) };
       }
 
       // If a handler claims success but accomplished nothing measurable, override
@@ -667,7 +682,11 @@ async function executeGenerateBillingRun(
       _due_date: dueDate.toISOString().split("T")[0],
       _payer_guardian_id: payer.type === 'guardian' ? payer.id : undefined,
       _payer_student_id: payer.type === 'student' ? payer.id : undefined,
-      _items: JSON.stringify(items),
+      // Pass the array directly; supabase-js serialises the whole RPC body.
+      // The previous `JSON.stringify(items)` double-encoded the items as a JSON
+      // string scalar, which made `jsonb_array_length(_items)` inside the RPC
+      // error with "cannot get array length of a scalar" (PG 22023).
+      _items: items,
     });
 
     if (rpcError) throw rpcError;
