@@ -86,6 +86,10 @@ export function useMessageLog(filters?: {
   guardianId?: string;
   recipientType?: string;
   channel?: string;
+  /** Filter by message_type (e.g. 'invoice_reminder', 'custom', 'progress_report'). */
+  messageType?: string;
+  /** Filter by status; accepts a single value or array (e.g. 'draft', ['draft','queued']). */
+  status?: string | string[];
 }) {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
@@ -113,6 +117,16 @@ export function useMessageLog(filters?: {
       }
       if (filters?.studentId) {
         query = query.eq('related_id', filters.studentId);
+      }
+      if (filters?.messageType) {
+        query = query.eq('message_type', filters.messageType);
+      }
+      if (filters?.status) {
+        if (Array.isArray(filters.status)) {
+          query = query.in('status', filters.status);
+        } else {
+          query = query.eq('status', filters.status);
+        }
       }
       if (pageParam) {
         query = query.lt('created_at', pageParam);
@@ -343,6 +357,87 @@ export function useSendMessage() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['message-log'] });
       queryClient.invalidateQueries({ queryKey: ['student-messages'] });
+    },
+  });
+}
+
+// Discard a draft message_log row. Hard-delete because drafts are user-owned
+// authoring state; the audit trail is the proposal that created the draft.
+export function useDiscardDraft() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { currentOrg } = useOrg();
+
+  return useMutation({
+    mutationFn: async (draftId: string) => {
+      if (!currentOrg) throw new Error('No organisation selected');
+      const { error } = await supabase
+        .from('message_log')
+        .delete()
+        .eq('id', draftId)
+        .eq('org_id', currentOrg.id)
+        .eq('status', 'draft');
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message-log'] });
+      toast({ title: 'Draft discarded' });
+    },
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to discard draft');
+    },
+  });
+}
+
+// Send a draft message: posts to send-message with the draft's content, then
+// deletes the draft row. send-message inserts a fresh log row with status='sent'
+// (or 'pending' if Resend not configured), so the audit trail still shows the
+// outbound message — only the draft is removed.
+export function useSendDraft() {
+  const { currentOrg } = useOrg();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (draft: MessageLogEntry) => {
+      if (!currentOrg) throw new Error('No organisation selected');
+      if (!draft.recipient_id || !draft.recipient_type) {
+        throw new Error('Draft is missing recipient information — open and edit before sending.');
+      }
+      // Send the draft's content (server resolves email from DB by recipient_id/_type).
+      const { error: sendError } = await supabase.functions.invoke('send-message', {
+        body: {
+          org_id: currentOrg.id,
+          recipient_type: draft.recipient_type,
+          recipient_id: draft.recipient_id,
+          subject: draft.subject,
+          body: draft.body,
+          related_id: draft.related_id ?? undefined,
+          message_type: draft.message_type === 'custom' ? 'manual' : draft.message_type,
+          send_email: draft.channel !== 'inapp',
+        },
+      });
+      if (sendError) throw sendError;
+      // Delete the draft now that it's been sent.
+      const { error: delError } = await supabase
+        .from('message_log')
+        .delete()
+        .eq('id', draft.id)
+        .eq('org_id', currentOrg.id)
+        .eq('status', 'draft');
+      if (delError) {
+        // The send succeeded but cleanup failed — surface a non-blocking warning
+        // rather than rolling back, since the user's intent (send) was honoured.
+        console.warn('[useSendDraft] failed to delete draft after send', delError);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message-log'] });
+      queryClient.invalidateQueries({ queryKey: ['message-threads'] });
+      toast({ title: 'Draft sent' });
+    },
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to send draft');
     },
   });
 }

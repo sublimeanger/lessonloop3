@@ -52,10 +52,21 @@ export default function Messages() {
   const canViewRequests = isOrgAdmin || isOrgOwner;
   const isStaff = ['owner', 'admin', 'teacher'].includes(currentRole || '');
   
-  // Read initial tab from URL query param (e.g. /messages?tab=requests)
-  const initialTab = (() => {
+  // Read initial state from URL query params:
+  //   ?tab=<tab>            — start on a specific tab (sent / drafts / internal / requests)
+  //   ?status=draft         — shortcut to land on the Drafts tab
+  //   ?type=<message_type>  — filter the Sent tab to a specific type (e.g. invoice_reminder).
+  //                            Set when LoopAssist's ResultCard CTA navigates here so the
+  //                            user lands on exactly the messages they just sent.
+  const initialUrlState = (() => {
+    if (typeof window === 'undefined') return { tab: 'sent', typeFilter: '' };
     const params = new URLSearchParams(window.location.search);
-    return params.get('tab') || 'sent';
+    const tabParam = params.get('tab');
+    const statusParam = params.get('status');
+    const typeParam = params.get('type');
+    let tab = tabParam || 'sent';
+    if (!tabParam && statusParam === 'draft') tab = 'drafts';
+    return { tab, typeFilter: typeParam || '' };
   })();
 
   const [composeOpen, setComposeOpen] = useState(false);
@@ -63,16 +74,21 @@ export default function Messages() {
   const [internalComposeOpen, setInternalComposeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [typeFilter, setTypeFilter] = useState<string>(initialUrlState.typeFilter);
+  const [activeTab, setActiveTab] = useState(initialUrlState.tab);
   const [internalView, setInternalView] = useState<'inbox' | 'sent'>('inbox');
-  const [viewMode, setViewMode] = useState<'list' | 'threaded'>('threaded');
+  const [viewMode, setViewMode] = useState<'list' | 'threaded'>(initialUrlState.typeFilter ? 'list' : 'threaded');
   const [replyTarget, setReplyTarget] = useState<Guardian | null>(null);
   const [replyStudentId, setReplyStudentId] = useState<string | undefined>(undefined);
   const [messageFilters, setMessageFilters] = useState<MessageFilters>({});
 
   const { data: messages, isLoading, isError, hasMore, loadMore, isFetchingMore } = useMessageLog({
     channel: channelFilter === 'all' ? undefined : channelFilter,
+    messageType: typeFilter || undefined,
+    // Sent tab hides drafts (they live in their own tab).
+    status: ['sent', 'pending', 'failed', 'logged', 'queued'],
   });
+  const drafts = useMessageLog({ status: 'draft' });
   const { data: pendingCount } = usePendingRequestsCount();
   const { data: unreadInternalCount } = useUnreadInternalCount();
 
@@ -171,6 +187,14 @@ export default function Messages() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="bg-muted/50 rounded-full p-1 h-auto overflow-x-auto max-w-full">
           <TabsTrigger value="sent" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 text-sm">Conversations</TabsTrigger>
+          <TabsTrigger value="drafts" className="gap-2 rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 text-sm">
+            Drafts
+            {drafts.data && drafts.data.length > 0 ? (
+              <Badge variant="outline" className="ml-1 h-5 min-w-5 px-1 rounded-full border-amber-400 text-amber-700 dark:text-amber-300">
+                {drafts.data.length}
+              </Badge>
+            ) : null}
+          </TabsTrigger>
           {isStaff && (
             <TabsTrigger value="internal" className="gap-2 rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 text-sm">
               Internal
@@ -195,6 +219,27 @@ export default function Messages() {
         </TabsList>
 
         <TabsContent value="sent">
+          {typeFilter && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
+              <span>
+                Filtered by message type:{' '}
+                <span className="font-medium">{typeFilter.replace(/_/g, ' ')}</span>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setTypeFilter('');
+                  // Clean the URL so a manual refresh doesn't re-apply the filter.
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('type');
+                  window.history.replaceState({}, '', url.toString());
+                }}
+              >
+                Clear filter
+              </Button>
+            </div>
+          )}
           {/* Filters and View Toggle */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-6">
             <div className="relative flex-1">
@@ -275,6 +320,38 @@ export default function Messages() {
               }}
             />
           )}
+        </TabsContent>
+
+        <TabsContent value="drafts">
+          <div className="mb-4 rounded-xl border border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/20 p-4 text-sm">
+            <p className="font-medium mb-1">Drafts awaiting your review</p>
+            <p className="text-muted-foreground">
+              LoopAssist actions like “draft an email” or “send a progress report”
+              create drafts here so you can review and edit before sending.
+              Click <span className="font-medium">Send now</span> to dispatch,
+              <span className="font-medium"> Edit</span> to refine, or
+              <span className="font-medium"> Discard</span> to throw away.
+            </p>
+          </div>
+          <MessageList
+            messages={drafts.data || []}
+            isLoading={drafts.isLoading}
+            emptyMessage="No drafts. When LoopAssist drafts a message for review, it'll appear here."
+            hasMore={drafts.hasMore}
+            onLoadMore={() => drafts.loadMore()}
+            isFetchingMore={drafts.isFetchingMore}
+            onEditDraft={(draft: MessageLogEntry) => {
+              if (draft.recipient_id && draft.recipient_email) {
+                setReplyTarget({
+                  id: draft.recipient_id,
+                  full_name: draft.recipient_name || draft.recipient_email,
+                  email: draft.recipient_email,
+                });
+                setReplyStudentId(draft.related_id || undefined);
+                setComposeOpen(true);
+              }
+            }}
+          />
         </TabsContent>
 
         {isStaff && (

@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Mail, MessageSquare, Clock, User, CheckCircle, AlertCircle, ChevronDown, ChevronRight, Reply, Loader2 } from 'lucide-react';
+import { Mail, MessageSquare, Clock, User, CheckCircle, AlertCircle, ChevronDown, ChevronRight, Reply, Loader2, FileEdit, Send, Trash2, Archive } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
 import { useOrg } from '@/contexts/OrgContext';
 import { EntityChip } from '@/components/loopassist/EntityChip';
-import type { MessageLogEntry } from '@/hooks/useMessages';
+import { useDiscardDraft, useSendDraft, type MessageLogEntry } from '@/hooks/useMessages';
 import { sanitizeHtml, stripHtml } from '@/lib/sanitize';
 import { EmptyState } from '@/components/shared/EmptyState';
 
@@ -22,15 +22,21 @@ interface MessageListProps {
   isLoading?: boolean;
   emptyMessage?: string;
   onReply?: (message: MessageLogEntry) => void;
+  /** Called when the user clicks "Edit draft" — opens a compose modal pre-filled with the draft. */
+  onEditDraft?: (message: MessageLogEntry) => void;
   hasMore?: boolean;
   onLoadMore?: () => void;
   isFetchingMore?: boolean;
 }
 
-const MessageCard = React.memo(function MessageCard({ message, onReply }: { message: MessageLogEntry; onReply?: (msg: MessageLogEntry) => void }) {
+const MessageCard = React.memo(function MessageCard({ message, onReply, onEditDraft }: { message: MessageLogEntry; onReply?: (msg: MessageLogEntry) => void; onEditDraft?: (msg: MessageLogEntry) => void }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { currentOrg } = useOrg();
   const { data: relatedStudent } = useRelatedStudent(message.related_id, currentOrg?.id);
+  const discardDraft = useDiscardDraft();
+  const sendDraft = useSendDraft();
+
+  const isDraft = message.status === 'draft';
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -53,6 +59,35 @@ const MessageCard = React.memo(function MessageCard({ message, onReply }: { mess
           <Badge variant="destructive" className="gap-1">
             <AlertCircle className="h-3 w-3" />
             Failed
+          </Badge>
+        );
+      case 'draft':
+        return (
+          <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700 dark:text-amber-300">
+            <FileEdit className="h-3 w-3" />
+            Draft
+          </Badge>
+        );
+      case 'logged':
+        return (
+          <Badge variant="outline" className="gap-1">
+            <Archive className="h-3 w-3" />
+            Logged (dev)
+          </Badge>
+        );
+      case 'queued':
+        // Pre-s38 dispatch-rewrite state. New rows never land here; legacy
+        // rows from before the fix are surfaced honestly.
+        return (
+          <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700 dark:text-amber-300">
+            <Clock className="h-3 w-3" />
+            Queued (pre-fix)
+          </Badge>
+        );
+      case 'cancelled':
+        return (
+          <Badge variant="outline" className="gap-1 text-muted-foreground">
+            Cancelled
           </Badge>
         );
       default:
@@ -146,20 +181,68 @@ const MessageCard = React.memo(function MessageCard({ message, onReply }: { mess
                   Error: {message.error_message}
                 </p>
               )}
-              <div className="ml-auto">
-                {onReply && message.recipient_email && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onReply(message);
-                    }}
-                  >
-                    <Reply className="h-4 w-4" />
-                    Reply
-                  </Button>
+              <div className="ml-auto flex items-center gap-2">
+                {isDraft ? (
+                  <>
+                    {onEditDraft && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditDraft(message);
+                        }}
+                      >
+                        <FileEdit className="h-4 w-4" />
+                        Edit
+                      </Button>
+                    )}
+                    {message.recipient_id && message.recipient_type && (
+                      <Button
+                        size="sm"
+                        className="gap-2"
+                        disabled={sendDraft.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          sendDraft.mutate(message);
+                        }}
+                      >
+                        {sendDraft.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        Send now
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2 text-destructive hover:text-destructive"
+                      disabled={discardDraft.isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('Discard this draft? This cannot be undone.')) {
+                          discardDraft.mutate(message.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Discard
+                    </Button>
+                  </>
+                ) : (
+                  onReply && message.recipient_email && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReply(message);
+                      }}
+                    >
+                      <Reply className="h-4 w-4" />
+                      Reply
+                    </Button>
+                  )
                 )}
               </div>
             </div>
@@ -170,7 +253,7 @@ const MessageCard = React.memo(function MessageCard({ message, onReply }: { mess
   );
 });
 
-export function MessageList({ messages, isLoading, emptyMessage = 'No messages yet', onReply, hasMore, onLoadMore, isFetchingMore }: MessageListProps) {
+export function MessageList({ messages, isLoading, emptyMessage = 'No messages yet', onReply, onEditDraft, hasMore, onLoadMore, isFetchingMore }: MessageListProps) {
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -200,7 +283,7 @@ export function MessageList({ messages, isLoading, emptyMessage = 'No messages y
   return (
     <div className="space-y-3">
       {messages.map((message) => (
-        <MessageCard key={message.id} message={message} onReply={onReply} />
+        <MessageCard key={message.id} message={message} onReply={onReply} onEditDraft={onEditDraft} />
       ))}
 
       {hasMore && (
