@@ -3,6 +3,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import {
+  resolveInvoiceRecipient,
+  INVOICE_RECIPIENT_SELECT,
+  type InvoiceRow,
+} from "../_shared/invoice-recipient.ts";
 
 import { wrapEdgeFn } from "../_shared/sentry.ts";
 /** Fire-and-forget calendar sync for lesson mutations (non-critical). */
@@ -208,12 +213,18 @@ serve(wrapEdgeFn("looopassist-execute", async (req) => {
           }
         }
 
-        // Validate entity ownership — ensure all entities belong to this org
+        // Validate entity ownership — ensure every entity referenced in the proposal
+        // belongs to the user's org. Closes the s37→s38 audit gap where invoice
+        // entities were exempt (the original `[Invoice:invoice_number]` marker
+        // omitted the UUID; once s37 fixed the marker, the skip-clause became a
+        // cross-org-leak vector). Defence in depth — handlers also do their own
+        // .eq('org_id', orgId) scoping, but failing fast at the entry point
+        // produces clearer errors and a single audit trail.
         const ENTITY_TABLE_MAP: Record<string, string> = {
           student: "students",
           lesson: "lessons",
           guardian: "guardians",
-          // invoice entities use invoice_number not UUID, skip ownership check
+          invoice: "invoices",
         };
         if (entities) {
           for (const entity of entities) {
@@ -285,45 +296,66 @@ serve(wrapEdgeFn("looopassist-execute", async (req) => {
               new Intl.NumberFormat("en-GB", { style: "currency", currency: reminderCurrency }).format(minor / 100);
             const { data: overdueInvoices } = await supabase
               .from("invoices")
-              .select(`
-                id, invoice_number, total_minor, due_date,
-                guardians:payer_guardian_id(id, full_name, email),
-                students:payer_student_id(id, first_name, last_name, email)
-              `)
+              .select(INVOICE_RECIPIENT_SELECT)
               .eq("org_id", orgId)
               .eq("status", "overdue")
               .limit(50);
 
+            const foundCount = (overdueInvoices || []).length;
             let sentCount = 0;
-            const bulkEntities: any[] = [];
+            const bulkSkipped: Array<{ invoice_number: string; reason: string }> = [];
+            const bulkEntities: Array<{ type: 'invoice'; id: string; label: string; detail: string }> = [];
 
-            for (const inv of overdueInvoices || []) {
-              const _g = inv.guardians as any;
-              const _s = inv.students as any;
-              const email = _g?.email || _s?.email;
-              const name = _g?.full_name || (_s ? `${_s.first_name} ${_s.last_name}` : "Customer");
-              if (!email) continue;
+            for (const inv of (overdueInvoices || []) as InvoiceRow[]) {
+              const resolution = resolveInvoiceRecipient(inv);
+              if (!resolution.ok) {
+                bulkSkipped.push({
+                  invoice_number: inv.invoice_number,
+                  reason: resolution.reason === 'no_payer' ? 'No payer set' : 'No email on file',
+                });
+                continue;
+              }
 
               await supabase.from("message_log").insert({
                 org_id: orgId,
                 sender_user_id: user.id,
-                recipient_email: email,
-                recipient_name: name,
-                recipient_type: inv.guardians ? "guardian" : "student",
-                recipient_id: _g?.id || _s?.id,
+                recipient_email: resolution.email,
+                recipient_name: resolution.name,
+                recipient_type: resolution.recipientType,
+                recipient_id: resolution.recipientId,
                 subject: `Payment Reminder: Invoice ${inv.invoice_number}`,
-                body: `Dear ${name},\n\nThis is a friendly reminder that invoice ${inv.invoice_number} for ${fmtCurrency(inv.total_minor)} is outstanding. The due date was ${inv.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
+                body: `Dear ${resolution.name},\n\nThis is a friendly reminder that invoice ${inv.invoice_number} for ${fmtCurrency(inv.total_minor)} is outstanding. The due date was ${inv.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
                 message_type: "invoice_reminder",
                 status: "queued",
                 related_id: inv.id,
               });
               sentCount++;
-              bulkEntities.push({ type: "invoice", id: inv.id, label: inv.invoice_number, detail: `→ ${email}` });
+              bulkEntities.push({ type: 'invoice', id: inv.id, label: inv.invoice_number, detail: `→ ${resolution.email}` });
             }
 
+            const outcome: 'success' | 'partial' | 'no_op' =
+              sentCount === 0 ? 'no_op'
+              : bulkSkipped.length > 0 ? 'partial'
+              : 'success';
+
+            const bulkMessage = (() => {
+              if (outcome === 'success') {
+                return `Queued ${sentCount} payment reminder(s) for all overdue invoices — review in Messages`;
+              }
+              if (outcome === 'partial') {
+                return `Queued ${sentCount} of ${foundCount} overdue reminder(s). ${bulkSkipped.length} skipped (no email on file).`;
+              }
+              return foundCount === 0
+                ? `No overdue invoices to remind on.`
+                : `No reminders queued — none of the ${foundCount} overdue invoice(s) had a recipient email on file.`;
+            })();
+
             result = {
-              message: `Queued ${sentCount} payment reminder(s) for all overdue invoices — review in Messages`,
+              message: bulkMessage,
+              outcome,
               reminders_sent: sentCount,
+              found_count: foundCount,
+              skipped: bulkSkipped,
               entities: bulkEntities,
             };
             break;
@@ -383,7 +415,15 @@ serve(wrapEdgeFn("looopassist-execute", async (req) => {
         result = { error: execError instanceof Error ? execError.message : "Execution failed" };
       }
 
-      // Append messaging note for actions that involve messages
+      // If a handler claims success but accomplished nothing measurable, override
+      // the lifecycle status to 'failed' so the audit trail + chat surface reflect
+      // reality. Catches the "Queued 0 ✓" class of bug surfaced by the s38 audit.
+      if (newStatus === "executed" && (result as Record<string, unknown>).outcome === "no_op") {
+        newStatus = "failed";
+      }
+
+      // Append messaging note for actions that involve messages (only when something
+      // was actually queued — appending it to a no-op message would be misleading).
       const MESSAGING_ACTIONS = ["send_invoice_reminders", "draft_email", "send_progress_report", "send_bulk_reminders"];
       const typedForNote = proposal as ActionProposal;
       if (newStatus === "executed" && MESSAGING_ACTIONS.includes(typedForNote.proposal.action_type)) {
@@ -688,18 +728,13 @@ async function executeSendInvoiceReminders(
 
   const { data: invoices, error } = await supabase
     .from("invoices")
-    .select(`
-      id, invoice_number, total_minor, due_date, status,
-      guardians:payer_guardian_id(id, full_name, email),
-      students:payer_student_id(id, first_name, last_name, email)
-    `)
+    .select(INVOICE_RECIPIENT_SELECT)
     .eq("org_id", orgId)
     .in("id", invoiceIds)
     .in("status", ["sent", "overdue"]);
 
   if (error) throw error;
 
-  // Fetch org currency for correct formatting
   const { data: org } = await supabase
     .from("organisations")
     .select("currency_code")
@@ -712,57 +747,77 @@ async function executeSendInvoiceReminders(
   const fmtCurrency = (minor: number) =>
     new Intl.NumberFormat('en-GB', { style: 'currency', currency: org.currency_code }).format(minor / 100);
 
+  const requestedCount = invoiceIds.length;
+  const foundCount = (invoices || []).length;
+  const notFoundCount = requestedCount - foundCount;
   let remindersSent = 0;
-  const results: string[] = [];
+  const skipped: Array<{ invoice_number: string; reason: string }> = [];
+  const queuedEntities: Array<{ type: 'invoice'; id: string; label: string; detail: string }> = [];
 
-  for (const invoice of invoices || []) {
-    const guardian = Array.isArray(invoice.guardians) ? invoice.guardians[0] : invoice.guardians;
-    const student = Array.isArray(invoice.students) ? invoice.students[0] : invoice.students;
-    const recipientEmail = guardian?.email || student?.email;
-    const recipientName = guardian?.full_name || 
-      (student ? `${student.first_name} ${student.last_name}` : "Customer");
-
-    if (!recipientEmail) {
-      results.push(`${invoice.invoice_number}: No email address`);
+  for (const invoice of (invoices || []) as InvoiceRow[]) {
+    const resolution = resolveInvoiceRecipient(invoice);
+    if (!resolution.ok) {
+      skipped.push({
+        invoice_number: invoice.invoice_number,
+        reason: resolution.reason === 'no_payer' ? 'No payer set' : 'No email on file',
+      });
       continue;
     }
 
     await supabase.from("message_log").insert({
       org_id: orgId,
       sender_user_id: userId,
-      recipient_email: recipientEmail,
-      recipient_name: recipientName,
-      recipient_type: guardian ? "guardian" : "student",
-      recipient_id: guardian?.id || student?.id,
+      recipient_email: resolution.email,
+      recipient_name: resolution.name,
+      recipient_type: resolution.recipientType,
+      recipient_id: resolution.recipientId,
       subject: `Payment Reminder: Invoice ${invoice.invoice_number}`,
-      body: `Dear ${recipientName},\n\nThis is a friendly reminder that invoice ${invoice.invoice_number} for ${fmtCurrency(invoice.total_minor)} is outstanding. The due date was ${invoice.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
+      body: `Dear ${resolution.name},\n\nThis is a friendly reminder that invoice ${invoice.invoice_number} for ${fmtCurrency(invoice.total_minor)} is outstanding. The due date was ${invoice.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
       message_type: "invoice_reminder",
       status: "queued",
       related_id: invoice.id,
     });
 
     remindersSent++;
-    results.push(`${invoice.invoice_number}: Queued for ${recipientEmail}`);
+    queuedEntities.push({
+      type: 'invoice',
+      id: invoice.id,
+      label: invoice.invoice_number,
+      detail: `→ ${resolution.email}`,
+    });
   }
 
-  // Build entities for structured result
-  const entities = (invoices || [])
-    .filter((inv: BasicInvoice) => {
-      const email = inv.guardians?.email || inv.students?.email;
-      return !!email;
-    })
-    .map((inv: BasicInvoice) => ({
-      type: 'invoice' as const,
-      id: inv.invoice_number,
-      label: inv.invoice_number,
-      detail: `→ ${inv.guardians?.email || inv.students?.email}`,
-    }));
+  // Outcome classification — drives the outer fn's status override + UI prefix.
+  const outcome: 'success' | 'partial' | 'no_op' =
+    remindersSent === 0 ? 'no_op'
+    : skipped.length > 0 || notFoundCount > 0 ? 'partial'
+    : 'success';
+
+  const message = (() => {
+    if (outcome === 'success') {
+      return `Queued ${remindersSent} payment reminder(s) — review and send from Messages`;
+    }
+    if (outcome === 'partial') {
+      const issues: string[] = [];
+      if (skipped.length > 0) issues.push(`${skipped.length} skipped (no email on file)`);
+      if (notFoundCount > 0) issues.push(`${notFoundCount} not eligible (paid/draft/not found)`);
+      return `Queued ${remindersSent} of ${requestedCount} reminder(s). ${issues.join(', ')}.`;
+    }
+    // no_op
+    if (foundCount === 0) {
+      return `No reminders queued — none of the ${requestedCount} invoice(s) are in 'sent' or 'overdue' status.`;
+    }
+    return `No reminders queued — none of the ${foundCount} eligible invoice(s) had a recipient email on file. Add a guardian email or set a guardian as payer.`;
+  })();
 
   return {
-    message: `Queued ${remindersSent} payment reminder(s) — review and send from Messages`,
+    message,
+    outcome,
     reminders_sent: remindersSent,
-    details: results,
-    entities,
+    requested_count: requestedCount,
+    found_count: foundCount,
+    skipped,
+    entities: queuedEntities,
   };
 }
 
