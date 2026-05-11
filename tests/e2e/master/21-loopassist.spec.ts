@@ -60,11 +60,11 @@ test.describe('LoopAssist keyboard shortcut', () => {
   });
 });
 
-test.fixme('§21.3 — page context auto-detect on /students/<id>', async () => {});
-test.fixme('§21.4 — send message → streaming response renders', async () => {});
-test.fixme('§21.4 — cancel mid-stream → partial text retained', async () => {});
-test.fixme('§21.5 — action proposal accept → looopassist-execute called', async () => {});
-test.fixme('§21.5 — action proposal reject → row marked rejected', async () => {});
-test.fixme('§21.6 — entity chip click navigates correctly', async () => {});
-test.fixme('§21.9 — rate limit hit → toast + lock send button', async () => {});
-test.fixme('§21.9 — parent variant uses parent-loopassist-chat with different guardrails', async () => {});
+// §21.5 (action proposal lifecycle) moved to `21-loopassist-actions.spec.ts`,
+// which tests the deterministic execute-side via synthetic proposals instead
+// of stubbing the UI accept-button flow.
+//
+// The remaining UI-side coverage gaps (page context auto-detect, streaming
+// response, mid-stream cancel, entity chip click, rate limit toast, parent
+// variant) require Anthropic mock-mode to be deterministic. Tracked in
+// audit/feature-catalogues/loopassist.md and the s38 follow-up plan.
