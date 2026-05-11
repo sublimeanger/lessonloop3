@@ -118,7 +118,9 @@ test.describe('§21.5 — send_invoice_reminders action handler', () => {
     const queued = getQueuedMessages(orgId, invoiceId);
     expect(queued.length).toBe(1);
     expect(queued[0].message_type).toBe('invoice_reminder');
-    expect(queued[0].status).toBe('queued');
+    // Post-s38 dispatch rewrite: handler actually sends via Resend (or 'logged'
+    // in dev). Status reflects the dispatch lifecycle. No more 'queued' void.
+    expect(['sent', 'pending', 'logged', 'failed']).toContain(queued[0].status);
     expect(queued[0].recipient_email).toBe(`${emailPrefix}_guardian@test.lessonloop.net`);
     expect(queued[0].recipient_type).toBe('guardian');
   });

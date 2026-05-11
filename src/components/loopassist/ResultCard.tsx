@@ -32,16 +32,29 @@ export function stripResultBlock(content: string): string {
   return content.replace(/```result\s*[\s\S]*?```/g, '').trim();
 }
 
+// Explicit action_type → { url, label } map. The previous .includes-chain made
+// send_invoice_reminders match `'invoice'` before `'reminder'`, so the "Review"
+// button went to /invoices — but the messages are at /messages. World-class is
+// each action knows exactly where its outcome lives.
+const ACTION_CTA: Record<string, { url: string; label: string }> = {
+  send_invoice_reminders: { url: '/messages?type=invoice_reminder', label: 'View in Messages →' },
+  send_bulk_reminders:    { url: '/messages?type=invoice_reminder', label: 'View in Messages →' },
+  draft_email:            { url: '/messages?status=draft',          label: 'Review draft in Messages →' },
+  send_progress_report:   { url: '/messages?status=draft',          label: 'Review draft in Messages →' },
+  generate_billing_run:   { url: '/invoices',                       label: 'View invoices →' },
+  reschedule_lessons:     { url: '/calendar',                       label: 'View calendar →' },
+  cancel_lesson:          { url: '/calendar',                       label: 'View calendar →' },
+  complete_lessons:       { url: '/calendar',                       label: 'View calendar →' },
+  bulk_complete_lessons:  { url: '/calendar',                       label: 'View calendar →' },
+  mark_attendance:        { url: '/calendar',                       label: 'View calendar →' },
+};
+
 export function ResultCard({ result }: { result: ActionResult }) {
   const navigate = useNavigate();
 
-  const ctaUrl = result.action_type.includes('invoice') || result.action_type.includes('billing')
-    ? '/invoices'
-    : result.action_type.includes('email') || result.action_type.includes('reminder') || result.action_type.includes('progress')
-    ? '/messages'
-    : result.action_type.includes('lesson') || result.action_type.includes('attendance')
-    ? '/calendar'
-    : null;
+  const cta = ACTION_CTA[result.action_type] ?? null;
+  const ctaUrl = cta?.url ?? null;
+  const ctaLabel = cta?.label ?? 'View →';
 
   return (
     <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
@@ -79,7 +92,7 @@ export function ResultCard({ result }: { result: ActionResult }) {
                 className="h-auto p-0 text-xs"
                 onClick={() => navigate(ctaUrl)}
               >
-                Review →
+                {ctaLabel}
               </Button>
             )}
           </div>

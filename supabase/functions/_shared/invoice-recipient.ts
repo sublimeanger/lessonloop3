@@ -28,14 +28,14 @@
  */
 
 export const INVOICE_RECIPIENT_SELECT = `
-  id, invoice_number, total_minor, due_date, status,
+  id, invoice_number, total_minor, paid_minor, due_date, status, currency_code,
   payer_guardian_id, payer_student_id,
-  payer_guardian:guardians!invoices_payer_guardian_id_fkey(id, full_name, email),
+  payer_guardian:guardians!invoices_payer_guardian_id_fkey(id, full_name, email, user_id),
   payer_student:students!invoices_payer_student_id_fkey(
     id, first_name, last_name, email,
     student_guardians(
       is_primary_payer, receives_billing,
-      guardian:guardians(id, full_name, email)
+      guardian:guardians(id, full_name, email, user_id)
     )
   )
 ` as const;
@@ -44,8 +44,10 @@ export interface InvoiceRow {
   id: string;
   invoice_number: string;
   total_minor: number;
+  paid_minor?: number | null;
   due_date: string;
   status: string;
+  currency_code?: string;
   payer_guardian_id?: string | null;
   payer_student_id?: string | null;
   // PostgREST returns to-one joins as object OR single-element array depending on cardinality.
@@ -57,6 +59,7 @@ interface GuardianRow {
   id: string;
   full_name: string;
   email: string | null;
+  user_id?: string | null;
 }
 
 interface StudentRow {
@@ -80,6 +83,8 @@ export type RecipientResolution =
       name: string;
       recipientType: 'guardian' | 'student';
       recipientId: string;
+      /** Auth user_id if the recipient has a portal account. Use for notification-pref checks. */
+      userId: string | null;
       // 'direct_guardian' | 'direct_student' | 'student_to_primary_guardian'
       source: 'direct_guardian' | 'direct_student' | 'student_to_primary_guardian';
     }
@@ -105,6 +110,7 @@ export function resolveInvoiceRecipient(invoice: InvoiceRow): RecipientResolutio
       name: directGuardian.full_name || 'Customer',
       recipientType: 'guardian',
       recipientId: directGuardian.id,
+      userId: directGuardian.user_id ?? null,
       source: 'direct_guardian',
     };
   }
@@ -117,6 +123,7 @@ export function resolveInvoiceRecipient(invoice: InvoiceRow): RecipientResolutio
       name: `${directStudent.first_name} ${directStudent.last_name}`.trim() || 'Customer',
       recipientType: 'student',
       recipientId: directStudent.id,
+      userId: null,
       source: 'direct_student',
     };
   }
@@ -136,6 +143,7 @@ export function resolveInvoiceRecipient(invoice: InvoiceRow): RecipientResolutio
         name: fallback.full_name || 'Customer',
         recipientType: 'guardian',
         recipientId: fallback.id,
+        userId: fallback.user_id ?? null,
         source: 'student_to_primary_guardian',
       };
     }
