@@ -2,12 +2,12 @@
 
 | Field | Value |
 |---|---|
-| Phase | A — Census + Plan |
-| Active batch | (none — Phase A complete at s39 commit; Phase B starts s40 with batch 01-auth-sessions-rls) |
-| Last session | s39 (2026-05-11) |
-| Next session must | Begin Phase B / batch 01-auth-sessions-rls (audit-only). Read this STATUS.md first, then `PLAN.md` §5 batch 01 description, then `CENSUS.md` §11 entries tagged 01. |
-| Total findings | 17 (pre-investigation, un-batched; see §5 below) |
-| By severity | 8 critical (incl. 1 deferred-shelved under batch 17) / 8 high / 1 medium / 0 low. Total 17. |
+| Phase | B — Systematic Audit (In Progress) |
+| Active batch | (none — batch 01 complete at s40 commit; s41 to begin batch 02-org-management) |
+| Last session | s40 (2026-05-11) |
+| Next session must | Begin Phase B / batch 02-org-management (audit-only). Read this STATUS.md first, then `PLAN.md` §5 batch 02 description, then `CENSUS.md` §11 entries tagged 02. |
+| Total findings | 53 (17 pre-investigation + 36 from batch 01) |
+| By severity | 11 critical (incl. 1 deferred-shelved under batch 17) / 12 high / 11 medium / 19 low. Total 53 (17 pre-investigation + 36 from batch 01). |
 | Closed | 0 |
 | Banner | **AUDIT IN PROGRESS — DO NOT FIX YET** |
 
@@ -19,8 +19,8 @@
 
 | Phase | Status | Notes |
 |---|---|---|
-| A — Census + Plan | In Progress (closes at s39 commit) | `PLAN.md`, `CENSUS.md`, `STATUS.md` created. 17 PI findings captured. 21-batch list locked. |
-| B — Systematic Audit | Pending | Starts s40 with batch 01-auth-sessions-rls. Audit-only mode (no code touched outside `audit/sweep/` and `HANDOVER.md`). |
+| A — Census + Plan | **Complete** (s39 commit `1d4eaf4`) | `PLAN.md`, `CENSUS.md`, `STATUS.md` created. 17 PI findings captured. 21-batch list locked. `LESSONLOOP_V2_PLAN.md` brought into repo. |
+| B — Systematic Audit | **In Progress** (s40: batch 01 complete) | Started s40 with batch 01-auth-sessions-rls (Complete: 36 findings). Audit-only mode (no code touched outside `audit/sweep/` and `HANDOVER.md`). |
 | C — Fix Sprints | Pending | Sprints defined at start of phase. Gated on Phase B complete + Jamie authorisation. Banner can drop once Phase C begins. |
 | D — Cohesion Sweep | Pending | Batch 20 journeys (J01–J13) walked end-to-end on staging. |
 | E — Lauren Shadow Term | Pending | 12-week term per V2 plan §8. Starts ~2 weeks after Track A PR1 lands. |
@@ -32,29 +32,29 @@
 
 21 batches per `PLAN.md` §5. All Pending entering Phase B. "PI seeds" counts how many pre-investigation findings (§5) are tagged to this batch — those seeds become real `F-NN-NNN` findings when re-verified in their target batch during Phase B.
 
-| Batch ID | Name | Status | Assigned session | Findings (Critical/High/Medium/Low) | PI seeds |
-|---|---|---|---|---|---|
-| 01 | auth-sessions-rls | Pending | — | 0 / 0 / 0 / 0 | 0 |
-| 02 | org-management | Pending | — | 0 / 0 / 0 / 0 | 0 |
-| 03 | calendar-core | Pending | — | 0 / 0 / 0 / 0 | 3 (PI-11, PI-14, PI-15) |
-| 04 | lessons-scheduling-deep | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-11) |
-| 05 | billing-invoicing | Pending | — | 0 / 0 / 0 / 0 | 4 (PI-02, PI-03, PI-04, PI-15) |
-| 06 | payments-stripe-connect | Pending | — | 0 / 0 / 0 / 0 | 4 (PI-05, PI-06, PI-07, PI-08) |
-| 07 | payment-plans-installments | Pending | — | 0 / 0 / 0 / 0 | 0 |
-| 08 | attendance-credits-waitlists | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-17) |
-| 09 | term-continuation | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-13) |
-| 10 | reports-analytics-payroll | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-01) |
-| 11 | parent-portal | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-05) |
-| 12 | messages-notifications | Pending | — | 0 / 0 / 0 / 0 | 0 |
-| 13 | practice-resources | Pending | — | 0 / 0 / 0 / 0 | 0 |
-| 14 | bookings-leads-enrolment | Pending | — | 0 / 0 / 0 / 0 | 0 |
-| 15 | calendar-sync-zoom-xero | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-10) |
-| 16 | subscription-tiers | Pending | — | 0 / 0 / 0 / 0 | 0 |
-| 17 | loopassist | **Shelved** (record state, do not deepen) | — | 0 / 0 / 0 / 0 | 2 (PI-12, PI-16) |
-| 18 | settings-tabs | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-10) |
-| 19 | cross-cutting | Pending | — | 0 / 0 / 0 / 0 | 4 (PI-03, PI-09, PI-13, PI-17) |
-| 20 | ux-flows | Pending | — | 0 / 0 / 0 / 0 | 0 |
-| 21 | marketing-surface | Pending | — | 0 / 0 / 0 / 0 | 0 |
+| Batch ID | Name | Status | Assigned session | Findings (Critical/High/Medium/Low) | PI seeds | Notes / key surfacings |
+|---|---|---|---|---|---|---|
+| 01 | auth-sessions-rls | **Complete** | s40 (2026-05-11) | 3 / 4 / 10 / 19 | 0 | 2 new criticals discovered (F-01-001 parent-portal lesson-notes RPC broken via parameter mismatch; F-01-003 SECDEF parameter spoofing — undo_student_import). 6 legacy findings re-verified hold-as-fixed (1 deferred to batch 15). RLS layer materially healthy (270 policies on 6 helpers, all CLEAN — Phase C RLS sprint scope narrows to hardening, not rebuild). 9 cross-cutting class patterns drafted for batch 19. 3 findings withdrawn (F1d, F5e, F2d). |
+| 02 | org-management | Pending | — | 0 / 0 / 0 / 0 | 0 | — |
+| 03 | calendar-core | Pending | — | 0 / 0 / 0 / 0 | 3 (PI-11, PI-14, PI-15) | — |
+| 04 | lessons-scheduling-deep | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-11) | — |
+| 05 | billing-invoicing | Pending | — | 0 / 0 / 0 / 0 | 4 (PI-02, PI-03, PI-04, PI-15) | — |
+| 06 | payments-stripe-connect | Pending | — | 0 / 0 / 0 / 0 | 4 (PI-05, PI-06, PI-07, PI-08) | — |
+| 07 | payment-plans-installments | Pending | — | 0 / 0 / 0 / 0 | 0 | — |
+| 08 | attendance-credits-waitlists | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-17) | — |
+| 09 | term-continuation | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-13) | — |
+| 10 | reports-analytics-payroll | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-01) | — |
+| 11 | parent-portal | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-05) | — |
+| 12 | messages-notifications | Pending | — | 0 / 0 / 0 / 0 | 0 | — |
+| 13 | practice-resources | Pending | — | 0 / 0 / 0 / 0 | 0 | — |
+| 14 | bookings-leads-enrolment | Pending | — | 0 / 0 / 0 / 0 | 0 | — |
+| 15 | calendar-sync-zoom-xero | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-10) | (s40 deferred: re-verify legacy `2026-05-07-calendar-oauth-callback-verify-jwt-missing`) |
+| 16 | subscription-tiers | Pending | — | 0 / 0 / 0 / 0 | 0 | — |
+| 17 | loopassist | **Shelved** (record state, do not deepen) | — | 0 / 0 / 0 / 0 | 2 (PI-12, PI-16) | — |
+| 18 | settings-tabs | Pending | — | 0 / 0 / 0 / 0 | 1 (PI-10) | — |
+| 19 | cross-cutting | Pending | — | 0 / 0 / 0 / 0 | 4 (PI-03, PI-09, PI-13, PI-17) | (s40 inbound: 9 class patterns from batch 01 — see `audit/sweep/findings/01-auth-sessions-rls.md` cross-cutting section) |
+| 20 | ux-flows | Pending | — | 0 / 0 / 0 / 0 | 0 | — |
+| 21 | marketing-surface | Pending | — | 0 / 0 / 0 / 0 | 0 | — |
 
 Total PI-seed tag count: 24 (one PI may seed multiple batches; e.g. PI-11 seeds both 03 and 04). Unique PI findings: 17 (see §5).
 
@@ -74,7 +74,8 @@ Sprints defined at start of Phase C, not earlier. Phase B does not pre-bucket fi
 
 | Session | Date | Phase | Scope summary | EXIT outcome | Commit hashes |
 |---|---|---|---|---|---|
-| s39 | 2026-05-11 | A | Path Y audit foundations: scaffolded `audit/sweep/`; produced `PLAN.md` (10 sections, 21-batch list with batch 21-marketing-surface added during session), `CENSUS.md` (1300+ lines, every feature batch-tagged, 13 journeys seeded), `STATUS.md` (this file); captured 17 pre-investigation findings; brought `LESSONLOOP_V2_PLAN.md` into repo; appended s39 entry to `HANDOVER.md`; baseline drift recorded (prompt-expected HEAD `e30bb32`; actual `c9a5c1f` accepted as new baseline). | TBD (set at Phase 5 commit) | TBD |
+| s40 | 2026-05-11 | B | Phase B batch 01 audit (auth-sessions-rls). 10 phases executed: HEAD verify + pre-investigation re-verify; auth pages walk (8 pages); auth edge functions (6 fns: account-delete, profile-ensure, invite-accept, invite-get, gdpr-delete, gdpr-export); session/JWT/AuthContext trace; route guards; RLS coverage sweep (93 tables — 88 policied + 5 zero-policy); SECDEF audit (7 unpinned + 6 high-amplification helpers + 4 non-public-pinned variance drill); 6 legacy findings re-verified. Produced `audit/sweep/findings/01-auth-sessions-rls.md` (709 lines, 36 findings: 3C/4H/10M/19L). **2 NEW criticals surfaced via audit:** F-01-001 (parent-portal lesson-notes RPC parameter mismatch — silent broken feature) and F-01-003 (undo_student_import SECDEF parameter-spoofing — authenticated-bypass cascade deletion). 3 findings withdrawn (F1d, F5e, F2d) — drift framings resolved as intentional patterns. All 6 legacy findings hold-as-fixed (1 deferred to batch 15). 9 cross-cutting class patterns drafted for batch 19 (incl. CI-script deliverable + TS-bypass-cast audit + parameter-spoofing codemod). RLS layer materially healthy: 270 policies on 6 helpers all CLEAN. | Phase B batch 01 complete. Banner remains AUDIT IN PROGRESS — DO NOT FIX YET. | (set at Phase 10 commit) |
+| s39 | 2026-05-11 | A | Path Y audit foundations: scaffolded `audit/sweep/`; produced `PLAN.md` (10 sections, 21-batch list with batch 21-marketing-surface added during session), `CENSUS.md` (1300+ lines, every feature batch-tagged, 13 journeys seeded), `STATUS.md` (this file); captured 17 pre-investigation findings; brought `LESSONLOOP_V2_PLAN.md` into repo; appended s39 entry to `HANDOVER.md`; baseline drift recorded (prompt-expected HEAD `e30bb32`; actual `c9a5c1f` accepted as new baseline). | Phase A complete. PLAN/CENSUS/STATUS scaffolds + LESSONLOOP_V2_PLAN.md committed. 17 PI findings captured. | `1d4eaf4` |
 
 ---
 
