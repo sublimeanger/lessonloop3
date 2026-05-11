@@ -2,24 +2,24 @@
 
 Capability-by-capability audit of LoopAssist. Tracks whether each marketed/implied capability is **implemented**, **e2e tested**, and **currently working in production**. This is the source of truth for s37-s39 LoopAssist work.
 
-**Last reviewed:** 2026-05-11 (s38 Phase 0–1; world-class hardening Sprint 1)
-**Status:** Three sequential root causes uncovered + fixed across s37+s38. Full incident in `audit/findings/2026-05-11-loopassist-three-root-causes-confirm-flow.md`. The send_invoice_reminders pipeline (proposal → confirm → execute → message_log) is now codified by 7 deterministic e2e tests in `tests/e2e/master/21-loopassist-actions.spec.ts`.
+**Last reviewed:** 2026-05-11 (s38 World-Class Hardening Sprint 1 complete)
+**Status:** All 10 action handlers now have deterministic e2e canary tests via the synthetic-proposal harness (`tests/e2e/master/21-loopassist-actions.spec.ts`, 19 tests across §21.5–§21.14). The harness bypasses Anthropic entirely — seeds a proposal row + POSTs to `looopassist-execute` + asserts side effects — so every handler is regression-protected without AI cost. **Five real bugs found + fixed by Sprint 1:** (1) s37 invoice-citation marker, (2) s38 CHECK constraint mismatch, (3) s38 email-resolution gap, (4) generic "Execution failed" swallowing PostgREST errors, (5) `generate_billing_run` double-JSONB-encoded `_items` (broken since deploy). Incident detail in `audit/findings/2026-05-11-loopassist-three-root-causes-confirm-flow.md`.
 
 | # | Capability | Marketing claim | Implemented? | E2E tested? | Currently working? | Severity if broken |
 |---|---|---|---|---|---|---|
 | 1 | Answer questions about students | YES | YES (`search_students`, `get_student_detail` tools) | partial | YES | n/a |
 | 2 | Answer questions about schedule | YES | YES (`search_lessons`, `get_teacher_schedule`) | partial | YES | n/a |
 | 3 | Answer questions about invoices | YES | YES (`search_invoices`, `get_revenue_summary`) | partial | YES | n/a |
-| 4 | Draft messages | YES | YES (`draft_email` action in execute fn) | NO | s37: was broken due to invoice-UUID bug. Constraint mismatch (s38#1) also affected it. Both fixed. Handler not yet canary-tested (sprint 2). | P0 trust-breaking |
+| 4 | Draft messages | YES | YES (`draft_email` action in execute fn) | **YES (§21.7.1-2, 2 tests)** | **YES — happy path + no-email rejection canary-tested** | P0 trust-breaking |
 | 5 | Send invoice reminders | YES | YES (`send_invoice_reminders`) | **YES (§21.5.1-7, 7 tests)** | **YES — fully fixed s37+s38, regression-tested** | P0 |
-| 6 | Generate billing runs | YES | YES (`generate_billing_run`) | NO | Constraint fix (s38#1) unblocks it. Handler logic not yet canary-tested (sprint 2). | P0 |
-| 7 | Reschedule lessons | YES | YES (`reschedule_lessons`) | NO | Constraint fix (s38#1) unblocks it. Handler logic not yet canary-tested (sprint 2). | P0 |
-| 8 | Mark attendance | YES (implied) | YES (`mark_attendance`) | NO | Constraint fix unblocks. Handler not yet canary-tested (sprint 2). | P0 |
-| 9 | Cancel lessons | YES (implied) | YES (`cancel_lesson`) | NO | Constraint fix unblocks. Handler not yet canary-tested (sprint 2). | P0 |
-| 10 | Complete lessons | YES (implied) | YES (`complete_lessons`) | NO | Constraint fix unblocks. Handler not yet canary-tested (sprint 2). | P0 |
-| 11 | Send progress reports | YES (implied) | YES (`send_progress_report`) | NO | Constraint fix unblocks. Email resolution uses same shape as #5 — likely benefits from the s38 resolver fix once wired in. Handler not yet canary-tested (sprint 2). | P0 |
-| 12 | Bulk reminders | YES (implied) | YES (`send_bulk_reminders`) | **partial — uses centralised resolver post-s38** | **YES — same email-resolution fix as #5, but not yet directly canary-tested** | P0 |
-| 13 | Bulk complete lessons | NO (not marketed) | YES (`bulk_complete_lessons`) | NO | Constraint fix unblocks. Handler not yet canary-tested (sprint 2). | P1 |
+| 6 | Generate billing runs | YES | YES (`generate_billing_run`) | **YES (§21.14.1)** | **YES — Sprint 1 found + fixed the double-JSONB-encoded `_items` bug that had silently broken this action since deploy** | P0 |
+| 7 | Reschedule lessons | YES | YES (`reschedule_lessons`) | **YES (§21.12.1)** | **YES — canary asserts +60min shift exact** | P0 |
+| 8 | Mark attendance | YES (implied) | YES (`mark_attendance`) | **YES (§21.8.1-2, 2 tests)** | **YES — happy path + non-participant rejection canary-tested** | P0 |
+| 9 | Cancel lessons | YES (implied) | YES (`cancel_lesson`) | **YES (§21.9.1-2, 2 tests)** | **YES — issue_credit on/off canary-tested** | P0 |
+| 10 | Complete lessons | YES (implied) | YES (`complete_lessons`) | **YES (§21.10.1)** | **YES** | P0 |
+| 11 | Send progress reports | YES (implied) | YES (`send_progress_report`) | **YES (§21.13.1)** | **YES — uses same student_guardians fallback as #5** | P0 |
+| 12 | Bulk reminders | YES (implied) | YES (`send_bulk_reminders`) | **YES (§21.6.1)** | **YES — uses centralised resolver post-s38** | P0 |
+| 13 | Bulk complete lessons | NO (not marketed) | YES (`bulk_complete_lessons`) | **YES (§21.11.1)** | **YES — canary asserts past lessons → completed** | P1 |
 | 14 | Search lesson notes | NO (not marketed) | NO — no `search_lesson_notes` tool | NO | n/a — missing capability | P2 missing (s38) |
 | 15 | Search make-up credits | NO | NO | NO | n/a | P2 missing (s38) |
 | 16 | Search message history | NO | NO | NO | n/a | P2 missing (s38) |
