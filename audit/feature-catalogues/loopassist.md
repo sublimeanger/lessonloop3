@@ -2,24 +2,24 @@
 
 Capability-by-capability audit of LoopAssist. Tracks whether each marketed/implied capability is **implemented**, **e2e tested**, and **currently working in production**. This is the source of truth for s37-s39 LoopAssist work.
 
-**Last reviewed:** 2026-05-11 (s37)
-**Status:** s37 Phase 1 fix applied (Phase 1A invoice-UUID format); subsequent phases tracked in `audit/findings/2026-05-11-loopassist-comprehensive-audit.md`.
+**Last reviewed:** 2026-05-11 (s38 Phase 0–1; world-class hardening Sprint 1)
+**Status:** Three sequential root causes uncovered + fixed across s37+s38. Full incident in `audit/findings/2026-05-11-loopassist-three-root-causes-confirm-flow.md`. The send_invoice_reminders pipeline (proposal → confirm → execute → message_log) is now codified by 7 deterministic e2e tests in `tests/e2e/master/21-loopassist-actions.spec.ts`.
 
 | # | Capability | Marketing claim | Implemented? | E2E tested? | Currently working? | Severity if broken |
 |---|---|---|---|---|---|---|
 | 1 | Answer questions about students | YES | YES (`search_students`, `get_student_detail` tools) | partial | YES | n/a |
 | 2 | Answer questions about schedule | YES | YES (`search_lessons`, `get_teacher_schedule`) | partial | YES | n/a |
 | 3 | Answer questions about invoices | YES | YES (`search_invoices`, `get_revenue_summary`) | partial | YES | n/a |
-| 4 | Draft messages | YES | YES (`draft_email` action in execute fn) | NO | s37: was broken due to invoice-UUID bug — see #20. Other entities OK. | P0 trust-breaking |
-| 5 | Send invoice reminders | YES | YES (`send_invoice_reminders`) | NO | **Was broken**: tool output omitted UUIDs → validator dropped proposal. **Fixed in s37 Phase 1A**. | P0 |
-| 6 | Generate billing runs | YES | YES (`generate_billing_run`) | NO | Needs verification post-s37 — likely OK (uses student IDs, not invoice IDs) | P0 |
-| 7 | Reschedule lessons | YES | YES (`reschedule_lessons`) | NO | Needs verification — uses lesson UUIDs which were already visible | P0 |
-| 8 | Mark attendance | YES (implied) | YES (`mark_attendance`) | NO | Needs verification — uses lesson + student UUIDs (already visible) | P0 |
-| 9 | Cancel lessons | YES (implied) | YES (`cancel_lesson`) | NO | Needs verification — uses lesson UUIDs (visible) | P0 |
-| 10 | Complete lessons | YES (implied) | YES (`complete_lessons`) | NO | Needs verification — uses lesson UUIDs (visible) | P0 |
-| 11 | Send progress reports | YES (implied) | YES (`send_progress_report`) | NO | Needs verification — uses student UUIDs (visible) | P0 |
-| 12 | Bulk reminders | YES (implied) | YES (`send_bulk_reminders`) | NO | Same invoice-UUID dependency as #5; fixed by s37 1A. | P0 |
-| 13 | Bulk complete lessons | NO (not marketed) | YES (`bulk_complete_lessons`) | NO | Same as #10 | P1 |
+| 4 | Draft messages | YES | YES (`draft_email` action in execute fn) | NO | s37: was broken due to invoice-UUID bug. Constraint mismatch (s38#1) also affected it. Both fixed. Handler not yet canary-tested (sprint 2). | P0 trust-breaking |
+| 5 | Send invoice reminders | YES | YES (`send_invoice_reminders`) | **YES (§21.5.1-7, 7 tests)** | **YES — fully fixed s37+s38, regression-tested** | P0 |
+| 6 | Generate billing runs | YES | YES (`generate_billing_run`) | NO | Constraint fix (s38#1) unblocks it. Handler logic not yet canary-tested (sprint 2). | P0 |
+| 7 | Reschedule lessons | YES | YES (`reschedule_lessons`) | NO | Constraint fix (s38#1) unblocks it. Handler logic not yet canary-tested (sprint 2). | P0 |
+| 8 | Mark attendance | YES (implied) | YES (`mark_attendance`) | NO | Constraint fix unblocks. Handler not yet canary-tested (sprint 2). | P0 |
+| 9 | Cancel lessons | YES (implied) | YES (`cancel_lesson`) | NO | Constraint fix unblocks. Handler not yet canary-tested (sprint 2). | P0 |
+| 10 | Complete lessons | YES (implied) | YES (`complete_lessons`) | NO | Constraint fix unblocks. Handler not yet canary-tested (sprint 2). | P0 |
+| 11 | Send progress reports | YES (implied) | YES (`send_progress_report`) | NO | Constraint fix unblocks. Email resolution uses same shape as #5 — likely benefits from the s38 resolver fix once wired in. Handler not yet canary-tested (sprint 2). | P0 |
+| 12 | Bulk reminders | YES (implied) | YES (`send_bulk_reminders`) | **partial — uses centralised resolver post-s38** | **YES — same email-resolution fix as #5, but not yet directly canary-tested** | P0 |
+| 13 | Bulk complete lessons | NO (not marketed) | YES (`bulk_complete_lessons`) | NO | Constraint fix unblocks. Handler not yet canary-tested (sprint 2). | P1 |
 | 14 | Search lesson notes | NO (not marketed) | NO — no `search_lesson_notes` tool | NO | n/a — missing capability | P2 missing (s38) |
 | 15 | Search make-up credits | NO | NO | NO | n/a | P2 missing (s38) |
 | 16 | Search message history | NO | NO | NO | n/a | P2 missing (s38) |
