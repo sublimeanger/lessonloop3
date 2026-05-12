@@ -81,6 +81,27 @@ Each finding gets exactly one severity. No "high-ish", no "low-medium". If torn 
 - **Medium** — cosmetic but visible inconsistency; timezone-edge issues; non-critical race conditions; minor UX dead-ends. Anchor: PI-17 (credit-expiry UTC off by ±12h for non-UTC orgs).
 - **Low** — code-hygiene drift; stale comments; minor docstring/API inconsistency; legacy artefacts.
 
+### 4.1 Severity-adjustment methodology (added s45)
+
+Pre-investigation s38 tags are STARTING POINTS for prioritisation, NOT severity commitments. Full audit owns canonical severity per §4 anchors above. Severity-adjustment events are tracked in each batch's findings doc §11 (audit-method appendix) and aggregated cumulatively in the reviewing-Claude handover snapshot for the closing session.
+
+**Two distinct adjustment classes**:
+1. **Bracket-shift event** (counted as a severity-adjustment event): the finding's severity moves between rubric brackets (Critical / High / Medium / Low). Examples:
+   - PI-08 → F-02-005 HIGH ↑ CRITICAL (s41 event #1) — financial-falsification class anchor unlocked via body re-audit.
+   - PI-11 → F-03-004 Critical ↓ HIGH (s42 event #2) — operational-correctness class CAPS-at-HIGH per class-consistency.
+   - F-06-001 mid-session ↑ Phase 3 MEDIUM/HIGH bracket → Phase 5 CRITICAL (s45 event #9) — F-06-003 composition discovery shifted bracket from operational-correctness HIGH to financial-falsification CRITICAL.
+2. **Bracket-internal refinement** (NOT counted): pre-class within a bracket sharpens via mid-session evidence without crossing bracket boundary. Example: F-06-002 pre-class "HIGH or CRITICAL deferred" → HIGH-confirmed via Stripe-side PM-to-customer validation analysis (s45 Phase 6) is bracket-internal — the deferred range was "HIGH or CRITICAL"; the evidence resolved within that range without an unambiguous bracket-shift.
+
+**Class-consistency precedent** is the primary anchor for adjudication. Operational-correctness class CAPS at HIGH per s42 PI-11 + s44 PI-02/03/04 + s45 PI-05/PI-07 precedent chain. Financial-falsification class anchors at CRITICAL per F-02-005 + F-02-002 + F-05-001 + F-06-001/003 family. Class-consistent grading prevents "scored differently because one happens to have a downstream rollback" drift.
+
+**Cumulative severity-adjustment events through s45**: **9** (events #1-#9). Full table maintained in each batch findings doc §11 + reviewing-Claude handover §9.
+
+**Pattern catalog + CC-19 cross-batch carry register**: full catalogs (23 positive patterns + 15 active CC-19 carries post-s45) maintained in `audit/sweep/findings/NN-*.md` files; reviewing-Claude handover snapshots `audit/sweep/handovers/reviewing-claude-sNN-close.md` consolidate counts at each session close. New patterns + carries declared in Phase 9 of the discovering session per the 11-section contract.
+
+**Pattern declarations through s45**: #1-#21 + **#22 two-state-managed webhook dedup with stale-recovery** (anchor stripe-webhook:121-233; s45) + **#23 non-SECDEF row-lock validation trigger with intent-acknowledged compensating-cascade bypass** (anchor validate_refund_amount; s45; kinship to Pattern #21 — value-integrity vs state-machine-transition shape).
+
+**CC-19 carry declarations through s45**: #1-#13 + **#14 claimed-service-role-gate misnaming** (RPC body `auth.uid() IS NOT NULL` variant + RLS policy `auth.uid() IS NULL` variant; same root cause, opposite reasoning; s45 batch-19 sweep) + **#15 dead-code SECDEF RPCs + orphan trigger functions** (s45; batch-19 sweep target).
+
 ## 5. Batches
 
 Twenty-one batches, locked as of s39 (batch 21 added during Phase A to separate the marketing surface from operational user journeys). Splits or merges require explicit Jamie approval recorded in the session log. Each batch's one-line description below is the canonical scope; expanded scope lives in the batch's findings file once Phase B opens it.
