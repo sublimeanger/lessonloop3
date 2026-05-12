@@ -160,15 +160,22 @@ The banner is load-bearing. While Phase < C, anyone reading STATUS.md — Claude
 Every Claude Code session executing Path Y work runs from a prompt with exactly these eleven sections, in this order:
 
 1. **Session header** — session ID, date, phase, this-session goal, prev session, next session.
-2. **Setup steps** — exact bash commands to bring the working tree to the expected baseline, with expected HEAD and halt conditions.
-3. **Token & secret locations** — canonical list of where credentials live (`.env.test`, `~/.claude/settings.json`, Supabase secrets). Hard rule on never echoing production secrets.
+2. **Setup steps** — exact bash commands to bring the working tree to the expected baseline, with expected HEAD and halt conditions. Setup step 2 includes bun→npm auto-detect: `if command -v bun >/dev/null; then bun install; bun run typecheck; else npm install; npm run typecheck; fi` (s43 methodology lesson #6).
+3. **Token & secret locations** — canonical list of where credentials live (`.env.test`, `~/.claude/settings.json`, Supabase secrets). Hard rule on never echoing production secrets; verification by prefix/suffix length only.
 4. **Project IDs** — repo, working tree path, branch, expected HEAD, Supabase project refs, key UUIDs.
 5. **READ-FIRST list** — files Claude Code must view before any other action, in order.
-6. **Pre-investigation findings** — evidence captured from prior sessions, NOT to be re-investigated or fixed; tagged to target batches.
+6. **Pre-investigation findings** — evidence captured from prior sessions, NOT to be re-investigated or fixed; tagged to target batches. Methodology constraints (cumulative through s43):
+   - Schema-name verification via `information_schema.tables` / `pg_proc` LIKE patterns BEFORE constructing IN-lists (s42 lesson).
+   - Trigger-event decoding via OR-able-bit enumeration in CTE, NOT first-match CASE WHEN (s43 lesson #4).
+   - TS-bypass-cast prevalence sweep covers sub-patterns A (`(supabase.rpc as any)`), B (`as any[]` return-cast), C (misc payload casts) (s43 lesson #5).
+   - Multi-export hook files honoured — `useFooBar.ts` may contain >1 export.
 7. **Scope** — IN/OUT scope this session; existing-doc reconciliation policy.
-8. **Phase-by-phase plan** — every phase of this session has a goal, an EXIT condition, allowed/forbidden boundaries, and a halt point.
-9. **Hard rules** — non-negotiable rules for this session (audit-only mode, no migrations, no deploys, no force push, halt-before-commit on every Phase EXIT).
-10. **Required updates at session end** — checklist of every file that must be created or updated before EXIT.
-11. **EXIT report template** — the canonical EXIT report block to paste back to Jamie at session end.
+8. **Phase-by-phase plan** — every phase of this session has a goal, an EXIT condition, allowed/forbidden boundaries, and a halt point. **Phase 0 HEAD-pin nuance**: halt only if intervening commits touch `audit/sweep/` substantively, HANDOVER.md narrative, batch-relevant edge fns, or schema; pure cosmetic/widget/doc commits do not block.
+9. **Hard rules** — non-negotiable rules for this session (audit-only mode, no migrations, no deploys, no force push, halt-before-commit on every Phase EXIT, no secrets echoed, evidence-first severity, class-pattern reuse, no timing predictions, no `apply_migration` during Phase B).
+10. **Required updates at session end** — three categories, ALL mandatory:
+    - **(a) CC-facing repo edits**: HANDOVER.md prepend (s-NN entry), `audit/sweep/STATUS.md` update (severity tally + batch tracker + session log + PI register if changed), findings doc for this batch.
+    - **(b) Reviewing-Claude handover snapshot**: `audit/sweep/handovers/reviewing-claude-sNN-close.md` — fresh-written each session, authored by the reviewing Claude inside the Phase 10 paste-back, committed verbatim by CC. The **§10.8 sub-step** delivering this snapshot in the Phase 10 paste-back is mandatory **in every Phase 10 paste-back from s44 onward**. The latest snapshot bootstraps the next reviewing-Claude chat when chat continuity rolls over.
+    - **(c) PLAN.md / CENSUS.md edits**: only if explicitly justified by a discipline correction or methodology lesson; never silently.
+11. **EXIT report template** — the canonical EXIT report block to paste back to Jamie at session end. Includes: commits landed, **reviewing-Claude handover snapshot committed (§10(b) confirmation, path + line count)**, findings closed with proof, findings deferred with reason, new findings for next batch, baseline test delta, confidence rating.
 
 If any Claude Code prompt arrives missing one of these 11 sections, halt and surface to Jamie — that is a discipline failure.
