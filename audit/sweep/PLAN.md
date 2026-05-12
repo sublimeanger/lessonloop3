@@ -52,12 +52,13 @@ Six phases, A through F. Each phase has a goal, an explicit allowed/forbidden bo
 - **EXIT:** A full term completed end-to-end with no critical incidents; outstanding issues non-blocking.
 - **Gate to F:** Lauren sign-off; commercial launch readiness confirmed.
 
-### Phase F — LoopAssist Rebuild
+### Phase F — LoopAssist remediation completion
 
-- **Goal:** Resume the AI layer (Path B from the s38 LoopAssist conversation). Tools return UUIDs alongside names; execution paths route through the same conflict checks and money-handling rules the rest of the app uses; no shortcuts.
-- **Allowed:** LoopAssist code; prompts; tool definitions; LoopAssist edge functions.
-- **Forbidden:** Bypassing app-layer checks; new "AI-only" code paths that duplicate logic; deploying without test coverage for the new tool contracts.
-- **EXIT:** LoopAssist live on staging, passing all 20 batch-derived integration scenarios.
+- **Status (s41 correction):** Phase F may be subsumed by Phase B/C/D work. LoopAssist (batch 17) is fully IN-SWEEP for Phase B; its findings will be remediated in Phase C alongside other classes. A distinct Phase F may not be necessary — decision deferred until Phase B closes.
+- **Goal (if retained):** Complete any LoopAssist-specific remediation work that did not fit cleanly into Phase C class-based sprints. Resume the AI layer (Path B from the s38 LoopAssist conversation) if rebuild rather than remediation is the right path. Tools return UUIDs alongside names; execution paths route through the same conflict checks and money-handling rules the rest of the app uses; no shortcuts.
+- **Allowed (if retained):** LoopAssist code; prompts; tool definitions; LoopAssist edge functions.
+- **Forbidden (if retained):** Bypassing app-layer checks; new "AI-only" code paths that duplicate logic; deploying without test coverage for the new tool contracts.
+- **EXIT (if retained):** LoopAssist live on staging, passing all 20 batch-derived integration scenarios.
 - **Gate:** Full launch.
 
 ## 3. Discipline rules
@@ -66,7 +67,7 @@ These rules are non-negotiable. They reinforce the phase boundaries in Section 2
 
 1. **No fix work during Phase B.** None. Findings get written; code does not get touched. If a one-line fix looks "obvious", it still waits for Phase C. Mixing audit and fix loses the catalogue.
 2. **No new feature work during any audit phase.** v1 scope is locked. v1.1+ items live in the legacy `audit/MASTER.md` and wait their turn.
-3. **LoopAssist is shelved through Phases B, C, D, and E.** It surfaces only in F. Batch 17 records state; it does not deepen.
+3. **AUDIT SCOPE COMPLETENESS.** Every feature in the codebase is audited in Phase B. ONLY Zoom is deferred from Phase B sweep, and only because external Zoom authorization/verification is pending. Zoom deferral is sub-surface, NOT whole-batch — batches 15 (calendar-sync-zoom-xero), 18 (settings-tabs), and 21 (marketing surface) each contain Zoom surface alongside non-Zoom surface. When those batches execute, the audit basis statement MUST declare: *"Zoom-specific surface (zoom-oauth-callback / zoom-oauth-start / zoom-sync-lesson edge fns; ZoomOAuthCallback.tsx; ZoomIntegrationTab; ZoomGuide marketing page) is deferred pending external Zoom authorization/verification — out of audit scope for THIS batch ONLY, NOT shelved. All non-Zoom surface in this batch is audited fully."* No feature is shelved, deferred, or excluded from Phase B sweep on any other grounds. If any future phase or session attempts to exclude a feature from audit, that is a discipline failure — push back. (s41 correction superseded prior "LoopAssist is shelved" framing.)
 4. **Every Claude Code session follows the 11-section prompt contract** defined in Section 10. Any prompt arriving missing a section is a discipline failure — halt and surface to Jamie.
 5. **Every session updates `HANDOVER.md` and `STATUS.md` at exit.** No exceptions. STATUS.md is the canonical ledger; HANDOVER.md is the chronological narrative.
 6. **New findings discovered mid-batch are documented, never fixed.** They get an `F-NN-NNN` ID, a severity, and a slot in the relevant batch's findings file. They do not trigger a code change. This is the same rule as #1, restated because it is the most common failure mode.
@@ -100,7 +101,7 @@ Twenty-one batches, locked as of s39 (batch 21 added during Phase A to separate 
 - **14-bookings-leads-enrolment** — Booking page, lead capture, enrolment waitlist, offer expiry, conversion path.
 - **15-calendar-sync-zoom-xero** — Google Calendar OAuth + busy-fetch + sync, Zoom integration, Xero connection + invoice/payment sync.
 - **16-subscription-tiers** — Stripe Subscriptions for the LessonLoop product itself, tier enforcement (Teacher/Studio/Academy/Agency), trial handling, plan downgrade UX.
-- **17-loopassist** — Existing audit at `audit/feature-catalogues/loopassist.md` is the starting point. **SHELVED** — record state, do not deepen. Path F rebuild covers.
+- **17-loopassist** — Existing audit at `audit/feature-catalogues/loopassist.md` is the starting point. **IN-SWEEP** — full LoopAssist surface audited in Phase B (read-only fns + write fns including `executeRescheduleLessons` + `bulk_complete_lessons` + the 12 LoopAssist tools). Remediation lands in Phase C alongside other classes. (s41 correction: prior "SHELVED" framing removed per AUDIT SCOPE COMPLETENESS rule §3.3.)
 - **18-settings-tabs** — All 24 settings tabs (per V2 plan §5 PR3 — pre-IA-pass). Each tab's functionality + data wiring + RLS reachability (PI-10 lives here).
 - **19-cross-cutting** — Timezones (PI-13, PI-17), money convention (`_minor` everywhere + CHECK constraints), status enum exhaustiveness (PI-02), RLS gap sweep, Sentry coverage, audit log coverage, migration-replay safety (PI-09).
 - **20-ux-flows** — Not code: end-to-end user journeys. Sign-up → first lesson → first invoice → first payment → first absence → first make-up → end-of-term continuation. Audit dimension is cohesion across the journey, not the individual surfaces (those are audited in their primary batch). Journey list is enumerated in `CENSUS.md` §11.B. World-class bar test.
@@ -148,7 +149,7 @@ Every session writes/updates a front-matter block at the top of `STATUS.md`, imm
 | Last session | Session ID and absolute date (YYYY-MM-DD). |
 | Next session must | One-sentence directive for the very first action of the next session. |
 | Total findings | Integer count, including pre-investigation entries. |
-| By severity | Critical / High / Medium / Low / deferred-shelved breakdown. |
+| By severity | Critical / High / Medium / Low breakdown. |
 | Closed | Integer count of findings with `Status: closed`. |
 | Banner | Literal text `AUDIT IN PROGRESS — DO NOT FIX YET` whenever Phase < C. Removed once Phase C is authorised. |
 

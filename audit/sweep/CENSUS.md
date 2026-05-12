@@ -436,13 +436,15 @@ Auth-posture assignments below are based on file location / typical pattern; **a
 | `xero-sync-invoice` | integration | auth-required | 15-calendar-sync-zoom-xero |
 | `xero-sync-payment` | integration | auth-required | 15-calendar-sync-zoom-xero |
 
-### 3.21 Zoom (3, hide-flagged per V2 §3.2)
+### 3.21 Zoom (3, hide-flagged per V2 §3.2; **DEFERRED — external Zoom authorization/verification pending** per PLAN.md §3 rule 3 s41 correction)
+
+**Phase B audit deferral applies to all Zoom rows below + related Zoom surface in §2 pages (`ZoomOAuthCallback.tsx`), §5.4 settings tabs (`ZoomIntegrationTab`), and §2.7 marketing pages (`ZoomGuide`). All non-Zoom surface in batches 15 / 18 / 21 audited fully.**
 
 | Name | Category | Auth posture | Batch |
 |---|---|---|---|
-| `zoom-oauth-callback` | integration | auth-required | 15-calendar-sync-zoom-xero |
-| `zoom-oauth-start` | integration | auth-required | 15-calendar-sync-zoom-xero |
-| `zoom-sync-lesson` | integration | service-role | 15-calendar-sync-zoom-xero |
+| `zoom-oauth-callback` | integration | auth-required | 15-calendar-sync-zoom-xero (Zoom-deferred) |
+| `zoom-oauth-start` | integration | auth-required | 15-calendar-sync-zoom-xero (Zoom-deferred) |
+| `zoom-sync-lesson` | integration | service-role | 15-calendar-sync-zoom-xero (Zoom-deferred) |
 
 ### 3.22 Cron infrastructure / cleanup (3)
 
@@ -1248,7 +1250,7 @@ Each row is a single cohesion-level audit unit. The journey traverses surfaces f
 | J07 | Day-change (term adjustment) → new recurrence series → invoice update | 09, 03, 05 |
 | J08 | Parent portal login → invoice view → payment → receipt | 01, 11, 06, 12 |
 | J09 | Teacher onboarding → availability → first lesson taught → attendance → payroll | 02, 03, 08, 10 |
-| J10 | LoopAssist drawer open → query → proposal → confirm → execute (shelved; documented for Phase F) | 17 |
+| J10 | LoopAssist drawer open → query → proposal → confirm → execute | 17 |
 | J11 | Public booking page → lead created → enrolment offer → accept → first lesson scheduled | 14, 02, 03, 12 |
 | J12 | Make-up waitlist join → match found → offer sent → accept → slot booked | 08, 12 |
 | J13 | Stripe webhook event (payment_intent.succeeded) → invoice paid → receipt → bookkeeping cascade | 06, 05, 12 |
@@ -1311,17 +1313,19 @@ Batch 04 is genuinely light (10 entries) because most lesson surface is shared w
   - **19 cross-cutting** (~95 entries, dominated by ~64 boilerplate triggers).
   - **21 marketing** (~73 entries: 36 routes + 37 pages).
   - **02 org-management** (~37 entries: routes, pages, hooks, triggers).
-- Lightest non-empty batches: **04 lessons-scheduling-deep** (10 — light by design, see §11.D), **07 payment-plans-installments** (15 — most installment surface piggybacks on batch 05's invoice UI), **17 loopassist** (~9 — shelved per PLAN.md §3 rule 3).
+- Lightest non-empty batches: **04 lessons-scheduling-deep** (10 — light by design, see §11.D), **07 payment-plans-installments** (15 — most installment surface piggybacks on batch 05's invoice UI), **17 loopassist** (~9 — small surface; fully IN-SWEEP for Phase B per PLAN.md §3 rule 3).
 
 ---
 
-## 12. Hibernate list
+## 12. Hibernate list + Phase B audit deferrals
 
 **Hibernate list: empty. Every feature in scope.**
 
-Per Jamie's s39 decision in the prompt §7 (scope) and reaffirmed in the V2 plan §3 (revised 2026-05-10, s24 stance recalibration): no features are hibernated for Path Y. Even features marked "hide behind feature flag" in V2 plan §3.2 (only Zoom remains for v1) are still in scope for audit; their flag status affects launch visibility, not whether Phase B reviews them.
+Per Jamie's s39 decision in the prompt §7 (scope) and reaffirmed in the V2 plan §3 (revised 2026-05-10, s24 stance recalibration): no features are hibernated for Path Y.
 
-LoopAssist (batch 17) is **shelved** for Phase B (per PLAN.md §3 rule 3 — surfaces in Phase F only) but not hibernated; batch 17 records state on entry, does not deepen.
+**Phase B audit deferrals — Zoom is the SOLE exception.** Per PLAN.md §3 rule 3 (AUDIT SCOPE COMPLETENESS, s41 correction): every feature is audited in Phase B with one carve-out — Zoom-specific surface (`zoom-oauth-callback`, `zoom-oauth-start`, `zoom-sync-lesson` edge fns; `ZoomOAuthCallback.tsx`; `ZoomIntegrationTab`; `ZoomGuide` marketing page) is **DEFERRED — external Zoom authorization/verification pending**. This is sub-surface deferral within batches 15, 18, and 21, NOT whole-batch shelving. When those batches execute, the audit basis statement MUST declare the Zoom carve-out explicitly and audit all non-Zoom surface fully.
+
+**LoopAssist (batch 17) is fully IN-SWEEP for Phase B** as of the s41 discipline correction. Prior "shelved" framing has been removed. The 12 LoopAssist tools (incl. `executeRescheduleLessons` and `bulk_complete_lessons`) and the LoopAssist edge fns are full audit scope when batch 17 executes; remediation lands in Phase C alongside other classes per PLAN.md §3 rule 3.
 
 ---
 
