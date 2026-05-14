@@ -1,5 +1,97 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+## s48 (2026-05-14) — batch 09-term-continuation CLOSED
+
+**Findings**: 10 allocated (1C / 4H / 1M / 4L)
+**GRAND ACTIVE**: 126 → **134** (18C / 40H / 25M / 51L). Net change: PI cohort −2 brackets (PI-13 CRITICAL + PI-15 HIGH both close) + batch-09 +10 findings = **+8 net** by bracket: 0C / +3H / +1M / +4L. (Arithmetic correction per drift #27 candidate — see Methodology drifts section.)
+**Severity-adjustment events**: 11 → **12** (event #12: F-09-007 PI-13 CRITICAL ↓ HIGH via class-precedent reassessment with PI-17 class shape + operational-correctness CAPS-at-HIGH chain; class-precedent reassessment driver type kin to s44 events #5-#7 + s47 event #11)
+**Positive Pattern catalog**: 25 placed + 4 candidates → **33 placed + 3 candidates** (8 ratifications: s47 #27 + #28 ratified; s48 NEW #30/#31/#32/#33/#35/#36 ratified. 3 deferrals: #26 + #29 batch-19; #34 42P01 graceful-degradation post-launch revisit. +1 NEGATIVE-instance sub-class flag: Pattern #27 sub-class B at PortalContinuation:71 unauth-token architectural-exception)
+**PI cohort**: 8 → **6 active+partial** (2C/3H/1M/0L); PI-13 + PI-15 both CLOSED-fully at s48; PI-09 unchanged (no batch-09 enrichment per F-09-005 closure); PI-17 unchanged (batch-19 timezone class carry continues)
+**Cumulative methodology entries**: 26 → **28** (26 Cat 1 + 1 Cat 2 + 1 Cat 3; Phase 0 ratified drifts #25 Phase 10 commit pattern + #26 placeholder count discipline; no new s48-origin drifts surfaced through Phases 0-9)
+
+### Headline findings
+
+- **F-09-001 `materialise_continuation_lessons` CRITICAL** — anon-callable SECDEF + zero body auth + PUBLIC+anon EXECUTE; cross-tenant lesson + lesson_participant INSERT with attacker-controlled `p_org_id` + `p_rate_minor` + `p_created_by`; 200/recurrence per-call cap unbounded across distinct recurrence_ids. F-08-001 + F-02-005 + F-07-003 anchor stack; financial-downstream chain DB-traced via `generate_invoices_from_template:131-149` JOIN through `lp.rate_minor` + `get_unbilled_lesson_ids:18-29` finance-team manual billing surface. Conflict-trigger silent-swallow at body L120-123 = composition modifier reinforcing CRITICAL bracket (defence-in-depth bypass). Cross-batch reach LEGITIMATE at bulk-process-continuation:262-273 (POSITIVE caller-hygiene observation; standalone CRITICAL via direct anon invocation stands).
+- **F-09-006 `create-continuation-run:1029 + :1226` HIGH** — handleSend + handleSendReminders reference undeclared `supabase` identifier in `transformEmailForShadow(..., { orgId, supabase: supabase })` call; ES modules strict mode raises ReferenceError; emails NEVER send when RESEND_API_KEY configured. F-03-002 class kin happy-path impact-profile (NOT F-05-008 "near-impossible" qualifier). FE useTermContinuation.ts:368-372 shows aggregated count "Sent to 0 families, N failed" but discards individual error details (MIDDLE-strength magnitude factor; HIGH bracket sustained per magnitude-not-bracket precedent).
+- **F-09-007 PI-13 HIGH (event #12 ↓)** — `process-term-adjustment:735 setUTCHours(hours, minutes, 0, 0)` ignores `origRecurrence?.timezone` fetched at L622 (line position drifted s38 L720 → HEAD L735); 6+ adjacent timezone-naive surfaces in same fn. FE end-to-end timezone-naive: `TermAdjustmentWizard:343-349` input no-TZ-affordance + `PortalContinuation:337` output UTC-substring no-TZ-label. PI-17 class shape match (UTC-based time arithmetic ignoring org timezone) + operational-correctness CAPS-at-HIGH chain (kinship to events #2/#5/#6/#7/#8/#10/#11). No composition path to financial-falsification CRITICAL per Phase 2 + Phase 3 evidence (bounded to edge-case day-boundary mis-classification). Driver type: class-precedent reassessment.
+- **F-09-008 PI-15 HIGH** — `process-term-adjustment:777-940` handleConfirm 10+ sequential DB ops with NO transaction wrap; failure of step-3 (recurrence + lessons + participants INSERT) or step-4 (invoices + invoice_items INSERT) leaves DB partial-commit; operator retry produces DUPLICATE invoices/lessons (no idempotency check; step 2 cancel/delete/cap is idempotent). PI-15 canonical creation surface confirmed sole at L847 `is_credit_note: isCreditNote` per Phase 2 codebase-wide grep (1 write site, 4 read filters, 8 display sites). Closure-class concern Pattern #20 multi-step-write-rollback discipline gap (~20 cumulative active surfaces post-s48). NOT a severity-adjustment event (HIGH from {MEDIUM, HIGH} ambiguous Phase 2 pre-tag = adjudication).
+- **F-09-011 `term_continuation_runs` HIGH** — `pg_trigger` query at HEAD confirms only `set_tcr_updated_at` BEFORE UPDATE; NO `audit_term_continuation_runs` AFTER I/U/D trigger. 4 of 7 state transitions unaudited (`sent` at create-continuation-run:1077; `reminding` at L1254; `partial`/`failed` at L1077; `completed` at bulk-process-continuation:427-433). Class-asymmetry with 3 sibling batch-09 tables ALL having `audit_*` AFTER triggers (terms + term_adjustments + term_continuation_responses). CC-19 #3 audit_log INSERT integrity gap class + F-08-005 silent-swallow class neighbouring + operational-correctness CAPS-at-HIGH chain. F-04-005 MEDIUM precedent diverges on mitigation completeness.
+- **F-09-009 MEDIUM** — useCan unimplementation cohort 13 batch-09 mutation hooks (3 useTerms + 8 useTermContinuation + 2 useTermAdjustment); RLS load-bearing server-side; defence-in-depth class consistent with batch-04 useCan MEDIUM precedent. CC-19 useCan class ≥198 → ≥211.
+- **F-09-002 + F-09-003 (merged with F-09-004 released) + F-09-010 + F-09-012 LOW** — anon-EXECUTE-grant-with-body-gate hygiene (`recalc_continuation_summary`); information-disclosure INCIDENTAL helper RPCs (`continuation_run_org_id` + `user_has_continuation_response_in_run` merged; both anon EXECUTE INCIDENTAL per Phase 2 — token-write service-role bypass + portal-read authenticated → anon grants exercised by zero required paths); TermAdjustmentWizard binary-state UI partial-failure invisibility (Pattern #20 UI-side retain-split from F-09-008); financial-amount CHECK cohort 4 columns CC-19 #11 (cohort 7 → 11 entries post-s48; 9 negative + 2 positive).
+
+### Cross-batch reach verdicts (POSITIVE observations)
+
+- **F-08-001 at bulk-process-continuation:394**: service-role adminClient + 5-layer defence-in-depth (bearer + getUser + role-IN(owner/admin) + rate-limit + run-belongs-to-org). F-08-001 standalone CRITICAL stands; not amplified. → Pattern #31 ratified.
+- **F-09-001 at bulk-process-continuation:262-273**: all-server-derived params from validated rowset. F-09-001 standalone CRITICAL via direct anon invocation stands; not amplified.
+
+### F-09-005 closure
+
+Hypotheses (a) phantom-RPC + (b) local TS helper + (c) pg_proc absent-CENSUS ALL refuted. `generate_credit_note` resolved as HTTP request body BOOLEAN field at `process-term-adjustment:25` (TermAdjustmentRequest interface) + L779 (boolean toggle `body.generate_credit_note !== false`). No RPC invocation; no TS helper. No PI-09 cohort enrichment (`generate_credit_note` is NOT a phantom-RPC).
+
+### Pattern catalog deltas
+
+**Ratified (8)**:
+- s47 #27 hook-mediated supabase access discipline (with sub-class B architectural-exception for PortalContinuation:71 unauth-token TokenResponse direct functions.invoke)
+- s47 #28 shadow-mode interception (Lauren Shadow programme; `transformEmailForShadow` called at create-continuation-run:1024 + :1221; pattern usage discipline correct INDEPENDENT of F-09-006 typo bug)
+- s48 #30 trigger-level structurally-complete daterange-overlap exclusion (`check_term_overlap` anchor; class kin to Pattern #14; structurally distinct from F-03-004 partial-coverage class)
+- s48 #31 5-layer defence-in-depth before sensitive cross-batch RPC invocation (bulk-process-continuation anchor; class kin to Pattern #24 + #9)
+- s48 #32 dual-surfacing of operational-correctness signals (Continuation.tsx + useTermContinuation.ts for conflict warnings)
+- s48 #33 realtime channel + invalidation discipline (useTermContinuation.ts:183-207 postgres_changes)
+- s48 #35 explicit `=== Bearer ${serviceRoleKey}` cron equality (create-continuation-run:432; CC-19 #14 sub-shape B intended POSITIVE; class-distinct from sub-shape A negative-in-practice)
+- s48 #36 RPC body-auth-gate canonical anon-block (`recalc_continuation_summary` L5-7; class kin to Pattern #10 dual-mode auth)
+
+**Deferred (3)**:
+- #26 log-shape table protection cohort → batch-19 full-schema sweep
+- #29 caller-RLS-respecting view security_invoker=on → batch-19 full-schema view sweep
+- #34 42P01 graceful-degradation → post-launch revisit (tech-debt-borderline; pattern may not survive post-launch migration stabilisation)
+
+**NEGATIVE-instance sub-class flag**:
+- Pattern #27 sub-class B at PortalContinuation.tsx:71 (direct `supabase.functions.invoke` in unauth TokenResponse for email-link flow; reclassed as architectural-exception sub-class — token surface has structural differences hook abstractions don't accommodate)
+
+### Sub-class introduction deferrals
+
+- Information-disclosure 4-anchor sub-classification (SELECT-list vs storage-path vs helper-RPC vs enumeration-via-helper sub-shapes; 4 anchors post-s48 = F-02-020 + F-05-007 + F-08-002 + F-09-003; premature with 4-anchor sample) → batch-19 cohesion sweep
+- TS-bypass-cast Sub-A Sub-pattern C cohort growth (+6 batch-09 PostgREST nested-join shape casts all in create-continuation-run; types-pipeline limitation refinement) → batch-19 cross-cutting class sweep
+
+### CC-19 carries entering batch-10
+
+9 active carries with batch-09 contributions: CC-19 #1 +1 (F-09-002); #3 +1 negative (F-09-011); #6 +1 (F-09-001 → ~49 instances); #7 +0 (F-09-005 closed as boolean); #8 +0 delta 0; #10 +0 POSITIVE 4/4 wrapped; #11 +4 negative (F-09-012 → cohort 11 entries 9 negative + 2 positive); #14 +0 POSITIVE Pattern #35 sub-shape B distinct; #15 +0. 0 new CC-19 # entries at batch-09. F-01-017 batch-19 carry +2 (term_adjustments.UPDATE + term_continuation_runs.UPDATE USING-only).
+
+### Class-pattern register touches
+
+| Class | Post-s48 |
+|---|---|
+| TS-bypass-cast Sub-A literal | ≥376 raw (+24 batch-09: 6 edge fn Sub-pattern C + 17 FE `as any` + 1 FE `<any>` generic) |
+| useCan unimplementation | ≥211 sites (+13 F-09-009 cohort) |
+| Information-disclosure cross-tenant enumeration | 4 anchors (+1 F-09-003 merged) |
+| Silent-failure-modes / silent-swallow chain | 9 instances (+1 F-09-006) |
+| Multi-step-write-rollback Pattern #20 | ~20 active surfaces (+2 F-09-008 + F-09-010 retain-split) |
+| CC-19 #11 financial-amount CHECK cohort | 11 entries (9 negative + 2 positive; +4 negative F-09-012) |
+| F-01-017 batch-19 carry | +2 (term_adjustments + term_continuation_runs UPDATE USING-only) |
+| F-07-003 NULL-actor magnitude | +1 class-consistency note (continuation-respond service-role) |
+
+### Methodology drifts (s48-origin)
+
+**Cat 1 drift candidate #27** (s48 Phase 5 origin; for s49 Phase 0 ratification): cumulative tally arithmetic at PI closures — failed to subtract closed-PI bracket counts from grand active total when PIs close at a batch. Caught at Phase 10 Message B pre-commit; numbers revised to **134 (18C/40H/25M/51L) before commit** (was incorrectly projected as 136 / 19C / 41H). Kin to s45 drift #7 cumulative-tally arithmetic class. **Mitigation**: at every batch-close, explicit two-line arithmetic check — (a) PI cohort delta; (b) grand active delta = batch findings delta + PI cohort bracket delta (NOT just batch findings). Cross-verify via §19-style column sums.
+
+Cat 2 / Cat 3: none across all 10 phases. Phase 0 ratified pre-existing drifts #25 + #26 into PLAN.md §4.1. Cumulative methodology entries 26 → 28 (with drift #27 pending s49 Phase 0 ratification → 29).
+
+### Baseline test delta
+
+0 — same 5 failed / 3 unhandled rejections (CC-19 #8 E2E fixture hygiene class carry to batch-19 preserved).
+
+### Drift #25 + #26 application at s48 close
+
+Per s47 Phase 10 commit pattern broke (orphan SHA `daa360f0` embedded in s47-close snapshot §2/§4/§21; actual post-amend HEAD is `e9cffe8f`): s48 reverts to s46 placeholder pattern. `audit/sweep/handovers/reviewing-claude-s48-close.md` committed with **3 literal `<s48 Phase 10 commit SHA>` placeholders** preserved in §2/§4/§21 per drift #25. Actual post-commit SHA recorded externally in this HANDOVER.md entry below + STATUS.md `Active batch` field + Jamie's notes. Per drift #26: `grep -c "<s48 Phase 10 commit SHA>" audit/sweep/handovers/reviewing-claude-s48-close.md` BEFORE commit returned 3 ✓ (matches reviewing-Claude dispatch count).
+
+**Phase 10 commit SHA**: `<recorded after `git rev-parse HEAD` post-commit; do NOT amend>`
+
+### Next session
+
+s49 batch 10-reports-analytics-payroll. Batch-10 carries **PI-01 CRITICAL** (payroll percentage 100× error per `src/hooks/usePayroll.ts:213` — percentage case computes in MINOR while per-lesson/hourly cases use MAJOR; both summed into totalGrossOwed rendered as MAJOR). Reviewing-Claude session 6; fresh chat bootstrapped from `audit/sweep/handovers/reviewing-claude-s48-close.md`.
+
+---
+
 ## s47 (2026-05-14) — batch 08-attendance-credits-waitlists CLOSED
 
 **Findings**: 10 allocated (2C / 3H / 0M / 5L)
