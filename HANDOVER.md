@@ -1,5 +1,60 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+## s47 (2026-05-14) — batch 08-attendance-credits-waitlists CLOSED
+
+**Findings**: 10 allocated (2C / 3H / 0M / 5L)
+**GRAND ACTIVE**: 116 → **126** (18C / 37H / 24M / 47L). Net delta +2C / +3H / 0M / +5L = +10
+**Severity-adjustment events**: 10 → **11** (event #11: F-08-003 phantom-RPC CRITICAL ↓ HIGH via class-precedent reassessment)
+**Positive Pattern catalog**: 25 placed + 4 candidates = **29 entries** (was 25+1 pre-s47; +3 NEW s47 candidates: #27/#28/#29)
+**PI cohort**: 8 active+partial unchanged (3C/4H/1M/0L); PI-09 cohort enriched via F-08-003; PI-17 NOT closed (carry to batch-19)
+**Cumulative methodology entries**: 23 → **26** (24 Cat 1 + 1 Cat 2 + 1 Cat 3)
+
+### Headline findings
+
+- **F-08-001 `cleanup_withdrawal_credits` CRITICAL** — anon-callable SECDEF + zero body auth + zero-UUID actor fallback in audit_log; mass-voids credits + cancels waitlist on cross-tenant call. Parameter-spoofing + financial-falsification class; F-02-005 + F-07-003 anchor stack. Standalone CRITICAL no composition needed; class bracket unchanged per s46 F-07-003 precedent (forensic recoverability does not downgrade).
+- **F-08-002 `find_waitlist_matches` CRITICAL** — anon-callable SECDEF + zero body auth; returns child + guardian PII (student_name + guardian_name + guardian_email + missed_lesson context) for any `(_lesson_id, _absent_student_id, _org_id)` triple, LIMIT 10 magnitude factor (not class-modifier). F-02-002 cross-tenant child-PII anchor; GDPR Art 9 + Art 33 ICO-notifiable under Lauren shadow volume.
+- **F-08-003 `void_make_up_credit` phantom HIGH (event #11 bracket-shift)** — migration `20260316260000_fix_voided_credits_audit.sql:203-206` CREATEs the RPC labelled CRD-C4 CRITICAL but no DROP migration in tree, NOT in pg_proc, types.ts:7418 stale entry, useMakeUpCredits.ts:163 FE callsite live. Phase 5 6-dimension class-shape comparison REFUTED F-01-001 anchor (end-user-facing + silent + marketed-feature vs admin-utility + loud + admin-utility) → PI-09 HIGH anchor adopted; operational-correctness CAPS-at-HIGH chain (s44 events #5-#7 + s45 #8 + s46 #10 precedent).
+- **F-08-004 `credit-expiry:86-87` HIGH** — silent-swallow on waitlist cascade UPDATE; cron returns success=true with incorrect waitlist_expired_count. F-05-005 + F-07-001 chain (8 instances post-s47).
+- **F-08-005 `waitlist-expiry` HIGH** — 3 internal silent-swallow paths bundled at :25 + :48 + :65 per F-05-005 anchor precedent (single finding, multi-path evidence).
+- **F-08-006 through F-08-010 LOW** — TS-bypass-cast Sub-A 7-cohort (4 gratuitous `(supabase.rpc as any)` on RPCs IN types.ts + 3 misc casts) + CC-19 #10 Sentry gap at notify-makeup-match:9 bare Deno.serve + inline `supabase.from('teachers')` at DailyRegister.tsx:81-87 + 2× CC-19 #6 sub-shape A NULL proconfig (auto_issue_credit_on_absence + confirm_makeup_booking).
+
+### Pattern catalog additions (3 NEW candidates s47; defer ratification to batch-19)
+
+- **Pattern #27 candidate** — Hook-mediated supabase access discipline (11/11 batch-08 components delegate via hooks; zero direct supabase.from/.rpc/.functions.invoke calls in components)
+- **Pattern #28 candidate** — Shadow-mode interception per Lauren Shadow programme (2/2 batch-08 email-sending fns use `transformEmailForShadow` from `_shared/shadow-email.ts`; organisations.shadow_mode DB-verified; SHADOW_RECIPIENTS env-configurable; pass-through-on-error safety; Sentry mark-as-shadow on interception)
+- **Pattern #29 candidate** — Caller-RLS-respecting view (security_invoker=on at available_credits view; `reloptions=["security_invoker=on"]` DB-verified via pg_class.reloptions; RLS-bypass class candidate REFUTED per Phase 3 §1)
+
+Plus 3 placed-pattern batch-08 reinforcements: Pattern #20 per-element compensating rollback (credit-expiry-warning per-credit loop + message_log compensation); Pattern #21 column-restricted state-machine guard (make_up_waitlist "Parents can respond" UPDATE WITH CHECK status IN); Pattern #25 defensive-narrowing-via-roles +2 (attendance_records INSERT + UPDATE roles={authenticated}; class total 1 → 3).
+
+### CENSUS edits applied (Phase 10 Category C)
+
+- **CC-1**: §11.A row-08 hooks 6 → 5 (Phase 1.3 filesystem-first enumeration; CENSUS §9.5 actual is 5)
+- **CC-3**: §3.10 line 347 `waitlist-respond` re-tag `08-attendance-credits-waitlists` → `14-bookings-leads-enrolment` + category `makeup` → `enrolment-response` + §11.A row 08 edge fn count 6 → 5 + §11.A row 14 edge fn count 4 → 5 (Phase 4 body audit established function operates ENTIRELY on batch-14 surface: enrolment_waitlist table + respond_to_enrolment_offer RPC)
+
+### waitlist-respond body audit observations (preserved for batch-14 reference)
+
+JWT verification SOUND: jose v5.2.0 + WAITLIST_JWT_SECRET HS256 HMAC signature + claims (waitlist_id + org_id) validated + compound `(id, org_id)` row fetch + state-machine one-shot replay prevention via DB-state (status='offered' required) + atomic RPC `respond_to_enrolment_offer` with WL-H5 race-condition fix. No `jti` claim or token-revocation table — replay prevention solely via DB state-machine. **Verdict**: no CRITICAL JWT-class defect; closed-batch immutability per PLAN.md §6 protects this observation for batch-14 audit at s53+.
+
+### 3 Cat 1 methodology drifts ratified s47
+
+| # | Phase | Drift | Mitigation rule |
+|---|---|---|---|
+| 22 | s47 Phase 0 | PG POSIX regex word-boundary `\bas any\b` returned 0 rows on `pg_get_functiondef` body filter; PG POSIX flavor uses `\y` or `[[:<:]]`/`[[:>:]]`, NOT Perl `\b` | PG POSIX word-boundary: use `\y` or `[[:<:]]`; prefer `position(<literal> in body) > 0` for literal name matches |
+| 23 | s47 Phase 0 | bun-not-installed despite `bun.lockb` (245KB) present; auto-detect script assumed lockfile-presence implies tool-availability; fallback to `npm ci` (package-lock.json also present) | After lockfile detection, verify implied tool exists on `$PATH` via `command -v <tool>` BEFORE invoking install |
+| 24 | s47 Phase 1 | `\bas any\b` grep -E ERE regex returned 0 matches; grep -E ERE `\b` UNSUPPORTED (vendor extension only); 7 instances existed in batch-08 file set | Word-boundary regex flavor discipline: PG POSIX `\y`/`[[:<:]]`; grep -P PCRE `\b` supported; grep -E ERE `\b` UNSUPPORTED. Always counter-test (anchored ≤ unanchored; zero against non-empty unanchored = anchor wrong). |
+
+**Cross-class theme** (drifts #22 + #24): WORD-BOUNDARY REGEX FLAVOR ASSUMPTION across PG POSIX + grep -E. Consolidated mitigation in drift #24.
+
+### Cross-batch carries to batch-19 (post-s47)
+
+9 sweep targets enumerated finding doc §9.7: CC-19 #1 EXECUTE-grant hygiene (26 batch-08-touching SECDEF anon-EXECUTE observed); CC-19 #3 audit_log INSERT integrity (0 uncompensated batch-08 POSITIVE); CC-19 #6 parameter-spoofing (+2 batch-08: F-08-001 + F-08-002 = ≥48 cumulative); CC-19 #7 generated-types pipeline drift (10/10 RPCs aligned + 1 stale void_make_up_credit per F-08-003); CC-19 #8 E2E fixture hygiene (5 failed + 3 unhandled rejections baseline carry; unchanged); CC-19 #10 Sentry gap (+1 batch-08: F-08-007 = ≥8 cumulative); CC-19 #11 financial amount_minor CHECK (+1 batch-08 positive: credit_value_minor; cohort 5 negative + 2 positive = 7 entries); CC-19 #14 misnaming sub-shape (0 batch-08 instances POSITIVE); CC-19 #15 dead-code SECDEF + orphan trigger fns (0 batch-08 instances POSITIVE; C10 is INVERSE shape — different class). 5 catalog refinement carries (Pattern #6 sub-shape +2 + F-01-017 class +2 + Sub-D sub-classification + Pattern #25 enumeration scope + Pattern #26 candidate ratification result NEGATIVE for batch-08).
+
+### Banner remains AUDIT IN PROGRESS — DO NOT FIX YET
+
+Next session: **s48 batch 09-term-continuation** (audit-only); carries PI-13 CRITICAL (process-term-adjustment timezone) + PI-15 HIGH partial ownership (canonical credit-note creation surface). Apply 26 cumulative methodology entries; cumulative events 11; pattern catalog 25 placed + 4 candidates. Fresh reviewing-Claude chat bootstraps from `audit/sweep/handovers/reviewing-claude-s47-close.md` at s48 dispatch.
+
+---
+
 ## s46 (2026-05-13) — batch 07-payment-plans-installments CLOSED
 
 **Findings**: 7 allocated (1C / 1H / 1M / 4L)

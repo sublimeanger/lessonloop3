@@ -344,7 +344,7 @@ Auth-posture assignments below are based on file location / typical pattern; **a
 | `notify-makeup-match` | notification | service-role | 08-attendance-credits-waitlists |
 | `notify-makeup-offer` | notification | service-role | 08-attendance-credits-waitlists |
 | `waitlist-expiry` | cron | cron-only | 08-attendance-credits-waitlists |
-| `waitlist-respond` | makeup | public (token) | 08-attendance-credits-waitlists |
+| `waitlist-respond` | enrolment-response | public (token) | 14-bookings-leads-enrolment |
 
 ### 3.11 Continuation + term adjustments (4)
 
@@ -1215,13 +1215,13 @@ Each row shows the count of CENSUS entries from each of the 8 source sections, p
 | 05 | billing-invoicing | 4 | 4 | 9 | 13 | 8 | 4 | 0 | 12 | — |
 | 06 | payments-stripe-connect | 0 | 0 | 20 | 8 | 5 | 2 | 0 | 9 | — |
 | 07 | payment-plans-installments | 0 | 0 | 3 | 5 | 3 | 3 | 0 | 1 | — |
-| 08 | attendance-credits-waitlists | 3 | 3 | 6 | 10 | 9 | 3 | 0 | 6 | — |
+| 08 | attendance-credits-waitlists | 3 | 3 | 5 | 10 | 9 | 3 | 0 | 5 | — |
 | 09 | term-continuation | 2 | 1 | 4 | 4 | 1 | 0 | 0 | 4 | — |
 | 10 | reports-analytics-payroll | 9 | 9 | 0 | 2 | 0 | 0 | 0 | 5 | — |
 | 11 | parent-portal | 8 | 8 | 2 | 3 | 0 | 0 | 0 | 10 | — |
 | 12 | messages-notifications | 1 | 1 | 10 | 1 | 0 | 1 | 0 | 9 | — |
 | 13 | practice-resources | 2 | 2 | 2 | 2 | 2 | 3 | 0 | 5 | — |
-| 14 | bookings-leads-enrolment | 4 | 4 | 4 | 5 | 0 | 1 | 0 | 5 | — |
+| 14 | bookings-leads-enrolment | 4 | 4 | 5 | 5 | 0 | 1 | 0 | 5 | — |
 | 15 | calendar-sync-zoom-xero | 1 | 1 | 16 | 3 | 0 | 2 | 0 | 4 | — |
 | 16 | subscription-tiers | 0 | 0 | 6 | 0 | 11 | 5 | 0 | 4 | — |
 | 17 | loopassist | 0 | 0 | 4 | 0 | 2 | 0 | 0 | 3 | — |

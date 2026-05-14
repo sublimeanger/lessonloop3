@@ -94,7 +94,7 @@ Pre-investigation s38 tags are STARTING POINTS for prioritisation, NOT severity 
 
 **Class-consistency precedent** is the primary anchor for adjudication. Operational-correctness class CAPS at HIGH per s42 PI-11 + s44 PI-02/03/04 + s45 PI-05/PI-07 precedent chain. Financial-falsification class anchors at CRITICAL per F-02-005 + F-02-002 + F-05-001 + F-06-001/003 family. Class-consistent grading prevents "scored differently because one happens to have a downstream rollback" drift.
 
-**Cumulative severity-adjustment events through s45**: **9** (events #1-#9). Full table maintained in each batch findings doc §11 + reviewing-Claude handover §9.
+**Cumulative severity-adjustment events through s47**: **11** (events #1-#11; s46 +1 event #10 F-07-003 mid-session bracket-shift CRITICAL via composition with F-02-005; s47 +1 event #11 F-08-003 mid-session bracket-shift CRITICAL ↓ HIGH via class-precedent reassessment with F-01-001 anchor REFUTED → PI-09 HIGH adopted). Full table maintained in each batch findings doc §11 + reviewing-Claude handover §9.
 
 **Pattern catalog + CC-19 cross-batch carry register**: full catalogs (23 positive patterns + 15 active CC-19 carries post-s45) maintained in `audit/sweep/findings/NN-*.md` files; reviewing-Claude handover snapshots `audit/sweep/handovers/reviewing-claude-sNN-close.md` consolidate counts at each session close. New patterns + carries declared in Phase 9 of the discovering session per the 11-section contract.
 
