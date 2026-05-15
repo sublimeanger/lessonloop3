@@ -217,6 +217,29 @@ Total: **90 route definitions** (4 + 4 + 8 + 32 + 3 + 38 + 1).
 | `marketing/compare/` (VsFons, VsJackrabbitMusic, VsMyMusicStaff, VsOpus1, VsTeachworks) | 5 | 21-marketing-surface |
 | `marketing/use-cases/` (ForGuitarSchools, ForMusicAcademies, ForPerformingArts, ForPianoSchools, ForSoloTeachers) | 5 | 21-marketing-surface |
 
+### 2.9 Component attributions — dashboard widgets + shared reports primitives (added s49 Phase 10 Cat C)
+
+Per s49 Phase 4 §4 + §5 evidence + Phase 6 §10 Q3 reviewing-Claude endorsement, the following component files attribute to **batch-10 reports-analytics-payroll** by class-shape (analytics-shaped widgets and collocation-implied shared reports primitives):
+
+**Dashboard widgets** (3 batch-10-owning files; analytics-shaped):
+
+| File | Class-shape | Batch |
+|---|---|---|
+| `src/components/dashboard/DashboardHero.tsx` | Receives `outstandingAmount` prop from FinanceDashboard composition; inline formatCurrency MAJOR-expected; MAJOR from useDashboardStats (POSITIVE) | 10-reports-analytics-payroll |
+| `src/components/dashboard/FinanceDashboard.tsx` | Composes useDashboardStats + StatCard primitives; inline formatCurrency definition; MAJOR-expected; MAJOR-input correct | 10-reports-analytics-payroll |
+| `src/components/dashboard/PaymentAnalyticsCard.tsx` | Consumes usePaymentAnalytics hook; formatCurrencyMinor + explicit /100 conversion (POSITIVE Pattern #38 instance) | 10-reports-analytics-payroll |
+
+**Shared reports primitives** (4 batch-10-owning files; collocation under `src/components/reports/`):
+
+| File | Class-shape | Batch |
+|---|---|---|
+| `src/components/reports/DateRangeFilter.tsx` | Date picker with presets (term-name display L77; debounce-then-flush at L119-134); 192L; consumed by all 8 batch-10 report pages | 10-reports-analytics-payroll |
+| `src/components/reports/ReportPagination.tsx` | Pagination UI primitive; 89L; consumed by all 8 batch-10 report pages | 10-reports-analytics-payroll |
+| `src/components/reports/ReportSkeleton.tsx` | Loading skeleton primitive with variants summary-chart-table / summary-table / summary-chart; 68L; consumed by 7 of 8 batch-10 report pages | 10-reports-analytics-payroll |
+| `src/components/reports/SortableTableHead.tsx` | Sort header component with generic typing; 45L; consumed by 4 of 8 batch-10 report pages | 10-reports-analytics-payroll |
+
+Other dashboard widgets (13 files) attributed to consumer-owning batches per Phase 4 §4 evidence: ActiveDisputesCard → 06 (consumer); CalendarSyncBanner → 15 (consumer); ContinuationWidget → 09 (consumer); FirstRunExperience → 18 (consumer); LoopAssistAlerts + LoopAssistWidget → 17 (consumer); QuickActionsGrid + UrgentActionsBar → 02 (consumer); RecurringRunsCard → 05 (consumer); StatCard → shared composition primitive; TeacherAvailabilityCard + TodayTimeline + UpcomingWeekWidget → 03/04 (consumer). Class-consistency observations only; closed-batch immutability respected.
+
 ### 2.8 Page counts
 
 Total: **89 page files** (8 + 24 + 3 + 8 + 8 + 1 + 37).
@@ -816,6 +839,8 @@ V2 plan §1.5 item 11 records these as a single conceptual cluster.
 |---|---|---|---|---|
 | `audit_ai_action_proposals` | ai_action_proposals | log_audit_event_singular | AFTER I/U/D | 17-loopassist |
 | `update_ai_conversations_updated_at` | ai_conversations | update_updated_at_column | BEFORE UPDATE | 17-loopassist |
+
+**Batch-17 table-level attribution (added s49 Phase 10 Cat C)**: `ai_interaction_metrics` table — 0 triggers (architectural-exception sub-class candidate "metrics IS the audit" per s49 Phase 1 §3 + Phase 6 §3 reviewing-Claude adjudication; writer-owned by batch-17). DB-verified Phase 1 §3: RLS enabled (not forced); 3 PERMISSIVE policies (admin-all SELECT + user-own SELECT + user-own INSERT); columns id/org_id/message_id/conversation_id/user_id/feedback/response_time_ms/action_proposed/action_executed/created_at; CC-19 #3 audit_log INSERT integrity gap class architectural-exception sub-class flag; batch-10 consumer audit deferred (no batch-10 FE consumers surfaced Phase 4 §11 grep).
 
 ### 5.14 Billing runs / recurring templates (4 triggers)
 
