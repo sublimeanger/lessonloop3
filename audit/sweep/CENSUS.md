@@ -556,7 +556,7 @@ Tag legend: SD = SECURITY DEFINER.
 | `apply_lost_dispute_cascade` | yes | json | 06-payments-stripe-connect |
 | `get_active_disputes_for_org` | yes | SETOF payment_disputes | 06-payments-stripe-connect |
 | `get_disputes_for_invoice` | yes | SETOF payment_disputes | 06-payments-stripe-connect |
-| `backfill_guardian_default_pm_set` | yes | json | 06-payments-stripe-connect |
+| `backfill_guardian_default_pm_set` | yes | json | 11-parent-portal (Cat C migration s50 per drift #30 + PI-06 s44 precedent: canonical-consumer batch-11 parent-portal guardian PM preference; F-06-002 HIGH closed-batch-06 audit retained per closed-batch immutability) |
 
 ### 4.4 Lesson / calendar / register RPCs
 
@@ -630,7 +630,7 @@ Tag legend: SD = SECURITY DEFINER.
 | `get_students_for_org` | yes | TABLE | 02-org-management |
 | `undo_student_import` | yes | json | 02-org-management |
 | `anonymise_student` | yes | void | 01-auth-sessions-rls |
-| `anonymise_guardian` | yes | void | 01-auth-sessions-rls |
+| `anonymise_guardian` | yes | void | 11-parent-portal (Cat C migration s50 per drift #30 + PI-06 s44 precedent: canonical-consumer batch-11 parent-portal guardian anonymisation via gdpr-delete edge fn; F-11-002 CC-19 #1 cohort anchor s50; no prior batch-01 body audit coverage found via extended findings/*.md grep) |
 
 ### 4.11 Calendar sync / integration RPCs
 

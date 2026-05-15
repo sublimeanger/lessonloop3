@@ -1,5 +1,98 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+## s50 (2026-05-15) — batch 11-parent-portal CLOSED
+
+**Findings**: 4 active (1C / 1H / 0M / 2L) + 1 RELEASED. F-11-001 ID RELEASED per s48 F-09-004 precedent (PI-50-B → F-01-036 closed-batch-01 LOW citation-only; `get_parent_lesson_notes` explicitly named in F-01-036's 7-function unpinned-search_path instance list at batch-01:661).
+
+**GRAND ACTIVE**: 141 → **145** (19C / 42H / 26M / 58L). Net change: +1C / +1H / 0M / +2L = **+4 net** by bracket. PI cohort 5 → 5 unchanged (PI-50-A/B/D/E closed-batch citation-only; PI-50-C → F-11-002 fresh allocation). (Drift #27 two-line check verified Phase 9 §5: PI math 5−0+0=5 ✓; grand active math 141+4−0=145 ✓; per-bracket cross-verify 19+42+26+58=145 ✓.)
+
+**Severity-adjustment events**: 13 → **13** (unchanged). All 4 batch-11 brackets followed §18 NOT-event paths: F-11-002 same-bracket LOW confirmation; F-11-003 bracket-pair adjudication {HIGH, LOW} → HIGH; F-11-004 same-bracket pre-tag confirmation CRITICAL → CRITICAL (PI-01 → F-10-001 s49 precedent); F-11-005 Phase 5 fresh-allocation LOW.
+
+**Positive Pattern catalog**: 34 placed + 5 candidates → **35 placed + 5 candidates** (Pattern #40 RATIFIED placed s50 "NULL-conditional-auth-gate-bypass via three-valued logic"; F-11-004 anchor; class-distinct from F-02-002 no-gate / F-02-005 no-caller-context-validation / F-06-002 no-auth-check / F-01-005 RPC<->RLS divergence; false-confidence-at-HEAD subclass marker; remediation `IS DISTINCT FROM` NULL-safe operator). 4 sub-class introductions cumulative (s49 POS-4 + NOT-VALID + Orphan MV + s50 Sub-E "catch-block `: any` hygiene" under CC-19 #7; 32-instance cumulative cohort DB-verified). 1 NEGATIVE-instance sub-class flag unchanged (Pattern #27 sub-B PortalContinuation:71).
+
+**PI cohort**: 5 → **5 active+partial** (1C / 3H / 1M / 0L); 0 closures at s50 (PI-09/10/12/16/17 all out-of-scope for batch-11). PI-50 cohort (s50-specific pre-investigation; not part of s38 historical PI register) 5 resolved (1 fresh F-11-002 LOW + 4 closed-batch citation-only).
+
+**Cumulative methodology entries**: 31 → **34** (31 Cat 1 reviewing-Claude origin + 1 Cat 2 environment caveat + 2 Cat 3 CC-origin; s50 ratified drifts #30 Phase 0 launching-prompt §7 SCOPE CENSUS verbatim-cite mandate + #31 Phase 1 class-precedent finding-ID + verbatim cite mandate + **#32 Phase 10 Step 2 inline Message B handover snapshot placeholder-token cross-reference misuse mandate** detected via CC drift #26 grep -c verification; sub-drifts #30.A Phase 1 unrestricted findings grep + #30.B Phase 7 batch-attribution at ANY phase no counter increment).
+
+**CC-19 # carries**: 15 → **16** (+1 NEW CC-19 #16 rate-limit-key-mismatch RATIFIED Phase 6+8 with Sub-class A "wrong-but-extant key with similar-purpose bucket-share" bounded-effect LOW + Sub-class B "missing-registry-entry fallback-to-default" unbounded-effect HIGH discriminators; F-11-005 Sub-class A anchor + 3 batch-12-future Sub-class B observed instances at CENSUS:289 + CENSUS:397 + CENSUS:395).
+
+### Headline findings
+
+- **F-11-004 `get_parent_dashboard_data` CRITICAL** — anon-reachable cross-tenant child PII dump via PG three-valued logic NULL-conditional auth gate bypass; SECDEF body `IF _user_id != auth.uid() THEN RAISE EXCEPTION 'Unauthorized: user_id mismatch'` evaluates NULL→FALSE for anon caller (auth.uid()=NULL → comparison evaluates to NULL → IF NULL THEN skipped → function proceeds → returns dashboard JSON for whichever guardian matches `(_user_id, _org_id)` pair); Phase 2A live-test CONFIRMED via `BEGIN; SET LOCAL ROLE anon; SELECT auth.uid() AS uid_at_call_time, get_parent_dashboard_data(<user_id>::uuid, <org_id>::uuid); ROLLBACK;` returning uid_at_call_time=null + non-empty JSON response with 2 active students' first_name + last_name + status + dob field + upcoming_lesson_count + next_lesson UUID + lesson title with child name embedded + lesson schedule + lesson location + financial state (outstanding_balance + overdue_count + oldest_unpaid_invoice_id); 6-dim class-shape vs F-02-002 anchor 6/6 match (D1 cross-tenant + D2 anon-reachable + D3 HIGH payload sensitivity + D4 GDPR Art-8 minor data + Art-6 financial + D5 EXTREME trust erosion + D6 composition chain via F-06-002 §250-252 + F-02-009/020 helpers); **Pattern #40 RATIFIED PLACED anchor** s50; same-bracket pre-tag confirmation per §18 (PI-01 → F-10-001 s49 precedent); FE bypass surface SAFE per useParentPortal.ts:111-122 session-bound cites (threat is HTTP-direct anon-API RPC at PostgREST `/rest/v1/rpc/get_parent_dashboard_data` with crafted JSON); HEAD OF Phase C CRITICAL queue per reviewing-Claude (most rigorously-evidenced CRITICAL to date; empirically proven exploitable against live DB); remediation pattern: `auth.uid() IS DISTINCT FROM _user_id` (NULL-safe) OR `auth.uid() IS NOT NULL` precondition; GDPR Art-33 breach-notifiable if reached production with real users; Lauren Shadow Term gates production-cutover so F-11-004's fix gates start of Phase E.
+
+- **F-11-003 `useLessonNotes.ts:119-122` HIGH** — useParentLessonNotes RPC named-parameter mismatch always-errors at PG layer; FE call `(supabase.rpc as any)('get_parent_lesson_notes', { p_student_id: studentId, p_org_id: orgId })` passes `p_student_id` (singular string) but RPC signature is `get_parent_lesson_notes(p_org_id uuid, p_student_ids uuid[])` (plural uuid array); PG runtime test produced verbatim error `ERROR: 42883: function get_parent_lesson_notes(p_student_id => uuid, p_org_id => uuid) does not exist`; ACTIVE caller `PortalSchedule.tsx:124`; every parent navigating `/portal/schedule` structured-lesson-notes section hits error; F-05-005 + F-09-007 operational-correctness CAPS-at-HIGH chain; bracket-pair adjudication {HIGH, LOW} → HIGH per §18; `(supabase.rpc as any)` cast masks the TypeScript signature error that would have caught this (CC-19 #7 Sub-A literal +1 site).
+
+- **F-11-002 LOW** — CC-19 #1 helper-fn EXECUTE-grant hygiene cohort 3 batch-11 anchors (anonymise_guardian + get_parent_dashboard_data + get_parent_lesson_notes all anon=X EXECUTE despite STRONG body-gate; drift #29 mandate operationally applied via DB-verified `has_function_privilege()`); F-09-002 + F-10-008 class-precedent.
+
+- **F-11-005 LOW** — send-parent-enquiry rate-limit bucket-key stale name; `supabase/functions/send-parent-enquiry/index.ts:42` `checkRateLimit(user.id, "send-parent-reply")` uses wrong key (20/hr reply-bucket) instead of registry-defined `"send-parent-enquiry": 10/hr` at `_shared/rate-limit.ts:19`; **CC-19 #16 Sub-class A anchor** (bounded-effect 2× looser; hygiene class); F-09-002 + batch-02 §1276 copy-paste-residue class-precedent; registry "send-parent-reply" entry itself is dead-code (no `send-parent-reply` edge fn directory exists; CC-19 #15 sub-shape adjacency observation).
+
+### Pattern catalog deltas
+
+**Pattern #40 RATIFIED** (placed slot): "NULL-conditional-auth-gate-bypass via three-valued logic" — SECDEF RPC with `IF <caller-context> != <param> THEN RAISE EXCEPTION` gate where caller-context is `auth.uid()` (NULL for anon caller); PG three-valued logic treats `NULL != anything` as NULL → `IF NULL THEN ...` evaluated FALSE per PG docs official semantics → gate bypassed; class-distinct from F-02-002 (no gate) + F-02-005 (no caller-context validation) + F-06-002 (no auth check + anon EXECUTE) + F-01-005 (RPC<->RLS divergence); false-confidence-at-HEAD subclass marker (structurally appears correct in code review; requires DB-layer test to detect); 1 NEGATIVE anchor F-11-004 (positive manifestation; gate present + bypassed + harm realised). Remediation: `auth.uid() IS DISTINCT FROM _user_id` NULL-safe operator OR `auth.uid() IS NOT NULL` precondition.
+
+**Sub-E sub-class RATIFIED** under CC-19 #7 TS-bypass-cast carry: "catch-block `: any` hygiene" — TypeScript catch defaults to `unknown` in strict mode (`useUnknownInCatchVariables=true`); explicit `catch (errorName: any)` is a deliberate annotation bypass; class-distinct from Sub-A literal RPC cast + Sub-D helper-signature + Sub-D2 callback signature. 4 batch-11 anchor sites (send-parent-enquiry:195+:223 + send-parent-message:320+:349); cumulative cohort **32 instances** DB-verified Phase 6 §4 across `supabase/functions/*/index.ts` (per-fn distribution captured). Batch-19 sweep target #4 carry.
+
+**CC-19 #16 NEW RATIFIED**: "rate-limit-key-mismatch" — Sub-class A "wrong-but-extant key with similar-purpose bucket-share" → BOUNDED → LOW (F-11-005 anchor; hygiene class) + Sub-class B "missing-registry-entry fallback-to-default" → UNBOUNDED → HIGH (F-05-005 silent-failure class anchor; 3 batch-12-future instances: send-cancellation-notification:53 CENSUS:289, send-notes-notification:58 CENSUS:397, send-contact-message:38-39 CENSUS:395). Discrimination criterion: future similar findings inherit LOW IF bounded-effect (≤10× looser within reasonable order-of-magnitude); UNBOUNDED-effect cases escalate to HIGH per silent-failure-of-security-control class. account-delete:51 inline-override pattern is EXEMPT (gdpr-delete L47 precedent).
+
+### Drift ratifications
+
+**Drift #30 (Cat 1 RC-origin; Phase 0)**: Launching-prompt §7 SCOPE skipped CENSUS owning-batch verbatim-cite cross-check. Detection: CC Phase 0 §4 flagged `backfill_guardian_default_pm_set` CENSUS:559 batch-06 + `anonymise_guardian` CENSUS:633 batch-01 both included in launching-prompt §7 SCOPE without attribution-migration framing in §6. Mitigation: every §7 SCOPE entry requires verbatim CENSUS line cite; closed-batch attribution mismatches surface as "consumer-attribution migration candidate" in §6 pre-investigation with PI-06 s44 precedent reference. Counter update: Cat 1 28 → 29; cumulative methodology 31 → 32.
+
+**Drift #30.A (sub-drift to #30; Phase 1 CC origin; no counter increment)**: TASK 0 closed-batch coverage grep scope. CC extended `findings/01-*.md + findings/06-*.md` (prescribed) to all `findings/*.md` (executed); caught 4 additional closed-batch citations (F-02-009 + F-02-020 helpers at batch-02; F-01-036 at batch-01). Mitigation rule expansion: Phase 1 TASK 0 grep on closed-batch coverage for any RPC in §7 SCOPE = unrestricted `findings/*.md` scope; do NOT limit to specific batches. **Operational scope clarification (Phase 6)**: unrestricted grep applies at ANY phase where closed-batch coverage might be relevant, not just Phase 1 TASK 0. 3 manifestations confirmed s50 (PI-50-E → F-01-005 Phase 2B; F-11-001 → F-01-036 Phase 5; F-02-009 + F-02-020 helpers Phase 1).
+
+**Drift #30.B (sub-drift to #30; Phase 7 reviewing-Claude origin; no counter increment)**: Batch-attribution claims at ANY phase require verbatim CENSUS line cite. Origin: reviewing-Claude Phase 6 §A propagated CC's unverified batch-03 assertion for send-cancellation-notification without verbatim CENSUS cite. Detection: CC Phase 7 TASK 4 verbatim CENSUS:289 cite caught actual batch-12 owning batch. Mitigation rule: batch-attribution claims at ANY phase (cross-batch reach, severity adjudication, sweep-target framing — not just §7 SCOPE per original drift #30) require verbatim CENSUS line cite. Operationally extends drift #30 + #30.A scope.
+
+**Drift #31 (Cat 1 RC-origin; Phase 1)**: Launch-prompt §6 class-precedent citations name-mapped without DB-verified anchor. Detection: CC Phase 1 §3.3 caught PI-50-B citation of "Pattern #4 / CC-19 #2" for search-path-injection class; both mismaps (Pattern #4 = derive-then-is_org_admin per batch-02 §1435; CC-19 #2 = vestigial-parameter per batch-04 §305); actual anchor F-01-036 (unpinned search_path class at batch-01:656). Mitigation: every class-precedent citation in launching-prompt §6 requires finding-ID + verbatim cite from finding doc; generic Pattern # / CC-19 # references without DB-verified anchor forbidden. Counter update: Cat 1 29 → 30; cumulative methodology 32 → 33.
+
+**Drift #32 (Cat 1 RC-origin; Phase 10 Step 2 inline-ratified)**: Message B handover snapshot placeholder-token misuse in cross-reference language. Detection: CC drift #26 grep -c verification at Phase 10 Step 2 returned 4 placeholders instead of expected 3 — reviewing-Claude's Message B composition included `<s50 Phase 10 commit SHA>` token inside §2 verification-list bullet at line 31 cross-referencing §4 canonical pin. CC HALTED per drift #26 protocol; reviewing-Claude adjudicated Option 1 (correct Message B line 31 to descriptive non-placeholder language; ratify drift #32 inline at s50) over normalising-the-error options. Mitigation: when composing Message B handover snapshots, the placeholder token `<sNN Phase 10 commit SHA>` appears exactly 3 times at §2 immediate-state opening sentence + §4 project-IDs table value + §21 first-action HEAD reference; all other references to the canonical pin must use descriptive cross-reference language ("§4 canonical pin", "the HEAD recorded at project-IDs", etc.); pre-Message-B reviewing-Claude self-check counts placeholder occurrences in draft before sending. Detection precedent: drift #26 grep -c mechanism caught the error at the right gate (exactly its design purpose). Counter update: Cat 1 30 → 31; cumulative methodology 33 → 34.
+
+**Phase 10 Step 2 inline-ratification note**: Phase 10 Step 2 caught reviewing-Claude origin drift #32 (Message B placeholder-token cross-reference misuse); counter 33→34; corrected inline before commit. This validates drift #26 mitigation's design purpose — grep -c verification gate caught reviewing-Claude composition error before it baked into commit history.
+
+### Workflow rule s51+ (Phase 0 push hygiene)
+
+**Workflow rule** (not methodology drift): Phase 0 verification adds explicit check `git rev-parse origin/<branch>` MUST equal `git rev-parse HEAD` BEFORE Phase 1 dispatch. If divergence detected in either direction, surface as workflow anomaly for reviewing-Claude clarification. Do NOT normalise. Do NOT invent conventions. Recorded in PLAN.md §10 hard-rules. Origin: s50 Phase 0 §1 surfaced 3-commit divergence (origin/main at 7bdea67e s46 vs local HEAD 47383d97 s49); 3 audit commits (s47/s48/s49) unpushed for 3 sessions. **Phase 2 §B closed durability gap**: 3 audit commits pushed to origin/main (pre-push 7bdea67e → post-push 47383d97 fast-forward).
+
+### F-11-005 class-anchor framing (for class-consistency precedent)
+
+- **Sub-class A "wrong-but-extant key with similar-purpose bucket-share"** → BOUNDED → LOW (F-11-005 anchor)
+  - Discrimination: registry entry EXISTS; effect within reasonable order-of-magnitude (≤10× looser)
+- **Sub-class B "missing-registry-entry fallback-to-default"** → UNBOUNDED → HIGH (F-05-005 anchor; 3 batch-12-future instances)
+  - Discrimination: registry entry MISSING; falls to default 100/min = 6000/hr; effect 100-1000× looser than messaging-class intent
+- account-delete:51 inline-override pattern is EXEMPT (gdpr-delete L47 precedent)
+
+Future similar findings inherit LOW (Sub-class A) or HIGH (Sub-class B) per this discrimination criterion.
+
+### Cross-batch reach verdicts (11-item inventory; Phase 7 §6)
+
+(a) ParentLoopAssist V2 §3.3 HIDDEN-but-wired → batch-17; (b) F-01-017 +2 instances guardians+student_guardians UPDATE → batch-19 sweep target #16; (c) CC-19 #3 lesson_notes audit-trigger gap → batch-19 sweep target #3; (d) Pattern #27 sub-B PortalContinuation:71 → batch-08 §72 declaration; (e) F-01-005 RPC<->RLS divergence reinforcement LessonNotesForm.tsx → batch-01 closed; (f) F-01-036 unpinned search_path get_parent_lesson_notes → batch-01 closed; (g) F-06-002 backfill_guardian_default_pm_set → batch-06 closed; (h) F-02-009 + F-02-020 parameter-spoofing helpers → batch-02 closed; (i) Sub-class B rate-limit-key-mismatch 3 instances all batch-12-future (CENSUS:289 + CENSUS:397 + CENSUS:395); (j) Sub-E catch-block `: any` 28 cross-batch instances → batch-19 sweep target #4; (k) "send-parent-reply" registry dead-key entry → CC-19 #15 sub-shape observation.
+
+### CC-19 carries entering batch-12
+
+- #1 Helper-fn EXECUTE-grant hygiene: +3 cohort anchors via F-11-002 (drift #29 operational mandate applied)
+- #3 audit_log INSERT integrity gap: +1 observation lesson_notes audit-trigger gap (DB-verified pg_trigger)
+- #6 Org-context spoofing: +0 negatives (4 batch-11 helpers closed-batch-02 covered via F-02-009 + F-02-020)
+- #7 Generated-types pipeline drift: +11 batch-11 sites (5 Sub-A + 2 Sub-D2 + 4 Sub-E) → ~400
+- #8 E2E fixture hygiene: delta 0 vs s49 baseline (471 passed / 5 failed / 30 test files / 3 unhandled)
+- #10 Sentry edge-fn instrumentation: +0 (2 batch-11 fresh-audit fns both wrapped)
+- #11 CI-enforced positive-amount CHECK: +0 (only 1 CHECK on batch-11 tables; convalidated=true; 0 NOT-VALID variant)
+- #13 PERMISSIVE-as-RESTRICTIVE: +0 (24 batch-11 policies all PERMISSIVE; intended OR semantics)
+- #14 Claimed-service-role-gate misnaming: +0
+- #15 Dead-code SECDEF + orphan triggers: +1 sub-shape observation (registry dead-key)
+- **NEW #16 rate-limit-key-mismatch**: F-11-005 anchor + 3 batch-12-future cross-batch
+
+### CENSUS Cat C edits applied Phase 10 (2 edits)
+
+1. `backfill_guardian_default_pm_set` CENSUS:559: batch-06-payments-stripe-connect → batch-11-parent-portal (canonical-consumer attribution; F-06-002 HIGH closed-batch-06 audit retained per closed-batch immutability + PI-06 s44 precedent)
+2. `anonymise_guardian` CENSUS:633: batch-01-auth-sessions-rls → batch-11-parent-portal (no prior batch-01 audit body coverage found via extended findings/*.md grep + PI-06 s44 precedent)
+
+### Pending follow-ups for s51 (batch 12-messages-notifications)
+
+(i) audit-only mode continues; (ii) batch-12 owns 0 fresh PI seed (PI-12 + PI-16 batch-17; PI-09 batch-19; PI-10 batch-15+18; PI-17 batch-08+19 partial); (iii) class-precedent magnets for batch-12: silent-failure-of-security-control (F-05-005 anchor for Sub-class B rate-limit-key-mismatch 3 instances at send-cancellation-notification + send-notes-notification + send-contact-message; CC-19 #16 Sub-class B HIGH); CC-19 #3 audit_log INSERT integrity (notification + messaging mutations audit coverage); Sub-E catch-block `: any` 5 batch-12 instances per Phase 6 §4 distribution; (iv) batch-12-owned RPCs: TBD per CENSUS:600 region — **drift #29 mandate**: Phase 1 EXECUTE grant enumeration via `has_function_privilege()` required for all batch-12 SECDEF RPCs; (v) apply all 33 cumulative methodology entries (30 Cat 1 + 1 Cat 2 + 2 Cat 3); (vi) cumulative events 13; (vii) 10 active CC-19 carries + 1 NEW #16 + 5 candidate Patterns + 4 sub-class introductions + 1 NEGATIVE-instance sub-class flag; (viii) **workflow rule s51+ Phase 0 push hygiene check**: `git rev-parse origin/<branch>` MUST equal `git rev-parse HEAD` BEFORE Phase 1 dispatch (per PLAN.md §10 hard-rules); (ix) reviewing-Claude rotation per audit discipline — s50 was reviewing-Claude session covering s50 only; s51 dispatches with fresh reviewing-Claude chat bootstrapped from `audit/sweep/handovers/reviewing-claude-s50-close.md` written at this commit per §10b mandate (with placeholders preserved per drift #25 + #26). Audit-only mode continues; banner remains AUDIT IN PROGRESS — DO NOT FIX YET.
+
+HEAD: `<s50 Phase 10 commit SHA>`
+
+---
+
 ## s49 (2026-05-15) — batch 10-reports-analytics-payroll CLOSED
 
 **Findings**: 8 allocated (1C / 1H / 1M / 5L)
