@@ -1,5 +1,112 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+## s52 (2026-05-16) — batch 13-practice-resources CLOSED
+
+**Findings**: 4 fresh F-13-NNN active (1C / 0H / 0M / 3L) + 3 closed-batch citations (F-02-008 batch-02 HIGH composition chain re-verified at HEAD via 4 cumulative migration touches incl. 20260509084937 x-cron-secret addition per drift #36 live-DB verification — cite §3.5; F-02-020 batch-02 MEDIUM 5 batch-13-RLS-consumer helpers retain anon+auth+srv EXECUTE — cite §3.6; CC-19 #1 closed-batch-08 hygiene-only +2 trigger fns cleanup_resource_shares_on_student_archive + update_practice_streak — cite §3.7).
+
+**GRAND ACTIVE**: 153 → **157** (20C / 45H / 26M / 66L). Net change: +1C / 0H / 0M / +3L = **+4 net** by bracket. PI cohort 5 → 5 unchanged (PI-52-A through PI-52-P are s52-INTRODUCED PIs dispositioned via finding doc §6, distinct from cohort 5). Drift #27 two-line check Phase 8 verified: PI math 5−0+0=5 ✓; grand active math 153+4+0=157 ✓; per-bracket cross-verify 20+45+26+66=157 ✓; per-batch row sum 5+36+36+5+5+11+8+7+10+10+8+4+8+4=157 ✓.
+
+**Severity-adjustment events**: 13 → **14** (+1 event #14). PI-52-P META (s52) (HIGH standalone) ↑ CRITICAL via composition with F-02-005 + F-07-003 + F-08-002 closed-CRITICAL anchors per F-06-001/F-06-003 event #9 precedent (composition-discovery escalation). AUTH-H5 mass REVOKE migration `20260401000000:307-396` partial-mitigation: PG REVOKE-FROM-authenticated + FROM public statements do not strip explicit `anon=X/postgres` grant entry on 13-fn cohort; Supabase platform default-grant on schema public (postgres-owner pg_default_acl) re-applies anon+auth+srv on CREATE OR REPLACE; omission of `REVOKE EXECUTE ... FROM anon` is the discrete syntactic defect; cohort retains anon EXECUTE at HEAD. Single-bracket pre-tag adjudicated to DIFFERENT bracket via composition (per §18 methodology).
+
+**Positive Pattern catalog**: 36 placed + 6 candidates → **36 placed + 6 candidates** (unchanged). Pattern #41 cohort expansion REFUTED on D2 reachability axis per Phase 4.1b 6-dim adjudication (streak-notification class-DISTINCT; verify_jwt=false + x-cron-secret body-level cron-secret gate is service-to-service trust, NOT user-auth gate). Pattern #42 promotion NO MATCH for batch-13 edge fns (neither has registry entry nor invokes checkRateLimit). 5 sub-class introductions (+1 POS-3 IMPLICIT NEW s52 ratified Phase 5.1d). 1 NEGATIVE-instance sub-class flag unchanged. **POS-3 IMPLICIT (NEW sub-class #5)**: "Junction-table immutable-link UPDATE-policy absence via application convention (DELETE-THEN-INSERT FE write pattern; no migration source comment explicitly documenting intent)". Distinct from POS-3 EXPLICIT (practice_streaks F3 MEDIUM migration comment block at 20260316310000_fix_practice_tracking_audit.sql:5+12-20). Sole-pair anchor at s52: resource_shares + resource_category_assignments. Fragility caveat: a new developer reading the migration could add an UPDATE policy without seeing the original design intent. Single-anchor-pair placement precedent: F-11-002 Sub-E s50. **Internal-trust pattern observation-only** (sole anchor streak-notification at s52; NOT promoted to Pattern catalog; batch-19 watchlist; distinct from Pattern #41 on D2 reachability + distinct from Pattern #42 on substrate axis syntactic vs semantic).
+
+**PI cohort**: 5 → **5 active+partial** unchanged (1C PI-12 + 3H PI-09 + PI-10 + PI-16 + 1M PI-17 + 0L). 0 closures at s52 (PI-12/09/10/16/17 all out-of-scope for batch-13). PI-52 cohort (s52-INTRODUCED; 16 entries PI-52-A through PI-52-P) all dispositioned via finding doc §6: 15 closed (subsumed / closed-batch citation / cohort enrichment / Pattern adjudication / POS-3 / Phase 1.7 closure) + 1 deferred (PI-52-K push_tokens cross-cutting post-Phase-B editorial).
+
+**Cumulative methodology entries**: 35 → **37** (33 Cat 1 reviewing-Claude origin + 2 Cat 2 environment caveat + 2 Cat 3 CC-origin; s52 ratified drift #36 Phase 5 + Cat 2 #2 Phase 5; sub-drifts unchanged from s51). Drift #27 bidirectional mitigation operates as designed at s52: CC Phase 5 EXIT arithmetic flag caught reviewing-Claude dispatch §5.3c off-by-one ("38" → corrected to 37); 35 + 2 = 37 confirmed per per-row sum 33+2+2.
+
+**CC-19 # carries**: 16 → **16** unchanged (cohort enrichment counts only; no new carry numbers; Internal-trust pattern is observation-only not promoted).
+
+### Headline findings
+
+- **F-13-001 CRITICAL META** — AUTH-H5 mass REVOKE migration `20260401000000:307-396` partial-mitigation cohort 13 fns (PI-52-P; subsumes PI-52-A + PI-52-O as cohort items #9 + #10 per F-12-006 META cohort precedent / Sub-option 2 subsumption framing). Root cause: PG REVOKE FROM authenticated + FROM public statements do not strip explicit `anon=X/postgres` grant entry in proacl; Supabase platform pg_default_acl postgres-owner schema-public default = `{postgres=X/postgres, anon=X/postgres, authenticated=X/postgres, service_role=X/postgres}` re-applies anon+auth+srv on CREATE OR REPLACE (3 of 13 cohort members re-created post-Apr-1: record_installment_payment + record_stripe_payment + auto_issue_credit_on_absence); omission of `REVOKE EXECUTE ... FROM anon` is the discrete syntactic defect; 26 REVOKE statements in migration (13 fns × 2 each FROM authenticated; FROM public) NONE specify FROM anon. 13-fn cohort spans 5+ batches: batch-02 closed (record_stripe_payment F-02-005 CRITICAL) + batch-07 closed (record_installment_payment F-07-003 CRITICAL) + batch-08 closed (5 fns incl. find_waitlist_matches F-08-002 CRITICAL + notify_makeup_match_webhook CC-19 #1 closed-batch-08 anchor) + **batch-13 (reset_stale_streaks PI-52-A subsumed + complete_expired_assignments PI-52-O subsumed)** + cross-cutting helpers (cleanup_rate_limits + generate_invoice_number + set_invoice_number). Severity: CRITICAL composition via F-02-005 + F-07-003 + F-08-002 (event #14 ratified). Remediation prescription: (a) migration adding `REVOKE EXECUTE ON FUNCTION public.<fn>(<sig>) FROM anon;` per 13-fn cohort; (b) `ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated;` to prevent re-application on future CREATE OR REPLACE; (c) body anchor-fixes for F-02-005 + F-07-003 + F-08-002 per closed-batch finding docs (defense-in-depth; REVOKE alone is layer-1, body gate is layer-2). F-13-001 batch-13 attribution per implicit-attribution-via-owning-feature-surface convention (s52 discovery surface). 6-dim adjudication of PI-52-A + PI-52-O vs 5 DB-SECDEF closed-batch anchors confirmed class-DISTINCT (strongest sibling F-02-002 "no gate at all" 2/6 strong match; Pattern #40 NO MATCH per drift #35.B class-shape feature verification — Pattern #40 requires structurally-present `IF <caller-context> != <param>` gate that bypasses via 3VL; PI-52-A/O have NO gate at all).
+
+- **F-13-002 LOW** — F-01-017 cohort 4 batch-13 anchors UPDATE-no-WITH-CHECK (practice_assignments + practice_logs + resource_categories + resources UPDATE policies; DB-verified pg_policy + filesystem migration source verbatim; all 4 USING-only with `with_check_expr=NULL`). POSITIVE counter-examples within batch-13: 4 INSERT WITH CHECK policies (resources + resource_categories + resource_category_assignments + resource_shares INSERT all have explicit WITH CHECK ownership-binding patterns) — correct pattern available in batch-13; 4 UPDATE policies selectively miss adoption. Class anchor F-01-017 batch-01 MEDIUM cluster. Selective regression framing per F-12-004 precedent. Cohort ≥25 → ≥29 entering batch-19.
+
+- **F-13-003 LOW** — CC-19 #3 audit_log INSERT integrity gap cohort 7 batch-13 anchors (all 7 batch-13 tables lack audit_X AFTER INSERT triggers calling log_audit_event_singular). STRONGEST candidates: practice_streaks (F-02-008 chain spine + PI-52-A state-reset surface + GDPR Art-32) + resource_shares (cross-batch cascading-DELETE via trg_cleanup_resource_shares_on_student_archive + GDPR child-data) + practice_logs (parent + staff write surface + GDPR Art-32). STRONG candidates: practice_assignments + resources. WEAKER candidates: resource_categories + resource_category_assignments. POSITIVE baseline DB-verified: 28 tables in schema have audit_X AFTER INSERT triggers via log_audit_event_singular helper fn (e.g. internal_messages closed-batch-12 POSITIVE counter-example for s51 F-12-006). Class anchor: F-02-010 class header (audit_log INSERT integrity gap; 70.1% historical NULL-actor) + F-11-003 §B cohort precedent (Adjudication 23 dual citation). Selective regression framing per F-12-006 precedent. Out-of-scope observation: all 28 triggers fire on INSERT only; UPDATE/DELETE non-audit is separate class-shape.
+
+- **F-13-004 LOW** — CC-19 #11 column-CHECK-absent cohort 5 batch-13 anchors (practice_assignments.target_minutes_per_day + practice_assignments.target_days_per_week + practice_streaks.current_streak + practice_streaks.longest_streak + resources.file_size_bytes; plausible CHECKs > 0 / BETWEEN 1 AND 7 / >= 0 / >= 0 / > 0 respectively). DB-confirmed: 2 validated CHECK constraints on batch-13 tables (practice_assignments_status_check + practice_logs_duration_minutes_check); 0 NOT-VALID variants. Precedent chain F-07-006/F-07-007 + F-09-012 + F-10-004 (all LOW). Cohort 14 → 19 entering batch-19. Magnitude-LIMITING note for F-13-001 × PI-52-A composition: practice_streaks.current_streak/longest_streak default-to-0 + no CHECK >= 0 means anon-callable RESET hits already-default-or-positive state; no negative-value attack via CHECK absence (but doesn't bracket-shift F-13-001).
+
+### Pattern catalog deltas + sub-class introduction
+
+**Sub-class introduction #5 POS-3 IMPLICIT RATIFIED s52** (Phase 5.1d): "Junction-table immutable-link UPDATE-policy absence via application convention". Distinct from POS-3 EXPLICIT (practice_streaks F3 MEDIUM migration comment). Sole-pair anchor: resource_shares + resource_category_assignments. FE evidence: useUpdateResource.ts:63 DELETE-only + useResources.ts:275-309 DELETE-THEN-INSERT share-set management ("Get existing shares" SELECT + "Remove old shares" DELETE + "Add new shares" INSERT) + useResourceCategories.ts:117-128 DELETE-THEN-INSERT assignment management. Fragility caveat noted: Phase C may convert IMPLICIT → EXPLICIT via documentation-only migration-comment addition. Single-anchor-pair placement precedent: Sub-E sub-class introduction at s50 (F-11-002). Sub-class introductions cumulative: 4 → 5.
+
+**Pattern #41 cohort expansion REFUTED s52** (Phase 4.1b 6-dim adjudication; drift #35.B class-shape feature verification): streak-notification body has caller-supplied identity parameters {student_id, new_streak, org_id} at L110 + no body-level cross-tenant validation, but D2 reachability axis dispositive — Pattern #41 anchor class-shape verbatim requires "auth-required gate (verify_jwt=true OR body-level Authorization+getUser(token))" which is user-auth-based; streak-notification's gate is `x-cron-secret` body-level via validateCronAuth (service-to-service internal-trust). Class-DISTINCT on D2 reachability axis. Pattern #41 remains single-anchor PLACED (F-12-003 send-push only); carries to batch-19 sweep. streak-notification body defect fully absorbed by F-02-008 closed-batch-02 HIGH composition chain citation per §3.5 (Effect 2 delivery surface).
+
+**Pattern #42 promotion NO MATCH for batch-13** (Phase 1.7 + Phase 4.2): neither batch-13 edge fn has entry in `_shared/rate-limit.ts` registry; neither invokes checkRateLimit. Pattern #42 remains single-anchor CANDIDATE (F-12-008 notify-internal-message); batch-13 +0 contribution. Carries to batch-19 sweep target for promotion decision.
+
+**Internal-trust pattern observation-only at s52** (Phase 5.1c; NOT cataloged): class-shape sketch "edge fn body has internal-trust gate (cron-secret OR service-role bearer body validation, NOT user-auth gate); accepts caller-supplied identity parameter; performs action on/for that identity without body-level consistency validation". Sole anchor: streak-notification at s52. NOT promoted to Pattern catalog per refined rationale: (a) streak-notification body defect fully absorbed by F-02-008 closed-batch citation; Pattern slot would duplicate closed-batch downstream-effect coverage; (b) Pattern #42 distinguishable on substrate axis — discrete syntactic diff (Pattern #42 = registry-entry-without-invocation visible via grep) vs semantic body-audit verdict (internal-trust = requires per-fn body inspection to identify); syntactic defects warrant CANDIDATE at single-anchor evidence (Pattern #40/#41/#42 precedent); semantic verdicts warrant observation-only until evidence accumulates. Batch-19 watchlist: if ≥1 additional internal-trust+caller-supplied-identity instance NOT absorbed by closed-batch chains surfaces in batches 14-18, reconsider as Pattern #41 Sub-B sub-class introduction OR fresh Pattern slot.
+
+### Drift ratifications
+
+**Drift #36 (Cat 1 #33 RC-origin; Phase 5)**: Live-DB body verification (`SELECT prosrc FROM pg_proc`) is canonical for SECDEF RPC body-state claims at HEAD; migration-source verification supplements but does not substitute when multiple migrations touch the same fn. Phase 2 RPC body audits MUST include SELECT prosrc query when body claim is materially load-bearing (chain integrity, gate presence, cross-tenant validation). Migration-history enumeration via `supabase_migrations.schema_migrations` regex on fn name SHOULD accompany to characterize cumulative touch chain. Origin: s52 Phase 4/5 boundary via reviewing-Claude self-check on `_notify_streak_milestone` Phase 2.4 verification path; substantive conclusion (chain integrity intact) happened to be correct via migration-source-only path at 20260316310000:207-225, but evidence chain was imprecise — body IS changed from 20260316310000 source via 4 cumulative migration touches (20260316310000 + 20260426222037 + 20260507100000 + 20260509084937 x-cron-secret addition); CC executed faithfully per reviewing-Claude dispatch framing. **Operational rule: every Phase 2 dispatch for batch 14+ MUST include explicit task line for live-DB body verification on materially load-bearing RPC body claims.**
+
+**Cat 2 #2 environment caveat (Phase 5)**: s52 working-tree loss via macOS /tmp purge mid-Phase-2; mitigation = re-clone at canonical /tmp/lessonloop3-fresh + HEAD pin re-verify; same mitigation pattern as s46 Cat 2 #1 (git object DB corruption). Environmental incident, not methodological. Operational note: long Phase B sessions on macOS /tmp risk purge; canonical-path re-clone is established mitigation; HEAD pin verification via `git rev-parse HEAD` against s51 close pin `f1e8cf41` confirmed post-recovery.
+
+Counter updates: Cat 1 32 → 33; Cat 2 1 → 2; Cat 3 unchanged 2; cumulative methodology 35 → 37.
+
+### Drift mandate operational-carry entering s53 (FULL list)
+
+- **#29** SECDEF RPC EXECUTE grant enumeration via `has_function_privilege()` for anon + authenticated + service_role
+- **#30** §7 SCOPE entries in launching-prompt require verbatim CENSUS line cite (parent of #30.A + #30.B)
+- **#30.A** Closed-batch coverage grep at ANY phase = unrestricted findings/*.md scope
+- **#30.B** Batch-attribution claims at ANY phase require verbatim CENSUS line cite
+- **#31** Class-precedent citations in ANY launching-prompt section (§5 READ-FIRST + §6 pre-investigation + §7 SCOPE + §10 REQUIRED-UPDATES + §11 EXIT template) require finding-ID + verbatim cite from finding doc (s51-expanded scope)
+- **#32** Message B handover snapshot placeholder token `<sNN Phase 10 commit SHA>` appears EXACTLY 3 times at §2 + §4 + §21; CC `grep -c` gate at Phase 10 Step 2 is the failsafe
+- **#35** Instance classification verifies class-shape defining features AND class-specific exemption rules (parent of #35.A + #35.B)
+- **#35.A** Cohort instance classification checks class-specific exemption rules (e.g. CC-19 #16 Sub-class B inline-override exemption per account-delete:51 + gdpr-delete L47 precedent)
+- **#35.B** Class-precedent citation verifies class-shape defining features AND distinguishes class header anchor from cohort precedent
+- **#36 NEW s52**: Live-DB body verification (`SELECT prosrc FROM pg_proc`) canonical for materially load-bearing SECDEF RPC body claims at HEAD; Phase 2 dispatches for batch 14+ MUST include explicit task line
+- **Workflow rule §3 rule 7**: Phase 0 push hygiene check (`git rev-parse origin/<branch>` == HEAD pre-Phase-1 dispatch); s51 first application clean; s52 second application clean
+
+### PI cohort 5 status entering s53
+
+Active+partial: **5 (1C / 3H / 1M / 0L)** UNCHANGED from s51 close:
+- PI-12 CRITICAL (batch-17 owning)
+- PI-09 HIGH (batch-19 owning)
+- PI-10 HIGH (batch-15+18 owning; Zoom sub-deferred)
+- PI-16 HIGH (batch-17 owning)
+- PI-17 MEDIUM (batch-08+19 partial)
+
+0 s52 contributions to PI cohort 5. PI-52-A through PI-52-P (16 entries) are s52-INTRODUCED PIs distinct from cohort 5; all 16 dispositioned via findings/13-practice-resources.md §6 (15 closed + 1 deferred PI-52-K).
+
+### Tally state at s52 close
+
+- **Total**: 157 active findings
+- **By bracket**: 20 CRITICAL / 45 HIGH / 26 MEDIUM / 66 LOW
+- **Batches complete**: 13 of 21
+- **Batches remaining**: 8 (14-bookings-leads-enrolment + 15-calendar-sync-zoom-xero [Zoom sub-deferred] + 16-subscription-tiers + 17-loopassist + 18-settings-tabs [Zoom sub-deferred] + 19-cross-cutting + 20-ux-flows + 21-marketing-surface [ZoomGuide sub-deferred])
+
+### Baseline test delta
+
+471 / 5 / 30 → 471 / 5 / 30 (UNCHANGED; no test changes at s52 per audit-only Phase B discipline).
+
+### CENSUS edits
+
+0 edits at s52 per Adjudication 9 + Adjudication 24 (deferred to post-Phase-B editorial). 5 consumer-attribution migration candidates carry forward unchanged: message_batches + message_log + ai_messages + payment_notifications + push_tokens. s52 Phase 1.3 reconfirmed push_tokens primary-write-surface is platform-services layer (App.tsx universal mount + src/services/pushNotifications.ts:38), NOT batch-13 feature surface.
+
+### Phase 0 push hygiene check
+
+PLAN.md §3 rule 7 second application clean: `git rev-parse origin/main` == `git rev-parse HEAD` == `f1e8cf41e828c2913a68e5c920cba79a3f92896d` pre-Phase-1 dispatch. No divergence; workflow rule continues operational s53+.
+
+### Confidence rating
+
+**HIGH** — substantive Phase 2-4 evidence chains verbatim-cited at finding-doc level (13 finding-ID citations per drift #31 operational mandate at finding-doc level); Pattern #41 class-distinctness adjudication per drift #35.B 6-dim rubric (D2 reachability axis dispositive); PI-52-P META composition-CRITICAL adjudication per F-06-001/F-06-003 event #9 precedent with 3 closed-CRITICAL anchors in cohort (F-02-005 + F-07-003 + F-08-002); drift #36 self-correction operational at Phase 4/5 boundary (reviewing-Claude origin; live-DB verification supersedes migration-source-only path); arithmetic discipline (drift #27 two-line check) all-pass with triple-cross-verify (header + bracket + per-batch-row converging on 157); cross-doc consistency confirmed across STATUS.md + PLAN.md + finding doc (157 / 20C / 45H / 26M / 66L; events 14; methodology 37; CC-19 carries 16; sub-class introductions 5).
+
+### Next
+
+s53 batch 14-bookings-leads-enrolment. PI seeds owned by batch-14 per STATUS §2 batch tracker: none direct. Key items for s53 launching-prompt §6 pre-investigation:
+- Enumerate batch-14 surfaces per CENSUS (booking page + lead capture + enrolment waitlist + offer expiry + conversion path)
+- Drift #36 mandate: Phase 2 dispatch MUST include explicit task line for live-DB body verification on materially load-bearing SECDEF RPC body claims at HEAD (precedent: _notify_streak_milestone Phase 2.4 imprecision at s52)
+- F-08-001 + F-08-002 closed-batch-08 anchors cross-batch reach into batch-14 (waitlist matching surface; F-08-002 find_waitlist_matches is in PI-52-P 13-fn AUTH-H5 cohort)
+- F-13-001 META cohort awareness: any batch-14 SECDEF cron-RPC enumeration must check pg_proc.proacl for explicit `anon=X/postgres` grant + cross-reference against AUTH-H5 migration 20260401000000 cohort coverage
+- waitlist-respond edge fn (CENSUS-tagged batch-14 per s47 CC-3 edit) — JWT verification audit
+- Continue Pattern #42 promotion watch (carries to batch-19 sweep target)
+- Continue Internal-trust pattern observation-only watch (sole anchor streak-notification at s52)
+
+HEAD pin (s52 close): `<s52 Phase 10 commit SHA>` (Phase 10 will produce; recorded externally per drift #25).
+
+---
+
 ## s51 (2026-05-15) — batch 12-messages-notifications CLOSED
 
 **Findings**: 8 fresh F-12-NNN active (0C / 3H / 0M / 5L) + 3 closed-batch citations (F-02-008 batch-02 HIGH `_notify_streak_milestone` DB-state re-verification per Adjudication 6 Outcome A; F-02-020 batch-02 MEDIUM `teacher_has_thread_access` listed §1037 in 19-fn helper class per Adjudication 14; closed-batch-08 LOW `notify_makeup_match_webhook` CC-19 #1 cohort enrichment).
