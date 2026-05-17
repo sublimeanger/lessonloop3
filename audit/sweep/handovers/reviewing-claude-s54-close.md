@@ -374,6 +374,8 @@ Workflow rule PLAN.md §3 rule 7 (s51+; clean s51 + clean s52 + FAILURE→normal
 
 Implicit-attribution-via-owning-feature-surface convention (codified s51 Phase 7 PLAN.md L117 editorial; reconfirmed s52 + s53 + s54): CENSUS attributes tables implicitly via owning-feature-surface. Primary-write-surface determines table attribution when consumers span multiple batches. 5 consumer-attribution migration candidates carry forward unchanged at s55.
 
+Phase 10 dispatch §10.6 substitution-scope cross-check (drift #39 NEW s54 extended-close mitigation rule): every Phase 10 dispatch composing §10.6 substitution instructions MUST cross-check against drift #32 invariant + s53 substitution-scope precedent before sending. Snapshot scope = LITERAL `<sNN Phase 10 commit SHA>` PLACEHOLDERS RETAINED at §2/§4/§21 (NOT substituted; snapshot is bootstrap material for the NEXT reviewing-Claude chat — placeholder retention preserves structural reference without binding to a transient post-amend orphan-prone SHA). Substitution scope = STATUS.md + HANDOVER.md ONLY (which historically record the pre-amend SHA per established Phase 10.6 pattern; matches s53 STATUS.md L78 + earlier-session HANDOVER.md entries). Class-kin to drift #38 sub-instance B (reviewing-Claude origin citation hygiene) + drift #28 (s49 Cat 3 CC-origin useFeatureGate-presumed); shared root cause "over-confidence in instruction composition without cross-precedent verification". Forward-carry rule operational entering s55+; reviewing-Claudes composing s55+ Phase 10 dispatches verify §10.6 substitution-scope instruction against this rule before sending.
+
 17. Tools
 
 - Supabase MCP (project xmrhmxizpslhtkibqyfy): execute_sql for read-only pre-investigation. NEVER apply_migration during audit phase (PLAN.md §10 item 9; 100% cumulative compliance through s54).
@@ -449,7 +451,7 @@ Cross-listed surfaces for batch-16 (pre-investigation needed):
 - Pages: src/pages/settings/billing/* + admin-side tier management pages
 - Hooks: useSubscription + useTier + useFeatureGate (already exists per drift #28 s49; verify post-s49 status) + useTierLimit + similar
 
-Pre-investigation queries for s55 (apply all 39 methodology entries):
+Pre-investigation queries for s55 (apply all 40 methodology entries):
 1. information_schema.tables regex-match on subscription|tier|plan|feature_flag|seat_limit
 2. pg_proc regex-match on subscription|tier|plan|feature_flag for RPC enumeration
 3. SECDEF RPC body audit for batch-16-owned RPCs (drift #36 standard procedure)
