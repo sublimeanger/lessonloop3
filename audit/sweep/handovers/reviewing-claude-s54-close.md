@@ -12,7 +12,7 @@ The chain is: Jamie ↔ You (reviewing Claude) ↔ CC. Jamie is non-technical; h
 
 2. Immediate state — what's pending
 
-s54 batch 15-calendar-sync-zoom-xero closed at 81bdacef on 2026-05-16. 12 fresh F-15-NNN findings (1C/4H/0M/7L) plus 2 closed-batch citations (F-02-002 + F-08-002 child-PII anchors at §3.13; F-02-005 + F-05-001 + F-02-004 financial-falsification CRITICAL anchor chain at §3.14) plus 7 cross-batch observations (§3.15-§3.21). Cumulative active 176 (21C/51H/26M/78L). Net change from 164: +12 (+1C / +4H / +0M / +7L).
+s54 batch 15-calendar-sync-zoom-xero closed at <s54 Phase 10 commit SHA> on 2026-05-16. 12 fresh F-15-NNN findings (1C/4H/0M/7L) plus 2 closed-batch citations (F-02-002 + F-08-002 child-PII anchors at §3.13; F-02-005 + F-05-001 + F-02-004 financial-falsification CRITICAL anchor chain at §3.14) plus 7 cross-batch observations (§3.15-§3.21). Cumulative active 176 (21C/51H/26M/78L). Net change from 164: +12 (+1C / +4H / +0M / +7L).
 
 Headline finding: F-15-001 CRITICAL — xero OAuth flow Pattern #41 cross-tenant state-poisoning + UNIQUE(org_id) permanent-hijack + xero-sync-* financial-routing-redirection composition chain. EVENT #15 NEW s54: standalone HIGH (Pattern #41 same-bracket per F-12-003 + F-14-001 anchors) ↑ CRITICAL via composition with F-02-005 + F-05-001 + F-02-004 closed-batch-02/05 CRITICAL financial-falsification anchors per event #14 PI-52-P composition-discovery escalation framework + F-06-001/F-06-003 event #9 precedent + F-07-003 event #10 precedent. Attack chain: poisoned state at xero-oauth-start (caller-supplied org_id no membership check) → base64-JSON state without HMAC → xero-oauth-callback state-trust → service-role upsert with onConflict='org_id' → UNIQUE(org_id) constraint produces PERMANENT xero_connections.tenant_id replacement → downstream xero-sync-invoice + xero-sync-payment route all victim org's financial data to attacker's Xero tenant.
 
@@ -47,7 +47,7 @@ Cross-batch observations (no fresh F-15-NNN; per closed-batch immutability):
 
 Severity-adjustment events: 1 ratified at s54. Event #15 NEW: F-15-001 HIGH baseline ↑ CRITICAL composition. Cumulative events 14 → 15.
 
-Methodology drift ledger: entries 38 → 39 (34 Cat 1 + 2 Cat 2 + 3 Cat 3). Drift #38 RATIFIED Cat 3 co-origin NEW s54: Class-anchor citation drift via unverified attribution. Two sub-instances:
+Methodology drift ledger: entries 38 → 40 (35 Cat 1 + 2 Cat 2 + 3 Cat 3; drift #38 NEW s54 Phase 5 + drift #39 NEW s54 extended-close). Drift #38 RATIFIED Cat 3 co-origin NEW s54: Class-anchor citation drift via unverified attribution. Two sub-instances:
 - Sub-instance A (CC origin): Phase 3 §3.B.X cited "F-02-008 child-PII anchor closed-batch-08"; verbatim verification at Phase 5 §5.A.1 found F-02-008 = `_notify_streak_milestone` cross-tenant audit-log injection HIGH (batch-02; parameter-spoofing class); correct anchors are F-02-002 (batch-02 CRITICAL child-PII HEADLINE) + F-08-002 (batch-08 CRITICAL find_waitlist_matches class anchor F-02-002).
 - Sub-instance B (reviewing-Claude origin): Phase 3 dispatch §5.A.3 cited "F-05-001/F-05-007/F-05-008 closed-batch-05 financial-information CRITICAL anchor chain"; verbatim verification found F-05-007 HIGH + F-05-008 MEDIUM (not CRITICAL); correct CRITICAL chain F-02-005 + F-05-001 + F-02-004.
 - Mitigation reinforced: anchor citations require finding-ID + verbatim severity + verbatim class-shape one-liner + verbatim batch attribution per drift #31 expanded scope + drift #35.B class-shape feature verification.
@@ -131,7 +131,7 @@ Supabase dest (live)             xmrhmxizpslhtkibqyfy (eu-west-1)
 Supabase source (reference)      ximxgnkpcswbvfrkkmjq
 Repo                             github.com/sublimeanger/lessonloop3
 Working tree (CC machine)        /tmp/lessonloop3-fresh (canonical post-s46; re-cloned at s52 Cat 2 #2; remains canonical at s54 close)
-HEAD at s54 close                81bdacef
+HEAD at s54 close                <s54 Phase 10 commit SHA>
 
 5. Token locations
 
@@ -301,7 +301,7 @@ PI-10 PARTIAL-HANDOVER at s54: calendar-sync portion of co-owned PI substantivel
 Doc                                                  Role
 HANDOVER.md (top-level)                              Authoritative session log; s54 entry prepended at top (66 lines added; total 5936); s53 + earlier entries unchanged below per closed-batch immutability
 audit/sweep/STATUS.md                                Live ledger; tally 176 / 21C / 51H / 26M / 78L; batch tracker (15 of 21 complete); session log; PI register cohort 5 (PI-10 PARTIAL-HANDOVER annotation); banner intact
-audit/sweep/PLAN.md                                  Path Y plan, gates, severity rubric, batches, 11-section contract; §4.1 cumulative events 15 + methodology entries 39 (34 Cat 1 + 2 Cat 2 + 3 Cat 3) + Pattern catalog 37 placed + 6 candidates + 8 sub-class introductions + 1 NEGATIVE-instance flag + CC-19 carries 16; drift #38 RATIFIED at s54
+audit/sweep/PLAN.md                                  Path Y plan, gates, severity rubric, batches, 11-section contract; §4.1 cumulative events 15 + methodology entries 40 (35 Cat 1 + 2 Cat 2 + 3 Cat 3) + Pattern catalog 37 placed + 6 candidates + 8 sub-class introductions + 1 NEGATIVE-instance flag + CC-19 carries 16; drift #38 + drift #39 RATIFIED at s54
 audit/sweep/CENSUS.md                                Every feature categorised; NO edits at s54 (per Adjudication 9+24 deferred to post-Phase-B editorial); 5 consumer-attribution migration candidates unchanged
 audit/sweep/findings/01..15-*.md                     15 closed-batch finding docs; doc-15 NEW s54 (1313 lines, 12 fresh F-15-NNN + 2 closed-batch citations §3.13+§3.14 + 7 cross-batch observations §3.15-§3.21 + 6-dim adjudication tables for all H/CRITICAL findings + drift #38 ratification narrative §11.D + Pattern #41 sub-class introduction #8 placement reasoning §11.G + event #15 composition framework §11.I + Pattern #43 DROPPED narrative §11.J + §11 audit-method appendix 12 sub-sections §11.A through §11.L)
 audit/sweep/handovers/reviewing-claude-s43..s54-close.md  12 bootstrap snapshots; s54 most recent
@@ -313,10 +313,11 @@ Closed-batch immutability rule (PLAN.md §6): severity, batch, and ID immutable 
 
 Pre-investigation queries via Supabase MCP execute_sql (read-only) against project xmrhmxizpslhtkibqyfy.
 
-3-category methodology-discipline ledger (cumulative through s54 — 39 entries):
+3-category methodology-discipline ledger (cumulative through s54 — 40 entries):
 
-Category 1 — Reviewing-Claude origin: 34 (unchanged at s54)
+Category 1 — Reviewing-Claude origin: 35 (+1 NEW s54 extended-close drift #39)
 - Through s53 (34 entries): #1-#33 cumulative + #34 drift #37 NEW s53
+- s54 #35 drift #39 RATIFIED s54 extended-close (Cat 1 reviewing-Claude origin): Phase dispatch instruction drift from previously-ratified mandate. Origin: Phase 10 dispatch §10.6 instructed CC to sed-substitute placeholders in handover snapshot file; contradicted drift #32 invariant (snapshot retains literal `<sNN Phase 10 commit SHA>` placeholders at §2/§4/§21) + s53 substitution-scope precedent (STATUS.md + HANDOVER.md only). Detection: Phase 10 EXIT post-amend SHA discrepancy diagnostic; CC cross-referenced s53 snapshot at-rest state (3 literal `<s53 Phase 10 commit SHA>` placeholders retained) confirming dispatch §10.6 deviation. Class-kin to drift #38 sub-instance B (reviewing-Claude origin citation hygiene) + drift #28 (s49 Cat 3 CC-origin useFeatureGate-presumed); shared root cause "over-confidence in instruction composition without cross-precedent verification". Mitigation: every Phase 10 dispatch §10.6 substitution scope MUST cross-check against drift #32 invariant + s53 precedent. Snapshot scope = LITERAL PLACEHOLDERS RETAINED at §2/§4/§21; substitution scope = STATUS.md + HANDOVER.md ONLY. Remediation: Option A surgical restoration via follow-up commit `audit(s54): drift #39 ratification + restore snapshot placeholders per drift #32`. Reverse-substitutes 3 snapshot placeholders at §2/§4/§21; STATUS.md + HANDOVER.md retain pre-amend SHA per established Phase 10.6 pattern. Severity-of-impact: LOW-but-material (orphan SHA `81bdacef` recorded in snapshot pre-remediation; published HEAD `cda4ae08` post-amend; post-remediation HEAD recorded at extended-close push; no audit-content corruption).
 
 Category 2 — Environment caveats: 2 (unchanged at s54)
 - #1 s46 git object DB corruption mitigation
@@ -327,11 +328,11 @@ Category 3 — CC-origin + co-origin: 3 (+1 NEW s54)
 - #2 s49 useFeatureGate "presumed" without verbatim cite
 - #3 s54 drift #38 RATIFIED Cat 3 co-origin: Class-anchor citation drift via unverified attribution. Two sub-instances: A (CC origin F-02-008 batch-ID inversion) + B (reviewing-Claude origin F-05-007/F-05-008 severity-misattribution). Mitigation reinforced: anchor citations require finding-ID + verbatim severity + verbatim class-shape one-liner + verbatim batch attribution per drift #31 expanded scope + drift #35.B class-shape feature verification. Class-kin to drift #28. Severity-of-impact ZERO (caught at Phase 5 §5.A.1 + §5.A.3 unrestricted findings/*.md grep before Phase 6 doc-write).
 
-Cumulative total entering s55: 39 (34 Cat 1 + 2 Cat 2 + 3 Cat 3).
+Cumulative total entering s55: 40 (35 Cat 1 + 2 Cat 2 + 3 Cat 3).
 
 Discipline rule: Pattern catalog promotions / sub-class introductions are NOT methodology drifts; surface at Phase 5 EXIT for paste-back review (s47-s54 process precedent).
 
-s55 pre-investigation must apply all 39 methodology entries. Specifically:
+s55 pre-investigation must apply all 40 methodology entries. Specifically:
 - Drift #29 OPERATIONAL CARRY: every Phase 1 prompt for batch 16+ MUST include explicit task line "EXECUTE grant enumeration for each batch-owned SECDEF RPC via has_function_privilege() for anon + authenticated + service_role roles"
 - Drift #30 OPERATIONAL CARRY: launching-prompt §7 SCOPE entries require verbatim CENSUS line cite
 - Drift #30.A OPERATIONAL CARRY: closed-batch coverage grep at any phase = unrestricted findings/*.md scope; 5 manifestations cumulative
@@ -481,7 +482,7 @@ Wait for Jamie's next message. It will be either:
 (b) a Phase 0 EXIT report from CC once s55 batch 16-subscription-tiers has been dispatched.
 
 Verify in CC's Phase 0 EXIT (when it arrives):
-- HEAD at 81bdacef
+- HEAD at <s54 Phase 10 commit SHA>
 - Banner intact: AUDIT IN PROGRESS — DO NOT FIX YET on STATUS.md
 - READ-FIRST list ingested
 - Tally on STATUS.md header reads 176 / 21C / 51H / 26M / 78L
