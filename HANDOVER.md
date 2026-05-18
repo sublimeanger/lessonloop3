@@ -1,5 +1,38 @@
 # LessonLoop pre-launch handover (Claude session continuity)
 
+## s56 (2026-05-17) — batch 17-loopassist CLOSED
+
+**Findings**: 9 fresh F-17-NNN active (0C / 2H / 0M / 7L) contiguous F-17-001 through F-17-009. **PI-12 + PI-16 RESOLVED at s56** (PI cohort 5 → 3; 0C/2H/1M/0L = PI-09 HIGH + PI-10 HIGH PARTIAL + PI-17 MEDIUM remaining). **Capability #20/#21/#22 POSITIVE/MIXED-POSITIVE/POSITIVE verified** per audit/feature-catalogues/loopassist.md row #20/#21/#22. **9 cross-batch observations** (§3.10-§3.18 of findings/17): §3.10 F-16-007 MEDIUM closed-batch-16 marketing-chat 6th confirmed manifestation surface (Agency £79/mo hardcoded in LLM system prompt L38); §3.11 create_invoice_with_items Pattern #10 + get_invoice_stats Pattern #11 POSITIVE preserved at HEAD per drift #36 standard procedure 3rd operational application (ZERO body drift vs s44 close); §3.12 F-13-001 META 13-fn cohort cross-check zero batch-17 cohort matches; §3.13 ai_messages vs message_log surface distinction POSITIVE; §3.14 useFeatureGate('loop_assist') 2 batch-17 FE consumer surfaces POSITIVE; §3.15 Marketing claim accuracy ACCURATE × 4 + NEEDS-QUALIFIER × 1 (SOC 2 aligned vs certified); §3.16 ai_interaction_metrics 0-trigger architectural-exception citation per CENSUS L843; §3.17 Pattern #41 batch-17 NEGATIVE counter-examples ×3 + NOT-APPLICABLE ×1; §3.18 Pattern #42 batch-17 NEGATIVE counter-examples ×5.
+
+**Headline outcomes**:
+- **Event #16 RATIFIED**: PI-12 CRITICAL ↓ HIGH via class-precedent reassessment per F-03-004 operational-correctness CAPS chain (kin events #11 F-08-003 + #12 F-09-007 + #13 F-10-002). Composition probe negative across F-02-005 + F-02-002 + F-08-001 + F-02-008 chains. Cumulative events **15 → 16** (first event since #15 at s54).
+- **Pattern #44 NEW PLACED single-anchor** (looopassist-chat 3-layer prompt-injection mitigation: sanitiseMessage L1314 + sanitiseForPrompt L37-47 + sanitisePref L1458-1467). Class-shape "Layered prompt-injection defense at edge fn body — sanitisation at user-input layer + at context-data-injected layer + at config-data-injected layer". Class-distinct from Pattern #4 + Pattern #31. Placement precedent per Pattern #40 + #41 + #43 single-anchor first-introduction batch. **Catalog 37 → 38 PLACED**.
+- **Pattern #31 cohort 1 → 2**: bulk-process-continuation s48 + looopassist-execute s56 NEW anchor (multi-layer defense-in-depth auth-stack + identity-validation-stack pre-sensitive-operation OR pre-cross-batch-RPC-invocation). Documentation-only per placement-slot invariance s47+.
+- **Architectural-exception sub-class cohort 1 → 2**: ai_interaction_metrics (s49 precedent CENSUS L843) + ai_messages (s56 extension; 0 triggers + INSERT+SELECT only RLS; "conversation log IS the audit"; structurally distinct from CC-19 #3 main class).
+- **CC-19 #4 ARCHITECTURAL N/A sub-shape cohort 1 → 2**: batch-14 s53 anchor + batch-17 s56 extension (zero useCan + server-side ACTION_ROLE_PERMISSIONS + RLS-as-SSOT).
+- **Drift #30.A 8th cumulative operational manifestation**: Phase 1 §1.C unrestricted findings/*.md grep on create_invoice_with_items + get_invoice_stats surfaced existing batch-05 Pattern #10/#11 POSITIVE precedents → pre-empted F-17-NNN over-allocation. Cumulative manifestations 7 → 8.
+- **Drift #36 STANDARD PROCEDURE 3rd operational application**: 2/2 helper SECDEFs body-verified via live-DB `SELECT pg_get_functiondef(oid) FROM pg_proc` — ZERO body drift vs s44 close.
+- **Drift #38 18/18 anchor 4-part attestation PASS** at Phase 5.B (exceeds s55 16/16 baseline by +2 anchors).
+- **Drift #41 §6 21+1 vector enumeration Phase 5.1 self-check clean** (no manifestation at s56; mitigation operating as designed per s55 §11.K precedent).
+
+**Cumulative tally**: 184 → **191** (20C/52H/28M/91L). Cumulative events **15 → 16**. Cumulative methodology entries: **42** (unchanged in count; drift #30.A counter +1 documentation-only). Pattern catalog post-s56: **38 PLACED** + 6 candidates + 8 sub-class introductions + 1 NEGATIVE-instance flag.
+
+**Key reads added**:
+- `audit/sweep/findings/17-loopassist.md` (1110 lines NEW; F-17-001 through F-17-009 contiguous + 9 cross-batch observations §3.10-§3.18 + §11.A-§11.N audit-method appendix 14 sub-sections incl. §11.D event #16 ratification + §11.E architectural-exception sub-class extension + §11.F CC-19 #4 ARCHITECTURAL N/A sub-shape extension + §11.G Pattern #44 NEW PLACED + §11.H Pattern #31 cohort enrichment + §11.N drift #41 21+1 vector enumeration mapping)
+- `audit/sweep/handovers/reviewing-claude-s56-close.md` (NEW; composed at Phase 10 Message B per §10b mandate; 3 literal placeholder tokens at §2/§4/§21 per drift #32 + drift #39 invariant)
+
+**Carries entering s57**: 16 active CC-19 carries (unchanged count; cohort enrichments per findings/17 §10 — #10 +1 → ~13; #11 +1 → 39; F-01-017 +2 → ≥37; all others +0 / observation-only); 6 candidate Patterns (#26 + #29 batch-19; #34 post-launch; #37 + #39 batch-19; #42 batch-19) UNCHANGED; Pattern #41 PLACED 4 anchors per-flow UNCHANGED (+3 batch-17 NEGATIVE counter-examples + 1 NOT-APPLICABLE reinforce placement); Pattern #41 RLS-policy substrate sub-class cohort-evidence 1 → 2 retrofit UNCHANGED; Pattern #43 PLACED single-anchor s53 UNCHANGED; **Pattern #44 NEW PLACED single-anchor s56**; **Pattern #31 cohort 2 anchors** (bulk-process-continuation s48 + looopassist-execute s56); 8 sub-class introductions UNCHANGED COUNT (cohort enrichments documentation-only); 1 NEGATIVE-instance sub-class flag UNCHANGED; 5 consumer-attribution editorial candidates UNCHANGED.
+
+**Phase B status**: **17 of 21 batches complete**. Batches 18-21 remaining: batch-18 settings-tabs (Zoom sub-deferred carry from batch-15); batch-19 cross-cutting (PI-09 + PI-17 owned); batch-20 ux-flows; batch-21 marketing-surface (ZoomGuide sub-deferred).
+
+**Workflow rule §3 rule 7 6th application clean confirmed** at s56 Phase 0 (LOCAL == REMOTE == 2412c24d s55 close pin pre-Phase-1 per s55 Phase 10.7 proactive push). 7th application at s57 expected CLEAN per s56 Phase 10.7 proactive push.
+
+**Drift #23 deno-missing flag** non-blocking: audit Phases 1-10 read-only via grep + Supabase MCP + Read tool; no `deno run` needed at any phase.
+
+**HEAD pin at s56 close**: `109b9cc7bbddb6ef04a94d1a180214dcada455bc` (recorded externally in STATUS.md session log row + this entry post Phase 10 commit).
+
+---
+
 ## s55 (2026-05-17) — batch 16-subscription-tiers CLOSED
 
 **Findings**: 8 fresh F-16-NNN active (0C / 0H / 2M / 6L) + 4 closed-batch citations (§3.9 F-02-001 CRITICAL closed-batch-02 anchor for complete_onboarding body attack surface paths B/C/D; §3.10 F-02-034 LOW closed-batch-02 anchor for is_org_active + is_org_write_allowed PUBLIC EXECUTE info-leak class; §3.11 F-05-001 CRITICAL closed-batch-05 anchor for 3 PERMISSIVE block_expired_trial_*_insert RLS policies + Pattern #41 RLS-policy substrate sub-class cohort-evidence retrofit framing; §3.12 F-13-001 CRITICAL closed-batch-13 META anchor — complete_onboarding adds as 14th cohort member per mechanism-class match) + 5 POSITIVE pattern observations (§3.13 stripe-webhook subscription.* state-trust chain batch-06 closed cross-batch; §3.14 stripe-subscription-checkout Pattern #41 NEGATIVE counter-example L124-134 org_membership owner-role check; §3.15 onboarding-setup Pattern #41 NEGATIVE counter-example L51 getUser(token) + L177-193 authenticated user.id pass-through; §3.16 iOS Apple §3.1.1 IAP avoidance 21 files with platform.isNative branches web-redirect; §3.17 CANCELLED_LIMITS bounded downgrade {max_students: 5, max_teachers: 1} per trial-expired cron POSITIVE).
