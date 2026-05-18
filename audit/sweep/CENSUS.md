@@ -1250,7 +1250,7 @@ Each row shows the count of CENSUS entries from each of the 8 source sections, p
 | 15 | calendar-sync-zoom-xero | 1 | 1 | 16 | 3 | 0 | 2 | 0 | 4 | — |
 | 16 | subscription-tiers | 0 | 0 | 6 | 0 | 11 | 5 | 0 | 4 | — |
 | 17 | loopassist | 0 | 0 | 4 | 0 | 2 | 0 | 0 | 3 | — |
-| 18 | settings-tabs | 2 | 2 | 0 | 0 | 0 | 0 | 21 | 4 | — |
+| 18 | settings-tabs | 2 | 2 | 0 | 0 | 0 | 0 | 21 | 4 | **Complete s57 (2026-05-18); findings/18-settings-tabs.md; 1H+3L=4 findings; PI-10 RESOLVED-PARTIAL-ZOOM-DEFERRED Framing A** |
 | 19 | cross-cutting | 0 | 0 | 9 | 7 | ~64 | 2 | 0 | 13 | — |
 | 20 | ux-flows | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **13** |
 | 21 | marketing-surface | 36 | 37 | 0 | 0 | 0 | 0 | 0 | 0 | — |
